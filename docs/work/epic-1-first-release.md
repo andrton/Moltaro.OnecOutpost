@@ -676,7 +676,11 @@ folder.
 - **The error says clearly where and what** (Q1): the path of the member, such as
   `bases[1].read.workers`, what is wrong with it, and what is expected there. For example:
   `bases[0].server: the value is empty; expected the 1C cluster address such as
-  "srv-1c:1541", or remove "server" and "database" and give "file"`.
+  "srv-1c:1541", or remove "server" and "database" and give "file"`. A file that is not
+  JSON is reported by the line and the column of the fault, counted from 1. The error
+  never repeats a string value of the file, which may hold a secret such as a password in
+  the URL of the proxy (principle 9); it names the kind of a wrong value instead, such as
+  empty or a number.
 - **The policy is read when the agent starts.** A change takes effect when the service is
   restarted.
 
