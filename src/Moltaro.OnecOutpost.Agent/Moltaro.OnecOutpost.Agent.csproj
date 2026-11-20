@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- A program of the agent archive, never a package. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Moltaro.OnecOutpost.Protocol\Moltaro.OnecOutpost.Protocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The local policy, the checks of commands and the audit log have no public surface: their tests address them directly. -->
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Agent.Tests" />
+  </ItemGroup>
+
+</Project>

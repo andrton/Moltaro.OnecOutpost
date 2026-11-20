@@ -22,11 +22,16 @@ the 1C language and its parameters. The library knows nothing of any 1C configur
 BAS and every other configuration on the 1C:Enterprise 8.3 platform are the same case. The
 oldest platform supported is 8.3.17.1851.
 
-What exists today is the [concept](docs/concept.md), these rules, the development process
-and the build settings; no code is written yet. The concept is the authority for what the
-library guarantees: its semantics, its rules, its decisions D1–D17, its non-goals and its
-open items. `README.md` says what works today; a feature is delivered when the README says
-so.
+What exists today is the [concept](docs/concept.md), these rules, the development process,
+the build settings, and the public contract of the first stage in code: the server
+library, the protocol assembly and the agent program. Only the checks that need no
+implementation work: every operation of the server throws `NotSupportedException`, and the
+agent program starts and stops and does nothing else. The server is the one
+package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
+assembly inside it, so that the two can never be mixed at different versions. The concept
+is the authority for what the library guarantees: its semantics, its rules, its decisions
+D1–D17, its non-goals and its open items. `README.md` says what works today; a feature is
+delivered when the README says so.
 
 This repository is public. Nothing specific to a private product or a customer goes into
 it: no names of customers, of their databases or configurations, and none of their data,
@@ -42,20 +47,24 @@ in code, tests, samples or documents.
 | `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
-The projects are planned. Each is created by the sprint that first needs it, and the plan
-of the first epic fixes the names:
+Each project is created by the sprint that first needs it, under the name the plan of the
+first epic fixes. The protocol, the server, the agent, the samples, the test support and
+the test projects of these three exist; the others are planned. Only the server is packed;
+every other project is not.
 
 | Project | Contents |
 | --- | --- |
-| `Moltaro.OnecOutpost.Protocol` | The messages of the tunnel, their version and their signatures, shared by the server and the agent. No package dependencies |
-| `Moltaro.OnecOutpost.Server` | The server library: the endpoints for agents, pairing, the store of agents and commands on PostgreSQL through its own EF Core context, and the Read and Write calls of the application that embeds it |
+| `Moltaro.OnecOutpost.Protocol` | The messages of the tunnel, their version and their signatures, shared by the server and the agent. No package dependencies, and no package of its own: it travels inside the server's package |
+| `Moltaro.OnecOutpost.Server` | The server library: the endpoints for agents, pairing, the store of agents and commands on PostgreSQL through its own EF Core context, and the Read and Write calls of the application that embeds it. The one package of the repository |
 | `Moltaro.OnecOutpost.Agent` | The Windows service: the connection to the server, the checks of every command, the local policy and the audit log, and the COM worker processes it runs |
 | `Moltaro.OnecOutpost.ComWorker` | The only process that touches COM: it opens the external connection to one database and runs scripts in it. Built for x64 and x86 |
 | `Moltaro.OnecOutpost.Console` | The console of the agent machine: install, pair, check, collect metadata |
 | `Moltaro.OnecOutpost.Shell` | A console that runs a server of its own and sends Read and Write by hand, to try the tunnel without an application |
 | `src/Executor` | The 1C external data processor that runs a script inside 1C: its XML sources and the built `.epf`. Only the 1C Designer builds it |
+| `Moltaro.OnecOutpost.Samples` | The samples of use: an ASP.NET Core application that embeds the server. Each runs to the end with `dotnet run` |
+| `Moltaro.OnecOutpost.Measurements` | Planned: the program that measures the latency target of the concept, run by hand, never in CI or in the tests |
 | `src/*.Tests` | Tests, one project per library or program |
-| `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake of the COM worker. Never shipped; no tests |
+| `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake clock, the PostgreSQL fixture and the fake of the COM worker. Never shipped; no tests |
 
 The repository root holds only repository-level files. Code never lives there.
 
@@ -137,8 +146,11 @@ and trust it. A request outside the tunnel is declined, or noted as planned in t
     limit an application or an administrator can observe is an option with a default,
     validated when the object that uses it is created. Examples are the length of a poll,
     the deadline of a command, the size of a result and the COM workers of a base. Such a
-    value is never a constant in the code. A type that takes more than one lock documents
-    the order.
+    value is never a constant in the code. A limit that a side needs before it can read
+    what the other side sent, such as the length of a name or the nesting of JSON, is not
+    an option: the protocol fixes it, so that both sides check the same limit. A limit that
+    travels in a signed message, such as the size of an outcome, stays an option. A type
+    that takes more than one lock documents the order.
 11. **Never an approximate success.** A request is honored or refused with a code. A
     protocol violation ends the request with a reason; it is not guessed around. Not
     connected, refused by the policy, expired, failed in 1C and unknown are distinct
@@ -147,8 +159,9 @@ and trust it. A request outside the tunnel is declined, or noted as planned in t
     - The protocol depends on nothing outside .NET.
     - The server depends on the protocol, ASP.NET Core, EF Core with PostgreSQL and
       Moltaro.Signals.
-    - The agent depends on the protocol, the console on the agent and the protocol, and
-      the shell on the server.
+    - The agent depends on the protocol, the console on the agent, the protocol,
+      Spectre.Console and Spectre.Console.Cli, and the shell on the server,
+      Spectre.Console and Spectre.Console.Cli.
     - The COM worker depends on nothing outside .NET.
 
     Nothing depends on a product that uses the library. Inside an assembly a folder is a
@@ -279,6 +292,20 @@ Writing code:
 - Never return an invented success in place of a failure.
 - No reflection on a call path outside the COM worker. No duplicated checks. No redundant
   models.
+
+Console programs:
+
+- The console and the shell are products for people, not scripts. They are built on
+  Spectre.Console, with Spectre.Console.Cli for their commands, options, validation and
+  `--help`.
+- A wait that a person sees shows a spinner that says what is happening; work of a known
+  size shows a progress bar; lists are tables; an outcome or an error is shown with its
+  kind, its code and a plain reason, in colour; a secret is asked with a prompt that does
+  not echo.
+- When the output is not an interactive terminal, the programs write plain text without
+  colour, animation or prompts, so that a script and a test read the same facts. Every
+  command has documented exit codes.
+- Development tools such as the measurement program are exempt.
 
 ## Tests And Samples
 

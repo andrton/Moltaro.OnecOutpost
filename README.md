@@ -7,9 +7,18 @@ across nodes.
 
 ## Status
 
-Concept stage. The [concept](docs/concept.md) is agreed; no code is written yet, and
-nothing below works today. The first epic, up to the first release, is planned next in
-[current work](docs/work/README.md).
+Contract stage. The [concept](docs/concept.md) is agreed, and the first epic, up to the
+first release, is under way in [current work](docs/work/README.md). The public contract of
+its first stage exists in code: the types and members of the server library, with their
+documentation. Only the checks work: the options of the server, the arguments of every
+call, the outcome factories, and the rules of the agent's local policy file, which the
+agent program does not read yet. Everything else throws `NotSupportedException`: pairing,
+Read and Write, the endpoints of the agents and the migrations of the store. Nothing below
+works yet.
+
+The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
+embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from
+the environment variable `OUTPOST_SAMPLE_POSTGRES`, and says where it stops.
 
 ## What it is, and what it is not
 
@@ -58,11 +67,14 @@ dotnet build
 dotnet test
 ```
 
+The tests that need PostgreSQL start it in Docker through Testcontainers.
+
 ## Packages and downloads
 
-Planned: the server library on [nuget.org](https://www.nuget.org), published by the
-[Publish](.github/workflows/publish.yml) workflow when a version tag is pushed, and the
-agent with its console as an archive on GitHub Releases, with its SHA-256 checksum. The
+Planned: the server library on [nuget.org](https://www.nuget.org) as one package,
+`Moltaro.OnecOutpost.Server`, which carries the protocol assembly inside it, published by
+the [Publish](.github/workflows/publish.yml) workflow when a version tag is pushed, and
+the agent with its console as an archive on GitHub Releases, with its SHA-256 checksum. The
 programs of the archive are not signed, so an antivirus program may ask for an exception
 for the agent. Nothing is published yet.
 [Branches and releases](docs/work/branches.md) describes how work reaches `main` and how a

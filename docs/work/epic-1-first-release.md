@@ -1,8 +1,8 @@
 # Epic 1: First release
 
-**Status:** the plan is proposed and waits for the owner's approval; no sprint has
-started. The owner answered PQ1–PQ6 on 20 November 2026. Merging this plan approves it and
-the public contract of stage 1.
+**Status:** approved by the owner on 20 November 2026, with the public contract of stage
+1; the owner answered PQ1–PQ6 the same day. [Status](#status) says where each sprint
+stands.
 
 ## Goal
 
@@ -202,9 +202,10 @@ The public surface of stage 1: the server library and the files the agent reads.
 it into code exactly as written here. A name, a signature or a behavior that is not here
 goes back to the planner and, as a change of the contract, to the owner. The public
 contracts of stages 2 and 3 are written into their briefs before those stages start
-([Stages 2 and 3](#the-contracts-of-stages-2-and-3)). Concept §7 is a sketch. This contract
-adds `CommandId` to an outcome, so that a caller can find the command in the agent's
-audit log, and `MessagesTrimmed`, the marker of rule 5.
+([Stages 2 and 3](#the-contracts-of-stages-2-and-3)). Concept §7 names these types. Beyond
+the outline the concept had before S1, this contract adds `CommandId` to an outcome, so
+that a caller can find the command in the agent's audit log, and `MessagesTrimmed`, the
+marker of rule 5.
 
 ### Rules for every member
 
@@ -233,9 +234,9 @@ audit log, and `MessagesTrimmed`, the marker of rule 5.
   | --- | --- |
   | Base key | 1 to 64 characters, each one of `a–z 0–9 - _ .`, the first a letter or a digit; compared exactly |
   | Caller key | 1 to 200 characters, each from U+0021 to U+007E (printable ASCII without the space); compared exactly |
-  | Agent name | 1 to 100 characters, no control character, no white space at the start or the end |
+  | Agent name | A display label: 1 to 100 characters of any kind but control characters, counted as UTF-16 code units (`string.Length`), with no white space at the start or the end (Q2) |
   | Script | At least one character that is not white space, and no U+0000 |
-  | Parameters | No string in them holds U+0000, which PostgreSQL cannot store |
+  | Parameters | No string in them holds U+0000, which PostgreSQL cannot store; they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
   | Schema | 1 to 63 characters, each one of `a–z 0–9 _`, the first a letter |
   | Endpoint prefix | `/` followed by one or more segments of `A–Z a–z 0–9 - _ .` separated by `/`, not ending with `/`; no segment is `.` or `..` |
 - **Sizes.** Every size is counted on the bytes that the protocol carries: UTF-8, with
@@ -336,7 +337,7 @@ public sealed class OutpostServerOptions
 | --- | --- | --- |
 | `ConnectionString` | The PostgreSQL connection of the store | Required |
 | `Schema` | The schema of the store | The rule of names |
-| `SigningKeyPem` | The server's signing key, as PKCS#8 PEM of an ECDSA P-256 private key. The application keeps it in its own secret storage; one line of .NET creates one: `ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()` | Required |
+| `SigningKeyPem` | The server's signing key, as PKCS#8 PEM of an ECDSA P-256 private key. The application keeps it in its own secret storage; one line of .NET creates one: `ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()` | Required: exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it; any other text, a second block included, is refused (Q4) |
 | `SignalKeyPrefix` | The prefix of every key the library sets or subscribes to | A name of Moltaro.Signals of at most 64 characters |
 | `PollTimeout` | How long a poll waits for a command | 1 second to 5 minutes |
 | `LeaseGrace` | What an agent's lease adds to the poll timeout (rule 6) | 1 second to 5 minutes |
@@ -506,7 +507,9 @@ public static class OutpostCodes
 | `agent-stopped` | Unknown | A Write whose agent or worker stopped while it ran (rule 3) |
 | `transaction-ended` | Unknown | The script ended the transaction of its Write itself (rule 5) |
 
-- Every Refused, like Expired, means that nothing ran, and frees the caller key (rule 4).
+- Every Refused, like Expired, means that nothing ran. A command that ended as Refused or
+  Expired frees its caller key (rule 4); a refusal with `caller-key-conflict` created no
+  command and leaves the key with the command that holds it.
 - There is no code for a signature that does not verify. The agent cannot trust the
   identity of such a command, so it only records it in the audit log and reports nothing.
   The server ends the command by rules 7 and 11 (concept rule 1).
@@ -665,10 +668,19 @@ folder.
 | `workers` | 1 to 8; 1 when absent |
 | `runLimit` | A .NET `TimeSpan` in its constant form `[d.]hh:mm:ss`, from 1 second to 1 day (`1.00:00:00`); 10 minutes when absent |
 
-- **An invalid file serves nothing.** An unknown member, a wrong type or a value out of
-  its rule makes the whole file invalid. The agent then serves nothing and records why in
-  the audit log. The error names the path of the member, such as `bases[1].read.workers`.
-  JSON comments are not allowed.
+- **An invalid file serves nothing.** An unknown member, a member given twice, a wrong
+  type, a member set to `null`, or a value out of its rule makes the whole file invalid;
+  an empty or white-space string is out of the rule of `server`, `database`, `file` and
+  `account` (Q1). The agent then serves nothing and records why in the audit log. JSON
+  comments are not allowed.
+- **The error says clearly where and what** (Q1): the path of the member, such as
+  `bases[1].read.workers`, what is wrong with it, and what is expected there. For example:
+  `bases[0].server: the value is empty; expected the 1C cluster address such as
+  "srv-1c:1541", or remove "server" and "database" and give "file"`. A file that is not
+  JSON is reported by the line and the column of the fault, counted from 1, the column in
+  characters, each Unicode scalar value counting as one. The error never repeats a string
+  value of the file, which may hold a secret such as a password in the URL of the proxy
+  (principle 9); it names the kind of a wrong value instead, such as empty or a number.
 - **The policy is read when the agent starts.** A change takes effect when the service is
   restarted.
 
@@ -798,6 +810,13 @@ It has to say:
   signed: over the bytes of the body, the kind of request and the agent's identity;
 - the form of the pairing token, and the pairing proof;
 - the fingerprint of a key;
+- the nesting limit of the JSON of the protocol, a fixed limit and not an option (Q5).
+  The parameters of a command and the result of an outcome count
+  their 64 levels from their own outer value, as the rule of names says; the envelope of
+  the message that carries them does not count against them. S2 fixes how the whole
+  message is checked, so that a command that `ReadAsync` or `WriteAsync` accepted is never
+  refused for its nesting, and what an outcome whose result nests deeper becomes. The
+  limit lives in the protocol assembly, which both sides check it from;
 - **What every poll answer carries:**
   - the commands;
   - the bases the agent holds and those that another agent holds (rule 14);
@@ -964,7 +983,7 @@ Stage 3 — the release
 
 | Sprint | Result | Track | Status |
 | --- | --- | --- | --- |
-| S1 | The public contract of stage 1, the projects and the test lane | Full | Not started |
+| S1 | The public contract of stage 1, the projects and the test lane | Full | Done |
 | S2 | The protocol, its signatures and the pairing proof | Full | Not started |
 | S3 | The store | Full | Not started |
 | S4 | Pairing and agents on the server | Full | Not started |
@@ -997,8 +1016,10 @@ approval of this plan.
     - `Moltaro.OnecOutpost.Protocol`, with no package reference and not packed by itself;
     - `Moltaro.OnecOutpost.Server`, packed, carrying the protocol assembly inside its
       package (PQ6). It references the ASP.NET Core shared framework,
-      `Microsoft.EntityFrameworkCore`, `Npgsql.EntityFrameworkCore.PostgreSQL` and
-      `Moltaro.Signals`, whose versions go into `Directory.Packages.props`;
+      `Microsoft.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.Relational` at the
+      same version as `Microsoft.EntityFrameworkCore` (Q3),
+      `Npgsql.EntityFrameworkCore.PostgreSQL` and `Moltaro.Signals`, whose versions go into
+      `Directory.Packages.props`;
     - `Moltaro.OnecOutpost.Agent`, a program, not packed.
 
     The server project has a package description and `GenerateDocumentationFile` set.
@@ -1038,7 +1059,8 @@ approval of this plan.
     - the checks of the constructor of `OutpostPairingToken`;
     - `ToString` of `OutpostPairingToken` leaving the token out;
     - the argument checks of `OutpostMigrations`;
-    - every rule of `policy.json`, with the path of the member in the error;
+    - every rule of `policy.json`, with an error that gives the path of the member, what
+      is wrong and what is expected (Q1);
     - a test of the built `Moltaro.OnecOutpost.Protocol` that it references only
       assemblies of .NET (principle 12).
   - Tests written and skipped with the shared reason, in their own folder, un-skipped by S3:
@@ -1060,6 +1082,48 @@ approval of this plan.
       corrected;
     - concept §7 takes the names of the contract.
 - **Out of scope.** Any behavior beyond the checks; `docs/protocol.md`; explanations.
+- **Small changes during the sprint.** The owner's answer of 20 November 2026 on the
+  console programs: they are built the way a professional tool is, with spinners and
+  progress indicators, on Spectre.Console — not student work. It adds "Console programs"
+  to `AGENTS.md`, "Code Style", and Spectre.Console to principle 12; the lines of the
+  console and of the shell in [Stages 2 and 3](#the-contracts-of-stages-2-and-3) point to
+  that rule, and the acceptance of S10 and S11 checks it. The rule names
+  Spectre.Console.Cli for the commands, so principle 12 and those lines name it as well.
+- **The owner's answer of 20 November 2026 to Q1** of the
+  [open questions](open-questions.md): a member given twice, a member set to `null`, and
+  an empty or white-space string for `server`, `database`, `file` or `account` make the
+  whole `policy.json` invalid, as the reader of S1 does; and the error says clearly where
+  and what, as [`policy.json`](#policyjson) now says. The error texts of
+  `AgentPolicyReader` and their tests follow it.
+- **The owner's answer of 20 November 2026 to Q2:** the agent name is a display label, so
+  it takes arbitrary characters; the rule of names stays as S1 has it, counted as UTF-16
+  code units. The XML documentation of `agentName` and of `OutpostAgent.Name` says so.
+- **The planner's answer and proposals of 20 November 2026** to the
+  [open questions](open-questions.md) Q3–Q5 that the sprint found: an answer to Q3, and
+  proposals for Q4 and Q5, each with its test where it changes a check:
+  - Q3: the server also references `Microsoft.EntityFrameworkCore.Relational`, at the
+    version of `Microsoft.EntityFrameworkCore`, so that every EF Core assembly of the
+    package is of one version;
+  - Q4: `SigningKeyPem` accepts exactly one PEM block with nothing but white space around
+    it, as its row in the options table says, so that the import of S2 reads exactly what
+    the check accepted;
+  - Q5: the parameters of a command nest at most 64 levels, counted from their own outer
+    value, as the rule of names says. It is a fixed limit of the protocol, not an option,
+    as `AGENTS.md` principle 10 now says; how a whole message and the result of an
+    outcome are counted is in [The protocol](#the-protocol), and `docs/protocol.md`
+    states it when S2 writes it. The fixes of review round 2 narrowed
+    the sentence of principle 10 to a limit that a side needs before it can read what the
+    other side sent, since a limit that travels in a signed message, such as the size of
+    an outcome, stays an option. The limit lives in the protocol assembly, as
+    [The protocol](#the-protocol) says.
+
+  Q4 and Q5 change the public contract, so they went to the owner, who approved both on
+  20 November 2026, as the [open questions](open-questions.md) say.
+- **Corrections from the review.** Round 1 found that the sentence of
+  [`OutpostCodes`](#outpostcodes) on Refused said every Refused frees the caller key. As
+  concept rule 4 says, only a command that ended as Refused or Expired frees its key; a
+  refusal with `caller-key-conflict` created no command and leaves the key with the
+  command that holds it. The sentence now says so; no guarantee changed.
 
 ### S2 · The protocol, its signatures and the pairing proof
 
@@ -1561,9 +1625,11 @@ the contract of stage 2 approved.
     - `check` reports each case its contract names, against fakes. It checks the server
       without polling, as [The protocol](#the-protocol) says, and a test proves that the
       service's newest poll is not replaced;
-    - every command's exit codes and errors.
+    - every command's exit codes and errors;
+    - with the output redirected, every command writes plain text, tested.
   - Manual, on the lab machine: `check` against a real base, the rights of the read
-    account included; `metadata` writes a report of a real base.
+    account included; `metadata` writes a report of a real base; the owner runs every
+    command in a terminal on the lab machine and accepts how it looks.
   - The documents step: `README.md` says how an agent is installed and paired.
 - **Out of scope.** The shell.
 
@@ -1583,9 +1649,10 @@ the contract of stage 2 approved.
 - **Acceptance.**
   - Automated: a session of shell commands read from its input against an agent with the
     fake worker, ending when the input ends, so that the shell runs to the end with
-    `dotnet run`.
+    `dotnet run`; with the output redirected, every command writes plain text, tested.
   - Manual, on the lab machine: a Read and a Write of S9's scenarios typed in the shell,
-    with the agent on another machine reaching the shell over HTTPS.
+    with the agent on another machine reaching the shell over HTTPS; the owner runs every
+    command in a terminal on the lab machine and accepts how it looks.
   - The documents step: `README.md` shows a session.
 - **Out of scope.** The release.
 
@@ -1638,8 +1705,9 @@ owner approves them. Until then this is what they have to be able to do.
     a command in, an outcome out. The outcome's JSON from the executor is forwarded as it
     is, so that its size is what the executor measured;
   - it ends when the agent closes its input.
-- **The console**, a program that references the agent and the protocol (principle 12),
-  with these commands and their exit codes:
+- **The console**, a program that references the agent, the protocol, Spectre.Console and
+  Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says, with
+  these commands and their exit codes:
   - `install` and `uninstall`;
   - `pair <server address> <token>`;
   - `secret <base key> <read|write>`, which asks for the password without echoing it;
@@ -1650,7 +1718,8 @@ owner approves them. Until then this is what they have to be able to do.
     - the server;
     - the clock skew;
   - `metadata <base key> <file>`.
-- **The shell**, a program:
+- **The shell**, a program that references the server, Spectre.Console and
+  Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says:
   - its options:
     - the PostgreSQL connection;
     - the address it listens on, `http` on loopback by default;

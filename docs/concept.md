@@ -461,18 +461,22 @@ for the agents it talks to.
 
 ## 7. .NET surface
 
-The plan of the first epic fixes the names. In outline:
+The plan of the first epic fixed the names, in the package `Moltaro.OnecOutpost.Server`:
 
-- registration of the server with its options, and a method that maps the endpoints of
-  the agents under a prefix;
-- a server object with these operations:
-  - create a pairing token;
-  - list agents and their bases;
-  - revoke an agent;
-  - release a base key;
-  - Read and Write;
-- the outcome as a result type: its kind, the result as JSON, the error code, the error
-  text and the user messages.
+- `AddOutpostServer` registers the server with its `OutpostServerOptions`, and
+  `MapOutpostAgents` maps the endpoints of the agents under a prefix;
+- `IOutpostServer` has these operations:
+  - `CreatePairingTokenAsync` creates an `OutpostPairingToken`;
+  - `GetAgentsAsync` lists the agents as `OutpostAgent`, with their bases as
+    `OutpostBase`;
+  - `RevokeAgentAsync` revokes an agent;
+  - `ReleaseBaseAsync` releases a base key;
+  - `ReadAsync` and `WriteAsync` take an `OutpostReadRequest` or an
+    `OutpostWriteRequest`;
+- `OutpostOutcome` is the outcome: its kind, the identity of the command, the result as
+  JSON, the code from `OutpostCodes`, the error text, the user messages and whether they
+  were trimmed;
+- `OutpostMigrations` applies the migrations of the store, or gives them as SQL scripts.
 
 The agent, the COM worker, the console and the shell are programs, not libraries. Their
 contract is their command line, the local policy and the audit log.
