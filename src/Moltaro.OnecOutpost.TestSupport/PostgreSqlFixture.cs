@@ -7,8 +7,8 @@ namespace Moltaro.OnecOutpost.TestSupport;
 // it is removed when the fixture is disposed. Each test works in a schema of its own.
 public sealed class PostgreSqlFixture : IAsyncDisposable
 {
-    // Pinned, so that every run tests against the same server.
-    private const string Image = "postgres:17";
+    // An exact release, so that every run tests against the same server.
+    private const string Image = "postgres:17.12";
 
     // Started once, without the token of the test that asked first, so that its cancellation ends only its own wait.
     private readonly Lazy<Task<PostgreSqlContainer>> _container = new(StartAsync);

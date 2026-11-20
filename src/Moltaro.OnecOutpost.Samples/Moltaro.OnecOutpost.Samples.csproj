@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <!-- The Web SDK warns when a pack of the solution reaches a project that is not packable; this one never is. -->
+    <WarnOnPackingNonPackableProject>false</WarnOnPackingNonPackableProject>
   </PropertyGroup>
 
   <ItemGroup>

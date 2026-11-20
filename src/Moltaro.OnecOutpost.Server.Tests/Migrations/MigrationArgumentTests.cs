@@ -14,6 +14,16 @@ public sealed class MigrationArgumentTests
             () => { _ = OutpostMigrations.MigrateAsync(null!, "outpost", TestContext.Current.CancellationToken); });
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public void MigrateAsync_refuses_an_empty_or_white_space_connection_string(string connectionString)
+    {
+        Assert.Throws<ArgumentException>(
+            "connectionString",
+            () => { _ = OutpostMigrations.MigrateAsync(connectionString, "outpost", TestContext.Current.CancellationToken); });
+    }
+
     [Fact]
     public void MigrateAsync_refuses_a_null_schema()
     {

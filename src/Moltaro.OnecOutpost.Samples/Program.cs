@@ -26,9 +26,13 @@ builder.Services.AddSingleton<ISignals>(_ => new SignalHost(new SignalHostOption
 // A real application keeps its signing key in its own secret storage; the sample makes a new one at every run.
 using ECDsa signingKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 
+// The server and the migrations name the same schema.
+const string Schema = "outpost";
+
 builder.Services.AddOutpostServer(options =>
 {
     options.ConnectionString = connectionString;
+    options.Schema = Schema;
     options.SigningKeyPem = signingKey.ExportPkcs8PrivateKeyPem();
 });
 
@@ -37,7 +41,7 @@ string step = "MigrateAsync";
 
 try
 {
-    await OutpostMigrations.MigrateAsync(connectionString, "outpost");
+    await OutpostMigrations.MigrateAsync(connectionString, Schema);
 
     step = "MapOutpostAgents";
     app.MapOutpostAgents("/outpost");

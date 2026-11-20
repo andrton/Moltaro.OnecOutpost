@@ -88,12 +88,15 @@ public sealed class OutpostServerOptionsTests
         AddServer(_ => { });
     }
 
-    [Fact]
-    public void The_connection_string_is_required()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public void A_connection_string_that_is_null_empty_or_white_space_is_refused(string? connectionString)
     {
         Assert.Throws<ArgumentException>(
             nameof(OutpostServerOptions.ConnectionString),
-            () => AddServer(options => options.ConnectionString = null));
+            () => AddServer(options => options.ConnectionString = connectionString));
     }
 
     [Fact]

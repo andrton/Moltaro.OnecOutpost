@@ -21,9 +21,7 @@ internal static class CommandChecks
 
         if (parameters is not null)
         {
-            // Written as JSON when the call is made, as the contract says. Parsing the text again gives every string
-            // unescaped, whatever the writer escaped.
-            using JsonDocument written = JsonDocument.Parse(parameters.ToJsonString());
+            using JsonDocument written = Write(parameters);
 
             size += CountValue(written.RootElement);
         }
@@ -33,6 +31,25 @@ internal static class CommandChecks
             throw new ArgumentException(
                 $"The command is {size} bytes, more than the limit of {commandSizeLimit} bytes: its script in UTF-8 and its parameters written as JSON.",
                 "request");
+        }
+    }
+
+    // Written as JSON when the call is made, as the contract says. Parsing the text again gives every string unescaped,
+    // whatever the writer escaped. Parameters that cannot be written as JSON are the caller's mistake: the writer
+    // refuses a number that is not finite with ArgumentException and a nesting deeper than its limit with
+    // InvalidOperationException, and the reader a nesting deeper than its own, smaller limit with JsonException.
+    private static JsonDocument Write(JsonObject parameters)
+    {
+        try
+        {
+            return JsonDocument.Parse(parameters.ToJsonString());
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or JsonException)
+        {
+            throw new ArgumentException(
+                $"The parameters cannot be written as JSON: {exception.Message}",
+                nameof(OutpostReadRequest.Parameters),
+                exception);
         }
     }
 

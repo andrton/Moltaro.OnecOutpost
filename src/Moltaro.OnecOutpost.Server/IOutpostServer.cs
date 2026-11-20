@@ -181,9 +181,11 @@ public interface IOutpostServer
     /// <see cref="OutpostReadRequest.Script"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// Thrown by the call: a property of <paramref name="request"/> breaks its rule, or the command is larger than
-    /// <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the <see cref="ArgumentException.ParamName"/>
-    /// <c>request</c>.
+    /// Thrown by the call: a property of <paramref name="request"/> breaks its rule; its
+    /// <see cref="OutpostReadRequest.Parameters"/> cannot be written as JSON, such as a number that is not finite or a
+    /// nesting too deep to be read back, which has the <see cref="ArgumentException.ParamName"/> <c>Parameters</c>; or
+    /// the command is larger than <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the
+    /// <see cref="ArgumentException.ParamName"/> <c>request</c>.
     /// </exception>
     /// <exception cref="OperationCanceledException">
     /// Reported by the task: <paramref name="cancellationToken"/> was cancelled.
@@ -241,9 +243,11 @@ public interface IOutpostServer
     /// <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// Thrown by the call: a property of <paramref name="request"/> breaks its rule, or the command is larger than
-    /// <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the <see cref="ArgumentException.ParamName"/>
-    /// <c>request</c>.
+    /// Thrown by the call: a property of <paramref name="request"/> breaks its rule; its
+    /// <see cref="OutpostWriteRequest.Parameters"/> cannot be written as JSON, such as a number that is not finite or a
+    /// nesting too deep to be read back, which has the <see cref="ArgumentException.ParamName"/> <c>Parameters</c>; or
+    /// the command is larger than <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the
+    /// <see cref="ArgumentException.ParamName"/> <c>request</c>.
     /// </exception>
     /// <exception cref="OperationCanceledException">
     /// Reported by the task: <paramref name="cancellationToken"/> was cancelled.

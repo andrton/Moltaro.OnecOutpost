@@ -40,6 +40,24 @@ public sealed class OutcomeFactoryTests
         Assert.Equal(JsonValueKind.Null, outcome.Result!.Value.ValueKind);
     }
 
+    // The default element belongs to no document: it is a missing value, not a result.
+    [Fact]
+    public void A_success_without_a_result_is_refused()
+    {
+        Assert.Throws<ArgumentException>(() => OutpostOutcome.Succeeded(CommandId, default, [], messagesTrimmed: false));
+    }
+
+    [Fact]
+    public void A_success_or_a_failure_with_null_messages_is_refused()
+    {
+        using JsonDocument result = JsonDocument.Parse("1");
+
+        Assert.Throws<ArgumentNullException>(
+            () => OutpostOutcome.Succeeded(CommandId, result.RootElement, null!, messagesTrimmed: false));
+        Assert.Throws<ArgumentNullException>(
+            () => OutpostOutcome.Failed(CommandId, OutpostCodes.Lost, null, null!, messagesTrimmed: false));
+    }
+
     [Fact]
     public void The_result_stays_valid_after_the_document_it_came_from_is_disposed()
     {

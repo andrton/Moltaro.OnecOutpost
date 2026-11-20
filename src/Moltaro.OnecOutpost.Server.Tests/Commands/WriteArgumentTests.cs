@@ -95,6 +95,21 @@ public sealed class WriteArgumentTests : IAsyncDisposable
         Assert.Throws<ArgumentException>(nameof(OutpostWriteRequest.Parameters), () => Call(request));
     }
 
+    // The limits of writing the parameters as JSON are stated in full through ReadAsync, which shares the check.
+    [Fact]
+    public void Parameters_nested_65_levels_are_refused_with_the_name_of_their_property()
+    {
+        OutpostWriteRequest request = new()
+        {
+            BaseKey = "accounting",
+            CallerKey = "invoice-42",
+            Script = "Result = 1;",
+            Parameters = NestedParameters.Create(65),
+        };
+
+        Assert.Throws<ArgumentException>(nameof(OutpostWriteRequest.Parameters), () => Call(request));
+    }
+
     // The checks are thrown by the call itself, before it returns a task.
     private void Call(OutpostWriteRequest request)
     {

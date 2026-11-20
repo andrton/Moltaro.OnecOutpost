@@ -103,6 +103,46 @@ public sealed class ReadArgumentTests : IAsyncDisposable
         Assert.Throws<ArgumentException>(nameof(OutpostReadRequest.Parameters), () => Call(request));
     }
 
+    [Fact]
+    public void Parameters_nested_64_levels_pass_the_checks()
+    {
+        OutpostReadRequest request = new()
+        {
+            BaseKey = "accounting",
+            Script = "Result = 1;",
+            Parameters = NestedParameters.Create(64),
+        };
+
+        ArgumentChecks.AssertPassed(() => Server.ReadAsync(request, ArgumentChecks.Cancelled));
+    }
+
+    [Fact]
+    public void Parameters_nested_65_levels_are_refused_with_the_name_of_their_property()
+    {
+        OutpostReadRequest request = new()
+        {
+            BaseKey = "accounting",
+            Script = "Result = 1;",
+            Parameters = NestedParameters.Create(65),
+        };
+
+        Assert.Throws<ArgumentException>(nameof(OutpostReadRequest.Parameters), () => Call(request));
+    }
+
+    // JSON has no number that is not finite, so such parameters cannot be written.
+    [Fact]
+    public void Parameters_with_a_number_that_is_not_finite_are_refused_with_the_name_of_their_property()
+    {
+        OutpostReadRequest request = new()
+        {
+            BaseKey = "accounting",
+            Script = "Result = 1;",
+            Parameters = new JsonObject { ["ratio"] = JsonValue.Create(double.NaN) },
+        };
+
+        Assert.Throws<ArgumentException>(nameof(OutpostReadRequest.Parameters), () => Call(request));
+    }
+
     // The checks are thrown by the call itself, before it returns a task.
     private void Call(OutpostReadRequest request)
     {
