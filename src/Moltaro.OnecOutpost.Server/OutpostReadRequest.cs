@@ -50,8 +50,9 @@ public sealed class OutpostReadRequest
     /// value, and <c>null</c> becomes <c>Undefined</c>. A string is never turned into a date by guessing.
     /// </para>
     /// <para>
-    /// No string in them, the name of a member included, holds U+0000, which PostgreSQL cannot store. They are written
-    /// as JSON when the call is made: a later change of the object has no effect on the command.
+    /// No string in them, the name of a member included, holds U+0000, which PostgreSQL cannot store. They nest at most
+    /// 64 levels, the outer object being level 1: the limit of every JSON message of the protocol. They are written as
+    /// JSON when the call is made: a later change of the object has no effect on the command.
     /// </para>
     /// </remarks>
     public JsonObject? Parameters { get; init; }

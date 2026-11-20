@@ -15,6 +15,10 @@ namespace Moltaro.OnecOutpost.Server;
 // so the count walks the parameters instead of measuring a serialized text.
 internal static class CommandChecks
 {
+    // The levels a JSON message may nest, the outer object being level 1. The protocol fixes it for every message, so
+    // it is not an option (Q5).
+    private const int MaxNesting = 64;
+
     internal static void Check(string script, JsonObject? parameters, int commandSizeLimit)
     {
         long size = Encoding.UTF8.GetByteCount(script);
@@ -36,13 +40,13 @@ internal static class CommandChecks
 
     // Written as JSON when the call is made, as the contract says. Parsing the text again gives every string unescaped,
     // whatever the writer escaped. Parameters that cannot be written as JSON are the caller's mistake: the writer
-    // refuses a number that is not finite with ArgumentException and a nesting deeper than its limit with
-    // InvalidOperationException, and the reader a nesting deeper than its own, smaller limit with JsonException.
+    // refuses a number that is not finite with ArgumentException and a nesting deeper than its own limit of 1000
+    // levels with InvalidOperationException, and the reader a nesting deeper than MaxNesting with JsonException.
     private static JsonDocument Write(JsonObject parameters)
     {
         try
         {
-            return JsonDocument.Parse(parameters.ToJsonString());
+            return JsonDocument.Parse(parameters.ToJsonString(), new JsonDocumentOptions { MaxDepth = MaxNesting });
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or JsonException)
         {
