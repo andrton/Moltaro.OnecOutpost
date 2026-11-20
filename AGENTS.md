@@ -61,6 +61,7 @@ every other project is not.
 | `Moltaro.OnecOutpost.Console` | The console of the agent machine: install, pair, check, collect metadata |
 | `Moltaro.OnecOutpost.Shell` | A console that runs a server of its own and sends Read and Write by hand, to try the tunnel without an application |
 | `src/Executor` | The 1C external data processor that runs a script inside 1C: its XML sources and the built `.epf`. Only the 1C Designer builds it |
+| `src/OneC.TestConfiguration` | Planned: the XML sources of the repository's own 1C test configuration, with a script that builds a file base from them through the Designer's command line on the lab machine. No built configuration or base is committed |
 | `Moltaro.OnecOutpost.Samples` | The samples of use: an ASP.NET Core application that embeds the server. Each runs to the end with `dotnet run` |
 | `Moltaro.OnecOutpost.Measurements` | Planned: the program that measures the latency target of the concept, run by hand, never in CI or in the tests |
 | `src/*.Tests` | Tests, one project per library or program |
@@ -322,9 +323,17 @@ Console programs:
 - The store is tested against a real PostgreSQL, never an in-memory provider.
 - The transport is tested over loopback HTTP, with an agent and a server in one test. The
   tests cover polls, a lost connection, a restarted node and a second node.
-- No automated test needs 1C. The COM worker is replaced by a fake behind its boundary. A
-  check that needs a real 1C is a manual acceptance on a machine with 1C 8.3.17.1851 or
-  later. The document of the sprint describes it, and its raw output stays out of Git.
+- Tests that need 1C have the trait `Requires=OneC` and run only on a lab machine with
+  1C:Enterprise 8.3.17.1851 or later, never in CI: GitHub's runners have no 1C, and no
+  self-hosted runner is attached to a public repository. Every other test replaces the COM
+  worker with a fake behind its boundary.
+- They run against two kinds of base: a file base built on the lab machine from the
+  repository's own test configuration, and copies of real typical databases that the lab
+  machine provides. A typical configuration, a customer's database and its data never
+  enter the repository; a scenario names only the objects of the typical configuration it
+  runs against, and its connection comes from a local file outside Git.
+- A check that no test can make is a manual acceptance, described in the document of the
+  sprint. Raw output stays out of Git.
 - Code that two or more test projects need lives once, in a
   `Moltaro.OnecOutpost.TestSupport` project, created when the second test project needs
   it. It is never shipped and contains no tests.

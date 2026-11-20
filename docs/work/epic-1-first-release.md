@@ -81,8 +81,8 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R14 | The console: install, uninstall, pair, write a secret, check, write a metadata report | Concept §5 | Must | Absent | S10 |
 | R15 | The shell: a server of its own, pairing tokens, Read and Write by hand | Concept §2, §5 | Must | Absent | S11 |
 | R16 | Every timeout and limit that an application or an administrator can observe is an option with a default, validated when it is set; time comes from `TimeProvider` | `AGENTS.md`, principle 10 | Must | Absent | S1–S11 |
-| R17 | Tests as concept §11 and `AGENTS.md` require: a deterministic test of every numbered rule, the transport over loopback HTTP, the store against a real PostgreSQL, a fake clock, no sleeps, no 1C | Concept §11; `AGENTS.md` | Must | Absent | S1–S11 |
-| R18 | The answers to open items O1–O8, from the lab check, written into the concept; the manual acceptance of S9, S10 and S11 on the lab machine | Concept §11, §12; OD1 | Must | Absent | L1, S9, S10, S11 |
+| R17 | Tests as concept §11 and `AGENTS.md` require: a deterministic test of every numbered rule, the transport over loopback HTTP, the store against a real PostgreSQL, a fake clock, no sleeps; 1C only in the `Requires=OneC` tests on the lab machine, never in CI | Concept §11; `AGENTS.md` | Must | Absent | S1–S11 |
+| R18 | The answers to open items O1–O8, from the lab check, written into the concept; the `Requires=OneC` tests and the manual acceptance of S9, S10 and S11 on the lab machine, on the test base and on a copy of a typical base | Concept §11, §12; OD1 | Must | Absent | L1, S9, S10, S11 |
 | R19 | The measurement program for the latency target of concept §11, with the figures under [Measured results](#measured-results) | Concept §11 | Release | Absent | S7, S12 |
 | R20 | The explanations E1 "The path of a command" (animated), E2 "Why a command never runs twice" (animated), E3 "How the library is built" (a still figure), each as Markdown and HTML | `AGENTS.md`, "Documentation" | Release | Absent | S7, S12 |
 | R21 | The packages of PQ6, published from a version tag through nuget.org Trusted Publishing; the archive of the agent on GitHub Releases with its SHA-256 checksum | Concept D15, D16; PQ4 | Release | The workflows of the packages exist; no package | S1, S12 |
@@ -911,6 +911,11 @@ The concept fixes the principles; S2 fixes the bytes.
     The `windows` job runs every test without `Requires=PostgreSQL`, because GitHub's
     Windows runners have no Linux containers. A developer's machine with Docker runs them
     all. S1 writes the exact commands into `ci.yml` and `publish.yml`.
+  - A test that needs 1C has the trait `Requires=OneC`, as `AGENTS.md` says. The sprint
+    that adds the first such test also excludes the trait from the `build` and `windows`
+    jobs and from `publish.yml`. Such tests run on the lab machine, after its test base
+    is built from `src/OneC.TestConfiguration`, and against the copy of a typical base
+    that the lab machine provides.
   - Loopback tests start Kestrel on port `0` of `127.0.0.1`.
   - A test waits for an observed event and never sleeps.
   - A test with the fake clock waits until the code under test has armed its timer before
@@ -1431,6 +1436,11 @@ approval of this plan.
     `WriteAsync`. It makes `policy.json` invalid, reported at its path as Q1 requires. The
     rule of names and [`policy.json`](#policyjson) say so; the checks of `OutpostNames`, of
     the parameters and of `AgentPolicyReader` follow it, each with its tests.
+  - The owner's answer of 20 November 2026 on tests with 1C: both kinds. Tests that need
+    1C, with the trait `Requires=OneC`, run on the lab machine, never in CI, against a
+    file base built from the repository's own test configuration and against copies of
+    real typical databases. `AGENTS.md`, "Tests And Samples" and "Layout", concept §11,
+    the test lane, L1, S9, S10, S11, R17 and R18 say so.
   - **Changes of the public contract that come with `docs/protocol.md`,** for the owner's
     approval together with it, made in the contract step after that approval:
     - **Sizes.**
@@ -1867,6 +1877,14 @@ Best run before S6, and in any case before the contract of stage 2 is written.
 
   The minimal executor is not committed: S9 writes the executor from its contract. No
   report file is written.
+- **The 1C test lane.** L1 also sets it up, as `AGENTS.md`, "Tests And Samples", says:
+  - `src/OneC.TestConfiguration`: the XML sources of a minimal test configuration, with a
+    catalog, a document that posts to an accumulation register and a common module, and
+    the script that builds a file base from them through the Designer's command line on
+    the lab machine. It is enough for O2, O4, O6, O7 and O8. No built configuration or
+    base is committed.
+  - The owner provides the lab machine with 1C:Enterprise 8.3.17.1851 and its Designer,
+    the COM connector, the .NET 10 SDK, and a copy of a typical base.
 - **To read.** The [concept](../concept.md), §3 "The two commands" and §12; this plan,
   "The files of the agent".
 - **Done when** O1–O8 are answered in the concept and the change is merged.
@@ -1905,10 +1923,12 @@ the contract of stage 2 approved.
     - ending at the run limit;
     - starting again with a growing delay;
     - bitness chosen from the registered connector.
-  - Manual, on the lab machine (OD1), one line per scenario:
+  - With `Requires=OneC`, on the lab machine (OD1), against the test base unless a line
+    says otherwise:
     - a Read query that returns rows;
-    - a Write that creates and posts a typical document, with the same movements as by
-      hand;
+    - a Write that creates and posts a document of the test configuration;
+    - on the copy of a typical base: a typical document posted by the tunnel has the same
+      register movements as the same document posted by hand (O1);
     - a Write whose script raises an error rolls back;
     - a result of a wrong type, and one too large, roll back before the commit;
     - a script that calls `CommitTransaction` or `RollbackTransaction` gives Unknown
@@ -1929,6 +1949,7 @@ the contract of stage 2 approved.
     - safe mode refuses a file operation;
     - the read account cannot write;
     - a connector of another version is reported.
+  - Manual, on the lab machine, one line per scenario: only what no test can make.
   - The executor's XML sources and its `.epf`, built by the owner with the Designer of
     8.3.17.1851, are committed in `src/Executor`.
   - The documents step: `README.md` says the agent works with 1C.
@@ -1962,9 +1983,11 @@ the contract of stage 2 approved.
       service's newest poll is not replaced;
     - every command's exit codes and errors;
     - with the output redirected, every command writes plain text, tested.
-  - Manual, on the lab machine: `check` against a real base, the rights of the read
-    account included; `metadata` writes a report of a real base; the owner runs every
-    command in a terminal on the lab machine and accepts how it looks.
+  - With `Requires=OneC`, on the lab machine: `check` against the test base and the copy
+    of a typical base, the rights of the read account included; `metadata` writes a
+    report of each.
+  - Manual, on the lab machine: the owner runs every command in a terminal and accepts
+    how it looks.
   - The documents step: `README.md` says how an agent is installed and paired.
 - **Out of scope.** The shell.
 
@@ -1985,9 +2008,11 @@ the contract of stage 2 approved.
   - Automated: a session of shell commands read from its input against an agent with the
     fake worker, ending when the input ends, so that the shell runs to the end with
     `dotnet run`; with the output redirected, every command writes plain text, tested.
-  - Manual, on the lab machine: a Read and a Write of S9's scenarios typed in the shell,
-    with the agent on another machine reaching the shell over HTTPS; the owner runs every
-    command in a terminal on the lab machine and accepts how it looks.
+  - With `Requires=OneC`, on the lab machine: a shell session that sends a Read and a
+    Write of S9's scenarios to an agent on the test base.
+  - Manual, on the lab machine: the same, typed in the shell, with the agent on another
+    machine reaching the shell over HTTPS; the owner runs every command in a terminal
+    and accepts how it looks.
   - The documents step: `README.md` shows a session.
 - **Out of scope.** The release.
 

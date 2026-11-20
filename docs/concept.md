@@ -546,9 +546,10 @@ licences checked at that time:
   tests cover several nodes, a stopped node, a lost poll answer, an older poll, and a lost
   outcome.
 - The store is tested against a real PostgreSQL.
-- No automated test needs 1C. What only 1C can show is accepted by hand on a lab machine,
-  on a copy of a database, with 1C:Enterprise 8.3.17.1851: the executor, the COM worker,
-  the script contract and the open items below.
+- What only 1C can show, such as the executor, the COM worker, the script contract and the
+  open items below, is tested on a lab machine with 1C:Enterprise 8.3.17.1851, never in
+  CI: against a file base built from the repository's own test configuration, and against
+  copies of real typical databases. What no test can make is accepted by hand there.
 - Latency. On a loopback stand without 1C, a command reaches a waiting poll and its
   outcome reaches the waiting caller each within 100 milliseconds at the 95th percentile.
   No hop waits for a fixed interval.
