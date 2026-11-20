@@ -40,15 +40,6 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 
 ## Open
 
-### Q6. Strings that UTF-8 cannot carry
-
-| | |
-| --- | --- |
-| **Found** | 20 November 2026, Epic 1 S1, review rounds 6 and 8 |
-| **Question** | A string of .NET can hold a lone surrogate, a code unit from U+D800 to U+DFFF without its pair, which no UTF-8 can carry. It meets the library in two places. First, the agent name, a script and the strings of the parameters accept one; strict UTF-8, as the store and the protocol will use, would then fail inside the task of the call, where the rules for every member want an argument error thrown by the call itself, as for U+0000. Second, in `policy.json` an escaped lone surrogate, in a string or in a member name, makes `AgentPolicyReader` throw `InvalidOperationException` instead of an error that says where and what. Is a lone surrogate refused as an argument by the rules of names, of scripts and of parameters? And is it a fault that makes `policy.json` invalid, reported at its path? |
-| **Until answered** | The checks of S1 accept a lone surrogate in the agent name, a script and the parameters; nothing stores or sends a string yet. `AgentPolicyReader` throws `InvalidOperationException` for an escaped lone surrogate; the agent program does not read its policy yet. Both parts are answered at once, before S2, whose codec first turns these strings into UTF-8 bytes and signs them |
-| **Decides** | The owner: the answer changes the rules of names, of scripts and of parameters and the format of `policy.json`, which are public contract |
-
 ### Q7. A user and a password in the URL of the proxy
 
 | | |
@@ -116,3 +107,14 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
 | **Answer** | 20 November 2026, the owner, in their words: yes, a hard rule. The owner approves the proposal: the parameters of a command and the result of an outcome nest at most 64 levels, counted from their own outer value, a fixed limit of the protocol and not an option, the same on both sides; `docs/protocol.md` states it in S2; the narrowed sentence of `AGENTS.md` principle 10 stands |
 | **Now lives in** | `AGENTS.md` principle 10; the rule of names and "The protocol" in the [epic document](epic-1-first-release.md); the XML documentation of `Parameters`; `docs/protocol.md` when S2 writes it |
+
+### Q6. Strings that UTF-8 cannot carry
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, review rounds 6 and 8 |
+| **Question** | A string of .NET can hold a lone surrogate, a code unit from U+D800 to U+DFFF without its pair, which no UTF-8 can carry. It meets the library in two places. First, the agent name, a script and the strings of the parameters accept one; strict UTF-8, as the store and the protocol will use, would then fail inside the task of the call, where the rules for every member want an argument error thrown by the call itself, as for U+0000. Second, in `policy.json` an escaped lone surrogate, in a string or in a member name, makes `AgentPolicyReader` throw `InvalidOperationException` instead of an error that says where and what. Is a lone surrogate refused as an argument by the rules of names, of scripts and of parameters? And is it a fault that makes `policy.json` invalid, reported at its path? |
+| **Until answered** | The checks of S1 accept a lone surrogate in the agent name, a script and the parameters; nothing stores or sends a string yet. `AgentPolicyReader` throws `InvalidOperationException` for an escaped lone surrogate; the agent program does not read its policy yet. Both parts are answered at once, before S2, whose codec first turns these strings into UTF-8 bytes and signs them |
+| **Decides** | The owner: the answer changes the rules of names, of scripts and of parameters and the format of `policy.json`, which are public contract |
+| **Answer** | 20 November 2026, the owner, in their words: yes. A lone surrogate is refused at once, with a clear argument error, in the agent name, the script and the parameters of `ReadAsync` and `WriteAsync`; and it makes `policy.json` invalid, reported at its path as Q1 requires |
+| **Now lives in** | The rule of names and [`policy.json`](epic-1-first-release.md#policyjson) in the epic document; the checks of `OutpostNames`, of the parameters and of `AgentPolicyReader`, and their tests, carried into S2 |

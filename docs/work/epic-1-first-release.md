@@ -234,9 +234,9 @@ marker of rule 5.
   | --- | --- |
   | Base key | 1 to 64 characters, each one of `a–z 0–9 - _ .`, the first a letter or a digit; compared exactly |
   | Caller key | 1 to 200 characters, each from U+0021 to U+007E (printable ASCII without the space); compared exactly |
-  | Agent name | A display label: 1 to 100 characters of any kind but control characters, counted as UTF-16 code units (`string.Length`), with no white space at the start or the end (Q2) |
-  | Script | At least one character that is not white space, and no U+0000 |
-  | Parameters | No string in them holds U+0000, which PostgreSQL cannot store; they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
+  | Agent name | A display label: 1 to 100 characters of any kind but control characters, counted as UTF-16 code units (`string.Length`), with no white space at the start or the end, and no lone surrogate, a code unit from U+D800 to U+DFFF without its pair (Q2, Q6) |
+  | Script | At least one character that is not white space, no U+0000, and no lone surrogate (Q6) |
+  | Parameters | No string in them, names included, holds U+0000, which PostgreSQL cannot store, or a lone surrogate, which UTF-8 cannot carry (Q6); they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
   | Schema | 1 to 63 characters, each one of `a–z 0–9 _`, the first a letter |
   | Endpoint prefix | `/` followed by one or more segments of `A–Z a–z 0–9 - _ .` separated by `/`, not ending with `/`; no segment is `.` or `..` |
 - **Sizes.** Every size is counted on the bytes that the protocol carries: UTF-8, with
@@ -671,7 +671,8 @@ folder.
 - **An invalid file serves nothing.** An unknown member, a member given twice, a wrong
   type, a member set to `null`, or a value out of its rule makes the whole file invalid;
   an empty or white-space string is out of the rule of `server`, `database`, `file` and
-  `account` (Q1). The agent then serves nothing and records why in the audit log. JSON
+  `account` (Q1), and a lone surrogate, escaped in a string or in a member name, is out of
+  the rule of every string (Q6). The agent then serves nothing and records why in the audit log. JSON
   comments are not allowed.
 - **The error says clearly where and what** (Q1): the path of the member, such as
   `bases[1].read.workers`, what is wrong with it, and what is expected there. For example:
@@ -1188,6 +1189,13 @@ approval of this plan.
   - The documents step: `docs/protocol.md` says that the codec exists and that no endpoint
     serves it yet.
 - **Out of scope.** HTTP, the store, the agent's loop.
+- **Small changes during the sprint.** The owner's answer of 20 November 2026 to Q6 of the
+  [open questions](open-questions.md): a lone surrogate is refused at once, with a clear
+  argument error, in the agent name, the script and the parameters of `ReadAsync` and
+  `WriteAsync`, and it makes `policy.json` invalid, reported at its path as Q1 requires.
+  The rule of names and [`policy.json`](#policyjson) say so; the checks of
+  `OutpostNames`, of the parameters and of `AgentPolicyReader` follow it, each with its
+  tests.
 
 ### S3 · The store
 
