@@ -4,7 +4,7 @@ Product documentation and active work are kept apart.
 
 | Document or folder | What it holds | How it changes |
 | --- | --- | --- |
-| `concept.md` | Planned, written next. **The concept**: where the library comes from, its semantics, protocol principles, accepted decisions, non-goals and quality bar. The authority for what the library guarantees | A guarantee or a decision changes only with the owner's approval, in the same change as the code that follows it |
+| [`concept.md`](concept.md) | **The concept**: where the library comes from, its semantics and rules, protocol principles, accepted decisions D1–D17, non-goals, quality bar and the open items checked on a lab machine. The authority for what the library guarantees | A guarantee or a decision changes only with the owner's approval, in the same change as the code that follows it |
 | `protocol.md` | Planned. **The wire protocol**: the exact messages, written with the sprint that introduces them | With every change of the protocol, together with its version |
 | `explanations/` | Planned. **Explanations** for a reader: the architecture and how the library works, each as Markdown and as a self-contained HTML page, animated in the main cases. Not a specification: the concept and `protocol.md` own the rules | As `AGENTS.md`, "Documentation", says |
 | [`work/`](work/README.md) | **Working documents**: what is being built now. Epics, their goals, requirements and open questions | Often, while the work is in progress. A working document describes intent, not delivered behavior |

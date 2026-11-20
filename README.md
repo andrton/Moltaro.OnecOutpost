@@ -7,9 +7,9 @@ across nodes.
 
 ## Status
 
-Set-up stage. The repository holds its rules, its development process and its build
-settings; no code is written yet, and nothing below works today. The concept comes next,
-followed by the plan of the first epic in [current work](docs/work/README.md).
+Concept stage. The [concept](docs/concept.md) is agreed; no code is written yet, and
+nothing below works today. The first epic, up to the first release, is planned next in
+[current work](docs/work/README.md).
 
 ## What it is, and what it is not
 
@@ -39,6 +39,8 @@ Windows; the server runs wherever .NET runs.
 
 ## Documentation
 
+- [Concept](docs/concept.md): where it comes from, semantics and rules, protocol
+  principles, decisions and quality bar.
 - [Documentation index](docs/README.md) and [current work](docs/work/README.md).
 - [How the project is built](AGENTS.md): architectural principles, code style and working
   rules, for people and coding agents.
