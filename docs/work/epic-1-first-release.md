@@ -983,7 +983,7 @@ Stage 3 — the release
 
 | Sprint | Result | Track | Status |
 | --- | --- | --- | --- |
-| S1 | The public contract of stage 1, the projects and the test lane | Full | Not started |
+| S1 | The public contract of stage 1, the projects and the test lane | Full | Done |
 | S2 | The protocol, its signatures and the pairing proof | Full | Not started |
 | S3 | The store | Full | Not started |
 | S4 | Pairing and agents on the server | Full | Not started |
