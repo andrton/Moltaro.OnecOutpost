@@ -830,13 +830,14 @@ It has to say:
     bounded as well; later answers bring the current values.
 - **The answer to an older poll** comes at once, not at the end of the poll timeout. It has
   no commands, carries the other members of a poll answer, and names the newest poll number
-  that the server recorded for the agent (rule 10).
+  that the server recorded for the agent (rule 10). The agent waits a tenth of its
+  `retryDelayMax` before it polls again.
 - **What every other answer carries:** the server's time.
-- **Every answer is signed** by the server over its exact bytes and bound to the request
-  it answers by the SHA-256 of that request's exact body, which carries the poll number
-  and the agent's time. The agent verifies it before it acts on any of it, and treats one
-  that does not verify as a lost answer. The one exception is a bare HTTP 413 to an
-  `outcome` request, as concept §6 says.
+- **Every answer the agent acts on is signed** by the server over its exact bytes, and bound
+  to the request it answers by the SHA-256 of that request's exact body, which carries the
+  poll number and the agent's time. The agent verifies it before it acts on any of it.
+  - The one exception is a bare HTTP 413 to an `outcome` request, as concept §6 says.
+  - Every other unsigned answer counts as lost.
 - **The type of a poll number:** a signed 64-bit integer, from 1 to 2⁶², as
   `docs/protocol.md` fixes it.
 - **How sizes are counted**, exactly: which bytes, and whether the escapes of JSON such as
@@ -1162,6 +1163,16 @@ approval of this plan.
         public const int MaxBases = 256;
         public const int MaxReceived = 10_000;
         public const long MaxPollNumber = 1L << 62;
+
+        // Ranges that the options, `policy.json` and the codec check alike (§2, "Ranges").
+        public static readonly TimeSpan MinClockSkew = TimeSpan.FromSeconds(1), MaxClockSkew = TimeSpan.FromHours(1);
+        public static readonly TimeSpan MinTakeTimeout = TimeSpan.FromSeconds(1), MaxTakeTimeout = TimeSpan.FromHours(1);
+        public static readonly TimeSpan MinPollTimeout = TimeSpan.FromSeconds(1), MaxPollTimeout = TimeSpan.FromMinutes(5);
+        public static readonly TimeSpan MinLeaseGrace = TimeSpan.FromSeconds(1), MaxLeaseGrace = TimeSpan.FromMinutes(5);
+        public static readonly TimeSpan MinRunLimit = TimeSpan.FromSeconds(1), MaxRunLimit = TimeSpan.FromDays(1);
+        public const int MinOutcomeLimit = 64 * 1024, MaxOutcomeLimit = 64 * 1024 * 1024;
+        public const int MinCommandSizeLimit = 4 * 1024, MaxCommandSizeLimit = 16 * 1024 * 1024;
+        public const int MaxWorkers = 8;
         public const string AgentHeader = "Outpost-Agent";
         public const string SignatureHeader = "Outpost-Signature";
     }
@@ -1194,8 +1205,8 @@ approval of this plan.
     }
     ```
 
-    - `OutpostProtocolException.CommandId` is set only for a command of another version, the
-      one refusal that names its command (§7).
+    - `OutpostProtocolException.CommandId` is set for the two refusals of a verified command
+      that name it: `protocol-version` and `malformed` (§7).
     - `TryParseSignature` accepts exactly 86 base64url characters that decode to 64 bytes.
 
     In `Moltaro.OnecOutpost.Protocol.Outcomes`, the one place of every outcome code and of
@@ -1203,6 +1214,7 @@ approval of this plan.
 
     ```csharp
     internal enum OutpostAgentOutcomeKindEnum { Unknown = 0, Succeeded, Failed, Refused }
+    internal enum OutpostModeEnum { Read, Write }
 
     internal static class OutpostOutcomeCodes
     {
@@ -1239,7 +1251,7 @@ approval of this plan.
     internal static class OutpostSignatures
     {
         public static byte[] SignRequest(ECDsa agentKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body);
-        public static byte[] SignAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> requestSignature, ReadOnlySpan<byte> answerBody);
+        public static byte[] SignAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody);
         public static byte[] SignCommand(ECDsa serverKey, ReadOnlySpan<byte> commandBytes);
     }
 
@@ -1268,13 +1280,11 @@ approval of this plan.
     the members of its JSON:
 
     ```csharp
-    internal enum OutpostModeEnum { Read, Write }
-
     internal sealed record OutpostPairRequest(string AgentVersion, byte[] Key, byte[] Proof);
     internal sealed record OutpostPairAnswer(DateTimeOffset Time, Guid Agent, byte[] Key, byte[] ServerKey, TimeSpan PollTimeout, TimeSpan LeaseGrace);
     internal sealed record OutpostPollMode(int Free, TimeSpan RunLimit);
     internal sealed record OutpostPollBase(string Key, OutpostPollMode Read, OutpostPollMode? Write);
-    internal sealed record OutpostPollRequest(long Number, DateTimeOffset Time, string AgentVersion, IReadOnlyList<OutpostPollBase> Bases, IReadOnlyList<Guid> Received);
+    internal sealed record OutpostPollRequest(long Number, DateTimeOffset Time, string AgentVersion, TimeSpan PollTimeout, IReadOnlyList<OutpostPollBase> Bases, IReadOnlyList<Guid> Received);
     internal sealed record OutpostSignedCommand(byte[] Bytes, byte[] Signature);
     internal sealed record OutpostPollAnswer(DateTimeOffset Time, long? Newest, TimeSpan PollTimeout, TimeSpan LeaseGrace, IReadOnlyList<string> Held, IReadOnlyList<string> Claimed, IReadOnlyList<OutpostSignedCommand> Commands);
     internal sealed record OutpostCommandMessage(int Protocol, Guid Id, Guid Agent, string Base, OutpostModeEnum Mode, string? CallerKey, string Script, JsonElement Parameters, DateTimeOffset Issued, DateTimeOffset Deadline, TimeSpan Skew, int OutcomeLimit);
@@ -1303,21 +1313,23 @@ approval of this plan.
         public static byte[] Write(OutpostOutcomeAnswer message);
         public static byte[] Write(OutpostRefusal message);
         public static byte[] WriteUnsupportedVersion();
+        public static byte[] WritePairRefusal();
+        public static int CommandSize(string script, JsonElement parameters);
 
         // Readers of the server: they verify the request, then parse it; `pair` the other way round (§3).
         public static OutpostPairRequest ReadPairRequest(Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
         public static OutpostPollRequest ReadPollRequest(ECDsa agentKey, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
-        public static OutpostOutcomeRequest ReadOutcomeRequest(ECDsa agentKey, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostOutcomeRequest ReadOutcomeRequest(ECDsa agentKey, Guid agent, ReadOnlyMemory<byte> body, ReadOnlySpan<byte> signature);
 
         // Readers of the agent: they verify the answer, then parse it; `pair` checks the fingerprint first (§3).
-        public static OutpostPairAnswer ReadPairAnswer(string fingerprint, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> requestSignature, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
-        public static OutpostPollAnswer ReadPollAnswer(ECDsa serverKey, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> requestSignature, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
-        public static OutpostOutcomeAnswer ReadOutcomeAnswer(ECDsa serverKey, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> requestSignature, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
-        public static OutpostRefusal ReadRefusal(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> requestSignature, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostPairAnswer ReadPairAnswer(string fingerprint, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostPollAnswer ReadPollAnswer(ECDsa serverKey, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostOutcomeAnswer ReadOutcomeAnswer(ECDsa serverKey, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostRefusal ReadRefusal(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
         public static OutpostCommandMessage ReadCommand(ECDsa serverKey, OutpostSignedCommand command);
 
         // Unsigned: the outcome object inside a verified request, or from the executor.
-        public static OutpostOutcomeMessage ReadOutcome(OutpostModeEnum mode, ReadOnlySpan<byte> outcome);
+        public static OutpostOutcomeMessage ReadOutcome(OutpostModeEnum? mode, ReadOnlySpan<byte> outcome);
 
         public static int ValueDepth(JsonElement value);
     }
@@ -1337,8 +1349,15 @@ approval of this plan.
         `CommandId`.
     - **`ReadOutcomeRequest`** reads the body by §2 and keeps the `outcome` member's bytes.
       The size check and `ReadOutcome` follow it, in the order of §6.3.
-    - **`ReadOutcome`** applies §8 for the mode, the outcomes an agent may send included, and
-      throws `form`.
+    - **`ReadOutcome`** applies §2 and §8 for the mode, the outcomes an agent may send
+      included, and throws `form`. A `null` mode, for a command the server does not know,
+      accepts what either mode allows.
+    - **`ReadOutcomeRequest`** keeps the `outcome` member as a slice of `body`, without a
+      copy.
+    - **`CommandSize`** is the size of §7, computed by the same writer as
+      `Write(OutpostCommandMessage)`; `CommandChecks` of the server uses it.
+    - **`WriteUnsupportedVersion`** and **`WritePairRefusal`** write the two unsigned bodies
+      of §9.
     - **Size checks.** The checks of size belong to the callers: the server checks the
       outcome member's length against its command's limit, and the endpoints check the body
       limits of §10.
@@ -1368,30 +1387,37 @@ approval of this plan.
     - one signed with another key is refused;
     - bytes that do not parse and carry no valid signature are refused with `signature`,
       never with `form`, which shows that nothing parsed them;
-    - a verified command of another version is refused with `protocol-version` and its
+    - verified bytes that yield no `protocol` or no `id` are refused with `form` and no
+      `CommandId`;
+    - a verified command of another version is refused with `protocol-version`, and a
+      verified command of this version that breaks §7 with `malformed`, each with its
       `CommandId`.
   - Tests of the request signatures:
     - the same cases;
     - a body sent as another kind of request is refused;
     - the same bytes under another agent's identity are refused.
   - Tests of the answer signatures: an answer whose bytes changed, one signed with another
-    key, one bound to another request and one bound to another agent are refused.
+    key, and one bound to another request, agent, status or kind are refused.
   - Tests of pairing:
     - a proof made with another secret is refused;
     - a key swapped after the proof was made is refused;
-    - an answer or a refusal whose server key does not match the token's fingerprint is
-      refused;
+    - an answer whose server key does not match the token's fingerprint is refused before
+      its signature is checked;
     - a token round-trips, and a token of another form is not read.
   - Tests of §2:
-    - the escapes a writer writes;
+    - the escapes a writer writes, and no white space;
+    - a reader that accepts white space and every escape;
     - U+0000 and lone surrogates refused;
-    - duplicated members refused at every depth;
+    - duplicated members refused at every depth, names compared after unescaping;
     - non-canonical base64url, a key that is not the 91-byte form, and a proof that is not
       32 bytes, each refused;
     - times truncated to milliseconds;
-    - `ValueDepth` at 64 and 65, and a scalar at 0.
-  - Tests of §8: every kind with every code an agent may send is accepted, and a code of the
-    server's is refused; the executor's codes.
+    - `ValueDepth` at 64 and 65, and a scalar at 0;
+    - the forms of `OutpostHeaders`, a signature of exactly 64 bytes.
+  - Tests of §8: for each mode, every outcome an agent may send is accepted, and every other
+    combination is refused; the executor's outcomes.
+  - `CommandSize` counts exactly what `Write(OutpostCommandMessage)` writes for the script
+    and the parameters.
   - Every message round-trips. Every limit that the codec owns, and every range of a
     member, is refused one step beyond it and accepted at it. The body limits of §10 are
     the endpoints', and S4 and S5 state them.
@@ -1410,7 +1436,7 @@ approval of this plan.
     - **Sizes.**
       - The size of a command counts the text of its script between its quotes and the
         text of its parameters, as written in the command with their escapes (§7).
-        `CommandChecks` of S1 and its tests follow it.
+        `CommandChecks` of S1 uses `OutpostCodec.CommandSize`, and its tests follow.
       - The size of an outcome is its outcome object as it travels (§8). The documentation
         of `OutpostServerOptions.OutcomeSizeLimit` follows it.
     - **Codes.**
@@ -1419,17 +1445,24 @@ approval of this plan.
       - A new Refused code, `malformed`, for a verified command of this version that breaks
         §7.
       - The rows of `OutpostCodes` follow this, and its constants take their values from
-        `OutpostOutcomeCodes`.
+        `OutpostOutcomeCodes`. The fit of a code to a kind moves from `OutpostCodes` to
+        `OutpostOutcomeCodes.Fits…`, and the test author changes
+        `Server.Tests/Outcomes/OutcomeCodeTests.cs` to match, with the reason in the commit.
     - **`policy.json`:**
-      - at most 256 bases; `AgentPolicyReader` and its tests follow it;
-      - a new member `requestTimeout`: the agent's wait for an answer to `pair` or
-        `outcome`, in the form of `runLimit`, from 10 seconds to 1 hour, 5 minutes when
-        absent;
-      - the `proxy` row: the agent offers the proxy the computer's credentials by Kerberos
-        only, never by NTLM, and the example host is not a `.local` name.
+      - at most 256 bases;
+      - a new member `requestTimeout`: the agent's wait for an answer to `pair` or `outcome`,
+        and for the body of a poll answer, in the form of `runLimit`, from 10 seconds to 1
+        hour, 5 minutes when absent;
+      - the `proxy` row:
+        - the agent offers the proxy the computer's credentials by Kerberos only, never by
+          NTLM, so a machine outside a domain reaches only a proxy that asks for no
+          credentials;
+        - a URL with a user or a password is refused, which answers Q7;
+        - the example host is not a `.local` name.
+
+      `AgentPolicy`, `AgentPolicyReader` and their tests follow all three.
     - **The audit log:**
-      - `connection` is recorded once per change of state. Its `reason` is the code of a
-        verified refusal, or `unreachable`;
+      - `connection` is recorded once per change of state, with the `reason` of §9;
       - `refused` is recorded with the codes `signature` and `form` for commands that cannot
         be trusted;
       - a `refused` entry ends its command as `ended` does, and its Refused outcome is kept
@@ -1437,13 +1470,21 @@ approval of this plan.
       - `received.parameters` is always an object;
       - retention: a file's age counts from its last entry, and no file is removed while it
         holds an entry of a command whose outcome is not confirmed.
-    - **The concept:**
+    - **The concept and `AGENTS.md`:**
       - rule 5 says what the size of an outcome is;
+      - rule 6, and the correctness item of `AGENTS.md` on an agent that is gone, add that a
+        poll held back on the path keeps an agent connected for at most `ClockSkew` more;
       - rule 14 says that a claimed key is reported in `bases.claimed`;
+      - D4, §6 and this plan's "The protocol" say that every answer the agent acts on is
+        signed and bound to the request's body, with the one exception of a bare 413 to an
+        outcome, and that the other unsigned answers are acted on by nobody;
       - "Pairing" says that a refusal of `pair` is not signed and only ends the pairing;
-      - the threat table and §13 of the protocol state what a hop on the path can still
-        do, the held-back poll of an agent that has gone included. So does the correctness
-        item of `AGENTS.md` on an agent that is gone, as the owner decides.
+      - the threat table says what a hop on the path can still do (§13 of the protocol).
+  - **Edits that state nothing new**, in the contract step:
+    - the ranges of the options and of `policy.json` that the protocol mirrors move into
+      constants of `OutpostProtocol`, which the options check, `AgentPolicyReader` and the
+      codec all use;
+    - the depth check of S1 moves into `OutpostCodec.ValueDepth`.
 
 ### S3 · The store
 
@@ -1552,28 +1593,29 @@ approval of this plan.
 - **Acceptance.**
   - Over loopback HTTP, with a test agent built from the protocol's internal types:
     - pairing succeeds once, and the token's secret is gone after it;
-    - a second use, an expired token, a wrong proof and a swapped key are refused;
-    - the answer is signed and repeats the registered key;
-    - a request with a changed body or another agent's key is refused;
-    - a revoked agent's requests are refused;
-    - an older poll, and an exact replay of the newest, change nothing; the answer to an
-      older poll comes at once, signed, and names the newest number recorded;
-    - a poll ends without commands at its timeout, with the fake clock;
-    - `Connected` follows the lease, with the fake clock;
-    - base keys follow rule 14, release included, and the poll answer reports them;
-    - an unsupported version is answered with `protocol-version`, in the form that later
-      versions keep;
-    - a `pair` and a `poll` body one byte beyond their limits get a bare 413, and one at
-      the limit passes;
-    - a request whose `Outpost-Agent` or `Outpost-Signature` is missing, malformed or
-      repeated gets a bare 401;
-    - a refusal of `pair` is the same for every failed check, so that nothing can be
-      learnt from it;
+    - a second use, an expired token, a wrong proof, a swapped key and a body that breaks
+      §2 all get the same unsigned `403` with `token`;
     - two pairings racing on one token: one wins and the other gets `token`;
-    - an answer bound to a request whose signature was changed does not verify for the
-      agent;
-    - an `outcome` request up to its limit passes Kestrel, and one byte beyond gets a bare
-      413;
+    - the answer is signed and repeats the registered key;
+    - a request with a changed body or another agent's key gets the signed `signature`;
+    - the unsigned answers of §9 of `docs/protocol.md`, each one sent before the body is
+      read:
+      - an unsupported version gets `protocol-version` in the form that later versions
+        keep;
+      - a header that breaks §4, a repeated one, or a `Content-Encoding` gets a bare 400;
+      - no `Content-Length` gets a bare 411;
+      - an unknown agent gets a bare 401, and a revoked one a bare 403;
+      - a `pair` and a `poll` body one byte beyond their limits get a bare 413, and one
+        at the limit passes;
+      - an `outcome` up to its limit passes Kestrel, and one byte beyond gets a bare 413;
+    - an older poll, and an exact replay of the newest, change nothing. The answer to an
+      older poll comes at once, signed, and names the newest number recorded;
+    - a held poll that a newer poll replaced is answered at once, as an older poll;
+    - a poll is held for the smaller of the poll timeout it carries and the option, and
+      ends without commands at that time, with the fake clock;
+    - `Connected` follows the lease, with the fake clock, and a poll whose signed time is
+      behind keeps the agent connected for at most `ClockSkew` beyond its lease;
+    - base keys follow rule 14, release included, and the poll answer reports them;
     - the purge removes an unused token and its pending agent.
   - The documents step: `README.md` says that agents can pair and poll.
 - **Out of scope.** Commands; the signals, which commands need first.
@@ -1701,30 +1743,41 @@ as [Order](#order-and-why-these-splits) says.
     - a received command without an outcome is Unknown `agent-stopped` for a Write and
       `lost` for a Read;
     - an outbox file without its `ended` is recorded and sent.
-    - Outcomes are sent until confirmed.
-  - The table of §9 of `docs/protocol.md`, one test per row, and a lost answer for each
-    case of its list. A refusal of a replacement counts as lost.
-  - The waits and the read limits: a poll answer beyond 64 MiB and any other answer beyond
-    64 KiB are lost unread. The waits for a poll, an outcome and a pair are bounded as §6
-    says, with the fake clock.
+  - Outcomes are sent until confirmed.
+  - The table of §9 of `docs/protocol.md`, one test per row, and a lost answer for each case
+    of its list. For a replacement, any answer but a verified `200` counts as lost, and an
+    outcome of kind `refused` or `unknown` is never replaced.
+  - The `connection` entries: one per change of state, with each kind of `reason` of §9.
+  - The waits and the read limits:
+    - a poll answer beyond 64 MiB, and any other answer beyond 64 KiB, are lost unread;
+    - the wait for a poll answer to begin, and the reading of its body within
+      `requestTimeout`;
+    - the waits for an outcome and a pair, with the fake clock;
+    - every poll carries the poll timeout the agent last learnt.
+  - After an answer to an older poll, the agent waits a tenth of `retryDelayMax` before it
+    polls again.
   - The sum of `free` never exceeds the room left in `received`.
   - An outcome of the executor that §8 does not allow becomes Unknown or Failed
-    `result-type`, and U+0000 or a lone surrogate in its messages becomes U+FFFD.
+    `result-type`, and U+0000 or a lone surrogate in its messages becomes U+FFFD in a
+    rewrite that is never longer.
   - An outcome refused for its size, by the server's code and by a bare HTTP 413 of the
     test proxy: the outbox file and a second `ended` hold Unknown `result-too-large` for a
     Write and Failed `result-too-large` for a Read, and that is what is sent.
   - Workers bound what runs. A fake run that exceeds its limit is ended, giving `run-limit`.
   - Poll numbers grow across a restart, with the fake clock. After a restart with the clock
-    set behind the last number, the first poll is answered as older, and the next one takes
+    set behind the last number, the first poll is answered as older, and a later one takes
     commands.
   - An answer whose signature does not verify is treated as a lost answer, and nothing in it
     is acted on.
+  - Addresses (§11 of `docs/protocol.md`): `http://` only on a loopback address written as
+    such, never through the proxy; no redirect followed; no `Accept-Encoding` sent.
   - An invalid policy serves nothing and is recorded.
   - The entries `connection` and `bases`.
-  - The retention of the audit log.
+  - The retention of the audit log, which never removes a file that holds an entry of a
+    command whose outcome is not confirmed.
   - Over loopback against the server of S5: a Read and a Write from `ReadAsync` and
     `WriteAsync` to the fake and back, through a test proxy named in `policy.json`.
-    - With `Requires=Windows`:
+  - With `Requires=Windows`:
     - the proxy is offered the computer's credentials by Kerberos only;
     - the secrets file is encrypted with DPAPI for the machine;
     - a data folder, or a file in it, whose access list admits anybody else makes the
