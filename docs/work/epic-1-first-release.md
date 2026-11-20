@@ -806,8 +806,8 @@ It has to say:
   their 64 levels from their own outer value, as the rule of names says; the envelope of
   the message that carries them does not count against them. S2 fixes how the whole
   message is checked, so that a command that `ReadAsync` or `WriteAsync` accepted is never
-  refused for its nesting. The limit lives in the protocol assembly, which both sides
-  check it from;
+  refused for its nesting, and what an outcome whose result nests deeper becomes. The
+  limit lives in the protocol assembly, which both sides check it from;
 - **What every poll answer carries:**
   - the commands;
   - the bases the agent holds and those that another agent holds (rule 14);
@@ -1079,19 +1079,20 @@ approval of this plan.
   console and of the shell in [Stages 2 and 3](#the-contracts-of-stages-2-and-3) point to
   that rule, and the acceptance of S10 and S11 checks it. The rule names
   Spectre.Console.Cli for the commands, so principle 12 and those lines name it as well.
-- **The planner's answers of 20 November 2026** to the
-  [open questions](open-questions.md) Q3–Q5 that the sprint found, each with its test
-  where it changes a check:
+- **The planner's answer and proposals of 20 November 2026** to the
+  [open questions](open-questions.md) Q3–Q5 that the sprint found: an answer to Q3, and
+  proposals for Q4 and Q5, each with its test where it changes a check:
   - Q3: the server also references `Microsoft.EntityFrameworkCore.Relational`, at the
     version of `Microsoft.EntityFrameworkCore`, so that every EF Core assembly of the
     package is of one version;
   - Q4: `SigningKeyPem` accepts exactly one PEM block with nothing but white space around
     it, as its row in the options table says, so that the import of S2 reads exactly what
     the check accepted;
-  - Q5: every JSON message of the protocol, parameters and results included, nests at
-    most 64 levels. It is a fixed limit of the protocol, not an option, as `AGENTS.md`
-    principle 10 now says. The rule of names states it for the parameters, and
-    `docs/protocol.md` states it when S2 writes it. The fixes of review round 2 narrowed
+  - Q5: the parameters of a command nest at most 64 levels, counted from their own outer
+    value, as the rule of names says. It is a fixed limit of the protocol, not an option,
+    as `AGENTS.md` principle 10 now says; how a whole message and the result of an
+    outcome are counted is in [The protocol](#the-protocol), and `docs/protocol.md`
+    states it when S2 writes it. The fixes of review round 2 narrowed
     the sentence of principle 10 to a limit that a side needs before it can read what the
     other side sent, since a limit that travels in a signed message, such as the size of
     an outcome, stays an option. The limit lives in the protocol assembly, as
