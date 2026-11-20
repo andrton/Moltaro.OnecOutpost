@@ -8,7 +8,8 @@ namespace Moltaro.OnecOutpost.Server;
 /// <see cref="OutpostPairingToken.AgentId"/>.
 /// </param>
 /// <param name="Name">
-/// The name given to <see cref="IOutpostServer.CreatePairingTokenAsync"/>: a display label of arbitrary characters, which
+/// The name given to <see cref="IOutpostServer.CreatePairingTokenAsync"/>: a display label of 1 to 100 characters of any
+/// kind but control characters, counted by <see cref="string.Length"/>, with no white space at the start or the end. It
 /// need not be unique.
 /// </param>
 /// <param name="State">Pending, paired or revoked.</param>
