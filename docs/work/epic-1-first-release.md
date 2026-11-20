@@ -1,8 +1,8 @@
 # Epic 1: First release
 
 **Status:** the plan is proposed and waits for the owner's approval; no sprint has
-started. The owner answered PQ1–PQ5 on 20 November 2026. PQ6 is answered before this plan
-is merged. Merging it approves the plan and the public contract of stage 1.
+started. The owner answered PQ1–PQ6 on 20 November 2026. Merging this plan approves it and
+the public contract of stage 1.
 
 ## Goal
 
@@ -55,7 +55,7 @@ Also left out, because nothing needs them now:
 | OD1 | **The lab machine** (20 November 2026). The owner provides, when a sprint asks for it, a Windows machine with 1C:Enterprise 8.3.17.1851 and a copy of a database, and builds the executor `.epf` from its XML sources with the Designer of that version. No CI job needs 1C. |
 | OD2 | **Waiting for a busy worker** (20 November 2026, with the merge of the concept). A command for a base whose workers are all busy waits up to its take deadline, 30 seconds by default, and then ends as Expired (rule 7, D10). |
 | OD3 | **The built executor in Git** (20 November 2026). The `.epf` is committed with its XML sources, because only the Designer builds it. The departure from the working rules is exception X1 of the [register](exceptions.md). |
-| OD4 | The answers to PQ1–PQ5 below (20 November 2026). |
+| OD4 | The answers to PQ1–PQ6 below (20 November 2026). |
 
 ## Requirements
 
@@ -133,6 +133,10 @@ after the release.
 
 ### Open
 
+None.
+
+### Answered
+
 #### PQ6. One package or two
 
 The protocol assembly holds only internal types, which the server reaches through
@@ -140,16 +144,8 @@ The protocol assembly holds only internal types, which the server reaches throug
 package's version exactly: NuGet takes any version at or above the one named, and a
 different build of the internals fails at run time with `MissingMethodException`.
 
-**Options:**
-- **(a)** One package, `Moltaro.OnecOutpost.Server`, which carries the protocol assembly
-  inside it. Nobody can mix versions.
-- **(b)** Two packages, the server depending on exactly its own version of the protocol.
-
-**Recommendation:** (a). It is one package fewer, and nothing outside the server and the
-programs of this repository uses the protocol assembly. The rest of this plan is written
-for (a); with (b), S1 and S12 change only in what they pack.
-
-### Answered
+**Answer** (the owner, 20 November 2026): **one package.** `Moltaro.OnecOutpost.Server`
+carries the protocol assembly inside it, so nobody can mix versions.
 
 #### PQ1. Standing permission for the coordinator
 
@@ -985,7 +981,7 @@ Stage 3 — the release
 ### S1 · The public contract of stage 1, the projects and the test lane
 
 **Track:** full · **Branch:** `epic-1/sprint-01-contract` · **Needs:** the owner's
-approval of this plan, with PQ6 answered.
+approval of this plan.
 
 - **Goal.** The public contract of stage 1 exists in code, documented and refusing where
   it is not implemented. The checks that need no implementation work. The tests of those
