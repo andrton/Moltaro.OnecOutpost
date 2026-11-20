@@ -38,8 +38,9 @@ public interface IOutpostServer
     /// </summary>
     /// <param name="agentName">
     /// The name of the agent, a display label for people: 1 to 100 characters of any kind but control characters,
-    /// counted as UTF-16 code units (<see cref="string.Length"/>), with no white space at the start or the end. Names need
-    /// not be unique.
+    /// counted as UTF-16 code units (<see cref="string.Length"/>), with no white space at the start or the end, and no
+    /// lone surrogate, a code unit from U+D800 to U+DFFF without its pair, which UTF-8 cannot carry. Names need not be
+    /// unique.
     /// </param>
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The token, with the identity the agent will have once it is paired, and its expiry.</returns>
@@ -182,9 +183,10 @@ public interface IOutpostServer
     /// <see cref="OutpostReadRequest.Script"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// Thrown by the call: a property of <paramref name="request"/> breaks its rule; its
-    /// <see cref="OutpostReadRequest.Parameters"/> cannot be written as JSON, such as a number that is not finite, a
-    /// value that System.Text.Json cannot write or a nesting deeper than 64 levels, which has the
+    /// Thrown by the call: a property of <paramref name="request"/> breaks its rule, a lone surrogate in its
+    /// <see cref="OutpostReadRequest.Script"/> or in a string of its <see cref="OutpostReadRequest.Parameters"/>
+    /// included; its <see cref="OutpostReadRequest.Parameters"/> cannot be written as JSON, such as a number that is
+    /// not finite, a value that System.Text.Json cannot write or a nesting deeper than 64 levels, which has the
     /// <see cref="ArgumentException.ParamName"/> <c>Parameters</c>; or the command is larger than
     /// <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the <see cref="ArgumentException.ParamName"/>
     /// <c>request</c>.
@@ -245,9 +247,10 @@ public interface IOutpostServer
     /// <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// Thrown by the call: a property of <paramref name="request"/> breaks its rule; its
-    /// <see cref="OutpostWriteRequest.Parameters"/> cannot be written as JSON, such as a number that is not finite, a
-    /// value that System.Text.Json cannot write or a nesting deeper than 64 levels, which has the
+    /// Thrown by the call: a property of <paramref name="request"/> breaks its rule, a lone surrogate in its
+    /// <see cref="OutpostWriteRequest.Script"/> or in a string of its <see cref="OutpostWriteRequest.Parameters"/>
+    /// included; its <see cref="OutpostWriteRequest.Parameters"/> cannot be written as JSON, such as a number that is
+    /// not finite, a value that System.Text.Json cannot write or a nesting deeper than 64 levels, which has the
     /// <see cref="ArgumentException.ParamName"/> <c>Parameters</c>; or the command is larger than
     /// <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the <see cref="ArgumentException.ParamName"/>
     /// <c>request</c>.

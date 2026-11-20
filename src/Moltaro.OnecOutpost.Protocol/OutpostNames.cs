@@ -45,6 +45,13 @@ internal static class OutpostNames
                 $"An agent name is 1 to {AgentNameMaxLength} characters, with no control character and no white space at the start or the end.",
                 paramName);
         }
+
+        if (HasLoneSurrogate(value))
+        {
+            throw new ArgumentException(
+                "An agent name may not hold a lone surrogate, a code unit from U+D800 to U+DFFF without its pair, which UTF-8 cannot carry.",
+                paramName);
+        }
     }
 
     public static void CheckScript(string value, string paramName)
@@ -57,6 +64,33 @@ internal static class OutpostNames
                 "A script has at least one character that is not white space, and no U+0000.",
                 paramName);
         }
+
+        if (HasLoneSurrogate(value))
+        {
+            throw new ArgumentException(
+                "A script may not hold a lone surrogate, a code unit from U+D800 to U+DFFF without its pair, which UTF-8 cannot carry.",
+                paramName);
+        }
+    }
+
+    // True when the text holds a lone surrogate: a UTF-16 code unit from U+D800 to U+DFFF without its pair, which no
+    // UTF-8 can carry (Q6). The server checks the strings of the parameters of a command with it as well.
+    public static bool HasLoneSurrogate(string value)
+    {
+        for (int index = 0; index < value.Length; index++)
+        {
+            if (char.IsSurrogatePair(value, index))
+            {
+                // The low half is part of the pair, so it is skipped with it.
+                index++;
+            }
+            else if (char.IsSurrogate(value[index]))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // True for 1 to 64 characters, each one of a-z 0-9 - _ ., the first a letter or a digit.

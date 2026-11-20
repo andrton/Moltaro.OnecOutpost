@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using Moltaro.OnecOutpost.Protocol;
@@ -6,12 +7,13 @@ using Moltaro.OnecOutpost.Protocol;
 namespace Moltaro.OnecOutpost.Agent.Policy;
 
 // Reads the text of policy.json by the rules of its format and applies the defaults of absent members. Any fault
-// makes the whole file invalid: an unknown member, a member given twice, a wrong type, a value outside its rule, or a
-// required member left out. JSON comments and trailing commas are refused. A member given the value null has a wrong
-// type, not an absent one. Names of members are compared exactly. The first fault in the order of the file is reported,
-// with the path of its member and a reason that says what is wrong there and what is expected, in the form
-// "what is wrong; expected what" (Q1). A reason never repeats a string value of the file, which may hold a secret such
-// as a password in the URL of the proxy (principle 9): it names what the value is, or which rule the string breaks.
+// makes the whole file invalid: an unknown member, a member given twice, a wrong type, a value outside its rule, a
+// required member left out, or an escaped lone surrogate in a string or a name (Q6). JSON comments and trailing commas
+// are refused. A member given the value null has a wrong type, not an absent one. Names of members are compared
+// exactly. The first fault in the order of the file is reported, with the path of its member and a reason that says
+// what is wrong there and what is expected, in the form "what is wrong; expected what" (Q1). A reason never repeats a
+// string value of the file, which may hold a secret such as a password in the URL of the proxy (principle 9): it names
+// what the value is, or which rule the string breaks.
 internal static class AgentPolicyReader
 {
     private const int DefaultAuditRetentionDays = 90;
@@ -315,14 +317,47 @@ internal static class AgentPolicyReader
 
         foreach (JsonProperty member in value.EnumerateObject())
         {
-            string memberPath = path.Length == 0 ? member.Name : $"{path}.{member.Name}";
+            string name = Name(member, path);
+            string memberPath = path.Length == 0 ? name : $"{path}.{name}";
 
-            if (!names.Add(member.Name))
+            if (!names.Add(name))
             {
                 throw new AgentPolicyException(memberPath, "the member is given twice in one object; expected it once");
             }
 
-            yield return (member.Name, member.Value, memberPath);
+            yield return (name, member.Value, memberPath);
+        }
+    }
+
+    // The name of a member. A name with an escaped lone surrogate cannot be read as a string (Name throws
+    // InvalidOperationException), so its path shows the name as the file writes it, escapes included: a name is not a
+    // value, and the path of an unknown member shows its name as well.
+    private static string Name(JsonProperty member, string path)
+    {
+        try
+        {
+            return member.Name;
+        }
+        catch (InvalidOperationException)
+        {
+            string written = Encoding.UTF8.GetString(JsonMarshal.GetRawUtf8PropertyName(member));
+
+            throw LoneSurrogate(path.Length == 0 ? written : $"{path}.{written}", "the name");
+        }
+    }
+
+    // The string of a value. Only an escaped lone surrogate makes GetString throw InvalidOperationException: the text
+    // came in as a .NET string, so its UTF-8 is valid, and a raw lone surrogate in it, which no file decoded from its
+    // bytes holds, makes JsonDocument.Parse throw ArgumentException before any value is read.
+    private static string Text(JsonElement value, string path)
+    {
+        try
+        {
+            return value.GetString()!;
+        }
+        catch (InvalidOperationException)
+        {
+            throw LoneSurrogate(path, path.Length == 0 ? "the value of the file" : "the value");
         }
     }
 
@@ -342,7 +377,7 @@ internal static class AgentPolicyReader
     // A string that is empty or only white space names nothing, so it is refused like a wrong type.
     private static string ReadText(JsonElement value, string path, string expected)
     {
-        string? text = value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        string? text = value.ValueKind == JsonValueKind.String ? Text(value, path) : null;
 
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -413,7 +448,7 @@ internal static class AgentPolicyReader
     {
         string subject = path.Length == 0 ? "the value of the file" : "the value";
 
-        return new AgentPolicyException(path, $"{subject} is {Found(value)}; expected {expected}");
+        return new AgentPolicyException(path, $"{subject} is {Found(value, path)}; expected {expected}");
     }
 
     private static AgentPolicyException UnknownMember(string path, string allowedNames)
@@ -428,16 +463,25 @@ internal static class AgentPolicyReader
         return new AgentPolicyException(path, $"the member is missing; expected {expected}");
     }
 
+    // No UTF-8 can carry a lone surrogate, so it breaks the rule of every string and name of the file (Q6). The reason
+    // names the escape by its range, never the string that holds it.
+    private static AgentPolicyException LoneSurrogate(string path, string subject)
+    {
+        return new AgentPolicyException(
+            path,
+            $"{subject} holds a lone surrogate, an escape from \\uD800 to \\uDFFF without its pair, which UTF-8 cannot carry; expected surrogates only in pairs, an escape from \\uD800 to \\uDBFF followed at once by one from \\uDC00 to \\uDFFF");
+    }
+
     // What the file holds where a value breaks its rule. A string is named only by its kind, never repeated; a number,
     // true, false and null hold no secret and are shown as written; an object or an array is named by its kind.
-    private static string Found(JsonElement value)
+    private static string Found(JsonElement value, string path)
     {
         return value.ValueKind switch
         {
             JsonValueKind.Object => "an object",
             JsonValueKind.Array => "an array",
-            JsonValueKind.String when value.GetString()!.Length == 0 => "empty",
-            JsonValueKind.String when string.IsNullOrWhiteSpace(value.GetString()) => "only white space",
+            JsonValueKind.String when Text(value, path).Length == 0 => "empty",
+            JsonValueKind.String when string.IsNullOrWhiteSpace(Text(value, path)) => "only white space",
             JsonValueKind.String => "a string",
             JsonValueKind.Number => $"the number {value.GetRawText()}",
 

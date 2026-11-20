@@ -10,6 +10,9 @@ public sealed class AgentNameRuleTests
         new string('n', 100),
         "Agent of the warehouse, room 2",
         "Entrep\u00f4t",
+
+        // The emoji U+1F600, a surrogate pair, which UTF-8 carries.
+        "Agent \U0001F600",
     ];
 
     public static TheoryData<string> BrokenNames =>
@@ -19,11 +22,17 @@ public sealed class AgentNameRuleTests
         " agent",
         "agent ",
         "first line\nsecond line",
+
+        // A half of the emoji U+1F600 without the other: its high surrogate at the end, its low one at the start. The
+        // rows differ beyond their surrogates, since dotnet test tells rows apart as if every lone surrogate were
+        // U+FFFD, and reports two rows that differ only there as one.
+        "Agent \uD83D",
+        "\uDE00 Agent",
     ];
 
     [Theory]
     [MemberData(nameof(GoodNames))]
-    public void A_name_of_1_to_100_characters_without_control_characters_or_white_space_at_its_ends_is_an_agent_name(string name)
+    public void A_name_of_1_to_100_characters_without_control_characters_lone_surrogates_or_white_space_at_its_ends_is_an_agent_name(string name)
     {
         OutpostNames.CheckAgentName(name, "agentName");
     }

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Moltaro.OnecOutpost.Protocol;
 
 namespace Moltaro.OnecOutpost.Server;
 
@@ -27,6 +28,7 @@ internal static class CommandChecks
         {
             using JsonDocument written = Write(parameters);
 
+            CheckLoneSurrogates(parameters);
             size += CountValue(written.RootElement);
         }
 
@@ -56,6 +58,49 @@ internal static class CommandChecks
                 $"The parameters cannot be written as JSON: {exception.Message}",
                 nameof(OutpostReadRequest.Parameters),
                 exception);
+        }
+    }
+
+    // System.Text.Json writes a lone surrogate of a .NET string as U+FFFD without a word, so the text read back never
+    // holds one, and the names and strings of the caller's object are checked as the caller gave them (Q6). A string
+    // inside a value of another .NET type that the caller wrapped in a JsonValue, such as a char or an array, is
+    // written by System.Text.Json alone and travels with U+FFFD in place of a lone surrogate. Called once the object
+    // was written and read back, so it nests at most MaxNesting levels; an escaped lone surrogate in a JsonElement
+    // behind the object was refused by the writer already.
+    private static void CheckLoneSurrogates(JsonNode? node)
+    {
+        switch (node)
+        {
+            case JsonObject members:
+                foreach ((string name, JsonNode? value) in members)
+                {
+                    CheckLoneSurrogate(name);
+                    CheckLoneSurrogates(value);
+                }
+
+                break;
+
+            case JsonArray items:
+                foreach (JsonNode? item in items)
+                {
+                    CheckLoneSurrogates(item);
+                }
+
+                break;
+
+            case JsonValue value when value.TryGetValue(out string? text):
+                CheckLoneSurrogate(text);
+                break;
+        }
+    }
+
+    private static void CheckLoneSurrogate(string text)
+    {
+        if (OutpostNames.HasLoneSurrogate(text))
+        {
+            throw new ArgumentException(
+                "No string in the parameters, names included, may hold a lone surrogate, a code unit from U+D800 to U+DFFF without its pair, which UTF-8 cannot carry.",
+                nameof(OutpostReadRequest.Parameters));
         }
     }
 
