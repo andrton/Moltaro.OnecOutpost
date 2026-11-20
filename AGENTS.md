@@ -25,7 +25,8 @@ oldest platform supported is 8.3.17.1851.
 What exists today is the [concept](docs/concept.md), these rules, the development process,
 the build settings, and the public contract of the first stage in code: the server
 library, the protocol assembly and the agent program. Only the checks that need no
-implementation work; everything else throws `NotSupportedException`. The server is the one
+implementation work: every operation of the server throws `NotSupportedException`, and the
+agent program starts and stops and does nothing else. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions
@@ -157,8 +158,9 @@ and trust it. A request outside the tunnel is declined, or noted as planned in t
     - The protocol depends on nothing outside .NET.
     - The server depends on the protocol, ASP.NET Core, EF Core with PostgreSQL and
       Moltaro.Signals.
-    - The agent depends on the protocol, the console on the agent, the protocol and
-      Spectre.Console, and the shell on the server and Spectre.Console.
+    - The agent depends on the protocol, the console on the agent, the protocol,
+      Spectre.Console and Spectre.Console.Cli, and the shell on the server,
+      Spectre.Console and Spectre.Console.Cli.
     - The COM worker depends on nothing outside .NET.
 
     Nothing depends on a product that uses the library. Inside an assembly a folder is a

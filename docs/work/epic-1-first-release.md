@@ -202,9 +202,10 @@ The public surface of stage 1: the server library and the files the agent reads.
 it into code exactly as written here. A name, a signature or a behavior that is not here
 goes back to the planner and, as a change of the contract, to the owner. The public
 contracts of stages 2 and 3 are written into their briefs before those stages start
-([Stages 2 and 3](#the-contracts-of-stages-2-and-3)). Concept §7 is a sketch. This contract
-adds `CommandId` to an outcome, so that a caller can find the command in the agent's
-audit log, and `MessagesTrimmed`, the marker of rule 5.
+([Stages 2 and 3](#the-contracts-of-stages-2-and-3)). Concept §7 names these types. Beyond
+the outline the concept had before S1, this contract adds `CommandId` to an outcome, so
+that a caller can find the command in the agent's audit log, and `MessagesTrimmed`, the
+marker of rule 5.
 
 ### Rules for every member
 
@@ -1071,7 +1072,8 @@ approval of this plan.
   progress indicators, on Spectre.Console — not student work. It adds "Console programs"
   to `AGENTS.md`, "Code Style", and Spectre.Console to principle 12; the lines of the
   console and of the shell in [Stages 2 and 3](#the-contracts-of-stages-2-and-3) point to
-  that rule, and the acceptance of S10 and S11 checks it.
+  that rule, and the acceptance of S10 and S11 checks it. The rule names
+  Spectre.Console.Cli for the commands, so principle 12 and those lines name it as well.
 - **The planner's answers of 20 November 2026** to the
   [open questions](open-questions.md) Q3–Q5 that the sprint found, each with its test
   where it changes a check:
@@ -1671,9 +1673,9 @@ owner approves them. Until then this is what they have to be able to do.
     a command in, an outcome out. The outcome's JSON from the executor is forwarded as it
     is, so that its size is what the executor measured;
   - it ends when the agent closes its input.
-- **The console**, a program that references the agent, the protocol and Spectre.Console
-  (principle 12), built as `AGENTS.md`, "Console programs", says, with these commands and
-  their exit codes:
+- **The console**, a program that references the agent, the protocol, Spectre.Console and
+  Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says, with
+  these commands and their exit codes:
   - `install` and `uninstall`;
   - `pair <server address> <token>`;
   - `secret <base key> <read|write>`, which asks for the password without echoing it;
@@ -1684,7 +1686,8 @@ owner approves them. Until then this is what they have to be able to do.
     - the server;
     - the clock skew;
   - `metadata <base key> <file>`.
-- **The shell**, a program built as `AGENTS.md`, "Console programs", says:
+- **The shell**, a program that references the server, Spectre.Console and
+  Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says:
   - its options:
     - the PostgreSQL connection;
     - the address it listens on, `http` on loopback by default;
