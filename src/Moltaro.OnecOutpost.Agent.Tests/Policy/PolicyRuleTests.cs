@@ -50,6 +50,7 @@ public sealed class PolicyRuleTests
     [InlineData("", "proxy", "\"https://proxy.local:3128\"")]
     [InlineData("", "proxy", "\"proxy.local\"")]
     [InlineData("", "proxy", "3128")]
+    [InlineData("", "proxy", "null")]
     [InlineData("", "retryDelayMax", "\"00:00:00\"")]
     [InlineData("", "retryDelayMax", "\"01:00:01\"")]
     [InlineData("", "retryDelayMax", "\"30 seconds\"")]
@@ -62,6 +63,7 @@ public sealed class PolicyRuleTests
     [InlineData("bases[0]", "server", "1541")]
     [InlineData("bases[0]", "read", "\"outpost-read\"")]
     [InlineData("bases[0]", "write", "true")]
+    [InlineData("bases[0]", "write", "null")]
     [InlineData("bases[0].read", "account", "42")]
     [InlineData("bases[0].read", "workers", "0")]
     [InlineData("bases[0].read", "workers", "9")]
@@ -183,13 +185,54 @@ public sealed class PolicyRuleTests
         AssertSaysWhereAndWhat(exception, exception.Path);
     }
 
+    // A proxy URL can hold credentials, and the error goes into the audit log, so a refused proxy is never repeated in it
+    // (principle 9).
+    [Fact]
+    public void A_refused_proxy_is_not_repeated_in_the_error()
+    {
+        const string Proxy = "https://svc:S3cret@gateway.example:8080";
+
+        JsonObject policy = ValidPolicy();
+        policy["proxy"] = Proxy;
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(policy.ToJsonString()));
+
+        AssertSaysWhereAndWhat(exception, "proxy");
+        Assert.DoesNotContain("S3cret", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(Proxy, exception.Message, StringComparison.Ordinal);
+    }
+
     // Each text would be a valid policy if comments were allowed or the text were complete.
     [Theory]
     [InlineData("""{ "bases": [ { "key": "a", "file": "C:\\1C\\A", "read": { "account": "r" } } ] } // the bases""")]
     [InlineData("""{ "bases": [ { "key": "a", "file": "C:\\1C\\A", "read": { "account": "r" } } ]""")]
-    public void A_file_that_is_not_plain_JSON_makes_the_policy_invalid(string json)
+    public void A_file_that_is_not_plain_JSON_makes_the_policy_invalid_and_says_what_is_expected(string json)
     {
-        Assert.Throws<AgentPolicyException>(() => AgentPolicyReader.Read(json));
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(() => AgentPolicyReader.Read(json));
+
+        Assert.Matches("; expected .+", exception.Message);
+    }
+
+    // The place is counted as a person counts it: lines and columns from 1. The line of the comment is ASCII, so its
+    // column is plain to count: four spaces, then the comment.
+    [Fact]
+    public void A_file_that_is_not_plain_JSON_is_refused_with_the_line_and_the_column_of_the_fault()
+    {
+        const string Json = """
+            {
+              "bases": [
+                // the bases of this machine
+                { "key": "a", "file": "C:\\1C\\A", "read": { "account": "r" } }
+              ]
+            }
+            """;
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(() => AgentPolicyReader.Read(Json));
+
+        Assert.Matches(@"\bline 3\b", exception.Message);
+        Assert.Matches(@"\bcolumn 5\b", exception.Message);
+        Assert.Matches("; expected .+", exception.Message);
     }
 
     // Two bases, so that a path can name the second: one on a cluster with both modes, one in a folder that is only read.

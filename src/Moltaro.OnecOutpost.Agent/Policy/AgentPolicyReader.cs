@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Moltaro.OnecOutpost.Protocol;
 
@@ -109,11 +110,37 @@ internal static class AgentPolicyReader
         }
         catch (JsonException exception)
         {
-            // The parser says what it found and where, with its lines and bytes counted from 0.
+            // The parser's own text is written for developers, so only its place of the fault is used.
             throw new AgentPolicyException(
                 "",
-                $"the file is not valid JSON: {exception.Message} The parser counts lines and bytes from 0; expected plain JSON, without comments or trailing commas");
+                $"the file is not valid JSON at {Place(json, exception)}; expected plain JSON, without comments or trailing commas");
         }
+    }
+
+    // The place of a fault as a person counts it: the line from 1, and the column from 1 in characters. The reader,
+    // which always sets both, counts lines from 0 at each '\n' and the column from 0 in UTF-8 bytes of its line.
+    private static string Place(string json, JsonException exception)
+    {
+        long lineIndex = exception.LineNumber ?? 0;
+        long bytesBefore = exception.BytePositionInLine ?? 0;
+
+        string[] lines = json.Split('\n');
+        string line = lineIndex < lines.Length ? lines[lineIndex] : "";
+
+        int column = 1;
+
+        foreach (Rune character in line.EnumerateRunes())
+        {
+            if (bytesBefore <= 0)
+            {
+                break;
+            }
+
+            bytesBefore -= character.Utf8SequenceLength;
+            column++;
+        }
+
+        return $"line {lineIndex + 1}, column {column}";
     }
 
     private static List<AgentBasePolicy> ReadBases(JsonElement value, string path)
@@ -342,10 +369,11 @@ internal static class AgentPolicyReader
 
         if (!Uri.TryCreate(text, UriKind.Absolute, out Uri? proxy) || proxy.Scheme != Uri.UriSchemeHttp)
         {
-            throw WrongValue(
+            // The value is never repeated: a proxy URL can hold credentials, and the message goes into the audit log
+            // (principle 9).
+            throw new AgentPolicyException(
                 path,
-                value,
-                "an absolute http URL such as \"http://proxy.local:3128\", or no \"proxy\" to connect directly");
+                "the value is not an absolute http URL; expected an absolute http URL such as \"http://proxy.local:3128\", or no \"proxy\" to connect directly");
         }
 
         return proxy;
