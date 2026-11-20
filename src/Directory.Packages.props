@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <!-- Every package version of the repository is declared here, added by the sprint that first needs it. -->
+  <ItemGroup>
+  </ItemGroup>
+</Project>

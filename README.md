@@ -1,2 +1,70 @@
 # Moltaro.OnecOutpost
-un read and write scripts in 1C:Enterprise 8.3 and BAS databases hidden in a back office. A Windows agent next to 1C dials out over HTTPS, runs signed scripts through the COM connector and returns JSON; an embeddable .NET server queues the commands and scales across nodes.
+
+Run read and write scripts in 1C:Enterprise 8.3 and BAS databases hidden in a back office.
+A Windows agent next to 1C dials out over HTTPS, runs signed scripts through the COM
+connector and returns JSON; an embeddable .NET server queues the commands and scales
+across nodes.
+
+## Status
+
+Set-up stage. The repository holds its rules, its development process and its build
+settings; no code is written yet, and nothing below works today. The concept comes next,
+followed by the plan of the first epic in [current work](docs/work/README.md).
+
+## What it is, and what it is not
+
+A 1C:Enterprise database usually lives deep inside a company's network. Nothing outside
+can connect to it, and the only way in is the 1C client. This library reaches it from the
+other side:
+
+- an agent installed next to 1C opens every connection itself, over HTTPS, so no port is
+  opened and no route into the network is needed;
+- the agent runs a command only when the server it was paired with signed it, and only
+  once;
+- the administrator of the agent machine decides which databases it serves, which 1C
+  account reads and which writes, and whether a database may be written at all; every
+  command is recorded in a local audit log;
+- a command is a script in the 1C language, run whole inside 1C through the COM connector,
+  with its result returned as JSON;
+- the server is a library for an ASP.NET Core application. Its nodes share nothing in
+  memory, so the application can run several of them.
+
+It is a tunnel, not an API for 1C. It has two commands, Read and Write, and it knows
+nothing of the objects of any 1C configuration. It does not replace the 1C client and it
+does not touch the database of 1C directly.
+
+Supported: 1C:Enterprise 8.3.17.1851 and later, client-server and file databases, with the
+COM connector of the same version installed on the agent machine. The agent runs on
+Windows; the server runs wherever .NET runs.
+
+## Documentation
+
+- [Documentation index](docs/README.md) and [current work](docs/work/README.md).
+- [How the project is built](AGENTS.md): architectural principles, code style and working
+  rules, for people and coding agents.
+
+## Building
+
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). Run the commands from
+the `src` directory.
+
+```bash
+dotnet build
+```
+
+```bash
+dotnet test
+```
+
+## Packages and downloads
+
+Planned: the server library on [nuget.org](https://www.nuget.org), published by the
+[Publish](.github/workflows/publish.yml) workflow when a version tag is pushed, and the
+agent with its console as a signed archive on GitHub Releases. Nothing is published yet.
+[Branches and releases](docs/work/branches.md) describes how work reaches `main` and how a
+version is released.
+
+## License
+
+[Apache License 2.0](LICENSE). The repository contains no part of 1C:Enterprise: the agent
+uses the COM connector installed on its machine.
