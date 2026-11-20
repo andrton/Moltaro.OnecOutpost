@@ -40,15 +40,6 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 
 ## Open
 
-### Q1. Values of `policy.json` that its table does not mention
-
-| | |
-| --- | --- |
-| **Found** | 20 November 2026, Epic 1 S1, the contract step and review round 1 |
-| **Question** | The table of `policy.json` does not say how a member given twice, a member set to `null`, or an empty or white-space string for `server`, `database`, `file` or `account` is treated. Is each of them an invalid file? |
-| **Until answered** | `AgentPolicyReader` refuses all of them, so the whole file is invalid and the error names the member's path. No test states it. To be answered before S6, which reads the policy when the agent starts |
-| **Decides** | The owner: `policy.json` is public contract |
-
 ### Q2. What "characters" counts in the rules of names
 
 | | |
@@ -79,6 +70,17 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
 
 ## Answered
+
+### Q1. Values of `policy.json` that its table does not mention
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, the contract step and review round 1 |
+| **Question** | The table of `policy.json` does not say how a member given twice, a member set to `null`, or an empty or white-space string for `server`, `database`, `file` or `account` is treated. Is each of them an invalid file? |
+| **Until answered** | `AgentPolicyReader` refuses all of them, so the whole file is invalid and the error names the member's path. No test states it. To be answered before S6, which reads the policy when the agent starts |
+| **Decides** | The owner: `policy.json` is public contract |
+| **Answer** | 20 November 2026, the owner, in their words: it does not work at all, and it writes the error well, so that it is clear where and what. Each of these makes the whole file invalid, and the agent serves nothing, as the reader of S1 does. The error says the path of the member, what is wrong with it, and what is expected there, for example `bases[0].server: the value is empty; expected the 1C cluster address such as "srv-1c:1541", or remove "server" and "database" and give "file"` |
+| **Now lives in** | [`policy.json`](epic-1-first-release.md#policyjson) in the epic document, the error texts of `AgentPolicyReader` and their tests |
 
 ### Q3. One version of EF Core and its relational package
 

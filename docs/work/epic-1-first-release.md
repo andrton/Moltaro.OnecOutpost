@@ -668,10 +668,15 @@ folder.
 | `workers` | 1 to 8; 1 when absent |
 | `runLimit` | A .NET `TimeSpan` in its constant form `[d.]hh:mm:ss`, from 1 second to 1 day (`1.00:00:00`); 10 minutes when absent |
 
-- **An invalid file serves nothing.** An unknown member, a wrong type or a value out of
-  its rule makes the whole file invalid. The agent then serves nothing and records why in
-  the audit log. The error names the path of the member, such as `bases[1].read.workers`.
-  JSON comments are not allowed.
+- **An invalid file serves nothing.** An unknown member, a member given twice, a wrong
+  type, a member set to `null`, or a value out of its rule makes the whole file invalid;
+  an empty or white-space string is out of the rule of `server`, `database`, `file` and
+  `account` (Q1). The agent then serves nothing and records why in the audit log. JSON
+  comments are not allowed.
+- **The error says clearly where and what** (Q1): the path of the member, such as
+  `bases[1].read.workers`, what is wrong with it, and what is expected there. For example:
+  `bases[0].server: the value is empty; expected the 1C cluster address such as
+  "srv-1c:1541", or remove "server" and "database" and give "file"`.
 - **The policy is read when the agent starts.** A change takes effect when the service is
   restarted.
 
@@ -1079,6 +1084,12 @@ approval of this plan.
   console and of the shell in [Stages 2 and 3](#the-contracts-of-stages-2-and-3) point to
   that rule, and the acceptance of S10 and S11 checks it. The rule names
   Spectre.Console.Cli for the commands, so principle 12 and those lines name it as well.
+- **The owner's answer of 20 November 2026 to Q1** of the
+  [open questions](open-questions.md): a member given twice, a member set to `null`, and
+  an empty or white-space string for `server`, `database`, `file` or `account` make the
+  whole `policy.json` invalid, as the reader of S1 does; and the error says clearly where
+  and what, as [`policy.json`](#policyjson) now says. The error texts of
+  `AgentPolicyReader` and their tests follow it.
 - **The planner's answer and proposals of 20 November 2026** to the
   [open questions](open-questions.md) Q3–Q5 that the sprint found: an answer to Q3, and
   proposals for Q4 and Q5, each with its test where it changes a check:
