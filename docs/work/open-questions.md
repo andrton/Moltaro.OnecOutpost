@@ -40,15 +40,7 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 
 ## Open
 
-### Q5. How deep the parameters of a command may nest
-
-| | |
-| --- | --- |
-| **Found** | 20 November 2026, Epic 1 S1, the fixes of review round 1 |
-| **Question** | The parameters are written and read as JSON, and System.Text.Json refuses a nesting deeper than its default of 64 levels, so a caller can observe that limit. By `AGENTS.md` principle 10 an observable limit is an option with a default. Is it a limit that `docs/protocol.md` fixes for every message, an option of the server, or something else? |
-| **Proposed** | 20 November 2026, the planner: a fixed limit of the protocol, not an option, like the lengths of names, at 64 levels; `AGENTS.md` principle 10 says that such a limit is not an option. After review round 3, the planner added how the nesting is counted inside a message, as "The protocol" in the [epic document](epic-1-first-release.md) now gives it |
-| **Until answered** | `ReadAsync` and `WriteAsync` refuse parameters nested deeper than 64 levels, the outer object being level 1, or holding a value that System.Text.Json cannot write, with `ArgumentException` whose `ParamName` is `Parameters`, and the tests hold 64 and 65. The rule of names and "The protocol" in the [epic document](epic-1-first-release.md), principle 10 and the XML documentation of `Parameters` follow the proposal, marked in the epic document as waiting for the owner. S1 is not merged before the owner answers |
-| **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
+None.
 
 ## Answered
 
@@ -96,3 +88,15 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
 | **Answer** | 20 November 2026, the owner, in their words: refuse it, of course, if it is not just the key but some rubbish, and if the key is not alone there, refuse it. The owner approves the proposal as it stands: anything but the one block with white space around it, a second block included, is refused with `ArgumentException` whose `ParamName` is `SigningKeyPem`, and a clear message |
 | **Now lives in** | The row of `SigningKeyPem` in the options table of the [epic document](epic-1-first-release.md), the XML documentation of the option, its check and its tests |
+
+### Q5. How deep the parameters of a command may nest
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, the fixes of review round 1 |
+| **Question** | The parameters are written and read as JSON, and System.Text.Json refuses a nesting deeper than its default of 64 levels, so a caller can observe that limit. By `AGENTS.md` principle 10 an observable limit is an option with a default. Is it a limit that `docs/protocol.md` fixes for every message, an option of the server, or something else? |
+| **Proposed** | 20 November 2026, the planner: a fixed limit of the protocol, not an option, like the lengths of names, at 64 levels; `AGENTS.md` principle 10 says that such a limit is not an option. After review round 3, the planner added how the nesting is counted inside a message, as "The protocol" in the [epic document](epic-1-first-release.md) now gives it |
+| **Until answered** | `ReadAsync` and `WriteAsync` refuse parameters nested deeper than 64 levels, the outer object being level 1, or holding a value that System.Text.Json cannot write, with `ArgumentException` whose `ParamName` is `Parameters`, and the tests hold 64 and 65. The rule of names and "The protocol" in the [epic document](epic-1-first-release.md), principle 10 and the XML documentation of `Parameters` follow the proposal, marked in the epic document as waiting for the owner, and S1 waited for the owner |
+| **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
+| **Answer** | 20 November 2026, the owner, in their words: yes, a hard rule. The owner approves the proposal: the parameters of a command and the result of an outcome nest at most 64 levels, counted from their own outer value, a fixed limit of the protocol and not an option, the same on both sides; `docs/protocol.md` states it in S2; the narrowed sentence of `AGENTS.md` principle 10 stands |
+| **Now lives in** | `AGENTS.md` principle 10; the rule of names and "The protocol" in the [epic document](epic-1-first-release.md); the XML documentation of `Parameters`; `docs/protocol.md` when S2 writes it |

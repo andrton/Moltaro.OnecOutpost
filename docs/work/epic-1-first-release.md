@@ -236,7 +236,7 @@ marker of rule 5.
   | Caller key | 1 to 200 characters, each from U+0021 to U+007E (printable ASCII without the space); compared exactly |
   | Agent name | A display label of arbitrary characters: 1 to 100, counted as UTF-16 code units (`string.Length`), no control character, no white space at the start or the end (Q2) |
   | Script | At least one character that is not white space, and no U+0000 |
-  | Parameters | No string in them holds U+0000, which PostgreSQL cannot store; they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5, waits for the owner) |
+  | Parameters | No string in them holds U+0000, which PostgreSQL cannot store; they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
   | Schema | 1 to 63 characters, each one of `a–z 0–9 _`, the first a letter |
   | Endpoint prefix | `/` followed by one or more segments of `A–Z a–z 0–9 - _ .` separated by `/`, not ending with `/`; no segment is `.` or `..` |
 - **Sizes.** Every size is counted on the bytes that the protocol carries: UTF-8, with
@@ -806,8 +806,8 @@ It has to say:
   signed: over the bytes of the body, the kind of request and the agent's identity;
 - the form of the pairing token, and the pairing proof;
 - the fingerprint of a key;
-- the nesting limit of the JSON of the protocol, a fixed limit and not an option (Q5,
-  waits for the owner). The parameters of a command and the result of an outcome count
+- the nesting limit of the JSON of the protocol, a fixed limit and not an option (Q5).
+  The parameters of a command and the result of an outcome count
   their 64 levels from their own outer value, as the rule of names says; the envelope of
   the message that carries them does not count against them. S2 fixes how the whole
   message is checked, so that a command that `ReadAsync` or `WriteAsync` accepted is never
@@ -1112,9 +1112,8 @@ approval of this plan.
     an outcome, stays an option. The limit lives in the protocol assembly, as
     [The protocol](#the-protocol) says.
 
-  Q4 and Q5 change the public contract, so they went to the owner. The owner approved Q4
-  on 20 November 2026. Q5 waits for the owner, as the [open questions](open-questions.md)
-  say, and S1 is not merged before the owner answers.
+  Q4 and Q5 change the public contract, so they went to the owner, who approved both on
+  20 November 2026, as the [open questions](open-questions.md) say.
 - **Corrections from the review.** Round 1 found that the sentence of
   [`OutpostCodes`](#outpostcodes) on Refused said every Refused frees the caller key. As
   concept rule 4 says, only a command that ended as Refused or Expired frees its key; a
