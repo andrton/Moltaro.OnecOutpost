@@ -40,7 +40,14 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 
 ## Open
 
-None.
+### Q6. Strings that UTF-8 cannot carry
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, review round 6 |
+| **Question** | A string of .NET can hold a lone surrogate, a code unit from U+D800 to U+DFFF without its pair, which no UTF-8 can carry. The agent name counts UTF-16 code units and accepts one; a script or a string of the parameters can hold one too. Strict UTF-8, as the store and the protocol will use, then fails inside the task of the call, where the rules for every member want an argument error thrown by the call itself, as for U+0000. Is a lone surrogate refused as an argument, by the rules of names, of scripts and of parameters? |
+| **Until answered** | The checks of S1 accept a lone surrogate; nothing stores or sends a string yet. To be answered before S4, which stores agent names, and S5, which stores and signs commands |
+| **Decides** | The planner, since it follows from the rule that a string must reach the store and the protocol; reported to the owner |
 
 ## Answered
 
@@ -64,7 +71,7 @@ None.
 | **Until answered** | `OutpostNames` counts UTF-16 code units, as `string.Length` does. No test depends on the difference. To be answered before S4, which stores agent names |
 | **Decides** | The owner: the rules of names are public contract |
 | **Answer** | 20 November 2026, the owner, in their words: if it is a display name of some kind, then arbitrary characters. The agent's identity is its `Guid`, so the name is a display label of arbitrary characters, and the rule stays as S1 has it: 1 to 100 characters counted as UTF-16 code units (`string.Length`), no control character, no white space at the start or the end |
-| **Now lives in** | The rule of names in the [epic document](epic-1-first-release.md), and the XML documentation of `agentName` |
+| **Now lives in** | The rule of names in the [epic document](epic-1-first-release.md), and the XML documentation of `agentName` and of `OutpostAgent.Name` |
 
 ### Q3. One version of EF Core and its relational package
 
@@ -96,7 +103,7 @@ None.
 | **Found** | 20 November 2026, Epic 1 S1, the fixes of review round 1 |
 | **Question** | The parameters are written and read as JSON, and System.Text.Json refuses a nesting deeper than its default of 64 levels, so a caller can observe that limit. By `AGENTS.md` principle 10 an observable limit is an option with a default. Is it a limit that `docs/protocol.md` fixes for every message, an option of the server, or something else? |
 | **Proposed** | 20 November 2026, the planner: a fixed limit of the protocol, not an option, like the lengths of names, at 64 levels; `AGENTS.md` principle 10 says that such a limit is not an option. After review round 3, the planner added how the nesting is counted inside a message, as "The protocol" in the [epic document](epic-1-first-release.md) now gives it |
-| **Until answered** | `ReadAsync` and `WriteAsync` refuse parameters nested deeper than 64 levels, the outer object being level 1, or holding a value that System.Text.Json cannot write, with `ArgumentException` whose `ParamName` is `Parameters`, and the tests hold 64 and 65. The rule of names and "The protocol" in the [epic document](epic-1-first-release.md), principle 10 and the XML documentation of `Parameters` follow the proposal, marked in the epic document as waiting for the owner, and S1 waited for the owner |
+| **Until answered** | `ReadAsync` and `WriteAsync` refused parameters nested deeper than 64 levels, the outer object being level 1, or holding a value that System.Text.Json cannot write, with `ArgumentException` whose `ParamName` is `Parameters`, and the tests held 64 and 65. The rule of names and "The protocol" in the [epic document](epic-1-first-release.md), principle 10 and the XML documentation of `Parameters` followed the proposal, marked in the epic document as waiting for the owner while S1 waited for the answer |
 | **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
 | **Answer** | 20 November 2026, the owner, in their words: yes, a hard rule. The owner approves the proposal: the parameters of a command and the result of an outcome nest at most 64 levels, counted from their own outer value, a fixed limit of the protocol and not an option, the same on both sides; `docs/protocol.md` states it in S2; the narrowed sentence of `AGENTS.md` principle 10 stands |
 | **Now lives in** | `AGENTS.md` principle 10; the rule of names and "The protocol" in the [epic document](epic-1-first-release.md); the XML documentation of `Parameters`; `docs/protocol.md` when S2 writes it |

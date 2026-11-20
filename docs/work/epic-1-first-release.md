@@ -234,7 +234,7 @@ marker of rule 5.
   | --- | --- |
   | Base key | 1 to 64 characters, each one of `a–z 0–9 - _ .`, the first a letter or a digit; compared exactly |
   | Caller key | 1 to 200 characters, each from U+0021 to U+007E (printable ASCII without the space); compared exactly |
-  | Agent name | A display label of arbitrary characters: 1 to 100, counted as UTF-16 code units (`string.Length`), no control character, no white space at the start or the end (Q2) |
+  | Agent name | A display label: 1 to 100 characters of any kind but control characters, counted as UTF-16 code units (`string.Length`), with no white space at the start or the end (Q2) |
   | Script | At least one character that is not white space, and no U+0000 |
   | Parameters | No string in them holds U+0000, which PostgreSQL cannot store; they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
   | Schema | 1 to 63 characters, each one of `a–z 0–9 _`, the first a letter |
@@ -1055,7 +1055,8 @@ approval of this plan.
     - the checks of the constructor of `OutpostPairingToken`;
     - `ToString` of `OutpostPairingToken` leaving the token out;
     - the argument checks of `OutpostMigrations`;
-    - every rule of `policy.json`, with the path of the member in the error;
+    - every rule of `policy.json`, with an error that gives the path of the member, what
+      is wrong and what is expected (Q1);
     - a test of the built `Moltaro.OnecOutpost.Protocol` that it references only
       assemblies of .NET (principle 12).
   - Tests written and skipped with the shared reason, in their own folder, un-skipped by S3:
@@ -1092,7 +1093,7 @@ approval of this plan.
   `AgentPolicyReader` and their tests follow it.
 - **The owner's answer of 20 November 2026 to Q2:** the agent name is a display label, so
   it takes arbitrary characters; the rule of names stays as S1 has it, counted as UTF-16
-  code units. The XML documentation of `agentName` says so.
+  code units. The XML documentation of `agentName` and of `OutpostAgent.Name` says so.
 - **The planner's answer and proposals of 20 November 2026** to the
   [open questions](open-questions.md) Q3–Q5 that the sprint found: an answer to Q3, and
   proposals for Q4 and Q5, each with its test where it changes a check:
