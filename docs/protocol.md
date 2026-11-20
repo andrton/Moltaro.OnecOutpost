@@ -57,7 +57,7 @@ yet.
 - **Times** are UTC, written as exactly `yyyy-MM-ddTHH:mm:ss.fffZ`. A writer truncates
   anything finer than a millisecond.
 - **Durations** are whole milliseconds, as JSON integers, in members whose names end with
-  `Ms`.
+  `Ms`. A writer truncates anything finer than a millisecond.
 - **Binary values** are base64url without padding (RFC 4648 §5). A reader refuses any other
   form, non-zero padding bits included.
 - **Public keys** are the 91-byte DER `SubjectPublicKeyInfo` of an ECDSA key on the named
@@ -69,9 +69,10 @@ yet.
   `r ‖ s` (IEEE P1363): 86 base64url characters. Because ECDSA signatures are malleable, a
   signature is never used as an identity or as a key of deduplication.
 - **Agent versions** are 1 to 64 characters, each one of `A–Z a–z 0–9 . - +`.
-- **Ranges.** Every range this document gives for a member that mirrors a server option or a
-  member of `policy.json` is the range of that option or member, from one constant of the
-  protocol assembly that all three check.
+- **Ranges.** A member that mirrors a server option or a member of `policy.json` has the
+  range of that option or member. The range lives in one pair of constants of
+  `OutpostProtocol` in the protocol assembly, which the options, `AgentPolicyReader` and the
+  codec all check. This document names the pair with each such member.
 
 ## 3. What is signed
 
@@ -120,8 +121,9 @@ exceptions, both in pairing:
 
 | Header | In | Value |
 | --- | --- | --- |
-| `Content-Length` | Every request | The length of the body. A request without it, chunked ones included, is refused (§9) |
+| `Content-Length` | Every request | The length of the body. The agent always sends it, but a hop may drop it, for example on HTTP/2, so the server does not require it (§9) |
 | `Content-Type` | Every request and answer with a body | Exactly `application/json` |
+| `Expect` | Every `outcome` request | `100-continue`, so that a refusal for the length comes before the agent sends the body (§9) |
 | `Outpost-Agent` | Every request | The agent's identity; in `pair`, the identity that the token names |
 | `Outpost-Signature` | Every request, and every signed answer | The signature of §3 |
 
@@ -160,11 +162,11 @@ key.
 - the proof is right for the token's secret, the identity and `key`;
 - the request's signature verifies with `key`.
 
-Any failure, a body that breaks §2 included, is answered with `403` and the body
-`{"code":"token"}`. The answer is not signed and is the same for every failure. If every
-check passes, one conditional change of the store registers `key` and deletes the secret.
-The change holds only if the token is still unused at that moment, so of two pairings
-racing on one token, one wins and the other gets `token`.
+Any failure, a body that breaks §2 included, is answered with a bare `403` without a body,
+the same for every failure. If every check passes, one conditional change of the store
+registers `key` and deletes the secret. The change holds only if the token is still unused
+at that moment, so of two pairings racing on one token, one wins and the other gets the
+`403`.
 
 **Answer `200`**, signed with the server's key:
 
@@ -184,14 +186,15 @@ last learnt (§6.2).
 **The agent's wait** for this answer is the `requestTimeout` of its local policy.
 
 **Anything other than a verified `200` ends the pairing.** The console reports the HTTP
-status only, since an unsigned body proves nothing. A pairing whose answer was lost leaves
+status only, or "the server does not speak protocol v1" for the unsigned answer of that
+form (§9). A pairing whose answer was lost leaves
 the agent paired on the server but not on its machine; the application revokes it and
 creates a new token.
 
 ### 6.2 `poll`
 
 ```json
-{"number":639307665001230000,"time":"2026-11-20T10:15:00.123Z","agentVersion":"0.1.0","pollTimeoutMs":25000,"bases":[{"key":"accounting","read":{"free":1,"runLimitMs":600000},"write":{"free":0,"runLimitMs":600000}}],"received":["9c1e2f3a-4b5c-4d6e-8f70-a1b2c3d4e5f6"]}
+{"number":639307665001230000,"time":"2026-11-20T10:15:00.123Z","agentVersion":"0.1.0","pollTimeoutMs":25000,"bases":[{"key":"accounting","read":{"free":1,"runLimitMs":600000},"write":{"free":0,"runLimitMs":600000}},{"key":"warehouse","read":{"free":1,"runLimitMs":600000},"write":null}],"received":["9c1e2f3a-4b5c-4d6e-8f70-a1b2c3d4e5f6"]}
 ```
 
 - **`number`** is the poll number, from 1 to 2⁶².
@@ -200,13 +203,17 @@ creates a new token.
   - Numbers taken from a clock stay far below 2⁶².
 - **`time`** is the agent's time (concept rule 7).
 - **`pollTimeoutMs`** is the poll timeout the agent last learnt, from `agent.json` or from the
-  last answer. The server holds the poll for no longer than the smaller of this and its own
-  option, so that raising the option never makes an agent's polls exceed its wait.
+  last answer, in the range of the option `PollTimeout` (`MinPollTimeout` to
+  `MaxPollTimeout`). The server holds the poll for no longer than the smaller of this and
+  its own option: that is the poll's **hold**. So raising the option never makes an agent's
+  polls exceed its wait.
 - **`bases`** declares what the local policy serves:
   - at most 256 bases, possibly none, with keys by the rule of names and unique;
-  - `read` is required. `write` is present only when the policy opens writing;
-  - `free` is the number of free workers of the mode, from 0 to 8;
-  - `runLimitMs` is from 1 000 to 86 400 000.
+  - `read` is an object. `write` is an object when the policy opens writing, and `null`
+    otherwise;
+  - `free` is the number of free workers of the mode, from 0 to `MaxWorkers` (8);
+  - `runLimitMs` is in the range of `runLimit` of `policy.json` (`MinRunLimit` to
+    `MaxRunLimit`).
 - **`received`** lists, without repetition, every command the agent received whose outcome
   the server has not confirmed (rule 11), refused ones included.
   - It holds at most 10 000 entries, and an agent never leaves one out.
@@ -220,13 +227,27 @@ creates a new token.
 - **Any other poll** becomes the newest. It records the agent's bases and list, and takes at
   most `free` commands per mode, oldest first (rule 8). A command handed out again under rule
   11 counts against `free` like any other.
-- **The lease.** The lease that a poll grants ends at the earlier of two moments: the poll
-  timeout plus the lease grace after it was recorded, and its signed `time` plus
-  `ClockSkew` plus the poll timeout plus the lease grace. Both are judged by the node's
-  clock. So a poll that something held back on the path keeps an agent connected for at
-  most `ClockSkew` more (rule 6). An agent whose clock is more than `ClockSkew` behind
-  could run no command anyway (rule 1), and shows as not connected.
-- **A held poll that is no longer the newest** is answered at once, as an older poll.
+- **The lease.** The agent is connected while the lease of its newest poll runs (rule 6).
+  That lease ends at the earlier of two moments, both judged by the node's clock:
+  - the moment the poll was recorded, plus its hold, plus the lease grace;
+  - its signed `time`, plus `ClockSkew`, plus its hold, plus the lease grace.
+
+  The lease grace is the option `LeaseGrace` when the poll is recorded. What follows:
+  - **Polls held back on the path.** The server cannot tell a poll held back from an agent
+    whose clock runs ahead. Together, the polls of an agent that has gone keep it connected
+    for at most `ClockSkew`, plus the lead of its clock over the node's, beyond the lease
+    that its last poll would have had. They count together, not each, because only the
+    newest counts and the last poll the agent sent carries its latest time.
+  - **An agent whose clock is behind** the node's by more than `ClockSkew` runs no command
+    anyway (rule 1). Behind by more than `ClockSkew` plus the lease grace, its lease ends
+    before its next poll comes, so it shows as connected only for part of each poll. Behind
+    by more than `ClockSkew` plus the hold plus the lease grace, it never shows as
+    connected, and calls for it get Unavailable.
+  - **A live agent reading a large answer.** An agent that reads an answer for longer than
+    the lease grace shows as not connected until its next poll, and calls in that gap get
+    Unavailable.
+- **A held poll that a newer poll has replaced** takes nothing (rule 10). It is answered as
+  an older poll when it wakes or when its hold ends.
 
 **Answer `200`**, signed:
 
@@ -235,7 +256,7 @@ creates a new token.
 ```
 
 - **The ordinary answer.** The server holds the poll until a command is due for one of its
-  free modes, or until its timeout. Then it answers with the commands, or with none, and
+  free modes, or until its hold ends. Then it answers with the commands, or with none, and
   `newest` is `null`.
 - **The answer to an older poll** comes at once, with no commands. `newest` is the newest
   number recorded for the agent, from 1 to 2⁶². The agent waits a tenth of its
@@ -246,8 +267,10 @@ creates a new token.
   in exactly one of the two.
 - **`commands`**: each holds the exact bytes of a command (§7) and the server's signature
   over them, at most `free` per mode.
-- **`pollTimeoutMs`** and **`leaseGraceMs`** are the server's options. The agent keeps them
-  for its next poll.
+- **`pollTimeoutMs`** and **`leaseGraceMs`** are the server's options `PollTimeout` and
+  `LeaseGrace`, in their ranges (`MinPollTimeout` to `MaxPollTimeout`, `MinLeaseGrace` to
+  `MaxLeaseGrace`). The agent keeps them for its next poll. The pairing answer carries them
+  in the same ranges (§6.1).
 - **The agent's wait.** The agent waits for the answer to begin for no longer than the poll
   timeout it sent plus the last lease grace it learnt. Then it reads the body within the
   `requestTimeout` of its local policy.
@@ -259,6 +282,7 @@ creates a new token.
 ```
 
 - `outcome` is the outcome object of §8, as §8 says the agent forwards it.
+- The request carries `Expect: 100-continue` (§4).
 - The agent's wait for the answer is the `requestTimeout` of its local policy.
 
 **Answer `200`**, signed:
@@ -270,12 +294,13 @@ creates a new token.
 `confirmed` is the request's `command`, and an answer with any other is lost.
 
 **What the server checks**, after the signature:
-1. **The body by §2.**
+1. **The body by §2**, all of it, the `outcome` member included: its JSON, its names and
+   its strings. A body that breaks §2 is refused with `form`, whatever its size.
 2. **The size.** An `outcome` member larger than the outcome limit of its command is
    refused with `result-too-large`. For a command the server does not know, the limit is
    `OutcomeSizeLimit`.
-3. **The `outcome` member by §8**, for the mode of its command. For a command the server
-   does not know, either mode will do.
+3. **The members of the outcome object by §8**, for the mode of its command. For a command
+   the server does not know, either mode will do.
 
 The server then confirms the outcome (rule 11):
 - the first outcome of a command, from the agent it was handed to, is kept;
@@ -333,10 +358,11 @@ here:
 **Size.** The size of a command, which `CommandSizeLimit` bounds when the caller makes it, is
 the length of two pieces of its bytes:
 - the text of `script` between its quotes;
-- the text of `parameters`.
+- the text of `parameters`, which is the 2 bytes `{}` when there are none.
 
 Both are counted as UTF-8 with every escape counted as the writer of §2 writes it. The codec
-computes this one number for both the server's check and its writer. One command of the
+computes this one number for both the server's check and its writer. An escaped control
+character counts 6 bytes, so the number is a 64-bit integer. One command of the
 largest `CommandSizeLimit`, 16 MiB, therefore fits a poll answer (§10).
 
 ## 8. The outcome object
@@ -371,18 +397,19 @@ it first.
 `result-type` or `result-too-large`, or, for a Write, `unknown` with `transaction-ended`.
 - **The executor checks its result before the commit of a Write.** A result that holds
   U+0000 or a lone surrogate, or that nests beyond 64 levels, fails with `result-type`.
-- **The agent checks the executor's object by §2 and this section before it sends it.**
-  - Anything not allowed, or anything it cannot read, becomes Failed `result-type` for a
-    Read and Unknown `result-type` for a Write.
-  - In messages and in the error text, the agent replaces each U+0000 and each lone
-    surrogate with U+FFFD. That rewrites the object, and the rewrite is never longer than
-    what the executor wrote.
+- **The agent repairs the executor's object, then checks it, before it sends it.**
+  1. **The repair.** In the strings of `messages` and of `errorText`, it replaces each
+     escape `\u0000`, each escape of a lone surrogate, and each lone surrogate written as
+     its three bytes, with U+FFFD written as its three bytes. Nothing else of the bytes
+     changes, so the repair is never longer than what the executor wrote.
+  2. **The check** by §2 and this section. Anything not allowed, or anything it cannot
+     read, becomes Failed `result-type` for a Read and Unknown `result-type` for a Write.
 
 **The size of an outcome** is the length in bytes of the UTF-8 text of this object, exactly
 as it travels, every escape counted as it is written:
 - the executor writes the object and measures it, before the commit of a Write (rule 5);
-- the agent forwards those bytes, or its rewrite, which is never longer. It writes the
-  outcomes of its own, such as `refused` or `unknown`, by §2;
+- the agent forwards those bytes, repaired, which is never longer. It writes the outcomes
+  of its own, such as `refused` or `unknown`, by §2;
 - the server measures the raw text of the `outcome` member it received.
 
 ## 9. Answers, refusals and lost answers
@@ -405,11 +432,10 @@ as it travels, every escape counted as it is written:
 | --- | --- | --- |
 | 400 | `{"code":"protocol-version"}` | The path names a version the server does not speak. Every later version keeps this form |
 | 400 | None | A header breaks §4, or the request has a `Content-Encoding` |
-| 401 | None | `Outpost-Agent` names no known agent |
+| 401 | None | `Outpost-Agent` names no known agent, or one that is still pending and so has no key |
 | 403 | None | The agent is revoked (rule 13). Anyone who knows an agent's identity can learn this |
-| 403 | `{"code":"token"}` | Any failure of `pair` (§6.1) |
-| 411 | None | The request has no `Content-Length` |
-| 413 | None | A body beyond the limits of §10. Kestrel and every ingress send one too |
+| 403 | None | Any failure of `pair` (§6.1) |
+| 413 | None | A body beyond the limits of §10. Kestrel and every ingress send one too, with headers and a body of their own, such as an HTML page |
 
 "Bare" means without an `Outpost-Signature` that verifies, whatever the body. A path
 `{prefix}/v1/{other}` with any other request name is not part of the protocol, and gets
@@ -417,47 +443,70 @@ whatever the application answers, usually a 404.
 
 **The order of the server's checks:**
 1. the version of the path;
-2. the headers of §4, `Content-Length` included;
-3. the declared length against the limit of §10;
+2. the headers of §4;
+3. the length against the limit of §10: the declared length before the body is read, and,
+   when no length was declared, the length read so far while it is read;
 4. for `pair`, the checks of §6.1. For `poll` and `outcome`:
-   1. whether the agent is known;
+   1. whether the agent is known and not pending;
    2. whether it is revoked;
    3. then it reads the body and checks the signature, the form and the checks of §6.
 
-The first check that fails decides the answer. No body is read before the agent is known.
+The first check that fails decides the answer. No body of a `poll` or an `outcome` is read
+before its agent is known to have a key.
 
-**What the agent does with an answer:**
+**The rate of requests.** The identity of an agent is not a secret. Anyone who knows one
+can make a node read up to the body limit of `outcome` for every request, and the library
+bounds neither how many such requests run at once nor how often they come. An application
+that needs such a bound adds rate limiting to the group that `MapOutpostAgents` returns.
+
+**A refusal for the length.** On HTTP/1.1, a server that refuses a request and closes the
+connection while the client is still sending its body may cause a reset that wipes out the
+answer (RFC 9112 §9.6). So an `outcome` carries `Expect: 100-continue`, and Kestrel and
+common ingresses refuse a declared length beyond their limit before the agent sends the
+body. A hop that ignores `Expect`, or that drops `Content-Length`, can still lose that 413.
+The agent then sees a lost answer and sends the outcome again, and the outcome stays unsent
+until the path is fixed, as below for an outcome the server cannot read.
+
+**What the agent does with an answer.** An answer is **verified** when:
+- its `Content-Type` is exactly `application/json`;
+- its body is within the read limit of §10;
+- its `Outpost-Signature` verifies (§3);
+- its body keeps §2 and the rules of its message.
+
+The table decides first: only an answer that it does not name is lost.
 
 | Request | Answer | What the agent does |
 | --- | --- | --- |
 | `poll` | A verified `200` | Acts on it (§6.2) |
 | `outcome` | A verified `200` | Records `confirmed`, and removes the outcome from the outbox |
-| `outcome` of kind `succeeded` or `failed` | A verified `result-too-large`, or a bare 413 | Replaces the outcome once, as concept rule 11 says, records a second `ended`, and sends the replacement. For the replacement, any answer but a verified `200` counts as lost |
+| `outcome` of kind `succeeded` or `failed` | A verified `result-too-large`, or a bare 413 whatever its headers and body | Replaces the outcome once, as concept rule 11 says, records a second `ended`, and sends the replacement. For the replacement, any answer but a verified `200` counts as lost |
 | `pair` | A verified `200`, checked as §6.1 says | Pins the server's key |
 | `pair` | Anything else | Ends the pairing (§6.1) |
-| `poll`, `outcome` | Anything else | Counts it as lost |
 
-**A lost answer** includes:
+**Every other answer to a `poll` or an `outcome` is lost**, for example:
 - no answer, or no complete body, within the agent's wait;
 - an error of the connection;
 - a redirect, since the agent follows none;
-- an answer whose `Content-Type` is not exactly `application/json`;
-- an answer whose signature does not verify;
-- a verified answer that breaks §2 or the rules of its message;
-- every answer that the table does not name.
+- an answer that is not verified;
+- a verified refusal, other than the row of `result-too-large` above.
 
 The agent acts on nothing in a lost answer, and tries again with its growing delay: a poll
 as a new poll, an outcome as the same bytes.
 
-**What the audit log records.** The agent records `connection` when its state changes:
-- `connected` with the first verified answer after it started or after a loss;
-- `lost` with the first lost answer after that.
+**What the audit log records.** The agent records `connection` when its state changes. The
+state is unknown when the agent starts:
+- `connected` is recorded with a verified answer that is not lost, when the state is not
+  `connected`;
+- `lost` is recorded with a lost answer, when the state is not `lost`;
+- a bare 413 that the table names changes no state.
 
-A new reason while the state stays lost is not a change. The `reason` of `lost` is:
-- the code of a verified refusal;
-- `protocol-version` for an unsigned answer in that form;
-- `unverified-` and the status, such as `unverified-403`, for any other unsigned answer;
-- `unreachable` when no answer came.
+A new reason while the state stays lost is not a change. The `reason` of `lost` is the first
+of these that applies:
+1. the code of a verified refusal;
+2. `protocol-version` for a `400` whose body is `{"code":"protocol-version"}`;
+3. `status-` and the HTTP status of any other answer whose status came, such as
+   `status-403`, or `status-200` for a `200` that is not verified;
+4. `unreachable` when no status came.
 
 Recording a reason acts on nothing.
 
@@ -516,7 +565,7 @@ service's place (rule 10).
 | Replayed | Stopped by |
 | --- | --- |
 | `pair` | The token works once |
-| `poll` | A number not greater than the newest is older and takes nothing. The agent waits before it polls again after such an answer (rule 10) |
+| `poll` | A number not greater than the newest is older and takes nothing (rule 10). The agent waits before it polls again after such an answer (§6.2) |
 | `outcome` | Only the first outcome of a command counts (rule 11) |
 | An answer | Its signature covers the agent and the hash of the one request it answers |
 | A command | The audit log and the take deadline with the skew the command carries (rules 1, 3, 7) |
@@ -526,10 +575,15 @@ server can delay, drop or hold back messages. It cannot make a command run twice
 nobody signed, or make an outcome claim more than happened. What it can do:
 - it can make outcomes late. A taken Write then ends as Unknown `disconnected`, a taken Read
   as Failed `lost`, and a command never taken as Expired;
-- it can hold back the polls of an agent that has gone. Each such poll keeps the agent
-  connected for at most `ClockSkew` beyond its lease (§6.2). In that time `GetAgentsAsync`
-  shows the agent as connected, and a command created for it waits and then ends as above,
-  not as Unavailable.
+- it can hold back the polls of an agent that has gone. Together they keep the agent
+  connected for at most `ClockSkew`, plus the lead of the agent's clock over the node's,
+  beyond the lease of its last poll (§6.2). In that time `GetAgentsAsync` shows the agent
+  as connected, and a command created for it waits and then ends as above, not as
+  Unavailable;
+- it can widen that lead itself, if it can also move the agent's clock ahead through a time
+  service that is not authenticated. That changes nothing else: the lease of an agent whose
+  polls arrive in time ends by the node's clock, and an agent ahead by more than the take
+  timeout plus `ClockSkew` refuses every command (rule 1).
 
 Dropping messages already gives such a hop the power over outcomes, so nothing more is built
 against it.
