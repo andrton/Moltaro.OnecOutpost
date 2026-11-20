@@ -837,8 +837,8 @@ It has to say:
   and the agent's time. The agent verifies it before it acts on any of it, and treats one
   that does not verify as a lost answer. The one exception is a bare HTTP 413 to an
   `outcome` request, as concept §6 says.
-- **The type of a poll number:** a signed 64-bit integer. A named newest number that
-  leaves no room above it is a protocol violation.
+- **The type of a poll number:** a signed 64-bit integer, from 1 to 2⁶², as
+  `docs/protocol.md` fixes it.
 - **How sizes are counted**, exactly: which bytes, and whether the escapes of JSON such as
   `\"`, `\\` and those of control characters count, so that the executor, the agent and
   the server count the same number. The refusal of an outcome for its size carries the
@@ -1170,12 +1170,12 @@ approval of this plan.
 
     internal static class OutpostProtocolCodes
     {
-        public const string ProtocolVersion = "protocol-version";
         public const string Form = "form";
         public const string Signature = "signature";
         public const string Token = "token";
-        public const string Revoked = "revoked";
+        public const string Revoked = OutpostOutcomeCodes.Revoked;
         public const string ResultTooLarge = OutpostOutcomeCodes.ResultTooLarge;
+        public const string ProtocolVersion = OutpostOutcomeCodes.ProtocolVersion;
     }
 
     internal sealed class OutpostProtocolException : Exception
@@ -1184,12 +1184,22 @@ approval of this plan.
         public string Code { get; }
         public Guid? CommandId { get; }
     }
+
+    internal static class OutpostHeaders
+    {
+        public static string FormatAgent(Guid agent);
+        public static bool TryParseAgent(string? value, out Guid agent);
+        public static string FormatSignature(ReadOnlySpan<byte> signature);
+        public static bool TryParseSignature(string? value, [NotNullWhen(true)] out byte[]? signature);
+    }
     ```
 
-    `OutpostProtocolException.CommandId` is set only for a command of another version, the
-    one refusal that names its command (§7).
+    - `OutpostProtocolException.CommandId` is set only for a command of another version, the
+      one refusal that names its command (§7).
+    - `TryParseSignature` accepts exactly 86 base64url characters that decode to 64 bytes.
 
-    In `Moltaro.OnecOutpost.Protocol.Outcomes`, the one place of every outcome code:
+    In `Moltaro.OnecOutpost.Protocol.Outcomes`, the one place of every outcome code and of
+    which code fits which kind:
 
     ```csharp
     internal enum OutpostAgentOutcomeKindEnum { Unknown = 0, Succeeded, Failed, Refused }
@@ -1197,20 +1207,26 @@ approval of this plan.
     internal static class OutpostOutcomeCodes
     {
         public const string ScriptError = "script-error";
-        // … one constant for each code of `OutpostCodes`, with the same names and values.
+        // … one constant for each code of `OutpostCodes`, `malformed` included, with the same names and values.
 
-        public static bool IsAgentCode(OutpostAgentOutcomeKindEnum kind, string code);
-        public static bool IsExecutorCode(OutpostAgentOutcomeKindEnum kind, string code);
+        public static bool FitsFailed(string code);
+        public static bool FitsRefused(string code);
+        public static bool FitsUnknown(string code);
+        public static bool IsAgentOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code);
+        public static bool IsExecutorOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code);
     }
     ```
 
-    - `IsAgentCode` answers the table "The codes an agent may send" of §8, and
-      `IsExecutorCode` the paragraph "What the executor may hand the agent".
+    - The three `Fits…` answer the kinds column of the table of `OutpostCodes`. The public
+      factories of `OutpostOutcome` use them, so that the fit of a code to a kind lives once.
+    - `IsAgentOutcome` answers the table "The outcomes an agent may send, by mode" of §8.
+      `IsExecutorOutcome` answers the paragraph on the executor. Both take a `null` code for
+      `succeeded`.
     - The public `OutpostCodes` of the server defines each of its constants as the constant
       here, so that every code string lives once.
 
-    In `Moltaro.OnecOutpost.Protocol.Signing`, the keys, the signatures, the pairing proof,
-    the token and the header values of §2 to §5:
+    In `Moltaro.OnecOutpost.Protocol.Signing`, the keys, the signatures, the pairing proof and
+    the token of §2, §3 and §5:
 
     ```csharp
     internal static class OutpostKeys
@@ -1223,7 +1239,7 @@ approval of this plan.
     internal static class OutpostSignatures
     {
         public static byte[] SignRequest(ECDsa agentKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body);
-        public static byte[] SignAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody);
+        public static byte[] SignAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> requestSignature, ReadOnlySpan<byte> answerBody);
         public static byte[] SignCommand(ECDsa serverKey, ReadOnlySpan<byte> commandBytes);
     }
 
@@ -1237,14 +1253,6 @@ approval of this plan.
     {
         public string Write();
         public static bool TryRead(string text, [NotNullWhen(true)] out OutpostPairingTokenText? token);
-    }
-
-    internal static class OutpostHeaders
-    {
-        public static string FormatAgent(Guid agent);
-        public static bool TryParseAgent(string? value, out Guid agent);
-        public static string FormatSignature(ReadOnlySpan<byte> signature);
-        public static bool TryParseSignature(string? value, [NotNullWhen(true)] out byte[]? signature);
     }
     ```
 
@@ -1273,12 +1281,11 @@ approval of this plan.
     internal sealed record OutpostOutcomeMessage(OutpostAgentOutcomeKindEnum Kind, string? Code, JsonElement? Result, string? ErrorText, IReadOnlyList<string> Messages, bool MessagesTrimmed);
     internal sealed record OutpostOutcomeRequest(Guid Command, ReadOnlyMemory<byte> Outcome);
     internal sealed record OutpostOutcomeAnswer(DateTimeOffset Time, Guid Confirmed);
-    internal sealed record OutpostRefusal(DateTimeOffset Time, string Code, byte[]? ServerKey);
+    internal sealed record OutpostRefusal(DateTimeOffset Time, string Code);
     ```
 
-    - `OutpostOutcomeRequest.Outcome` holds the exact bytes of the outcome object (§6.3,
-      §8); its size is their length.
-    - `OutpostRefusal.ServerKey` is present only in a refusal of `pair`.
+    `OutpostOutcomeRequest.Outcome` holds the exact bytes of the outcome object (§6.3, §8);
+    its size is their length.
 
     In `Moltaro.OnecOutpost.Protocol.Codec`:
 
@@ -1295,42 +1302,46 @@ approval of this plan.
         public static byte[] Write(OutpostOutcomeRequest message);
         public static byte[] Write(OutpostOutcomeAnswer message);
         public static byte[] Write(OutpostRefusal message);
+        public static byte[] WriteUnsupportedVersion();
 
-        // Readers of the server: they verify the request, then parse it.
+        // Readers of the server: they verify the request, then parse it; `pair` the other way round (§3).
         public static OutpostPairRequest ReadPairRequest(Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
         public static OutpostPollRequest ReadPollRequest(ECDsa agentKey, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
         public static OutpostOutcomeRequest ReadOutcomeRequest(ECDsa agentKey, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
 
-        // Readers of the agent: they verify the answer, then parse it.
-        public static OutpostPairAnswer ReadPairAnswer(string fingerprint, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
-        public static OutpostPollAnswer ReadPollAnswer(ECDsa serverKey, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
-        public static OutpostOutcomeAnswer ReadOutcomeAnswer(ECDsa serverKey, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
-        public static OutpostRefusal ReadRefusal(OutpostRequestKindEnum kind, ECDsa? serverKey, string? fingerprint, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        // Readers of the agent: they verify the answer, then parse it; `pair` checks the fingerprint first (§3).
+        public static OutpostPairAnswer ReadPairAnswer(string fingerprint, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> requestSignature, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostPollAnswer ReadPollAnswer(ECDsa serverKey, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> requestSignature, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostOutcomeAnswer ReadOutcomeAnswer(ECDsa serverKey, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> requestSignature, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostRefusal ReadRefusal(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> requestSignature, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
         public static OutpostCommandMessage ReadCommand(ECDsa serverKey, OutpostSignedCommand command);
 
         // Unsigned: the outcome object inside a verified request, or from the executor.
-        public static OutpostOutcomeMessage ReadOutcome(ReadOnlySpan<byte> outcome);
+        public static OutpostOutcomeMessage ReadOutcome(OutpostModeEnum mode, ReadOnlySpan<byte> outcome);
 
         public static int ValueDepth(JsonElement value);
     }
     ```
 
     - **The readers verify first.** Every signed reader verifies the signature of §3 before
-      it parses anything. On failure it throws `OutpostProtocolException` with
-      `signature`, and with `form` for a verified body that breaks §2 or the rules of its
-      message.
-    - **The `pair` request is the one exception (§3).** `ReadPairRequest` parses the body,
-      then verifies it with the key it carries.
-    - **The readers of `pair` check the fingerprint.** `ReadPairAnswer`, and `ReadRefusal`
-      for `pair` (given `fingerprint` and no `serverKey`), check the fingerprint of the
-      server key in the body against `fingerprint` before they verify with that key.
-    - **`ReadCommand`** verifies, then reads `protocol` and `id`. A command of another version
-      throws `protocol-version` with `CommandId`; bytes that do not yield both throw `form`
-      without it.
-    - **`ReadOutcome`** applies §8, the codes an agent may send included, and throws `form`.
-      The checks of size belong to the callers. The server checks the outcome member's
-      length against its command's limit before it calls `ReadOutcome`, and the endpoints
-      check the body limits of §10.
+      it parses anything. On failure it throws `OutpostProtocolException` with `signature`,
+      and with `form` for a verified body that breaks §2 or the rules of its message.
+    - **The two exceptions of §3.** `ReadPairRequest` parses the body, then verifies it with
+      the key it carries. `ReadPairAnswer` checks the fingerprint of the server key in the
+      body against `fingerprint`, then verifies with that key. A refusal of `pair` is not
+      signed and has no reader.
+    - **`ReadCommand`** verifies, then reads `protocol` and `id`.
+      - A command of another version throws `protocol-version` with `CommandId`.
+      - Bytes that do not yield both throw `form` without it.
+      - A verified command of this version that breaks §7 throws `malformed` with
+        `CommandId`.
+    - **`ReadOutcomeRequest`** reads the body by §2 and keeps the `outcome` member's bytes.
+      The size check and `ReadOutcome` follow it, in the order of §6.3.
+    - **`ReadOutcome`** applies §8 for the mode, the outcomes an agent may send included, and
+      throws `form`.
+    - **Size checks.** The checks of size belong to the callers: the server checks the
+      outcome member's length against its command's limit, and the endpoints check the body
+      limits of §10.
     - **`ValueDepth`** counts the levels of §2: a scalar is 0, and an object or an array is
       1 plus the deepest of its members.
     - **Moves.** The depth check of the parameters that S1 wrote in the server moves here,
@@ -1396,26 +1407,43 @@ approval of this plan.
     the parameters and of `AgentPolicyReader` follow it, each with its tests.
   - **Changes of the public contract that come with `docs/protocol.md`,** for the owner's
     approval together with it, made in the contract step after that approval:
-    - the size of a command counts its script and parameters as written in the command,
-      escapes included (§7). `CommandChecks` of S1 and its tests follow it;
-    - the size of an outcome is its outcome object as it travels (§8). The documentation
-      of `OutpostServerOptions.OutcomeSizeLimit` follows it;
-    - `result-type` also covers a result deeper than 64 levels and an outcome of the
-      executor that the agent cannot accept, and for a Write it is Unknown (§8). The rows
-      of `OutpostCodes` follow it, and its constants take their values from
-      `OutpostOutcomeCodes`;
-    - `policy.json` has at most 256 bases;
-    - the audit log:
-      - it records `connection` with a `reason` that is a code of §9 or `unreachable`;
-      - it records `refused` with the codes `signature` and `form` for commands that
-        cannot be trusted;
-      - a `refused` entry ends its command as `ended` does, and its Refused outcome is
-        kept in the outbox until it is confirmed;
+    - **Sizes.**
+      - The size of a command counts the text of its script between its quotes and the
+        text of its parameters, as written in the command with their escapes (§7).
+        `CommandChecks` of S1 and its tests follow it.
+      - The size of an outcome is its outcome object as it travels (§8). The documentation
+        of `OutpostServerOptions.OutcomeSizeLimit` follows it.
+    - **Codes.**
+      - `result-type` also covers a result deeper than 64 levels and an outcome of the
+        executor that the agent cannot accept. For a Write it is Unknown (§8).
+      - A new Refused code, `malformed`, for a verified command of this version that breaks
+        §7.
+      - The rows of `OutpostCodes` follow this, and its constants take their values from
+        `OutpostOutcomeCodes`.
+    - **`policy.json`:**
+      - at most 256 bases; `AgentPolicyReader` and its tests follow it;
+      - a new member `requestTimeout`: the agent's wait for an answer to `pair` or
+        `outcome`, in the form of `runLimit`, from 10 seconds to 1 hour, 5 minutes when
+        absent;
+      - the `proxy` row: the agent offers the proxy the computer's credentials by Kerberos
+        only, never by NTLM, and the example host is not a `.local` name.
+    - **The audit log:**
+      - `connection` is recorded once per change of state. Its `reason` is the code of a
+        verified refusal, or `unreachable`;
+      - `refused` is recorded with the codes `signature` and `form` for commands that cannot
+        be trusted;
+      - a `refused` entry ends its command as `ended` does, and its Refused outcome is kept
+        in the outbox until it is confirmed;
       - `received.parameters` is always an object;
-    - the concept's rules 5, 10 and 14 say what `docs/protocol.md` decides:
-      - the size of an outcome;
-      - a poll held back longer than the skew counts as older;
-      - a claimed key is reported in `bases.claimed`.
+      - retention: a file's age counts from its last entry, and no file is removed while it
+        holds an entry of a command whose outcome is not confirmed.
+    - **The concept:**
+      - rule 5 says what the size of an outcome is;
+      - rule 14 says that a claimed key is reported in `bases.claimed`;
+      - "Pairing" says that a refusal of `pair` is not signed and only ends the pairing;
+      - the threat table and §13 of the protocol state what a hop on the path can still
+        do, the held-back poll of an agent that has gone included. So does the correctness
+        item of `AGENTS.md` on an agent that is gone, as the owner decides.
 
 ### S3 · The store
 
@@ -1533,8 +1561,19 @@ approval of this plan.
     - a poll ends without commands at its timeout, with the fake clock;
     - `Connected` follows the lease, with the fake clock;
     - base keys follow rule 14, release included, and the poll answer reports them;
-    - an unsupported version is answered with `protocol-version`;
-    - an `outcome` request up to its limit passes Kestrel;
+    - an unsupported version is answered with `protocol-version`, in the form that later
+      versions keep;
+    - a `pair` and a `poll` body one byte beyond their limits get a bare 413, and one at
+      the limit passes;
+    - a request whose `Outpost-Agent` or `Outpost-Signature` is missing, malformed or
+      repeated gets a bare 401;
+    - a refusal of `pair` is the same for every failed check, so that nothing can be
+      learnt from it;
+    - two pairings racing on one token: one wins and the other gets `token`;
+    - an answer bound to a request whose signature was changed does not verify for the
+      agent;
+    - an `outcome` request up to its limit passes Kestrel, and one byte beyond gets a bare
+      413;
     - the purge removes an unused token and its pending agent.
   - The documents step: `README.md` says that agents can pair and poll.
 - **Out of scope.** Commands; the signals, which commands need first.
@@ -1597,6 +1636,12 @@ approval of this plan.
   - Rule 12: a cancelled call leaves its command running, and its repeat returns the
     outcome.
   - Rule 13: revoking ends commands, with the codes of `OutpostCodes`.
+  - The hand-out (§6.2 and §10 of `docs/protocol.md`):
+    - a poll takes at most `free` commands per mode, oldest first, and a command handed out
+      again counts against `free`;
+    - an answer is filled up to 64 MiB, and always holds one command when one is due, the
+      largest one included;
+    - an outcome is checked by §8 for the mode of its command.
   - The signals:
     - the keys carry the prefix;
     - two calls waiting on one command both return;
@@ -1656,7 +1701,15 @@ as [Order](#order-and-why-these-splits) says.
     - a received command without an outcome is Unknown `agent-stopped` for a Write and
       `lost` for a Read;
     - an outbox file without its `ended` is recorded and sent.
-  - Outcomes are sent until confirmed.
+    - Outcomes are sent until confirmed.
+  - The table of §9 of `docs/protocol.md`, one test per row, and a lost answer for each
+    case of its list. A refusal of a replacement counts as lost.
+  - The waits and the read limits: a poll answer beyond 64 MiB and any other answer beyond
+    64 KiB are lost unread. The waits for a poll, an outcome and a pair are bounded as §6
+    says, with the fake clock.
+  - The sum of `free` never exceeds the room left in `received`.
+  - An outcome of the executor that §8 does not allow becomes Unknown or Failed
+    `result-type`, and U+0000 or a lone surrogate in its messages becomes U+FFFD.
   - An outcome refused for its size, by the server's code and by a bare HTTP 413 of the
     test proxy: the outbox file and a second `ended` hold Unknown `result-too-large` for a
     Write and Failed `result-too-large` for a Read, and that is what is sent.
@@ -1671,7 +1724,8 @@ as [Order](#order-and-why-these-splits) says.
   - The retention of the audit log.
   - Over loopback against the server of S5: a Read and a Write from `ReadAsync` and
     `WriteAsync` to the fake and back, through a test proxy named in `policy.json`.
-  - With `Requires=Windows`:
+    - With `Requires=Windows`:
+    - the proxy is offered the computer's credentials by Kerberos only;
     - the secrets file is encrypted with DPAPI for the machine;
     - a data folder, or a file in it, whose access list admits anybody else makes the
       agent stop, recorded;
