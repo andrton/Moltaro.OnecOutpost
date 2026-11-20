@@ -219,13 +219,12 @@ on its machine; the application revokes it and creates a new token.
     its audit log:
     - before it would send a number at or above the bound, it records a new reservation,
       the entry `reservation` with its own identity and the bound `below`, that number plus
-      one day of ticks (864 000 000 000), before it sends the poll (rule 2);
+      one day of ticks (864 000 000 000). The entry is on the disk before the poll is sent
+      (rule 2);
     - when it starts, it takes the highest `below` of the reservations of its identity in
       its audit log, whatever the files and times they are in. Its first number is at or
-      above that bound, so the first poll records a new reservation;
-    - the console records the first reservation of an identity when it pairs the agent. An
-      agent that finds no reservation of its identity when it starts records `started`
-      with an error and stops: its audit log was cleared or replaced (§13).
+      above that bound, so the first poll records a new reservation. An agent with no
+      reservation of its identity, as after pairing, records one before its first poll.
 
     Reservations only grow, so the highest is also the last. Every number sent after a
     restart is therefore above every number sent before it, even when the agent's clock was
@@ -233,10 +232,12 @@ on its machine; the application revokes it and creates a new token.
     every start and about once a day while the clock runs as it should. Reservations of
     another identity, from an earlier pairing, do not count.
   - **Numbers run out only in theory.** Each start uses up at most a day of ticks, so about
-    five million starts fit below 2⁶², and only a server that holds the signing key could
-    take the rest, through `newest`. An agent left with no number at or below 2⁶² stops,
-    and records `started` with an error at every start until it is paired anew, which gives
-    it a new identity.
+    five million starts fit below 2⁶². A clock moved to the far future uses up much of the
+    rest, and a server that holds the signing key could take all of it, through `newest`.
+    When the next number would pass 2⁶², the agent records its reservation as for any
+    number at or above its bound, and stops. At every later start that reservation leaves
+    no number, so the agent records `started` with an error and stops, until it is paired
+    anew, which gives it a new identity.
 - **`time`** is the agent's time (concept rule 7).
 - **`pollTimeoutMs`** is the poll timeout the agent last learnt, from `agent.json` or from the
   last answer, in the range of the option `PollTimeout` (`MinPollTimeout` to
@@ -303,11 +304,13 @@ on its machine; the application revokes it and creates a new token.
   it declared that another agent holds (rule 14). Every key that the newest poll declared is
   in exactly one of the two.
 - **`commands`**: each holds the exact bytes of a command (§7) and the server's signature
-  over them, at most `free` per base and mode, and none when `newest` is not `null`. Both
-  are rules of the message, so an answer that breaks one is lost and the agent runs none of
-  its commands. The agent counts the commands by base and mode after it has read them all
-  and before it records any (rule 2). So a command never waits on the agent for a worker,
-  and `received` can never overfill.
+  over them. An answer holds no more commands than the sum of `free` in its poll, and none
+  when `newest` is not `null`; an answer that breaks either is lost. The agent checks every
+  command by §7 before it records any (rule 2), and counts, by base and mode, the commands
+  that passed and will run. When they are more than the `free` of a base and mode, the
+  answer is lost and the agent records and runs none of its commands. A command that fails
+  §7 is refused as §7 says and counts for nothing. So a command never waits on the agent
+  for a worker, and `received` can never overfill.
 - **`pollTimeoutMs`** and **`leaseGraceMs`** are the server's options `PollTimeout` and
   `LeaseGrace`, in their ranges (`MinPollTimeout` to `MaxPollTimeout`, `MinLeaseGrace` to
   `MaxLeaseGrace`). The agent keeps them for its next poll. The pairing answer carries them
@@ -452,11 +455,11 @@ it first.
 `result-type` or `result-too-large`, or, for a Write, `unknown` with `transaction-ended`.
 - **The executor checks its result before the commit of a Write.** A result that holds
   U+0000 or a lone surrogate, or that nests beyond 64 levels, fails with `result-type`.
-- **The executor trims, then cleans, its messages and its error text** before it writes
-  and measures the object. It trims them to fit the limit, never inside a surrogate pair,
-  and then replaces each U+0000 and each lone surrogate in them with U+FFFD. So the text it
-  hands over is valid Unicode without U+0000, and its UTF-8 bytes are the same wherever
-  they are encoded.
+- **The executor cleans, then trims, its messages and its error text** before it writes
+  and measures the object. It replaces each U+0000 and each lone surrogate in them with
+  U+FFFD, and then trims them to fit the limit, never inside a surrogate pair. So the text
+  it measures is the text it hands over, valid Unicode without U+0000, and its UTF-8 bytes
+  are the same wherever they are encoded.
 - **The agent checks the executor's object by §2 and this section, and changes nothing.**
   Anything not allowed, or anything it cannot read, becomes Failed `result-type` for a Read
   and Unknown `result-type` for a Write.
@@ -522,11 +525,11 @@ that needs such a bound adds rate limiting to the group that `MapOutpostAgents` 
 connection while the client is still sending its body may cause a reset that wipes out the
 answer (RFC 9112 §9.6). So an `outcome` carries `Expect: 100-continue`, and Kestrel and
 common ingresses refuse a declared length beyond their limit before the agent sends the
-body. The agent waits for `100 Continue` or a final answer for one second, a fixed wait
-of the protocol (`OutpostProtocol.ContinueWait`, the default of .NET), and then sends the
-body anyway. A hop that ignores `Expect`, a refusal that comes
-later than that second, or a hop that drops `Content-Length` can still lose that 413. The
-agent then sees a lost answer and sends the outcome again, and the outcome stays unsent
+body. The agent waits for `100 Continue` or a final answer for one second, a constant of
+the agent and the default of .NET, and then sends the body anyway. A hop that ignores
+`Expect`, a refusal that comes later than that second, or a hop that drops
+`Content-Length` can still lose that 413. The agent then sees a lost answer and sends the
+outcome again, and the outcome stays unsent
 until the path is fixed, as below for an outcome the server cannot read. Such an outcome
 shows only as an `ended` without its `confirmed` in the audit log: the state of the
 connection follows the polls, and the console's check, with its small outcome, passes.
@@ -625,10 +628,10 @@ service's place (rule 10).
 - The server confirms it and keeps nothing (§6.3).
 - A verified confirmation shows that the server is reachable and accepts the agent's key.
   Its `time` gives the skew between the clocks.
-- Any other answer is reported as its status together with the console's own reason for
-  not accepting it, in the words of §6.1, such as "the answer's signature does not verify"
-  or "an unsigned answer in the form the server uses for a protocol version it does not
-  speak". The console never shows text taken from a body it has not verified.
+- Any other answer is reported as its status together with the console's own account of
+  what it saw, as §6.1 does, such as "the answer's signature does not verify" or "an
+  unsigned answer in the form the server uses for a protocol version it does not speak".
+  The console never shows text taken from a body it has not verified.
 
 ## 13. What stops a replay, and what does not
 
@@ -668,19 +671,20 @@ nobody signed, or make an outcome claim more than happened. What it can do:
 
 **What the reservation rests on.** It lives as long as the audit log of the agent's
 identity.
-- An agent whose audit log was cleared finds no reservation of its identity, and stops
-  (§6.2).
-- An older data folder or a snapshot of the machine, restored, brings back lower
-  reservations, and with them the replay above. Such an agent is paired anew, as a clone
-  is (concept "What protects what").
-- An agent that cannot read its audit log when it starts records `started` with an error
-  and stops, since the log is also its journal of rules 3, 10 and 11. The administrator
-  moves `audit\` aside and pairs the agent anew.
-- A write that never completed leaves an unreadable tail: after a loss of power, or after
-  a write that failed, for example on a full disk. The agent went on from no such entry.
-  So when it starts, and after a write fails, it cuts each file of its audit log back to
-  the end of its last readable entry, judged by whether the entry can be read, not by a
-  line end. An unreadable entry with readable ones after it is a log it cannot read.
+- An audit log that was cleared, cut short, or restored from an older data folder or a
+  snapshot of the machine brings back lower reservations, or none, and with them the
+  replay above. Such an agent is paired anew, as a clone is (concept "What protects
+  what").
+- The agent alone writes its audit log, one entry at a time, and each entry is on the disk
+  before the next is written. An entry counts as written only with its line end.
+- When it starts, the agent may cut only the last line of a file, and only when that line
+  lacks its line end or is not JSON: a write that never completed, after a loss of power.
+  After a write that fails, for example on a full disk, it cuts the file back to the length
+  it had before that write. The agent went on from neither.
+- Any other line that it cannot read makes the agent record `started` with an error and
+  stop, since the log is also its journal of rules 3, 10 and 11. The administrator moves
+  `audit\` aside and pairs the agent anew. The reader of the log accepts everything its
+  writer writes: no limit of depth or length below the deepest and the longest entry.
 
 Dropping messages already gives such a hop the power over outcomes, so nothing more is built
 against it.
