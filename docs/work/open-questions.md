@@ -76,6 +76,15 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Until answered** | The first block must be the unencrypted PKCS#8 PEM of an ECDSA P-256 private key; the rest of the text is ignored, and no test states it. To be answered before S2's contract step, which signs with the key |
 | **Decides** | The planner |
 
+### Q5. How deep the parameters of a command may nest
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, the fixes of review round 1 |
+| **Question** | The parameters are written and read as JSON, and System.Text.Json refuses a nesting deeper than its default of 64 levels, so a caller can observe that limit. By `AGENTS.md` principle 10 an observable limit is an option with a default. Is it a limit that `docs/protocol.md` fixes for every message, an option of the server, or something else? |
+| **Until answered** | `ReadAsync` and `WriteAsync` refuse parameters nested deeper than 64 levels, or holding a number that is not finite, with `ArgumentException` whose `ParamName` is `Parameters`. The documentation does not state the number, and no test pins it. To be answered before S2's contract step, which fixes the limits of the messages |
+| **Decides** | The planner, and the owner if it becomes an option |
+
 ## Answered
 
 None.
