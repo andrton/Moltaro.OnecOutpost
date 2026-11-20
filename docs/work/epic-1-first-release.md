@@ -729,6 +729,7 @@ Two places hold the checks that both sides need, so that each rule lives once:
       public static void CheckAgentName(string value, string paramName);
       public static void CheckScript(string value, string paramName);
       public static bool IsBaseKey(string value);
+      public static bool HasLoneSurrogate(string value);
   }
 
   internal static class OutpostProtocol
