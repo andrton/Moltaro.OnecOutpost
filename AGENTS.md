@@ -147,8 +147,8 @@ and trust it. A request outside the tunnel is declined, or noted as planned in t
     - The protocol depends on nothing outside .NET.
     - The server depends on the protocol, ASP.NET Core, EF Core with PostgreSQL and
       Moltaro.Signals.
-    - The agent depends on the protocol, the console on the agent and the protocol, and
-      the shell on the server.
+    - The agent depends on the protocol, the console on the agent, the protocol and
+      Spectre.Console, and the shell on the server and Spectre.Console.
     - The COM worker depends on nothing outside .NET.
 
     Nothing depends on a product that uses the library. Inside an assembly a folder is a
@@ -279,6 +279,20 @@ Writing code:
 - Never return an invented success in place of a failure.
 - No reflection on a call path outside the COM worker. No duplicated checks. No redundant
   models.
+
+Console programs:
+
+- The console and the shell are products for people, not scripts. They are built on
+  Spectre.Console, with Spectre.Console.Cli for their commands, options, validation and
+  `--help`.
+- A wait that a person sees shows a spinner that says what is happening; work of a known
+  size shows a progress bar; lists are tables; an outcome or an error is shown with its
+  kind, its code and a plain reason, in colour; a secret is asked with a prompt that does
+  not echo.
+- When the output is not an interactive terminal, the programs write plain text without
+  colour, animation or prompts, so that a script and a test read the same facts. Every
+  command has documented exit codes.
+- Development tools such as the measurement program are exempt.
 
 ## Tests And Samples
 

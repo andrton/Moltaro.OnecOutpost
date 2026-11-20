@@ -1060,6 +1060,12 @@ approval of this plan.
       corrected;
     - concept §7 takes the names of the contract.
 - **Out of scope.** Any behavior beyond the checks; `docs/protocol.md`; explanations.
+- **Small changes during the sprint.** The owner's answer of 20 November 2026 on the
+  console programs: they are built the way a professional tool is, with spinners and
+  progress indicators, on Spectre.Console — not student work. It adds "Console programs"
+  to `AGENTS.md`, "Code Style", and Spectre.Console to principle 12; the lines of the
+  console and of the shell in [Stages 2 and 3](#the-contracts-of-stages-2-and-3) point to
+  that rule, and the acceptance of S10 and S11 checks it.
 
 ### S2 · The protocol, its signatures and the pairing proof
 
@@ -1561,9 +1567,11 @@ the contract of stage 2 approved.
     - `check` reports each case its contract names, against fakes. It checks the server
       without polling, as [The protocol](#the-protocol) says, and a test proves that the
       service's newest poll is not replaced;
-    - every command's exit codes and errors.
+    - every command's exit codes and errors;
+    - with the output redirected, every command writes plain text, tested.
   - Manual, on the lab machine: `check` against a real base, the rights of the read
-    account included; `metadata` writes a report of a real base.
+    account included; `metadata` writes a report of a real base; the owner runs every
+    command in a terminal on the lab machine and accepts how it looks.
   - The documents step: `README.md` says how an agent is installed and paired.
 - **Out of scope.** The shell.
 
@@ -1583,9 +1591,10 @@ the contract of stage 2 approved.
 - **Acceptance.**
   - Automated: a session of shell commands read from its input against an agent with the
     fake worker, ending when the input ends, so that the shell runs to the end with
-    `dotnet run`.
+    `dotnet run`; with the output redirected, every command writes plain text, tested.
   - Manual, on the lab machine: a Read and a Write of S9's scenarios typed in the shell,
-    with the agent on another machine reaching the shell over HTTPS.
+    with the agent on another machine reaching the shell over HTTPS; the owner runs every
+    command in a terminal on the lab machine and accepts how it looks.
   - The documents step: `README.md` shows a session.
 - **Out of scope.** The release.
 
@@ -1638,8 +1647,9 @@ owner approves them. Until then this is what they have to be able to do.
     a command in, an outcome out. The outcome's JSON from the executor is forwarded as it
     is, so that its size is what the executor measured;
   - it ends when the agent closes its input.
-- **The console**, a program that references the agent and the protocol (principle 12),
-  with these commands and their exit codes:
+- **The console**, a program that references the agent, the protocol and Spectre.Console
+  (principle 12), built as `AGENTS.md`, "Console programs", says, with these commands and
+  their exit codes:
   - `install` and `uninstall`;
   - `pair <server address> <token>`;
   - `secret <base key> <read|write>`, which asks for the password without echoing it;
@@ -1650,7 +1660,7 @@ owner approves them. Until then this is what they have to be able to do.
     - the server;
     - the clock skew;
   - `metadata <base key> <file>`.
-- **The shell**, a program:
+- **The shell**, a program built as `AGENTS.md`, "Console programs", says:
   - its options:
     - the PostgreSQL connection;
     - the address it listens on, `http` on loopback by default;
