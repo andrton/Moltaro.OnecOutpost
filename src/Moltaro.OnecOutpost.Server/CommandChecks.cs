@@ -15,8 +15,8 @@ namespace Moltaro.OnecOutpost.Server;
 // so the count walks the parameters instead of measuring a serialized text.
 internal static class CommandChecks
 {
-    // The levels a JSON message may nest, the outer object being level 1. The protocol fixes it for every message, so
-    // it is not an option (Q5).
+    // The levels the parameters may nest, counted from their own outer value, the outer object being level 1. The
+    // protocol fixes it, so it is not an option (Q5).
     private const int MaxNesting = 64;
 
     internal static void Check(string script, JsonObject? parameters, int commandSizeLimit)

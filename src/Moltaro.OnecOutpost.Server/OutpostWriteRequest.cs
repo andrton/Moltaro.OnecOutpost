@@ -72,9 +72,9 @@ public sealed class OutpostWriteRequest
     /// </summary>
     /// <remarks>
     /// They are read into 1C values as <see cref="OutpostReadRequest.Parameters"/> describes. No string in them, the
-    /// name of a member included, holds U+0000, which PostgreSQL cannot store. They nest at most 64 levels, the outer
-    /// object being level 1: the limit of every JSON message of the protocol. They are written as JSON when the call is
-    /// made: a later change of the object has no effect on the command.
+    /// name of a member included, holds U+0000, which PostgreSQL cannot store. They nest at most 64 levels, counted from
+    /// their own outer value, the outer object being level 1: a fixed limit of the protocol. They are written as JSON
+    /// when the call is made: a later change of the object has no effect on the command.
     /// </remarks>
     public JsonObject? Parameters { get; init; }
 }

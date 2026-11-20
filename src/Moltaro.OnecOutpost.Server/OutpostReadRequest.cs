@@ -51,8 +51,8 @@ public sealed class OutpostReadRequest
     /// </para>
     /// <para>
     /// No string in them, the name of a member included, holds U+0000, which PostgreSQL cannot store. They nest at most
-    /// 64 levels, the outer object being level 1: the limit of every JSON message of the protocol. They are written as
-    /// JSON when the call is made: a later change of the object has no effect on the command.
+    /// 64 levels, counted from their own outer value, the outer object being level 1: a fixed limit of the protocol.
+    /// They are written as JSON when the call is made: a later change of the object has no effect on the command.
     /// </para>
     /// </remarks>
     public JsonObject? Parameters { get; init; }
