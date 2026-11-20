@@ -1,13 +1,31 @@
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Moltaro.OnecOutpost.Agent.Policy;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Policy;
 
-// The rules of policy.json. A file that breaks any of them is invalid as a whole, and the error names the path of the
-// member at fault. Each test changes one member of a valid policy: the owner of the member is given by its path, with
-// "" for the root.
+// The rules of policy.json. A file that breaks any of them is invalid as a whole, and the error says where and what
+// (Q1): the path of the member at fault, what is wrong with it, and what is expected there. Each test changes one
+// member of a valid policy: the owner of the member is given by its path, with "" for the root.
 public sealed class PolicyRuleTests
 {
+    // The owner's example of an error that says where and what (Q1), word for word.
+    [Fact]
+    public void An_empty_server_is_refused_with_an_error_that_says_where_and_what()
+    {
+        const string Expected = """
+            bases[0].server: the value is empty; expected the 1C cluster address such as "srv-1c:1541", or remove "server" and "database" and give "file"
+            """;
+
+        JsonObject policy = ValidPolicy();
+        Owner(policy, "bases[0]")["server"] = "";
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(policy.ToJsonString()));
+
+        Assert.Equal(Expected, exception.Message);
+    }
+
     [Theory]
     [InlineData("", "auditRetentionDays", "1")]
     [InlineData("", "auditRetentionDays", "3650")]
@@ -48,6 +66,7 @@ public sealed class PolicyRuleTests
     [InlineData("bases[0].read", "workers", "0")]
     [InlineData("bases[0].read", "workers", "9")]
     [InlineData("bases[0].read", "workers", "\"1\"")]
+    [InlineData("bases[0].read", "workers", "null")]
     [InlineData("bases[0].read", "runLimit", "\"00:00:00\"")]
     [InlineData("bases[0].read", "runLimit", "\"1.00:00:01\"")]
     [InlineData("bases[0].read", "runLimit", "\"10:00\"")]
@@ -65,7 +84,44 @@ public sealed class PolicyRuleTests
         AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
             () => AgentPolicyReader.Read(policy.ToJsonString()));
 
-        Assert.Equal(PathOf(owner, member), exception.Path);
+        AssertSaysWhereAndWhat(exception, PathOf(owner, member));
+    }
+
+    // The four members that name something share one rule: an empty or white-space string names nothing.
+    [Theory]
+    [InlineData("bases[0]", "server", "")]
+    [InlineData("bases[0]", "server", " \t ")]
+    [InlineData("bases[0]", "database", "")]
+    [InlineData("bases[0]", "database", " \t ")]
+    [InlineData("bases[1]", "file", "")]
+    [InlineData("bases[1]", "file", " \t ")]
+    [InlineData("bases[0].read", "account", "")]
+    [InlineData("bases[0].read", "account", " \t ")]
+    public void An_empty_or_white_space_server_database_file_or_account_makes_the_policy_invalid_at_its_path(
+        string owner,
+        string member,
+        string text)
+    {
+        JsonObject policy = ValidPolicy();
+        Owner(policy, owner)[member] = text;
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(policy.ToJsonString()));
+
+        AssertSaysWhereAndWhat(exception, PathOf(owner, member));
+    }
+
+    // One object stands for all: every object of the file is read by the same rule.
+    [Fact]
+    public void A_member_given_twice_makes_the_policy_invalid_at_its_path()
+    {
+        const string Json = """
+            { "bases": [ { "key": "accounting", "key": "warehouse", "file": "C:\\1C\\A", "read": { "account": "outpost-read" } } ] }
+            """;
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(() => AgentPolicyReader.Read(Json));
+
+        AssertSaysWhereAndWhat(exception, "bases[0].key");
     }
 
     [Theory]
@@ -81,7 +137,7 @@ public sealed class PolicyRuleTests
         AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
             () => AgentPolicyReader.Read(policy.ToJsonString()));
 
-        Assert.Equal(PathOf(owner, member), exception.Path);
+        AssertSaysWhereAndWhat(exception, PathOf(owner, member));
     }
 
     [Theory]
@@ -96,7 +152,7 @@ public sealed class PolicyRuleTests
         AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
             () => AgentPolicyReader.Read(policy.ToJsonString()));
 
-        Assert.Equal(PathOf(owner, member), exception.Path);
+        AssertSaysWhereAndWhat(exception, PathOf(owner, member));
     }
 
     // The contract names no single member at fault when the connection of a base is incomplete or doubled, so the
@@ -124,6 +180,7 @@ public sealed class PolicyRuleTests
             () => AgentPolicyReader.Read(policy.ToJsonString()));
 
         Assert.Contains(exception.Path, new[] { "bases[0]", "bases[0].server", "bases[0].database", "bases[0].file" });
+        AssertSaysWhereAndWhat(exception, exception.Path);
     }
 
     // Each text would be a valid policy if comments were allowed or the text were complete.
@@ -177,5 +234,13 @@ public sealed class PolicyRuleTests
     private static string PathOf(string owner, string member)
     {
         return owner.Length == 0 ? member : $"{owner}.{member}";
+    }
+
+    // The error names the member, then says what is wrong there and what is expected, without pinning the words: a
+    // reason that names no expectation fails here.
+    private static void AssertSaysWhereAndWhat(AgentPolicyException exception, string path)
+    {
+        Assert.Equal(path, exception.Path);
+        Assert.Matches($"^{Regex.Escape(path)}: .+; expected .+", exception.Message);
     }
 }
