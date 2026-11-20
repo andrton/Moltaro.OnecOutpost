@@ -235,9 +235,10 @@ on its machine; the application revokes it and creates a new token.
     five million starts fit below 2⁶². A clock moved to the far future uses up much of the
     rest, and a server that holds the signing key could take all of it, through `newest`.
     When the next number would pass 2⁶², the agent records its reservation as for any
-    number at or above its bound, and stops. At every later start that reservation leaves
-    no number, so the agent records `started` with an error and stops, until it is paired
-    anew, which gives it a new identity.
+    number at or above its bound, and stops; that reservation, above 2⁶², is the record of
+    this first stop. At every later start it leaves no number, so the agent records
+    `started` with an error and stops, until it is paired anew, which gives it a new
+    identity.
 - **`time`** is the agent's time (concept rule 7).
 - **`pollTimeoutMs`** is the poll timeout the agent last learnt, from `agent.json` or from the
   last answer, in the range of the option `PollTimeout` (`MinPollTimeout` to
@@ -308,9 +309,10 @@ on its machine; the application revokes it and creates a new token.
   when `newest` is not `null`; an answer that breaks either is lost. The agent checks every
   command by §7 before it records any (rule 2), and counts, by base and mode, the commands
   that passed and will run. When they are more than the `free` of a base and mode, the
-  answer is lost and the agent records and runs none of its commands. A command that fails
-  §7 is refused as §7 says and counts for nothing. So a command never waits on the agent
-  for a worker, and `received` can never overfill.
+  answer is lost and the agent records and runs none of its commands. An answer that holds
+  two commands of one `id` is lost in the same way. A command that fails §7 is refused as
+  §7 says and counts for nothing. So a command never waits on the agent for a worker, never
+  runs twice from one answer, and `received` can never overfill.
 - **`pollTimeoutMs`** and **`leaseGraceMs`** are the server's options `PollTimeout` and
   `LeaseGrace`, in their ranges (`MinPollTimeout` to `MaxPollTimeout`, `MinLeaseGrace` to
   `MaxLeaseGrace`). The agent keeps them for its next poll. The pairing answer carries them
@@ -674,17 +676,24 @@ identity.
 - An audit log that was cleared, cut short, or restored from an older data folder or a
   snapshot of the machine brings back lower reservations, or none, and with them the
   replay above. Such an agent is paired anew, as a clone is (concept "What protects
-  what").
-- The agent alone writes its audit log, one entry at a time, and each entry is on the disk
-  before the next is written. An entry counts as written only with its line end.
-- When it starts, the agent may cut only the last line of a file, and only when that line
-  lacks its line end or is not JSON: a write that never completed, after a loss of power.
-  After a write that fails, for example on a full disk, it cuts the file back to the length
-  it had before that write. The agent went on from neither.
-- Any other line that it cannot read makes the agent record `started` with an error and
-  stop, since the log is also its journal of rules 3, 10 and 11. The administrator moves
-  `audit\` aside and pairs the agent anew. The reader of the log accepts everything its
-  writer writes: no limit of depth or length below the deepest and the longest entry.
+  what"): the application revokes the old identity, which holds its base keys until then
+  (rule 14), and creates a token for a new one.
+- The agent alone writes its audit log. It holds the file `audit\lock` open without
+  sharing for its whole run, so that a second copy of the program, started by hand, exits
+  with an error. It writes one entry at a time, and each entry is on the disk before the
+  next is written. An entry counts as written only with its line end, LF.
+- When it starts, the agent reads its audit log and cuts it before it writes any entry,
+  the `started` of a failed check of the access lists included. It cuts the last line of
+  a file when that line lacks its line end or is not JSON: a write that never completed,
+  after a loss of power. The agent went on from no such line.
+- A write that fails, for example on a full disk, makes the agent cut the file back to the
+  length it had before that write, write nothing more, and stop. The next start finds the
+  log as it was before that write.
+- Any other line that it cannot read, and an audit file that it cannot open, make the
+  agent record `started` with an error and stop, since the log is also its journal of
+  rules 3, 10 and 11. The administrator moves `audit\` aside and pairs the agent anew.
+  The reader of the log accepts everything its writer writes: no limit of depth or length
+  below the deepest and the longest entry.
 
 Dropping messages already gives such a hop the power over outcomes, so nothing more is built
 against it.
