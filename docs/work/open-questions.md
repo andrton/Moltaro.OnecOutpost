@@ -58,6 +58,26 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Until answered** | `OutpostNames` counts UTF-16 code units, as `string.Length` does. No test depends on the difference. To be answered before S4, which stores agent names |
 | **Decides** | The owner: the rules of names are public contract |
 
+### Q4. The exact text that `SigningKeyPem` accepts
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, review round 1 |
+| **Question** | The check of `SigningKeyPem` read the first PEM block and ignored any text after it, so a text with a second block passed. Which text exactly does the option accept, so that the sprint that imports the key reads it the same way and never refuses a key that passed the check? |
+| **Proposed** | 20 November 2026, the planner: the option accepts exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it. Any other text, a second block included, is refused with `ArgumentException` whose `ParamName` is `SigningKeyPem`, so that the import of S2 reads exactly what the check accepted |
+| **Until answered** | The code, its test, the XML documentation of the option and its row in the options table of the [epic document](epic-1-first-release.md) follow the proposal, marked there as waiting for the owner. S1 is not merged before the owner answers |
+| **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
+
+### Q5. How deep the parameters of a command may nest
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, the fixes of review round 1 |
+| **Question** | The parameters are written and read as JSON, and System.Text.Json refuses a nesting deeper than its default of 64 levels, so a caller can observe that limit. By `AGENTS.md` principle 10 an observable limit is an option with a default. Is it a limit that `docs/protocol.md` fixes for every message, an option of the server, or something else? |
+| **Proposed** | 20 November 2026, the planner: a fixed limit of the protocol, not an option, like the lengths of names, at 64 levels; `AGENTS.md` principle 10 says that such a limit is not an option. After review round 3, the planner added: the parameters of a command and the result of an outcome count their 64 levels from their own outer value, as the rule of names says; the envelope of the message that carries them does not count against them; S2 fixes how the whole message is checked, so that a command that `ReadAsync` accepted is never refused for its nesting |
+| **Until answered** | `ReadAsync` and `WriteAsync` refuse parameters nested deeper than 64 levels, the outer object being level 1, or holding a value that System.Text.Json cannot write, with `ArgumentException` whose `ParamName` is `Parameters`, and the tests hold 64 and 65. The rule of names and "The protocol" in the [epic document](epic-1-first-release.md), principle 10 and the XML documentation of `Parameters` follow the proposal, marked in the epic document as waiting for the owner. S1 is not merged before the owner answers |
+| **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
+
 ## Answered
 
 ### Q3. One version of EF Core and its relational package
@@ -70,27 +90,3 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The planner |
 | **Answer** | 20 November 2026, the planner: yes. The server also references `Microsoft.EntityFrameworkCore.Relational`, at the same version as `Microsoft.EntityFrameworkCore`, so that every EF Core assembly the package brings is of one version |
 | **Now lives in** | The S1 brief of the [epic document](epic-1-first-release.md), its list of references, and `src/Directory.Packages.props` |
-
-### Q4. The exact text that `SigningKeyPem` accepts
-
-| | |
-| --- | --- |
-| **Found** | 20 November 2026, Epic 1 S1, review round 1 |
-| **Question** | The check of `SigningKeyPem` reads the first PEM block and ignores any text after it, so a text with a second block passes. Which text exactly does the option accept, so that the sprint that imports the key reads it the same way and never refuses a key that passed the check? |
-| **Until answered** | The first block must be the unencrypted PKCS#8 PEM of an ECDSA P-256 private key; the rest of the text is ignored, and no test states it. To be answered before S2's contract step, which signs with the key |
-| **Decides** | The planner |
-| **Answer** | 20 November 2026, the planner: the option accepts exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it. Any other text, a second block included, is refused with `ArgumentException` whose `ParamName` is `SigningKeyPem`, so that the import of S2 reads exactly what the check accepted |
-| **Now lives in** | The row of `SigningKeyPem` in the options table of the [epic document](epic-1-first-release.md), and the XML documentation of the option |
-| **Owner** | Changes the public contract, so it is put to the owner (review round 2 of S1, 20 November 2026). S1 is not merged before the owner answers |
-
-### Q5. How deep the parameters of a command may nest
-
-| | |
-| --- | --- |
-| **Found** | 20 November 2026, Epic 1 S1, the fixes of review round 1 |
-| **Question** | The parameters are written and read as JSON, and System.Text.Json refuses a nesting deeper than its default of 64 levels, so a caller can observe that limit. By `AGENTS.md` principle 10 an observable limit is an option with a default. Is it a limit that `docs/protocol.md` fixes for every message, an option of the server, or something else? |
-| **Until answered** | `ReadAsync` and `WriteAsync` refuse parameters nested deeper than 64 levels, or holding a number that is not finite, with `ArgumentException` whose `ParamName` is `Parameters`. The documentation does not state the number, and no test pins it. To be answered before S2's contract step, which fixes the limits of the messages |
-| **Decides** | The planner, and the owner if it becomes an option |
-| **Answer** | 20 November 2026, the planner: a fixed limit of the protocol, not an option, like the lengths of names. Every JSON message of the protocol, parameters and results included, nests at most 64 levels |
-| **Now lives in** | `AGENTS.md` principle 10; the rule of names for the parameters and "The protocol" in the [epic document](epic-1-first-release.md); the XML documentation of `Parameters`; `docs/protocol.md` when S2 writes it |
-| **Owner** | Changes the public contract, so it is put to the owner (review round 2 of S1, 20 November 2026). S1 is not merged before the owner answers |

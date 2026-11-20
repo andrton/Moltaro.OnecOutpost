@@ -236,7 +236,7 @@ marker of rule 5.
   | Caller key | 1 to 200 characters, each from U+0021 to U+007E (printable ASCII without the space); compared exactly |
   | Agent name | 1 to 100 characters, no control character, no white space at the start or the end |
   | Script | At least one character that is not white space, and no U+0000 |
-  | Parameters | No string in them holds U+0000, which PostgreSQL cannot store; they nest at most 64 levels, the limit of every JSON message of the protocol (Q5) |
+  | Parameters | No string in them holds U+0000, which PostgreSQL cannot store; they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5, waits for the owner) |
   | Schema | 1 to 63 characters, each one of `a–z 0–9 _`, the first a letter |
   | Endpoint prefix | `/` followed by one or more segments of `A–Z a–z 0–9 - _ .` separated by `/`, not ending with `/`; no segment is `.` or `..` |
 - **Sizes.** Every size is counted on the bytes that the protocol carries: UTF-8, with
@@ -337,7 +337,7 @@ public sealed class OutpostServerOptions
 | --- | --- | --- |
 | `ConnectionString` | The PostgreSQL connection of the store | Required |
 | `Schema` | The schema of the store | The rule of names |
-| `SigningKeyPem` | The server's signing key, as PKCS#8 PEM of an ECDSA P-256 private key. The application keeps it in its own secret storage; one line of .NET creates one: `ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()` | Required: exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it; any other text, a second block included, is refused (Q4) |
+| `SigningKeyPem` | The server's signing key, as PKCS#8 PEM of an ECDSA P-256 private key. The application keeps it in its own secret storage; one line of .NET creates one: `ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()` | Required: exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it; any other text, a second block included, is refused (Q4, waits for the owner) |
 | `SignalKeyPrefix` | The prefix of every key the library sets or subscribes to | A name of Moltaro.Signals of at most 64 characters |
 | `PollTimeout` | How long a poll waits for a command | 1 second to 5 minutes |
 | `LeaseGrace` | What an agent's lease adds to the poll timeout (rule 6) | 1 second to 5 minutes |
@@ -801,10 +801,13 @@ It has to say:
   signed: over the bytes of the body, the kind of request and the agent's identity;
 - the form of the pairing token, and the pairing proof;
 - the fingerprint of a key;
-- the nesting limit of every JSON message: at most 64 levels, a fixed limit of the
-  protocol and not an option, counted over the whole message, and how deep parameters and
-  results may nest inside the message that carries them (Q5). The limit lives in the
-  protocol assembly, which both sides check it from;
+- the nesting limit of the JSON of the protocol, a fixed limit and not an option (Q5,
+  waits for the owner). The parameters of a command and the result of an outcome count
+  their 64 levels from their own outer value, as the rule of names says; the envelope of
+  the message that carries them does not count against them. S2 fixes how the whole
+  message is checked, so that a command that `ReadAsync` or `WriteAsync` accepted is never
+  refused for its nesting. The limit lives in the protocol assembly, which both sides
+  check it from;
 - **What every poll answer carries:**
   - the commands;
   - the bases the agent holds and those that another agent holds (rule 14);
@@ -1088,11 +1091,14 @@ approval of this plan.
   - Q5: every JSON message of the protocol, parameters and results included, nests at
     most 64 levels. It is a fixed limit of the protocol, not an option, as `AGENTS.md`
     principle 10 now says. The rule of names states it for the parameters, and
-    `docs/protocol.md` states it when S2 writes it. Review round 2 narrowed the sentence
-    of principle 10 to a limit that a side needs before it can read what the other side
-    sent, since a limit that travels in a signed message, such as the size of an outcome,
-    stays an option; and S2 counts the limit over the whole message, from the protocol
-    assembly, as [The protocol](#the-protocol) says.
+    `docs/protocol.md` states it when S2 writes it. The fixes of review round 2 narrowed
+    the sentence of principle 10 to a limit that a side needs before it can read what the
+    other side sent, since a limit that travels in a signed message, such as the size of
+    an outcome, stays an option. The limit lives in the protocol assembly, as
+    [The protocol](#the-protocol) says.
+
+  Q4 and Q5 change the public contract, so they wait for the owner, as the
+  [open questions](open-questions.md) say; S1 is not merged before the owner answers.
 - **Corrections from the review.** Round 1 found that the sentence of
   [`OutpostCodes`](#outpostcodes) on Refused said every Refused frees the caller key. As
   concept rule 4 says, only a command that ended as Refused or Expired frees its key; a
