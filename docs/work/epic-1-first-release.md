@@ -337,7 +337,7 @@ public sealed class OutpostServerOptions
 | --- | --- | --- |
 | `ConnectionString` | The PostgreSQL connection of the store | Required |
 | `Schema` | The schema of the store | The rule of names |
-| `SigningKeyPem` | The server's signing key, as PKCS#8 PEM of an ECDSA P-256 private key. The application keeps it in its own secret storage; one line of .NET creates one: `ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()` | Required: exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it; any other text, a second block included, is refused (Q4, waits for the owner) |
+| `SigningKeyPem` | The server's signing key, as PKCS#8 PEM of an ECDSA P-256 private key. The application keeps it in its own secret storage; one line of .NET creates one: `ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()` | Required: exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it; any other text, a second block included, is refused (Q4) |
 | `SignalKeyPrefix` | The prefix of every key the library sets or subscribes to | A name of Moltaro.Signals of at most 64 characters |
 | `PollTimeout` | How long a poll waits for a command | 1 second to 5 minutes |
 | `LeaseGrace` | What an agent's lease adds to the poll timeout (rule 6) | 1 second to 5 minutes |
@@ -1112,8 +1112,9 @@ approval of this plan.
     an outcome, stays an option. The limit lives in the protocol assembly, as
     [The protocol](#the-protocol) says.
 
-  Q4 and Q5 change the public contract, so they wait for the owner, as the
-  [open questions](open-questions.md) say; S1 is not merged before the owner answers.
+  Q4 and Q5 change the public contract, so they went to the owner. The owner approved Q4
+  on 20 November 2026. Q5 waits for the owner, as the [open questions](open-questions.md)
+  say, and S1 is not merged before the owner answers.
 - **Corrections from the review.** Round 1 found that the sentence of
   [`OutpostCodes`](#outpostcodes) on Refused said every Refused frees the caller key. As
   concept rule 4 says, only a command that ended as Refused or Expired frees its key; a

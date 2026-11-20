@@ -40,16 +40,6 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 
 ## Open
 
-### Q4. The exact text that `SigningKeyPem` accepts
-
-| | |
-| --- | --- |
-| **Found** | 20 November 2026, Epic 1 S1, review round 1 |
-| **Question** | The check of `SigningKeyPem` read the first PEM block and ignored any text after it, so a text with a second block passed. Which text exactly does the option accept, so that the sprint that imports the key reads it the same way and never refuses a key that passed the check? |
-| **Proposed** | 20 November 2026, the planner: the option accepts exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it. Any other text, a second block included, is refused with `ArgumentException` whose `ParamName` is `SigningKeyPem`, so that the import of S2 reads exactly what the check accepted |
-| **Until answered** | The code, its test, the XML documentation of the option and its row in the options table of the [epic document](epic-1-first-release.md) follow the proposal, marked there as waiting for the owner. S1 is not merged before the owner answers |
-| **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
-
 ### Q5. How deep the parameters of a command may nest
 
 | | |
@@ -94,3 +84,15 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The planner |
 | **Answer** | 20 November 2026, the planner: yes. The server also references `Microsoft.EntityFrameworkCore.Relational`, at the same version as `Microsoft.EntityFrameworkCore`, so that every EF Core assembly the package brings is of one version |
 | **Now lives in** | The S1 brief of the [epic document](epic-1-first-release.md), its list of references, and `src/Directory.Packages.props` |
+
+### Q4. The exact text that `SigningKeyPem` accepts
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, review round 1 |
+| **Question** | The check of `SigningKeyPem` read the first PEM block and ignored any text after it, so a text with a second block passed. Which text exactly does the option accept, so that the sprint that imports the key reads it the same way and never refuses a key that passed the check? |
+| **Proposed** | 20 November 2026, the planner: the option accepts exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it. Any other text, a second block included, is refused with `ArgumentException` whose `ParamName` is `SigningKeyPem`, so that the import of S2 reads exactly what the check accepted |
+| **Until answered** | The code, its test, the XML documentation of the option and its row in the options table followed the proposal, and S1 waited for the owner |
+| **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
+| **Answer** | 20 November 2026, the owner, in their words: refuse it, of course, if it is not just the key but some rubbish, and if the key is not alone there, refuse it. The owner approves the proposal as it stands: anything but the one block with white space around it, a second block included, is refused with `ArgumentException` whose `ParamName` is `SigningKeyPem`, and a clear message |
+| **Now lives in** | The row of `SigningKeyPem` in the options table of the [epic document](epic-1-first-release.md), the XML documentation of the option, its check and its tests |
