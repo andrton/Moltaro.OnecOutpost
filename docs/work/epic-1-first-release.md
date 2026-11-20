@@ -626,7 +626,7 @@ folder.
 | --- | --- | --- | --- |
 | `policy.json` | The administrator | Yes | The local policy, below |
 | `audit\YYYY-MM-DD.jsonl` | The agent | Yes | The audit log, one file per UTC day, below |
-| `agent.json` | The console, when it pairs | No | The server's address, the agent's identity, the pinned server key |
+| `agent.json` | The console, when it pairs | No | The server's address, the agent's identity, the pinned server key, and the poll timeout and lease grace of the pairing answer |
 | `secrets.dat` | The console | No | The agent's private key and the 1C passwords, encrypted with DPAPI for the machine |
 | `outcomes\` | The agent | No | The outbox: outcomes not yet confirmed by the server, one file per command |
 
@@ -1161,6 +1161,7 @@ approval of this plan.
         public const int OutcomeEnvelopeAllowance = 4 * 1024;
         public const int MaxBases = 256;
         public const int MaxReceived = 10_000;
+        public const long MaxPollNumber = 1L << 62;
         public const string AgentHeader = "Outpost-Agent";
         public const string SignatureHeader = "Outpost-Signature";
     }
@@ -1174,18 +1175,42 @@ approval of this plan.
         public const string Signature = "signature";
         public const string Token = "token";
         public const string Revoked = "revoked";
-        public const string Size = "size";
-        public const string ResultTooLarge = "result-too-large";
+        public const string ResultTooLarge = OutpostOutcomeCodes.ResultTooLarge;
     }
 
     internal sealed class OutpostProtocolException : Exception
     {
-        public OutpostProtocolException(string code, string reason);
+        public OutpostProtocolException(string code, string reason, Guid? commandId = null);
         public string Code { get; }
+        public Guid? CommandId { get; }
     }
     ```
 
-    In `Moltaro.OnecOutpost.Protocol.Signing`, everything of §2 to §5:
+    `OutpostProtocolException.CommandId` is set only for a command of another version, the
+    one refusal that names its command (§7).
+
+    In `Moltaro.OnecOutpost.Protocol.Outcomes`, the one place of every outcome code:
+
+    ```csharp
+    internal enum OutpostAgentOutcomeKindEnum { Unknown = 0, Succeeded, Failed, Refused }
+
+    internal static class OutpostOutcomeCodes
+    {
+        public const string ScriptError = "script-error";
+        // … one constant for each code of `OutpostCodes`, with the same names and values.
+
+        public static bool IsAgentCode(OutpostAgentOutcomeKindEnum kind, string code);
+        public static bool IsExecutorCode(OutpostAgentOutcomeKindEnum kind, string code);
+    }
+    ```
+
+    - `IsAgentCode` answers the table "The codes an agent may send" of §8, and
+      `IsExecutorCode` the paragraph "What the executor may hand the agent".
+    - The public `OutpostCodes` of the server defines each of its constants as the constant
+      here, so that every code string lives once.
+
+    In `Moltaro.OnecOutpost.Protocol.Signing`, the keys, the signatures, the pairing proof,
+    the token and the header values of §2 to §5:
 
     ```csharp
     internal static class OutpostKeys
@@ -1198,11 +1223,8 @@ approval of this plan.
     internal static class OutpostSignatures
     {
         public static byte[] SignRequest(ECDsa agentKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body);
-        public static bool VerifyRequest(ECDsa agentPublicKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
-        public static byte[] SignAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody);
-        public static bool VerifyAnswer(ECDsa serverPublicKey, OutpostRequestKindEnum kind, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody, ReadOnlySpan<byte> signature);
+        public static byte[] SignAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody);
         public static byte[] SignCommand(ECDsa serverKey, ReadOnlySpan<byte> commandBytes);
-        public static bool VerifyCommand(ECDsa serverPublicKey, ReadOnlySpan<byte> commandBytes, ReadOnlySpan<byte> signature);
     }
 
     internal static class OutpostPairingProof
@@ -1216,18 +1238,29 @@ approval of this plan.
         public string Write();
         public static bool TryRead(string text, [NotNullWhen(true)] out OutpostPairingTokenText? token);
     }
+
+    internal static class OutpostHeaders
+    {
+        public static string FormatAgent(Guid agent);
+        public static bool TryParseAgent(string? value, out Guid agent);
+        public static string FormatSignature(ReadOnlySpan<byte> signature);
+        public static bool TryParseSignature(string? value, [NotNullWhen(true)] out byte[]? signature);
+    }
     ```
 
-    `ImportPublicKey` refuses a key that is not P-256 with `OutpostProtocolException` and
-    `form`. `Check` compares in constant time. `ToString` of `OutpostPairingTokenText`
-    leaves the secret out.
+    - `ImportPublicKey` accepts exactly the 91-byte form of §2, and refuses anything else
+      with `OutpostProtocolException` and `form`.
+    - `Fingerprint` gives the 64 lowercase hexadecimal digits of §2.
+    - `Check` compares in constant time.
+    - `ToString` of `OutpostPairingTokenText` leaves the secret out.
+    - The verification of a signature is not here. It lives in the readers of the codec,
+      which verify before they parse, so that no caller can parse unverified bytes.
 
     In `Moltaro.OnecOutpost.Protocol.Messages`, one record per message of §6 to §9, with
     the members of its JSON:
 
     ```csharp
     internal enum OutpostModeEnum { Read, Write }
-    internal enum OutpostAgentOutcomeKindEnum { Unknown = 0, Succeeded, Failed, Refused }
 
     internal sealed record OutpostPairRequest(string AgentVersion, byte[] Key, byte[] Proof);
     internal sealed record OutpostPairAnswer(DateTimeOffset Time, Guid Agent, byte[] Key, byte[] ServerKey, TimeSpan PollTimeout, TimeSpan LeaseGrace);
@@ -1235,22 +1268,24 @@ approval of this plan.
     internal sealed record OutpostPollBase(string Key, OutpostPollMode Read, OutpostPollMode? Write);
     internal sealed record OutpostPollRequest(long Number, DateTimeOffset Time, string AgentVersion, IReadOnlyList<OutpostPollBase> Bases, IReadOnlyList<Guid> Received);
     internal sealed record OutpostSignedCommand(byte[] Bytes, byte[] Signature);
-    internal sealed record OutpostPollAnswer(DateTimeOffset Time, bool Older, long? Newest, TimeSpan PollTimeout, TimeSpan LeaseGrace, IReadOnlyList<string> Held, IReadOnlyList<string> Claimed, IReadOnlyList<OutpostSignedCommand> Commands);
+    internal sealed record OutpostPollAnswer(DateTimeOffset Time, long? Newest, TimeSpan PollTimeout, TimeSpan LeaseGrace, IReadOnlyList<string> Held, IReadOnlyList<string> Claimed, IReadOnlyList<OutpostSignedCommand> Commands);
     internal sealed record OutpostCommandMessage(int Protocol, Guid Id, Guid Agent, string Base, OutpostModeEnum Mode, string? CallerKey, string Script, JsonElement Parameters, DateTimeOffset Issued, DateTimeOffset Deadline, TimeSpan Skew, int OutcomeLimit);
     internal sealed record OutpostOutcomeMessage(OutpostAgentOutcomeKindEnum Kind, string? Code, JsonElement? Result, string? ErrorText, IReadOnlyList<string> Messages, bool MessagesTrimmed);
-    internal sealed record OutpostOutcomeRequest(Guid Command, TimeSpan Duration, ReadOnlyMemory<byte> Outcome);
+    internal sealed record OutpostOutcomeRequest(Guid Command, ReadOnlyMemory<byte> Outcome);
     internal sealed record OutpostOutcomeAnswer(DateTimeOffset Time, Guid Confirmed);
-    internal sealed record OutpostRefusal(DateTimeOffset Time, string Code);
+    internal sealed record OutpostRefusal(DateTimeOffset Time, string Code, byte[]? ServerKey);
     ```
 
-    `OutpostOutcomeRequest.Outcome` holds the exact bytes of the outcome object (§6.3,
-    §8). Its size is their length.
+    - `OutpostOutcomeRequest.Outcome` holds the exact bytes of the outcome object (§6.3,
+      §8); its size is their length.
+    - `OutpostRefusal.ServerKey` is present only in a refusal of `pair`.
 
     In `Moltaro.OnecOutpost.Protocol.Codec`:
 
     ```csharp
     internal static class OutpostCodec
     {
+        // Writers, by §2.
         public static byte[] Write(OutpostPairRequest message);
         public static byte[] Write(OutpostPairAnswer message);
         public static byte[] Write(OutpostPollRequest message);
@@ -1261,26 +1296,46 @@ approval of this plan.
         public static byte[] Write(OutpostOutcomeAnswer message);
         public static byte[] Write(OutpostRefusal message);
 
-        public static OutpostPairRequest ReadPairRequest(ReadOnlySpan<byte> bytes);
-        public static OutpostPairAnswer ReadPairAnswer(ReadOnlySpan<byte> bytes);
-        public static OutpostPollRequest ReadPollRequest(ReadOnlySpan<byte> bytes);
-        public static OutpostPollAnswer ReadPollAnswer(ReadOnlySpan<byte> bytes);
-        public static OutpostCommandMessage ReadCommand(ReadOnlySpan<byte> bytes);
-        public static OutpostOutcomeMessage ReadOutcome(ReadOnlySpan<byte> bytes);
-        public static OutpostOutcomeRequest ReadOutcomeRequest(ReadOnlySpan<byte> bytes);
-        public static OutpostOutcomeAnswer ReadOutcomeAnswer(ReadOnlySpan<byte> bytes);
-        public static OutpostRefusal ReadRefusal(ReadOnlySpan<byte> bytes);
+        // Readers of the server: they verify the request, then parse it.
+        public static OutpostPairRequest ReadPairRequest(Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostPollRequest ReadPollRequest(ECDsa agentKey, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostOutcomeRequest ReadOutcomeRequest(ECDsa agentKey, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+
+        // Readers of the agent: they verify the answer, then parse it.
+        public static OutpostPairAnswer ReadPairAnswer(string fingerprint, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostPollAnswer ReadPollAnswer(ECDsa serverKey, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostOutcomeAnswer ReadOutcomeAnswer(ECDsa serverKey, Guid agent, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostRefusal ReadRefusal(OutpostRequestKindEnum kind, ECDsa? serverKey, string? fingerprint, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostCommandMessage ReadCommand(ECDsa serverKey, OutpostSignedCommand command);
+
+        // Unsigned: the outcome object inside a verified request, or from the executor.
+        public static OutpostOutcomeMessage ReadOutcome(ReadOnlySpan<byte> outcome);
 
         public static int ValueDepth(JsonElement value);
     }
     ```
 
-    - Every `Read…` applies §2 and the rules of its message, and throws
-      `OutpostProtocolException` with `form`, `size` or `protocol-version`.
-    - Every `Write` writes by §2.
-    - `ValueDepth` counts the levels of §2.
-    - The depth check of the parameters that S1 wrote in the server moves here, so that
-      the limit lives in one place. That move states nothing new, as the process says.
+    - **The readers verify first.** Every signed reader verifies the signature of §3 before
+      it parses anything. On failure it throws `OutpostProtocolException` with
+      `signature`, and with `form` for a verified body that breaks §2 or the rules of its
+      message.
+    - **The `pair` request is the one exception (§3).** `ReadPairRequest` parses the body,
+      then verifies it with the key it carries.
+    - **The readers of `pair` check the fingerprint.** `ReadPairAnswer`, and `ReadRefusal`
+      for `pair` (given `fingerprint` and no `serverKey`), check the fingerprint of the
+      server key in the body against `fingerprint` before they verify with that key.
+    - **`ReadCommand`** verifies, then reads `protocol` and `id`. A command of another version
+      throws `protocol-version` with `CommandId`; bytes that do not yield both throw `form`
+      without it.
+    - **`ReadOutcome`** applies §8, the codes an agent may send included, and throws `form`.
+      The checks of size belong to the callers. The server checks the outcome member's
+      length against its command's limit before it calls `ReadOutcome`, and the endpoints
+      check the body limits of §10.
+    - **`ValueDepth`** counts the levels of §2: a scalar is 0, and an object or an array is
+      1 plus the deepest of its members.
+    - **Moves.** The depth check of the parameters that S1 wrote in the server moves here,
+      so that the limit lives in one place. That move states nothing new, as the process
+      says.
 - **Study.** Sources, for example: the GitHub Actions runner (MIT); the Azure Pipelines agent
   (MIT); Octopus Deploy's Halibut (Apache-2.0). Questions:
   1. How each authenticates the agent to the server and the server to the agent, and what
@@ -1290,38 +1345,77 @@ approval of this plan.
   3. How each binds a new agent's key to a one-time credential at registration.
   4. How each refuses a replayed message.
   5. Which key formats and fingerprints each uses, and how a key is pinned.
-- **To read.** The [concept](../concept.md), §3 ("Rules" 1, "Pairing", "What protects
-  what") and §6 (20 November 2026); `AGENTS.md`, principles 3, 9, 11 and 12; this plan,
-  "The protocol".
+- **To read.**
+  - The [concept](../concept.md), §3 ("Rules" 1, 5, 7, 10, 11 and 14, "Pairing", "What
+    protects what") and §6 (20 November 2026);
+  - `AGENTS.md`, principles 3, 9, 10, 11 and 12;
+  - this plan, "The public contract", "The files of the agent" and "The protocol";
+  - `docs/protocol.md`, as the owner approved it.
 - **Acceptance.**
   - Tests of the command signature:
-    - a command whose bytes changed in any place is refused;
+    - a command whose bytes changed in any place is refused with `signature`;
     - one signed with another key is refused;
-    - bytes that do not parse are never parsed before their signature is checked.
+    - bytes that do not parse and carry no valid signature are refused with `signature`,
+      never with `form`, which shows that nothing parsed them;
+    - a verified command of another version is refused with `protocol-version` and its
+      `CommandId`.
   - Tests of the request signatures:
-    - the same three cases;
+    - the same cases;
     - a body sent as another kind of request is refused;
     - the same bytes under another agent's identity are refused.
+  - Tests of the answer signatures: an answer whose bytes changed, one signed with another
+    key, one bound to another request and one bound to another agent are refused.
   - Tests of pairing:
     - a proof made with another secret is refused;
     - a key swapped after the proof was made is refused;
-    - a server key whose fingerprint differs from the token's is refused.
-  - Every message round-trips.
-  - Every limit of `docs/protocol.md` is refused one byte beyond it and accepted at it,
-    with characters outside ASCII counted as they travel, unescaped.
-  - Tests of the answer signatures: an answer whose bytes changed, one signed with another
-    key, and one bound to another request are refused.
-  - An unknown protocol version is refused with `protocol-version`.
+    - an answer or a refusal whose server key does not match the token's fingerprint is
+      refused;
+    - a token round-trips, and a token of another form is not read.
+  - Tests of §2:
+    - the escapes a writer writes;
+    - U+0000 and lone surrogates refused;
+    - duplicated members refused at every depth;
+    - non-canonical base64url, a key that is not the 91-byte form, and a proof that is not
+      32 bytes, each refused;
+    - times truncated to milliseconds;
+    - `ValueDepth` at 64 and 65, and a scalar at 0.
+  - Tests of §8: every kind with every code an agent may send is accepted, and a code of the
+    server's is refused; the executor's codes.
+  - Every message round-trips. Every limit that the codec owns, and every range of a
+    member, is refused one step beyond it and accepted at it. The body limits of §10 are
+    the endpoints', and S4 and S5 state them.
   - The documents step: `docs/protocol.md` says that the codec exists and that no endpoint
     serves it yet.
 - **Out of scope.** HTTP, the store, the agent's loop.
-- **Small changes during the sprint.** The owner's answer of 20 November 2026 to Q6 of the
-  [open questions](open-questions.md): a lone surrogate is refused at once, with a clear
-  argument error, in the agent name, the script and the parameters of `ReadAsync` and
-  `WriteAsync`, and it makes `policy.json` invalid, reported at its path as Q1 requires.
-  The rule of names and [`policy.json`](#policyjson) say so; the checks of
-  `OutpostNames`, of the parameters and of `AgentPolicyReader` follow it, each with its
-  tests.
+- **Small changes during the sprint.**
+  - The owner's answer of 20 November 2026 to Q6 of the
+    [open questions](open-questions.md): a lone surrogate is refused at once, with a clear
+    argument error, in the agent name, the script and the parameters of `ReadAsync` and
+    `WriteAsync`. It makes `policy.json` invalid, reported at its path as Q1 requires. The
+    rule of names and [`policy.json`](#policyjson) say so; the checks of `OutpostNames`, of
+    the parameters and of `AgentPolicyReader` follow it, each with its tests.
+  - **Changes of the public contract that come with `docs/protocol.md`,** for the owner's
+    approval together with it, made in the contract step after that approval:
+    - the size of a command counts its script and parameters as written in the command,
+      escapes included (§7). `CommandChecks` of S1 and its tests follow it;
+    - the size of an outcome is its outcome object as it travels (§8). The documentation
+      of `OutpostServerOptions.OutcomeSizeLimit` follows it;
+    - `result-type` also covers a result deeper than 64 levels and an outcome of the
+      executor that the agent cannot accept, and for a Write it is Unknown (§8). The rows
+      of `OutpostCodes` follow it, and its constants take their values from
+      `OutpostOutcomeCodes`;
+    - `policy.json` has at most 256 bases;
+    - the audit log:
+      - it records `connection` with a `reason` that is a code of §9 or `unreachable`;
+      - it records `refused` with the codes `signature` and `form` for commands that
+        cannot be trusted;
+      - a `refused` entry ends its command as `ended` does, and its Refused outcome is
+        kept in the outbox until it is confirmed;
+      - `received.parameters` is always an object;
+    - the concept's rules 5, 10 and 14 say what `docs/protocol.md` decides:
+      - the size of an outcome;
+      - a poll held back longer than the skew counts as older;
+      - a claimed key is reported in `bases.claimed`.
 
 ### S3 · The store
 
