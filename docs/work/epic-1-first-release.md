@@ -244,8 +244,9 @@ marker of rule 5.
   - The size of a command is that of its script plus that of its parameters written as
     JSON. A call whose command is larger than `CommandSizeLimit` is a caller's mistake
     and gives `ArgumentException`.
-  - The size of an outcome is that of its result as the executor wrote it, plus its
-    messages and its error text (rule 5).
+  - The size of an outcome is the length of the UTF-8 text of its outcome object as it
+    travels, with its result, its messages and its error text, every escape counted as it
+    is written (rule 5; `docs/protocol.md` §8).
 - **Options** are a plain class with settable properties and defaults. `AddOutpostServer`
   runs the delegate on a new options object, validates it and keeps a copy: a later change
   of that object has no effect.
@@ -1141,21 +1142,145 @@ approval of this plan.
   - *Public:* `docs/protocol.md`, written by the planner after the study, reviewed and
     approved as [The protocol](#the-protocol) says, and committed in the contract step.
   - *Internal:* the codec and the signing types in `Moltaro.OnecOutpost.Protocol`, written
-    into this brief after the study. They have to be able to:
-    - build the bytes of a command from its fields and sign them with the server key;
-    - verify the signature of command bytes with a pinned public key, and only then parse
-      them;
-    - sign an agent request (its kind, the agent's identity and the bytes of its body) and
-      verify it with the agent's public key;
-    - compute and check the pairing proof;
-    - read and write the pairing token;
-    - compute the fingerprint of a public key;
-    - read and write every body and answer of the three requests;
-    - sign every answer of the server, bound to the request it answers, and verify it with
-      the pinned key;
-    - refuse with the codes of the protocol: version, signature, size, form.
+    here after the study. They perform no I/O and know nothing of HTTP or the store. Every
+    rule they apply is a rule of `docs/protocol.md`, and their documentation names its
+    section.
 
-    They perform no I/O and know nothing of HTTP or the store.
+    In the namespace `Moltaro.OnecOutpost.Protocol`:
+
+    ```csharp
+    internal static class OutpostProtocol
+    {
+        public const int Version = 1;
+        public const int MaxMessageDepth = 72;
+        public const int MaxValueDepth = 64;
+        public const int PairBodyLimit = 16 * 1024;
+        public const int PollBodyLimit = 1024 * 1024;
+        public const int PollAnswerLimit = 64 * 1024 * 1024;
+        public const int AnswerLimit = 64 * 1024;
+        public const int OutcomeEnvelopeAllowance = 4 * 1024;
+        public const int MaxBases = 256;
+        public const int MaxReceived = 10_000;
+        public const string AgentHeader = "Outpost-Agent";
+        public const string SignatureHeader = "Outpost-Signature";
+    }
+
+    internal enum OutpostRequestKindEnum { Pair, Poll, Outcome }
+
+    internal static class OutpostProtocolCodes
+    {
+        public const string ProtocolVersion = "protocol-version";
+        public const string Form = "form";
+        public const string Signature = "signature";
+        public const string Token = "token";
+        public const string Revoked = "revoked";
+        public const string Size = "size";
+        public const string ResultTooLarge = "result-too-large";
+    }
+
+    internal sealed class OutpostProtocolException : Exception
+    {
+        public OutpostProtocolException(string code, string reason);
+        public string Code { get; }
+    }
+    ```
+
+    In `Moltaro.OnecOutpost.Protocol.Signing`, everything of §2 to §5:
+
+    ```csharp
+    internal static class OutpostKeys
+    {
+        public static byte[] ExportPublicKey(ECDsa key);
+        public static ECDsa ImportPublicKey(ReadOnlySpan<byte> subjectPublicKeyInfo);
+        public static string Fingerprint(ReadOnlySpan<byte> subjectPublicKeyInfo);
+    }
+
+    internal static class OutpostSignatures
+    {
+        public static byte[] SignRequest(ECDsa agentKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body);
+        public static bool VerifyRequest(ECDsa agentPublicKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static byte[] SignAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody);
+        public static bool VerifyAnswer(ECDsa serverPublicKey, OutpostRequestKindEnum kind, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody, ReadOnlySpan<byte> signature);
+        public static byte[] SignCommand(ECDsa serverKey, ReadOnlySpan<byte> commandBytes);
+        public static bool VerifyCommand(ECDsa serverPublicKey, ReadOnlySpan<byte> commandBytes, ReadOnlySpan<byte> signature);
+    }
+
+    internal static class OutpostPairingProof
+    {
+        public static byte[] Compute(ReadOnlySpan<byte> secret, Guid agent, ReadOnlySpan<byte> agentKey);
+        public static bool Check(ReadOnlySpan<byte> secret, Guid agent, ReadOnlySpan<byte> agentKey, ReadOnlySpan<byte> proof);
+    }
+
+    internal sealed record OutpostPairingTokenText(Guid Agent, byte[] Secret, string Fingerprint)
+    {
+        public string Write();
+        public static bool TryRead(string text, [NotNullWhen(true)] out OutpostPairingTokenText? token);
+    }
+    ```
+
+    `ImportPublicKey` refuses a key that is not P-256 with `OutpostProtocolException` and
+    `form`. `Check` compares in constant time. `ToString` of `OutpostPairingTokenText`
+    leaves the secret out.
+
+    In `Moltaro.OnecOutpost.Protocol.Messages`, one record per message of §6 to §9, with
+    the members of its JSON:
+
+    ```csharp
+    internal enum OutpostModeEnum { Read, Write }
+    internal enum OutpostAgentOutcomeKindEnum { Unknown = 0, Succeeded, Failed, Refused }
+
+    internal sealed record OutpostPairRequest(string AgentVersion, byte[] Key, byte[] Proof);
+    internal sealed record OutpostPairAnswer(DateTimeOffset Time, Guid Agent, byte[] Key, byte[] ServerKey, TimeSpan PollTimeout, TimeSpan LeaseGrace);
+    internal sealed record OutpostPollMode(int Free, TimeSpan RunLimit);
+    internal sealed record OutpostPollBase(string Key, OutpostPollMode Read, OutpostPollMode? Write);
+    internal sealed record OutpostPollRequest(long Number, DateTimeOffset Time, string AgentVersion, IReadOnlyList<OutpostPollBase> Bases, IReadOnlyList<Guid> Received);
+    internal sealed record OutpostSignedCommand(byte[] Bytes, byte[] Signature);
+    internal sealed record OutpostPollAnswer(DateTimeOffset Time, bool Older, long? Newest, TimeSpan PollTimeout, TimeSpan LeaseGrace, IReadOnlyList<string> Held, IReadOnlyList<string> Claimed, IReadOnlyList<OutpostSignedCommand> Commands);
+    internal sealed record OutpostCommandMessage(int Protocol, Guid Id, Guid Agent, string Base, OutpostModeEnum Mode, string? CallerKey, string Script, JsonElement Parameters, DateTimeOffset Issued, DateTimeOffset Deadline, TimeSpan Skew, int OutcomeLimit);
+    internal sealed record OutpostOutcomeMessage(OutpostAgentOutcomeKindEnum Kind, string? Code, JsonElement? Result, string? ErrorText, IReadOnlyList<string> Messages, bool MessagesTrimmed);
+    internal sealed record OutpostOutcomeRequest(Guid Command, TimeSpan Duration, ReadOnlyMemory<byte> Outcome);
+    internal sealed record OutpostOutcomeAnswer(DateTimeOffset Time, Guid Confirmed);
+    internal sealed record OutpostRefusal(DateTimeOffset Time, string Code);
+    ```
+
+    `OutpostOutcomeRequest.Outcome` holds the exact bytes of the outcome object (§6.3,
+    §8). Its size is their length.
+
+    In `Moltaro.OnecOutpost.Protocol.Codec`:
+
+    ```csharp
+    internal static class OutpostCodec
+    {
+        public static byte[] Write(OutpostPairRequest message);
+        public static byte[] Write(OutpostPairAnswer message);
+        public static byte[] Write(OutpostPollRequest message);
+        public static byte[] Write(OutpostPollAnswer message);
+        public static byte[] Write(OutpostCommandMessage message);
+        public static byte[] Write(OutpostOutcomeMessage message);
+        public static byte[] Write(OutpostOutcomeRequest message);
+        public static byte[] Write(OutpostOutcomeAnswer message);
+        public static byte[] Write(OutpostRefusal message);
+
+        public static OutpostPairRequest ReadPairRequest(ReadOnlySpan<byte> bytes);
+        public static OutpostPairAnswer ReadPairAnswer(ReadOnlySpan<byte> bytes);
+        public static OutpostPollRequest ReadPollRequest(ReadOnlySpan<byte> bytes);
+        public static OutpostPollAnswer ReadPollAnswer(ReadOnlySpan<byte> bytes);
+        public static OutpostCommandMessage ReadCommand(ReadOnlySpan<byte> bytes);
+        public static OutpostOutcomeMessage ReadOutcome(ReadOnlySpan<byte> bytes);
+        public static OutpostOutcomeRequest ReadOutcomeRequest(ReadOnlySpan<byte> bytes);
+        public static OutpostOutcomeAnswer ReadOutcomeAnswer(ReadOnlySpan<byte> bytes);
+        public static OutpostRefusal ReadRefusal(ReadOnlySpan<byte> bytes);
+
+        public static int ValueDepth(JsonElement value);
+    }
+    ```
+
+    - Every `Read…` applies §2 and the rules of its message, and throws
+      `OutpostProtocolException` with `form`, `size` or `protocol-version`.
+    - Every `Write` writes by §2.
+    - `ValueDepth` counts the levels of §2.
+    - The depth check of the parameters that S1 wrote in the server moves here, so that
+      the limit lives in one place. That move states nothing new, as the process says.
 - **Study.** Sources, for example: the GitHub Actions runner (MIT); the Azure Pipelines agent
   (MIT); Octopus Deploy's Halibut (Apache-2.0). Questions:
   1. How each authenticates the agent to the server and the server to the agent, and what
