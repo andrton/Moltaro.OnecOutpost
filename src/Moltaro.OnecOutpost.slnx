@@ -1,5 +1,10 @@
 <Solution>
   <Project Path="Moltaro.OnecOutpost.Agent/Moltaro.OnecOutpost.Agent.csproj" />
+  <Project Path="Moltaro.OnecOutpost.Agent.Tests/Moltaro.OnecOutpost.Agent.Tests.csproj" />
   <Project Path="Moltaro.OnecOutpost.Protocol/Moltaro.OnecOutpost.Protocol.csproj" />
+  <Project Path="Moltaro.OnecOutpost.Protocol.Tests/Moltaro.OnecOutpost.Protocol.Tests.csproj" />
+  <Project Path="Moltaro.OnecOutpost.Samples/Moltaro.OnecOutpost.Samples.csproj" />
   <Project Path="Moltaro.OnecOutpost.Server/Moltaro.OnecOutpost.Server.csproj" />
+  <Project Path="Moltaro.OnecOutpost.Server.Tests/Moltaro.OnecOutpost.Server.Tests.csproj" />
+  <Project Path="Moltaro.OnecOutpost.TestSupport/Moltaro.OnecOutpost.TestSupport.csproj" />
 </Solution>

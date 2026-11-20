@@ -28,7 +28,8 @@ jobs:
           global-json-file: src/global.json
       - run: dotnet build --configuration Release
       - run: dotnet format --verify-no-changes
-      - run: dotnet test --configuration Release --no-build
+      # Every test but those that need Windows. Those that need PostgreSQL start it in Docker.
+      - run: dotnet test --configuration Release --no-build --filter-not-trait "Requires=Windows"
 
   # The same lane on Windows, where the agent, the COM worker and the console run. A
   # required check of main as well: those programs run nowhere else.
@@ -41,4 +42,5 @@ jobs:
         with:
           global-json-file: src/global.json
       - run: dotnet build --configuration Release
-      - run: dotnet test --configuration Release --no-build
+      # Every test but those that need PostgreSQL: the Windows runners have no Linux containers.
+      - run: dotnet test --configuration Release --no-build --filter-not-trait "Requires=PostgreSQL"
