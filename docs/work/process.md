@@ -6,10 +6,9 @@ whoever plans an epic, coordinates its sprints, reviews a sprint or refactors.
 
 This is the process of Moltaro.Lattice and Moltaro.Signals, carried over on 20 November
 2026. The owner's rules quoted below with their dates were made there and hold here as
-well. The accepted decisions of this project will be the decisions of the
-[concept](../concept.md), which is written next. A decision that needs more than a row of
-its table gets a record of its own in `docs/decisions`, created when the first such
-decision is.
+well. The accepted decisions of this project are the decisions D1–D17 of the
+[concept](../concept.md). A decision that needs more than a row of its table gets a
+record of its own in `docs/decisions`, created when the first such decision is.
 
 ## Three tracks
 

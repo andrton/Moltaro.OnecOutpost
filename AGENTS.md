@@ -22,11 +22,11 @@ the 1C language and its parameters. The library knows nothing of any 1C configur
 BAS and every other configuration on the 1C:Enterprise 8.3 platform are the same case. The
 oldest platform supported is 8.3.17.1851.
 
-What exists today is the repository set up: these rules, the development process and the
-build settings. The concept comes next. It will be the authority for what the library
-guarantees: its semantics, protocol principles, decisions and non-goals. Until then the
-principles below state the agreed intent, not delivered behavior. `README.md` says what
-works today; a feature is delivered when the README says so.
+What exists today is the [concept](docs/concept.md), these rules, the development process
+and the build settings; no code is written yet. The concept is the authority for what the
+library guarantees: its semantics, its rules, its decisions D1–D17, its non-goals and its
+open items. `README.md` says what works today; a feature is delivered when the README says
+so.
 
 This repository is public. Nothing specific to a private product or a customer goes into
 it: no names of customers, of their databases or configurations, and none of their data,
@@ -37,7 +37,7 @@ in code, tests, samples or documents.
 | Path | Contents |
 | --- | --- |
 | `src` | The solution, every project and the build settings. Run `dotnet` from here |
-| `docs/concept.md` | Planned: where the library comes from, its semantics, protocol principles, decisions and quality bar |
+| `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | Planned: the wire protocol, written with the sprint that introduces it |
 | `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
@@ -100,12 +100,13 @@ and trust it. A request outside the tunnel is declined, or noted as planned in t
 3. **An agent runs only what its server signed.** A command runs only when all of these
    hold:
    - it carries a valid signature by the server key that the agent pinned at pairing;
-   - it is addressed to this agent and to a base the agent serves;
-   - it has not expired and has not run before.
+   - it is addressed to this agent and to a base and a mode it serves;
+   - it has not expired.
 
-   Anything else is refused and logged. The check does not depend on the transport, so
-   nothing between the agent and the server can inject a command: not a proxy that opens
-   TLS, and not anything between an ingress and the server.
+   A command that ran before does not run again. Anything else is refused and logged. The
+   check does not depend on the transport, so nothing between the agent and the server
+   can inject a command: not a proxy that opens TLS, and not anything between an ingress
+   and the server.
 4. **The administrator of the agent machine has the last word.** A local policy on that
    machine says which bases the agent serves, which 1C account reads and which writes, and
    whether a base may be written at all. The server cannot change it. The policy decides
@@ -113,10 +114,10 @@ and trust it. A request outside the tunnel is declined, or noted as planned in t
    Every command is written to the local audit log, script included, before it runs, and
    its outcome after.
 5. **A Write runs at most once per caller key.** Every Write carries a key chosen by its
-   caller. A repeat with the same key returns the stored outcome, or that the Write is
-   still running; it never runs the script again. When the agent cannot know the outcome,
-   for example because the connection to 1C ended after the script may have committed,
-   the outcome is reported as unknown. It is never reported as a success or a failure.
+   caller. A repeat with the same key waits for the outcome of the first and returns it;
+   it never runs the script again. When the agent cannot know the outcome, for example
+   because the connection to 1C ended after the script may have committed, the outcome is
+   reported as unknown. It is never reported as a success or a failure.
 6. **Server nodes share nothing in memory.** Every fact another node needs, such as
    agents, commands and outcomes, is in the store. A node is woken through Moltaro.Signals
    and then reads the store. Any node can serve any request of any agent or caller, so an
@@ -146,7 +147,7 @@ and trust it. A request outside the tunnel is declined, or noted as planned in t
     - The protocol depends on nothing outside .NET.
     - The server depends on the protocol, ASP.NET Core, EF Core with PostgreSQL and
       Moltaro.Signals.
-    - The agent and the tools depend on the protocol.
+    - The agent and the console depend on the protocol; the shell depends on the server.
     - The COM worker depends on nothing outside .NET.
 
     Nothing depends on a product that uses the library. Inside an assembly a folder is a
@@ -173,7 +174,7 @@ row left to right: an earlier quality is not traded for a later one.
   - an outcome never reaches the caller of another command;
   - an unknown outcome is never reported as known;
   - a secret never leaves its machine;
-  - an agent that is gone is never reported as connected.
+  - an agent that is gone is reported as connected no longer than its lease.
 - **A performance claim needs a measurement.** "Faster" or "fewer queries" is accepted
   with a number from a benchmark or a query count, not by argument. Without one, the
   simpler code stays.
@@ -242,7 +243,7 @@ Naming:
   method that completes a dispose, takes none.
 - Private fields are `_camelCase`.
 - Name things for what they do for the user, not for the framework mechanism inside.
-- Use these words as the concept will define them:
+- Use these words as the concept defines them:
   - *agent*;
   - *server*;
   - *base*: one 1C database an agent serves, named by a key;
@@ -258,8 +259,8 @@ Shape of the public API:
 - Something that answers at once from local memory is synchronous. Something that can
   wait is asynchronous.
 - Expected outcomes are results, not exceptions: unavailable, refused, expired, failed in
-  1C, unknown, still running. Exceptions are for failures. `ArgumentException` and its
-  relatives report a caller's mistake; `ObjectDisposedException` follows a dispose;
+  1C, unknown. Exceptions are for failures. `ArgumentException` and its relatives report
+  a caller's mistake; `ObjectDisposedException` follows a dispose;
   `NotSupportedException` marks what is not implemented.
 - Every public member has XML documentation: what it does, what it guarantees, what it
   does not, and which errors it reports. Plain sentences, no restating of the signature.
@@ -285,7 +286,7 @@ Writing code:
   checks or the store, is tested directly through `InternalsVisibleTo` for its test
   project. Each such test states a rule of the concept or of `docs/protocol.md`, never
   how the code happens to be built.
-- Every rule of principles 3, 4 and 5 has a deterministic test.
+- Every numbered rule of the concept's section 3 has a deterministic test.
 - Time is injected through `TimeProvider`. Deadlines, expiry, polls and the timeouts of
   the COM worker are tested with a fake clock.
 - A test waits for an observed event; it never sleeps and never polls with a delay.
