@@ -10,7 +10,8 @@ namespace Moltaro.OnecOutpost.Agent.Policy;
 // required member left out. JSON comments and trailing commas are refused. A member given the value null has a wrong
 // type, not an absent one. Names of members are compared exactly. The first fault in the order of the file is reported,
 // with the path of its member and a reason that says what is wrong there and what is expected, in the form
-// "what is wrong; expected what" (Q1).
+// "what is wrong; expected what" (Q1). A reason never repeats a string value of the file, which may hold a secret such
+// as a password in the URL of the proxy (principle 9): it names what the value is, or which rule the string breaks.
 internal static class AgentPolicyReader
 {
     private const int DefaultAuditRetentionDays = 90;
@@ -117,15 +118,15 @@ internal static class AgentPolicyReader
         }
     }
 
-    // The place of a fault as a person counts it: the line from 1, and the column from 1 in characters. The reader,
-    // which always sets both, counts lines from 0 at each '\n' and the column from 0 in UTF-8 bytes of its line.
+    // The place of a fault as a person counts it: the line from 1, and the column from 1 in characters. The reader sets
+    // both for every fault it reports; it counts lines from 0 at each '\n', so its line is always one of the lines of
+    // the text, and the column from 0 in UTF-8 bytes of that line.
     private static string Place(string json, JsonException exception)
     {
-        long lineIndex = exception.LineNumber ?? 0;
-        long bytesBefore = exception.BytePositionInLine ?? 0;
+        long lineIndex = exception.LineNumber!.Value;
+        long bytesBefore = exception.BytePositionInLine!.Value;
 
-        string[] lines = json.Split('\n');
-        string line = lineIndex < lines.Length ? lines[lineIndex] : "";
+        string line = json.Split('\n')[lineIndex];
 
         int column = 1;
 
@@ -167,7 +168,7 @@ internal static class AgentPolicyReader
             {
                 throw new AgentPolicyException(
                     $"{itemPath}.key",
-                    $"the key \"{basePolicy.Key}\" is already the key of {path}[{indexOfKey[basePolicy.Key]}]; expected a key that no other base has");
+                    $"the key is already the key of {path}[{indexOfKey[basePolicy.Key]}]; expected a key that no other base has");
             }
 
             bases.Add(basePolicy);
@@ -351,34 +352,36 @@ internal static class AgentPolicyReader
         return text;
     }
 
+    // A string that breaks the rule of base keys is named by that rule, never repeated.
     private static string ReadBaseKey(JsonElement value, string path)
     {
-        string? key = value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        string key = ReadText(value, path, BaseKeyRule);
 
-        if (key is null || !OutpostNames.IsBaseKey(key))
+        if (!OutpostNames.IsBaseKey(key))
         {
-            throw WrongValue(path, value, BaseKeyRule);
+            throw new AgentPolicyException(path, $"the value is not a base key; expected {BaseKeyRule}");
         }
 
         return key;
     }
 
+    // A string that is not an absolute http URL is named by that rule, never repeated.
     private static Uri ReadProxy(JsonElement value, string path)
     {
-        string? text = value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        const string Expected =
+            "an absolute http URL such as \"http://proxy.local:3128\", or no \"proxy\" to connect directly";
+
+        string text = ReadText(value, path, Expected);
 
         if (!Uri.TryCreate(text, UriKind.Absolute, out Uri? proxy) || proxy.Scheme != Uri.UriSchemeHttp)
         {
-            // The value is never repeated: a proxy URL can hold credentials, and the message goes into the audit log
-            // (principle 9).
-            throw new AgentPolicyException(
-                path,
-                "the value is not an absolute http URL; expected an absolute http URL such as \"http://proxy.local:3128\", or no \"proxy\" to connect directly");
+            throw new AgentPolicyException(path, $"the value is not an absolute http URL; expected {Expected}");
         }
 
         return proxy;
     }
 
+    // A string of the wrong form, or of a time span outside the range, is named by the rule it breaks, never repeated.
     private static TimeSpan ReadTimeSpan(
         JsonElement value,
         string path,
@@ -386,16 +389,21 @@ internal static class AgentPolicyReader
         TimeSpan maximum,
         TimeSpan example)
     {
-        string? text = value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        string expected =
+            $"a time span of the form [d.]hh:mm:ss from {minimum:c} to {maximum:c}, such as \"{example:c}\"";
 
-        if (!TimeSpan.TryParseExact(text, TimeSpanForms, CultureInfo.InvariantCulture, out TimeSpan span)
-            || span < minimum
-            || span > maximum)
+        string text = ReadText(value, path, expected);
+
+        if (!TimeSpan.TryParseExact(text, TimeSpanForms, CultureInfo.InvariantCulture, out TimeSpan span))
         {
-            throw WrongValue(
+            throw new AgentPolicyException(
                 path,
-                value,
-                $"a time span of the form [d.]hh:mm:ss from {minimum:c} to {maximum:c}, such as \"{example:c}\"");
+                $"the value is not a time span of the form [d.]hh:mm:ss; expected {expected}");
+        }
+
+        if (span < minimum || span > maximum)
+        {
+            throw new AgentPolicyException(path, $"the time span is outside its range; expected {expected}");
         }
 
         return span;
@@ -420,8 +428,8 @@ internal static class AgentPolicyReader
         return new AgentPolicyException(path, $"the member is missing; expected {expected}");
     }
 
-    // What the file holds where a value breaks its rule: a string or a number as written in the file, and only the kind
-    // of an object or an array, so that an error never repeats more than one value.
+    // What the file holds where a value breaks its rule. A string is named only by its kind, never repeated; a number,
+    // true, false and null hold no secret and are shown as written; an object or an array is named by its kind.
     private static string Found(JsonElement value)
     {
         return value.ValueKind switch
@@ -430,7 +438,7 @@ internal static class AgentPolicyReader
             JsonValueKind.Array => "an array",
             JsonValueKind.String when value.GetString()!.Length == 0 => "empty",
             JsonValueKind.String when string.IsNullOrWhiteSpace(value.GetString()) => "only white space",
-            JsonValueKind.String => $"the string {value.GetRawText()}",
+            JsonValueKind.String => "a string",
             JsonValueKind.Number => $"the number {value.GetRawText()}",
 
             // true, false or null.

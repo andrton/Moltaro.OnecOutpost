@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Moltaro.OnecOutpost.Agent.Policy;
@@ -185,22 +186,39 @@ public sealed class PolicyRuleTests
         AssertSaysWhereAndWhat(exception, exception.Path);
     }
 
-    // A proxy URL can hold credentials, and the error goes into the audit log, so a refused proxy is never repeated in it
-    // (principle 9).
-    [Fact]
-    public void A_refused_proxy_is_not_repeated_in_the_error()
+    // A string of the file may hold a secret, such as a password in the URL of the proxy, and the error goes into the
+    // audit log, so no refusal repeats a string (principle 9). One case for each check that refuses a string for what it
+    // says: a proxy that is not an http URL, a key that is not a base key, a time span of the wrong form, and a key that
+    // an earlier base has. The secret is a part of the refused string that the error must not hold.
+    [Theory]
+    [InlineData("", "proxy", "https://svc:S3cret@gateway.example:8080", "S3cret")]
+    [InlineData("bases[0]", "key", "Key-S3cret", "S3cret")]
+    [InlineData("", "retryDelayMax", "S3cret", "S3cret")]
+    [InlineData("bases[1]", "key", "accounting", "accounting")]
+    public void A_refused_string_is_not_repeated_in_the_error(string owner, string member, string value, string secret)
     {
-        const string Proxy = "https://svc:S3cret@gateway.example:8080";
-
         JsonObject policy = ValidPolicy();
-        policy["proxy"] = Proxy;
+        Owner(policy, owner)[member] = value;
 
         AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
             () => AgentPolicyReader.Read(policy.ToJsonString()));
 
-        AssertSaysWhereAndWhat(exception, "proxy");
+        AssertSaysWhereAndWhat(exception, PathOf(owner, member));
+        Assert.DoesNotContain(secret, exception.Message, StringComparison.Ordinal);
+    }
+
+    // A policy written as a JSON string by mistake, for example encoded twice, holds the whole policy with its secrets.
+    [Fact]
+    public void A_file_that_is_a_string_is_refused_without_repeating_it()
+    {
+        const string Inner = """{ "proxy": "http://svc:S3cret@proxy.local:3128", "bases": [] }""";
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(JsonSerializer.Serialize(Inner)));
+
+        Assert.Matches("; expected .+", exception.Message);
         Assert.DoesNotContain("S3cret", exception.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain(Proxy, exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(Inner, exception.Message, StringComparison.Ordinal);
     }
 
     // Each text would be a valid policy if comments were allowed or the text were complete.
@@ -233,6 +251,19 @@ public sealed class PolicyRuleTests
         Assert.Matches(@"\bline 3\b", exception.Message);
         Assert.Matches(@"\bcolumn 5\b", exception.Message);
         Assert.Matches("; expected .+", exception.Message);
+    }
+
+    // The column counts characters, not the bytes of UTF-8. Before the comment on line 3 stand four spaces, a quote, five
+    // Cyrillic letters of two bytes each in UTF-8, a quote and a space: the comment starts at column 13, at byte 18.
+    [Fact]
+    public void The_column_of_a_fault_counts_characters_not_bytes()
+    {
+        const string Json = "{\n  \"bases\": [\n    \"\u0421\u043a\u043b\u0430\u0434\" // the warehouse\n  ]\n}";
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(() => AgentPolicyReader.Read(Json));
+
+        Assert.Matches(@"\bline 3\b", exception.Message);
+        Assert.Matches(@"\bcolumn 13\b", exception.Message);
     }
 
     // Two bases, so that a path can name the second: one on a cluster with both modes, one in a folder that is only read.
