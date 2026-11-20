@@ -58,6 +58,8 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Until answered** | `OutpostNames` counts UTF-16 code units, as `string.Length` does. No test depends on the difference. To be answered before S4, which stores agent names |
 | **Decides** | The owner: the rules of names are public contract |
 
+## Answered
+
 ### Q3. One version of EF Core and its relational package
 
 | | |
@@ -66,6 +68,8 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Question** | `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3 brings `Microsoft.EntityFrameworkCore.Relational` at its lowest allowed version, 10.0.4, while the server references `Microsoft.EntityFrameworkCore` 10.0.15. Should the server reference the relational package as well, so that both are at one version? The plan names only the two packages |
 | **Until answered** | Nothing uses EF Core yet, and the versions stay as they are. To be answered before S3's contract step |
 | **Decides** | The planner |
+| **Answer** | 20 November 2026, the planner: yes. The server also references `Microsoft.EntityFrameworkCore.Relational`, at the same version as `Microsoft.EntityFrameworkCore`, so that every EF Core assembly the package brings is of one version |
+| **Now lives in** | The S1 brief of the [epic document](epic-1-first-release.md), its list of references, and `src/Directory.Packages.props` |
 
 ### Q4. The exact text that `SigningKeyPem` accepts
 
@@ -75,6 +79,8 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Question** | The check of `SigningKeyPem` reads the first PEM block and ignores any text after it, so a text with a second block passes. Which text exactly does the option accept, so that the sprint that imports the key reads it the same way and never refuses a key that passed the check? |
 | **Until answered** | The first block must be the unencrypted PKCS#8 PEM of an ECDSA P-256 private key; the rest of the text is ignored, and no test states it. To be answered before S2's contract step, which signs with the key |
 | **Decides** | The planner |
+| **Answer** | 20 November 2026, the planner: the option accepts exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it. Any other text, a second block included, is refused with `ArgumentException` whose `ParamName` is `SigningKeyPem`, so that the import of S2 reads exactly what the check accepted |
+| **Now lives in** | The row of `SigningKeyPem` in the options table of the [epic document](epic-1-first-release.md), and the XML documentation of the option |
 
 ### Q5. How deep the parameters of a command may nest
 
@@ -84,7 +90,5 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Question** | The parameters are written and read as JSON, and System.Text.Json refuses a nesting deeper than its default of 64 levels, so a caller can observe that limit. By `AGENTS.md` principle 10 an observable limit is an option with a default. Is it a limit that `docs/protocol.md` fixes for every message, an option of the server, or something else? |
 | **Until answered** | `ReadAsync` and `WriteAsync` refuse parameters nested deeper than 64 levels, or holding a number that is not finite, with `ArgumentException` whose `ParamName` is `Parameters`. The documentation does not state the number, and no test pins it. To be answered before S2's contract step, which fixes the limits of the messages |
 | **Decides** | The planner, and the owner if it becomes an option |
-
-## Answered
-
-None.
+| **Answer** | 20 November 2026, the planner: a fixed limit of the protocol, not an option, like the lengths of names. Every JSON message of the protocol, parameters and results included, nests at most 64 levels |
+| **Now lives in** | `AGENTS.md` principle 10; the rule of names for the parameters and "The protocol" in the [epic document](epic-1-first-release.md); the XML documentation of `Parameters`; `docs/protocol.md` when S2 writes it |

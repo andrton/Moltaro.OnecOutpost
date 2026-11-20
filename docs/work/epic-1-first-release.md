@@ -235,7 +235,7 @@ audit log, and `MessagesTrimmed`, the marker of rule 5.
   | Caller key | 1 to 200 characters, each from U+0021 to U+007E (printable ASCII without the space); compared exactly |
   | Agent name | 1 to 100 characters, no control character, no white space at the start or the end |
   | Script | At least one character that is not white space, and no U+0000 |
-  | Parameters | No string in them holds U+0000, which PostgreSQL cannot store |
+  | Parameters | No string in them holds U+0000, which PostgreSQL cannot store; they nest at most 64 levels, the limit of every JSON message of the protocol (Q5) |
   | Schema | 1 to 63 characters, each one of `a–z 0–9 _`, the first a letter |
   | Endpoint prefix | `/` followed by one or more segments of `A–Z a–z 0–9 - _ .` separated by `/`, not ending with `/`; no segment is `.` or `..` |
 - **Sizes.** Every size is counted on the bytes that the protocol carries: UTF-8, with
@@ -336,7 +336,7 @@ public sealed class OutpostServerOptions
 | --- | --- | --- |
 | `ConnectionString` | The PostgreSQL connection of the store | Required |
 | `Schema` | The schema of the store | The rule of names |
-| `SigningKeyPem` | The server's signing key, as PKCS#8 PEM of an ECDSA P-256 private key. The application keeps it in its own secret storage; one line of .NET creates one: `ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()` | Required |
+| `SigningKeyPem` | The server's signing key, as PKCS#8 PEM of an ECDSA P-256 private key. The application keeps it in its own secret storage; one line of .NET creates one: `ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()` | Required: exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it; any other text, a second block included, is refused (Q4) |
 | `SignalKeyPrefix` | The prefix of every key the library sets or subscribes to | A name of Moltaro.Signals of at most 64 characters |
 | `PollTimeout` | How long a poll waits for a command | 1 second to 5 minutes |
 | `LeaseGrace` | What an agent's lease adds to the poll timeout (rule 6) | 1 second to 5 minutes |
@@ -800,6 +800,8 @@ It has to say:
   signed: over the bytes of the body, the kind of request and the agent's identity;
 - the form of the pairing token, and the pairing proof;
 - the fingerprint of a key;
+- the nesting limit of every JSON message, parameters and results included: at most 64
+  levels, a fixed limit of the protocol and not an option (Q5);
 - **What every poll answer carries:**
   - the commands;
   - the bases the agent holds and those that another agent holds (rule 14);
@@ -999,8 +1001,10 @@ approval of this plan.
     - `Moltaro.OnecOutpost.Protocol`, with no package reference and not packed by itself;
     - `Moltaro.OnecOutpost.Server`, packed, carrying the protocol assembly inside its
       package (PQ6). It references the ASP.NET Core shared framework,
-      `Microsoft.EntityFrameworkCore`, `Npgsql.EntityFrameworkCore.PostgreSQL` and
-      `Moltaro.Signals`, whose versions go into `Directory.Packages.props`;
+      `Microsoft.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.Relational` at the
+      same version as `Microsoft.EntityFrameworkCore` (Q3),
+      `Npgsql.EntityFrameworkCore.PostgreSQL` and `Moltaro.Signals`, whose versions go into
+      `Directory.Packages.props`;
     - `Moltaro.OnecOutpost.Agent`, a program, not packed.
 
     The server project has a package description and `GenerateDocumentationFile` set.
@@ -1068,6 +1072,19 @@ approval of this plan.
   to `AGENTS.md`, "Code Style", and Spectre.Console to principle 12; the lines of the
   console and of the shell in [Stages 2 and 3](#the-contracts-of-stages-2-and-3) point to
   that rule, and the acceptance of S10 and S11 checks it.
+- **The planner's answers of 20 November 2026** to the
+  [open questions](open-questions.md) Q3–Q5 that the sprint found, each with its test
+  where it changes a check:
+  - Q3: the server also references `Microsoft.EntityFrameworkCore.Relational`, at the
+    version of `Microsoft.EntityFrameworkCore`, so that every EF Core assembly of the
+    package is of one version;
+  - Q4: `SigningKeyPem` accepts exactly one PEM block with nothing but white space around
+    it, as its row in the options table says, so that the import of S2 reads exactly what
+    the check accepted;
+  - Q5: every JSON message of the protocol, parameters and results included, nests at
+    most 64 levels. It is a fixed limit of the protocol, not an option, as `AGENTS.md`
+    principle 10 now says. The rule of names states it for the parameters, and
+    `docs/protocol.md` states it when S2 writes it.
 - **Corrections from the review.** Round 1 found that the sentence of
   [`OutpostCodes`](#outpostcodes) on Refused said every Refused frees the caller key. As
   concept rule 4 says, only a command that ended as Refused or Expired frees its key; a
