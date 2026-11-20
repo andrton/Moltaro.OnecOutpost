@@ -22,11 +22,15 @@ the 1C language and its parameters. The library knows nothing of any 1C configur
 BAS and every other configuration on the 1C:Enterprise 8.3 platform are the same case. The
 oldest platform supported is 8.3.17.1851.
 
-What exists today is the [concept](docs/concept.md), these rules, the development process
-and the build settings; no code is written yet. The concept is the authority for what the
-library guarantees: its semantics, its rules, its decisions D1–D17, its non-goals and its
-open items. `README.md` says what works today; a feature is delivered when the README says
-so.
+What exists today is the [concept](docs/concept.md), these rules, the development process,
+the build settings, and the public contract of the first stage in code: the server
+library, the protocol assembly and the agent program. Only the checks that need no
+implementation work; everything else throws `NotSupportedException`. The server is the one
+package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
+assembly inside it, so that the two can never be mixed at different versions. The concept
+is the authority for what the library guarantees: its semantics, its rules, its decisions
+D1–D17, its non-goals and its open items. `README.md` says what works today; a feature is
+delivered when the README says so.
 
 This repository is public. Nothing specific to a private product or a customer goes into
 it: no names of customers, of their databases or configurations, and none of their data,
@@ -42,20 +46,24 @@ in code, tests, samples or documents.
 | `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
-The projects are planned. Each is created by the sprint that first needs it, and the plan
-of the first epic fixes the names:
+Each project is created by the sprint that first needs it, under the name the plan of the
+first epic fixes. The protocol, the server, the agent, the samples, the test support and
+the test projects of these three exist; the others are planned. Only the server is packed;
+every other project is not.
 
 | Project | Contents |
 | --- | --- |
-| `Moltaro.OnecOutpost.Protocol` | The messages of the tunnel, their version and their signatures, shared by the server and the agent. No package dependencies |
-| `Moltaro.OnecOutpost.Server` | The server library: the endpoints for agents, pairing, the store of agents and commands on PostgreSQL through its own EF Core context, and the Read and Write calls of the application that embeds it |
+| `Moltaro.OnecOutpost.Protocol` | The messages of the tunnel, their version and their signatures, shared by the server and the agent. No package dependencies, and no package of its own: it travels inside the server's package |
+| `Moltaro.OnecOutpost.Server` | The server library: the endpoints for agents, pairing, the store of agents and commands on PostgreSQL through its own EF Core context, and the Read and Write calls of the application that embeds it. The one package of the repository |
 | `Moltaro.OnecOutpost.Agent` | The Windows service: the connection to the server, the checks of every command, the local policy and the audit log, and the COM worker processes it runs |
 | `Moltaro.OnecOutpost.ComWorker` | The only process that touches COM: it opens the external connection to one database and runs scripts in it. Built for x64 and x86 |
 | `Moltaro.OnecOutpost.Console` | The console of the agent machine: install, pair, check, collect metadata |
 | `Moltaro.OnecOutpost.Shell` | A console that runs a server of its own and sends Read and Write by hand, to try the tunnel without an application |
 | `src/Executor` | The 1C external data processor that runs a script inside 1C: its XML sources and the built `.epf`. Only the 1C Designer builds it |
+| `Moltaro.OnecOutpost.Samples` | The samples of use: an ASP.NET Core application that embeds the server. Each runs to the end with `dotnet run` |
+| `Moltaro.OnecOutpost.Measurements` | Planned: the program that measures the latency target of the concept, run by hand, never in CI or in the tests |
 | `src/*.Tests` | Tests, one project per library or program |
-| `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake of the COM worker. Never shipped; no tests |
+| `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake clock, the PostgreSQL fixture and the fake of the COM worker. Never shipped; no tests |
 
 The repository root holds only repository-level files. Code never lives there.
 

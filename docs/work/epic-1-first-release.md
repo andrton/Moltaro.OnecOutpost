@@ -1,8 +1,8 @@
 # Epic 1: First release
 
-**Status:** the plan is proposed and waits for the owner's approval; no sprint has
-started. The owner answered PQ1–PQ6 on 20 November 2026. Merging this plan approves it and
-the public contract of stage 1.
+**Status:** approved by the owner on 20 November 2026, with the public contract of stage
+1; the owner answered PQ1–PQ6 the same day. [Status](#status) says where each sprint
+stands.
 
 ## Goal
 

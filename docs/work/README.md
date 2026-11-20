@@ -5,18 +5,23 @@ delivered over several sprints.
 
 | Epic | Result | Status |
 | --- | --- | --- |
-| [1. First release](epic-1-first-release.md) | The agent, the server and the tools as the concept describes them; the server published on nuget.org and the agent released as its first version | Planned; the plan waits for the owner's approval |
+| [1. First release](epic-1-first-release.md) | The agent, the server and the tools as the concept describes them; the server published on nuget.org and the agent released as its first version | In progress: the plan is approved, and the [status of its sprints](epic-1-first-release.md#status) says where each stands |
 
 ## The repository as it is set up
 
-- `src` holds the build settings and an empty solution. The projects that `AGENTS.md`
-  plans are created by the sprints that first need them.
-- The tests will run on xUnit.net v3 and Microsoft.Testing.Platform. The sprint that
-  creates the first test project names that runner in `src/global.json`; a solution
-  without projects cannot run under it.
+- `src` holds the build settings and the solution. Its projects are the protocol, the
+  server, the agent, the samples, the test support and the test projects of the first
+  three. The other projects that `AGENTS.md` plans are created by the sprints that first
+  need them.
+- The tests run on xUnit.net v3 and Microsoft.Testing.Platform, which `src/global.json`
+  names as the runner. A test that needs PostgreSQL has the trait `Requires=PostgreSQL`
+  and starts it in Docker through Testcontainers; a test that needs Windows has the trait
+  `Requires=Windows`.
 - CI builds and tests every pull request on Linux (`build`) and on Windows (`windows`).
   Both are required checks of `main`, because the agent and the COM worker run on Windows
-  only.
+  only. The `build` job runs every test without `Requires=Windows`, and the `windows` job
+  every test without `Requires=PostgreSQL`, because GitHub's Windows runners have no
+  Linux containers.
 - The rules of `main` and of release tags are files in `.github/rulesets`. GitHub applies
   them only after the owner does, as [branches and releases](branches.md#setting-it-up-on-github)
   describes.
