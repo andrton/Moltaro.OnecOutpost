@@ -187,9 +187,10 @@ public sealed class PolicyRuleTests
     }
 
     // A string of the file may hold a secret, such as a password in the URL of the proxy, and the error goes into the
-    // audit log, so no refusal repeats a string (principle 9). One case for each check that refuses a string for what it
-    // says: a proxy that is not an http URL, a key that is not a base key, a time span of the wrong form, and a key that
-    // an earlier base has. The secret is a part of the refused string that the error must not hold.
+    // audit log, so no refusal repeats a string (principle 9). One case for each check that refuses a string which may
+    // hold anything: a proxy that is not an http URL, a key that is not a base key, a time span of the wrong form, and a
+    // key that an earlier base has. A time span outside its range has the right form, only digits, "." and ":", so it
+    // holds no secret and has no case here. The secret is a part of the refused string that the error must not hold.
     [Theory]
     [InlineData("", "proxy", "https://svc:S3cret@gateway.example:8080", "S3cret")]
     [InlineData("bases[0]", "key", "Key-S3cret", "S3cret")]
