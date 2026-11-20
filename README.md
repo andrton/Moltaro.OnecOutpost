@@ -62,7 +62,9 @@ dotnet test
 
 Planned: the server library on [nuget.org](https://www.nuget.org), published by the
 [Publish](.github/workflows/publish.yml) workflow when a version tag is pushed, and the
-agent with its console as a signed archive on GitHub Releases. Nothing is published yet.
+agent with its console as an archive on GitHub Releases, with its SHA-256 checksum. The
+programs of the archive are not signed, so an antivirus program may ask for an exception
+for the agent. Nothing is published yet.
 [Branches and releases](docs/work/branches.md) describes how work reaches `main` and how a
 version is released.
 

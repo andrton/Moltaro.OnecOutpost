@@ -5,7 +5,7 @@ delivered over several sprints.
 
 | Epic | Result | Status |
 | --- | --- | --- |
-| 1. First release | The agent, the server and the tools as the concept describes them; the server published on nuget.org and the agent released as its first version | Not planned yet: the plan follows the [concept](../concept.md) |
+| [1. First release](epic-1-first-release.md) | The agent, the server and the tools as the concept describes them; the server published on nuget.org and the agent released as its first version | Planned; the plan waits for the owner's approval |
 
 ## The repository as it is set up
 

@@ -147,7 +147,8 @@ and trust it. A request outside the tunnel is declined, or noted as planned in t
     - The protocol depends on nothing outside .NET.
     - The server depends on the protocol, ASP.NET Core, EF Core with PostgreSQL and
       Moltaro.Signals.
-    - The agent and the console depend on the protocol; the shell depends on the server.
+    - The agent depends on the protocol, the console on the agent and the protocol, and
+      the shell on the server.
     - The COM worker depends on nothing outside .NET.
 
     Nothing depends on a product that uses the library. Inside an assembly a folder is a
@@ -174,7 +175,8 @@ row left to right: an earlier quality is not traded for a later one.
   - an outcome never reaches the caller of another command;
   - an unknown outcome is never reported as known;
   - a secret never leaves its machine;
-  - an agent that is gone is reported as connected no longer than its lease.
+  - an agent that is gone is reported as connected no longer than its lease, plus the
+    difference between the clocks of the server nodes.
 - **A performance claim needs a measurement.** "Faster" or "fewer queries" is accepted
   with a number from a benchmark or a query count, not by argument. Without one, the
   simpler code stays.

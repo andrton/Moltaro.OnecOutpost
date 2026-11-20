@@ -92,7 +92,8 @@ A command travels like this:
   - **Refused**, with a code that says which check refused it;
   - **Unavailable**: the agent of the base is not connected, and no command was created;
   - **Expired**: the command did not reach the agent in time (rule 7);
-  - **Unknown**: a Write whose effect in 1C cannot be known.
+  - **Unknown**: a Write whose effect in 1C cannot be known, or whose outcome could not be
+    delivered (rule 11).
 
 ### The two commands
 
@@ -152,7 +153,9 @@ as section 11 says.
      setting of its own.
 
    Anything else is refused with a code, among them `expired` and `clock-skew`, and
-   recorded in the audit log.
+   recorded in the audit log. A command whose signature does not verify is only recorded:
+   nothing in it can be trusted, its identity included, so the agent reports nothing for
+   it, and the server ends it by rules 7 and 11.
 2. **The audit log comes first.** The agent records each command in the audit log:
    - when it receives it: time, identity, base, mode, caller key, script and parameters;
    - when it ends: its outcome and duration;
@@ -177,10 +180,11 @@ as section 11 says.
 5. **Failed means nothing was written.** A Write fails only when 1C rolled back its
    transaction.
    - The executor checks the type of the result and the size of the whole outcome before
-     it commits. The size covers the result, the user messages and the error text. Before
+     it commits. The size covers the result, the user messages and the error text,
+     counted in UTF-8 as they travel, with characters outside ASCII not escaped. Before
      the check, the executor trims the messages and the text to fit and marks that it did.
      An outcome that still fails either check rolls the Write back and fails it with
-     `result-type` or `result-too-large`. The size limit, 16 MB by default, travels in the
+     `result-type` or `result-too-large`. The size limit, 16 MiB by default, travels in the
      signed command, so the agent and the server judge by the same number. A Read is
      checked the same way.
    - When the agent cannot tell whether the commit happened, the outcome is Unknown, never
@@ -194,13 +198,15 @@ as section 11 says.
    timeout plus a grace, 10 seconds by default.
    - A call to a base whose agent is not connected returns Unavailable at once and creates
      no command, unless its caller key names an existing command (rule 4).
-   - An agent that is gone is reported as connected no longer than its lease.
+   - An agent that is gone is reported as connected no longer than its lease, plus the
+     difference between the clocks of the nodes, which are expected to be synchronized.
    - The server keeps nothing for later delivery.
 7. **A command waits for a poll only until its take deadline.** A command waits in the
    store until a poll of its agent takes it, for example while the workers of its base are
    busy, but at most until its take deadline, 30 seconds by default. Then it ends as
    Expired. Taking and expiring are one conditional change of the command in the store,
-   judged by the store's clock; the first to commit wins.
+   judged by the clock of the node that makes the change; the first to commit wins,
+   whatever the clocks say.
    - A command that no poll ever took expires at its take deadline.
    - A command that was ever handed out may still reach the agent, from a lost or held-back
      poll answer, and the agent accepts it until its own clock passes the take deadline
@@ -220,10 +226,13 @@ as section 11 says.
    A script that exceeds it ends with its worker. A Read then fails with the code
    `run-limit`, and a Write is Unknown. The agent reports its run limits in its polls.
 10. **Only the newest poll takes commands.** The agent has one poll open at a time, and it
-    numbers its polls with numbers that increase across restarts.
-    - A poll takes commands only while it is the newest poll of its agent in the store. An
-      older poll ends without commands and changes nothing else: not the lease, not the
-      bases, not the list of received commands.
+    numbers its polls with numbers that increase across restarts. It starts from its clock,
+    and when the server answers that a poll is older, it continues above the newest number
+    that answer names, so that a clock set back stalls nothing.
+    - A poll takes commands only while it is the newest poll of its agent in the store. A
+      poll whose number is not greater than the newest one recorded counts as older, an
+      exact replay included. An older poll ends without commands and changes nothing
+      else: not the lease, not the bases, not the list of received commands.
     - The agent records every command it received in its audit log before it opens its
       next poll.
 11. **A taken command is never lost and never doubled.** Every poll lists the commands the
@@ -234,6 +243,9 @@ as section 11 says.
     - The agent sends an outcome until the server confirms it. The server accepts the first
       outcome of a command, and only from the agent it handed the command to; a later one
       changes nothing.
+    - When the server, or something on the path, refuses an outcome for its size, the agent
+      replaces it with Unknown `result-too-large` for a Write and Failed
+      `result-too-large` for a Read, and sends that instead.
     - A taken command whose agent stays disconnected for longer than the command's run
       limit ends as rule 3 says: Unknown for a Write, Failed with `lost` for a Read.
     - When the agent comes back, the outcome the server set is replaced in two cases. The
@@ -263,8 +275,11 @@ as section 11 says.
    - a random secret of 128 bits;
    - the SHA-256 fingerprint of the server's public signing key.
 
-   The token can be used once and expires after 15 minutes by default. The server keeps
-   the secret in its store until the token is used or expires, and deletes it then.
+   The token can be used once and expires after 15 minutes by default, judged by the
+   clock of the node that redeems it; a node whose clock is off makes it last that much
+   longer or shorter. The server keeps the secret in its store until the token is used,
+   and deletes it in the same change that redeems the token. A token that expires unused
+   is removed by the next purge.
 2. On the agent machine, the administrator runs the console with the server's address and
    the token.
 3. The agent creates its own ECDSA P-256 key pair and keeps the private key as section 5
@@ -295,15 +310,16 @@ that is later work.
 
 | Threat | What stops it |
 | --- | --- |
-| Something on the path injects or changes a command, for example a proxy that opens TLS or a compromised hop behind the ingress | The server's signature over the exact bytes, by the key the agent pinned (rule 1) |
+| Something on the path injects or changes a command or an answer of the server, for example a proxy that opens TLS or a compromised hop behind the ingress | The server's signature over the exact bytes, by the key the agent pinned (rule 1, §6), except a bare HTTP 413, which can only make an outcome less known (§6) |
 | The same hop answers the pairing with its own key, or puts its own key in place of the agent's | The fingerprint of the server key in the pairing token, and the HMAC of the agent's key with a secret that never travels |
 | A captured command is sent again, also after the caller was told it expired | The take deadline, the audit log, and an expiry of a handed-out command that the agent's own signed time decides (rules 1, 3, 7) |
 | Someone poses as an agent, replays its requests or forges an outcome | The agent's signature on every request, the poll numbers (rule 10), and the rule that only the first outcome counts, and only from the agent the command was handed to (rule 11) |
 | Two agents claim the same base, by mistake or on purpose | The first claim binds the key (rule 14) |
 | The application, or whoever controls it, is compromised | It can run scripts only on the bases and in the modes the local policy opens, under the 1C accounts the administrator chose, in safe mode, and every command is in the local audit log |
 | A script tries to reach the operating system | Safe mode (open items O1, O6) |
-| The server's database leaks | It holds no agent secret and no signing key, which stays in the application's secret storage. It does hold the secrets of pairing tokens not used yet, for at most their 15 minutes: whoever reads one in time can pair an agent of their own. It also holds the scripts, parameters and results of commands until their retention |
+| The server's database leaks | It holds no agent secret and no signing key, which stays in the application's secret storage. It does hold the secrets of pairing tokens not used yet, until they are used, or until the purge after their expiry: whoever reads one in time can pair an agent of their own. It also holds the scripts, parameters and results of commands until their retention |
 | A file of the agent machine leaks | The agent's private key and the 1C passwords are encrypted with DPAPI for that machine, so a copy is useless elsewhere |
+| The whole agent machine is cloned | Nothing: the clone carries the agent's identity and secrets. Two running copies of one agent void rules 3 and 11. A clone must not run the agent until it is paired anew with a token of its own |
 
 Confidentiality rests on TLS. Whoever opens TLS on the path can read the scripts,
 parameters and results that pass, but can neither change nor inject them.
@@ -321,7 +337,8 @@ Write.
   - the protocol version, the agent version, the poll number and the agent's time;
   - the bases, with their modes, free workers and run limits;
   - the received commands whose outcome is not confirmed.
-- After an error, the agent retries with a growing delay, from 1 second up to 30 seconds.
+- After an error, the agent retries with a growing delay, up to the longest delay of its
+  local policy, 30 seconds by default.
 - The agent judges deadlines by its own clock, with the skew the server puts in every
   command, 2 minutes by default (rule 1). Its polls carry its time (rule 7). The server's
   answers carry the server's time only so that the console can report the skew.
@@ -366,18 +383,24 @@ for its timeout and let an outcome of the size limit through.
   A Write running at that moment is Unknown (rule 3).
 - A worker that crashes or hangs is ended and started again, with a growing delay.
 
-**The local policy** is a JSON file next to the agent, kept by the administrator of that
-machine. For each base it gives:
+**The local policy** is a JSON file in the agent's data folder, kept by the administrator
+of that machine. For each base it gives:
 
 - the key;
 - the connection: a server and a database name, or the path of a file database;
 - the read account, and the write account if writing is allowed;
 - the workers and the run limit of each mode.
 
+**The data folder** holds the local policy, the secrets, the audit log and the outcomes
+not yet confirmed. Nobody but administrators, SYSTEM and the agent's account has any right
+to it. The agent's account may only read it, except where it writes the audit log and the
+outcomes, and the agent refuses to start when the folder or a file it reads admits anybody
+else.
+
 **The secrets** are the agent's private key and the passwords of the 1C accounts. They
-are encrypted with DPAPI for the machine and kept in a file that only the agent's account
-and administrators can read. The console, run by an administrator, writes them. The
-server can neither read nor change the policy or the secrets.
+are encrypted with DPAPI for the machine and kept in the data folder. The console, run by
+an administrator, writes them. The server can neither read nor change the policy or the
+secrets.
 
 **The audit log** is a set of local files, one JSON line per entry, one file per day. It
 is kept for 90 days by default and never for less than a day.
@@ -394,7 +417,8 @@ supported platform. It is committed as the built `.epf` and its XML sources.
   - the COM connector and its version;
   - the connection to each base under each account;
   - the rights to change data that the read account has;
-  - the server and the clock skew;
+  - the server and the clock skew, without polling, so that the console never takes the
+    place of the service's poll;
 - write a local metadata report of a base: its objects, their fields and how they are
   stored. The report is a local archive for a developer and does not go through the
   server.
@@ -417,7 +441,16 @@ for the agents it talks to.
     confirmation.
 - A command travels as the exact UTF-8 bytes of its JSON with a separate ECDSA P-256
   signature over those bytes. The agent verifies the bytes before it parses them, so no
-  re-serialization stands between the signature and what runs. The command names:
+  re-serialization stands between the signature and what runs.
+- Every answer of the server is signed in the same way and bound to the request it
+  answers by the SHA-256 of that request's exact body. The agent verifies an answer
+  before it acts on any of it, and treats an answer that does not verify as a lost one.
+- There is one exception: a bare HTTP 413 to an `outcome` request, which an ingress or the
+  web server sends before the library sees the request. The agent acts on it as rule 11
+  says, because all it can cause is Unknown or Failed `result-too-large`. That never
+  claims a success and never frees a caller key, so a forged 413 can only make an outcome
+  less known.
+- A command names:
   - the protocol version, its identity, the agent, the base and the mode;
   - the caller key, if it has one;
   - the script and the parameters;
@@ -442,7 +475,7 @@ The plan of the first epic fixes the names. In outline:
   text and the user messages.
 
 The agent, the COM worker, the console and the shell are programs, not libraries. Their
-contract is their command line, the local policy, the secrets file and the audit log.
+contract is their command line, the local policy and the audit log.
 
 ## 8. Decisions
 
@@ -451,7 +484,7 @@ contract is their command line, the local policy, the secrets file and the audit
 | D1 | The agent dials out over HTTPS with long polling. There is no WebSocket and no gRPC | Polls pass every proxy and need nothing special from an ingress. A held socket would tie the agent to one node, which would still need the store and the signals to meet the caller |
 | D2 | A tunnel with two commands, Read and Write, each a script in the 1C language. There is no model of 1C objects | A script reaches everything the configuration offers. A model would never be complete and would tie the library to configurations |
 | D3 | 1C is reached through the external connection and the executor `.epf`. OData, HTTP services and the DBMS are not used | The external connection needs no change of the configuration and no web server, and keeps the rights and the logic of 1C |
-| D4 | Every command is signed over its exact bytes with the server key that the agent pinned at pairing, checked against the fingerprint in the pairing token | Nothing between the agent and the server can turn into a command, whatever the TLS path looks like |
+| D4 | Every command and every answer of the server is signed over its exact bytes with the server key that the agent pinned at pairing, checked against the fingerprint in the pairing token. The one exception is a bare HTTP 413 to an outcome (§6) | Nothing between the agent and the server can turn into a command or change what the agent acts on, whatever the TLS path looks like, beyond making an outcome less known |
 | D5 | An agent signs every request with its own key pair, created at pairing and bound to its token by an HMAC with a secret that never travels. The server keeps only the public key. Polls are numbered, and only the newest takes commands | No secret of the agent ever travels or sits on the server, nobody on the path can pair in its place, and a replayed request achieves nothing |
 | D6 | The local policy decides bases, accounts and modes. The server cannot change it, and there is no list of allowed scripts | The administrator of the back office keeps the last word, and the tunnel stays a tunnel |
 | D7 | The audit log is written before a command runs, and it is also the agent's journal | The administrator sees everything that was done, independently of the server, and there is one record, not two |
@@ -460,7 +493,7 @@ contract is their command line, the local policy, the secrets file and the audit
 | D10 | An agent that is not connected gives Unavailable at once. A command waits for a poll for at most its take deadline, then expires. A command that was handed out expires only when the agent's own signed time shows it can no longer accept it. Nothing is delivered later | A caller knows at once, and a command reported as expired never runs |
 | D11 | COM runs only in worker processes, per base and mode, with the connector's bitness, and they end with the agent | A failure of COM ends at most the commands of one base, and no orphan session outlives the agent |
 | D12 | Scripts run in safe mode | A script can work with data but cannot reach the operating system of the machine it runs on |
-| D13 | The agent's private key and the 1C passwords are encrypted with DPAPI for the machine, in a file only the agent's account and administrators can read. The signing key of the server stays in the application's secret storage. The only secret in the store is that of an unused pairing token, deleted when it is used or expires | No secret travels, none lives long in the store, and a copied file is useless |
+| D13 | The agent's private key and the 1C passwords are encrypted with DPAPI for the machine, in the agent's data folder, to which only administrators, SYSTEM and the agent's account have rights. The signing key of the server stays in the application's secret storage. The only secret in the store is that of an unused pairing token, deleted when it is used or removed by the purge after it expires | No secret travels, none lives long in the store, and a copied file is useless |
 | D14 | The oldest supported platform is 1C:Enterprise 8.3.17.1851, and the executor is built with its Designer. The COM connector has the version of the cluster | The oldest version in use by the first adopters, and a connector of another version does not connect |
 | D15 | Versions stay 0.x until a first production adopter runs on the library. Every request carries the protocol version | Changes stay cheap until someone depends on them, and agents are updated later than servers |
 | D16 | The library is generic and public, under Apache-2.0. Nothing of a particular customer or product goes into it | It can be read, trusted and used by anybody |
