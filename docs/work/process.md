@@ -48,7 +48,8 @@ with one brief per sprint. A brief has to be enough for an agent that knows noth
 - **To read** — the decisions and documents the sprint depends on, with their dates.
 - **Acceptance** — the behaviors the tests have to state. For a sprint whose goal names a
   performance target, also what is measured: a benchmark or a query count. For a sprint
-  that needs a real 1C, the manual acceptance on a copy of a database on a lab machine.
+  that needs a real 1C, its tests on a lab machine and the manual acceptance of what no
+  test can make, on the lab's test base or on a copy of a database.
 - **Out of scope** — what the sprint deliberately leaves alone.
 - **Track** — full, refactoring or light.
 
@@ -303,7 +304,8 @@ what was adapted and what was only taken as an idea.
 - A finding keeps coming back after the coordinator has settled it once, as
   [Review](#review) describes. The number of review rounds alone is no reason to stop.
 - A dispute the coordinator cannot settle.
-- A check that would need a real 1C database other than a copy on a lab machine.
+- A check that would need a real 1C database other than the test base or a copy of a
+  database on a lab machine.
 - Anything destructive, or anything that leaves this repository: a push, a pull request,
   a merge, a release tag. A standing permission of the owner, as
   [branches and releases](branches.md#who-does-what) describes it, covers the push, the

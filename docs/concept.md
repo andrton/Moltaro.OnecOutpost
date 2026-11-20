@@ -139,8 +139,8 @@ The script's contract is the same for both:
 ### Rules
 
 These are the guarantees. Each numbered rule has a deterministic test. The parts that only
-1C can show, such as the transaction of the executor in rule 5, are also accepted by hand,
-as section 11 says.
+1C can show, such as the transaction of the executor in rule 5, are also tested on a lab
+machine, as section 11 says.
 
 1. **Only a signed command runs.** The agent runs a command only when all of these hold:
    - its signature verifies, over its exact bytes, with the server key the agent pinned at

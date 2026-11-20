@@ -52,7 +52,7 @@ Also left out, because nothing needs them now:
 
 | # | Decision |
 | --- | --- |
-| OD1 | **The lab machine** (20 November 2026). The owner provides, when a sprint asks for it, a Windows machine with 1C:Enterprise 8.3.17.1851 and a copy of a database, and builds the executor `.epf` from its XML sources with the Designer of that version. No CI job needs 1C. |
+| OD1 | **The lab machine** (20 November 2026). The owner provides, when a sprint asks for it, a Windows machine with 1C:Enterprise 8.3.17.1851 and its Designer, and builds the executor `.epf` from its XML sources with the Designer of that version. No CI job needs 1C. By the owner's answer of the same day on tests with 1C, the machine holds the repository's test base, built from `src/OneC.TestConfiguration`, and at least one copy of a typical base on its 1C cluster, and runs the tests that need 1C there. |
 | OD2 | **Waiting for a busy worker** (20 November 2026, with the merge of the concept). A command for a base whose workers are all busy waits up to its take deadline, 30 seconds by default, and then ends as Expired (rule 7, D10). |
 | OD3 | **The built executor in Git** (20 November 2026). The `.epf` is committed with its XML sources, because only the Designer builds it. The departure from the working rules is exception X1 of the [register](exceptions.md). |
 | OD4 | The answers to PQ1–PQ6 below (20 November 2026). |
@@ -81,8 +81,8 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R14 | The console: install, uninstall, pair, write a secret, check, write a metadata report | Concept §5 | Must | Absent | S10 |
 | R15 | The shell: a server of its own, pairing tokens, Read and Write by hand | Concept §2, §5 | Must | Absent | S11 |
 | R16 | Every timeout and limit that an application or an administrator can observe is an option with a default, validated when it is set; time comes from `TimeProvider` | `AGENTS.md`, principle 10 | Must | Absent | S1–S11 |
-| R17 | Tests as concept §11 and `AGENTS.md` require: a deterministic test of every numbered rule, the transport over loopback HTTP, the store against a real PostgreSQL, a fake clock, no sleeps; 1C only in the `Requires=OneC` tests on the lab machine, never in CI | Concept §11; `AGENTS.md` | Must | Absent | S1–S11 |
-| R18 | The answers to open items O1–O8, from the lab check, written into the concept; the `Requires=OneC` tests and the manual acceptance of S9, S10 and S11 on the lab machine, on the test base and on a copy of a typical base | Concept §11, §12; OD1 | Must | Absent | L1, S9, S10, S11 |
+| R17 | Tests as concept §11 and `AGENTS.md` require: a deterministic test of every numbered rule, the transport over loopback HTTP, the store against a real PostgreSQL, a fake clock, no sleeps; 1C only in the tests of `Moltaro.OnecOutpost.OneC.Tests` on the lab machine, never in CI | Concept §11; `AGENTS.md` | Must | Absent | S1–S11 |
+| R18 | The answers to open items O1–O8, from the lab check, written into the concept; the tests that need 1C and the manual acceptance of S9, S10 and S11 on the lab machine, on the test base and on each copy of a typical base | Concept §11, §12; OD1 | Must | Absent | L1, S9, S10, S11 |
 | R19 | The measurement program for the latency target of concept §11, with the figures under [Measured results](#measured-results) | Concept §11 | Release | Absent | S7, S12 |
 | R20 | The explanations E1 "The path of a command" (animated), E2 "Why a command never runs twice" (animated), E3 "How the library is built" (a still figure), each as Markdown and HTML | `AGENTS.md`, "Documentation" | Release | Absent | S7, S12 |
 | R21 | The packages of PQ6, published from a version tag through nuget.org Trusted Publishing; the archive of the agent on GitHub Releases with its SHA-256 checksum | Concept D15, D16; PQ4 | Release | The workflows of the packages exist; no package | S1, S12 |
@@ -108,7 +108,8 @@ The epic is done when all of the following hold.
    and the target of concept §11 is met, or its miss was handled by the rule of the
    [development process](process.md#when-to-stop-and-ask-the-owner) and decided by the
    owner.
-6. Every scenario of the manual acceptance of S9, S10 and S11 passed on the lab machine.
+6. Every test of `Moltaro.OnecOutpost.OneC.Tests` passed on the lab machine, on the final
+   build, and every scenario of the manual acceptance of S9, S10 and S11 passed there.
 7. The three explanations exist in both forms, agree with each other and with what was
    delivered, and their status lines say "built".
 8. Everything [The first release](#the-first-release) lists holds, so that the owner can
@@ -918,16 +919,29 @@ The concept fixes the principles; S2 fixes the bytes.
   - The fake clock is `FakeTimeProvider` of `Microsoft.Extensions.TimeProvider.Testing`.
     PostgreSQL comes from Testcontainers (`Testcontainers.PostgreSql`).
   - A test that needs PostgreSQL has the trait `Requires=PostgreSQL`, and one that needs
-    Windows has `Requires=Windows`. No test needs both.
+    Windows has `Requires=Windows`. No test needs both. The tests that need 1C have no
+    trait: they live apart, as below.
   - The `build` job and the Publish workflow run every test without `Requires=Windows`.
     The `windows` job runs every test without `Requires=PostgreSQL`, because GitHub's
-    Windows runners have no Linux containers. A developer's machine with Docker runs them
-    all. S1 writes the exact commands into `ci.yml` and `publish.yml`.
-  - A test that needs 1C has the trait `Requires=OneC`, as `AGENTS.md` says. The sprint
-    that adds the first such test also excludes the trait from the `build` and `windows`
-    jobs and from `publish.yml`. Such tests run on the lab machine, after its test base
-    is built from `src/OneC.TestConfiguration`, and against the copy of a typical base
-    that the lab machine provides.
+    Windows runners have no Linux containers. A developer's machine with Docker runs all
+    of the solution's tests. S1 writes the exact commands into `ci.yml` and `publish.yml`.
+  - The tests that need 1C live in `Moltaro.OnecOutpost.OneC.Tests`, as `AGENTS.md` says.
+    - S9 creates the project, outside the solution, so that `dotnet test` from `src`, in
+      CI and on a developer's machine, never runs it. S9 adds
+      `dotnet build Moltaro.OnecOutpost.OneC.Tests` to both jobs of `ci.yml`, and
+      `dotnet format Moltaro.OnecOutpost.OneC.Tests/Moltaro.OnecOutpost.OneC.Tests.csproj --verify-no-changes`
+      to the `build` job, so that the project keeps compiling and keeps its form.
+    - On the lab machine it runs alone, from `src`, with
+      `dotnet test --project Moltaro.OnecOutpost.OneC.Tests`, after the test base is built
+      from `src/OneC.TestConfiguration`.
+    - Its tests need Windows and 1C only. None needs PostgreSQL, Docker or a server's
+      store, which the lab machine does not have.
+    - The bases, the accounts and the objects of a typical configuration that a test uses
+      come from `src/Moltaro.OnecOutpost.OneC.Tests/lab.local.json`, which Git ignores
+      (`*.local.json`). It names the test base, and for each copy of a typical base its
+      cluster and database, its configuration and version, its accounts and the document
+      type to post. The passwords of the copies are in it too, and it never leaves the lab
+      machine. Data comes from the base while a test runs, never as a literal.
   - Loopback tests start Kestrel on port `0` of `127.0.0.1`.
   - A test waits for an observed event and never sleeps.
   - A test with the fake clock waits until the code under test has armed its timer before
@@ -954,9 +968,12 @@ The concept fixes the principles; S2 fixes the bytes.
   sprint reviews it with the rest. Its status line says what is built and what is
   intended.
 - **The lab machine.** A sprint whose acceptance needs 1C asks the owner for the lab
-  machine (OD1) when its implementation is ready. The coordinator runs the scenarios of
-  the brief with the owner, on a copy of a database. It records one line per scenario,
-  passed or failed, in the sprint's status. No raw output is committed.
+  machine (OD1) when its implementation is ready. The owner runs the tests that need 1C
+  there, with the command of the test lane, and the coordinator runs the manual scenarios
+  of the brief with the owner. Both use the test base and the copies of typical bases,
+  never a customer's working database. In the sprint's status the coordinator records the
+  number of 1C tests passed and failed with the name of each failed one, and one line per
+  manual scenario, passed or failed. No raw output is committed.
 - **Documents.** In the documents step of every sprint the coordinator brings `README.md`,
   the concept, `docs/protocol.md` and the explanations that exist up to what exists, both
   forms of an explanation together, as `AGENTS.md` and the process say.
@@ -1240,9 +1257,9 @@ approval of this plan.
       that name it: `protocol-version` and `malformed` (§7).
     - `TryParseSignature` accepts exactly 86 base64url characters that decode to 64 bytes.
     - `OutpostForms` is the one home of the forms of §2 that the headers, the token and the
-      messages all need: canonical base64url and the 36-character lowercase identity. It
-      sits in the root, which `.Signing`, `.Messages` and `.Codec` all reference already,
-      so that none of them needs another for it. `OutpostHeaders` uses it.
+      codec all need: canonical base64url and the 36-character lowercase identity. It sits
+      in the root, which `.Signing` and `.Codec` reference already, so that neither needs
+      the other for it. `OutpostHeaders` uses it.
     - `OutpostModeEnum` stays in `.Outcomes`: in the root it would make a cycle with
       `OutpostProtocolCodes`, whose constants come from `OutpostOutcomeCodes`.
 
@@ -1290,6 +1307,9 @@ approval of this plan.
         public static byte[] SignRequest(ECDsa agentKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body);
         public static byte[] SignAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody);
         public static byte[] SignCommand(ECDsa serverKey, ReadOnlySpan<byte> commandBytes);
+        public static bool VerifyRequest(ECDsa agentKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static bool VerifyAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody, ReadOnlySpan<byte> signature);
+        public static bool VerifyCommand(ECDsa serverKey, ReadOnlySpan<byte> commandBytes, ReadOnlySpan<byte> signature);
     }
 
     internal static class OutpostPairingProof
@@ -1310,8 +1330,9 @@ approval of this plan.
     - `Fingerprint` gives the 64 lowercase hexadecimal digits of §2.
     - `Check` compares in constant time.
     - `ToString` of `OutpostPairingTokenText` leaves the secret out.
-    - The verification of a signature is not here. It lives in the readers of the codec,
-      which verify before they parse, so that no caller can parse unverified bytes.
+    - The signing inputs of §3 are built only in `OutpostSignatures`, for signing and for
+      verifying alike. The readers of the codec call the `Verify…` methods before they
+      parse, and nothing else parses signed bytes, so no caller parses unverified bytes.
 
     In `Moltaro.OnecOutpost.Protocol.Messages`, one record per message of §6 to §9, with
     the members of its JSON:
@@ -1335,6 +1356,8 @@ approval of this plan.
       §8); its size is their length.
     - `OutpostPollBase.Write` is `null` when the policy does not open writing, and is then
       written as `"write":null` (§6.2).
+    - `OutpostOutcomeMessage.Result` is a `JsonElement` for `succeeded`, of kind `Null` when
+      the result is `null`, and a C# `null` for every other kind.
 
     In `Moltaro.OnecOutpost.Protocol.Codec`:
 
@@ -1382,7 +1405,9 @@ approval of this plan.
     - **The two exceptions of §3.** `ReadPairRequest` parses the body, then verifies it with
       the key it carries. `ReadPairAnswer` checks the fingerprint of the server key in the
       body against `fingerprint`, then verifies with that key; a mismatch throws
-      `signature`. A refusal of `pair` is a bare 403 without a body, and has no reader.
+      `signature`. It then checks that the answer's `agent` is `agent` and its `key` is the
+      key in `requestBody`, and throws `form` otherwise. A refusal of `pair` is a bare 403
+      without a body, and has no reader.
     - **`ReadCommand`** verifies, then reads `protocol` and `id`.
       - A command of another version throws `protocol-version` with `CommandId`.
       - Bytes that do not yield both throw `form` without it.
@@ -1395,10 +1420,10 @@ approval of this plan.
       may send included, and throws `form`. A `null` mode, for a command the server does not
       know, accepts what either mode allows.
     - **`RepairOutcome`** is the agent's path for the executor's object (§8): first the
-      repair of `messages` and `errorText`, then the check of §2 and of what the executor
-      may hand over, `IsExecutorOutcome`. It returns the bytes to forward, which are never
-      longer than `executorOutcome`, and throws `form` for anything it cannot accept; the
-      agent turns that into `result-type`.
+      repair of the top-level `messages` and `errorText`, then the check of §2 and of what
+      the executor may hand over, `IsExecutorOutcome`. It returns the bytes to forward,
+      which are never longer than `executorOutcome`, and throws `form` for anything it
+      cannot accept; the agent turns that into `result-type`.
     - **`CommandSize`** is the size of §7, computed by the same writer as
       `Write(OutpostCommandMessage)`, `{}` included, as a `long`; `CommandChecks` of the
       server uses it.
@@ -1442,6 +1467,7 @@ approval of this plan.
     key, and one bound to another request, agent, status or kind are refused.
   - Tests of pairing:
     - a proof made with another secret is refused;
+    - a signed answer whose `agent` or `key` is not what was sent is refused with `form`;
     - a key swapped after the proof was made is refused;
     - an answer whose server key does not match the token's fingerprint is refused with
       `signature`, even when it is signed with that key;
@@ -1455,7 +1481,10 @@ approval of this plan.
     - non-canonical base64url, a key that is not the 91-byte form, and a proof that is not
       32 bytes, each refused;
     - times and durations truncated to milliseconds;
-    - a missing member refused, and `"write":null` read as a base without writing;
+    - refused: a missing member, an unknown one, `null` where it is not allowed, a value of
+      the wrong type, an integer with a fraction or an exponent, a byte order mark, and a
+      time or an identity in any other form;
+    - `"write":null` read as a base without writing;
     - `ValueDepth` at 64 and 65, and a scalar at 0;
     - the forms of `OutpostForms` and `OutpostHeaders`, a signature of exactly 64 bytes.
   - Tests of §8:
@@ -1470,6 +1499,8 @@ approval of this plan.
       as bytes, in a message and in the error text, gives U+FFFD and bytes never longer;
     - a Write of the executor that succeeded with U+0000 in a message is forwarded,
       repaired, and not turned into `result-type`;
+    - left as they are: an escaped backslash followed by `u0000`, a surrogate pair escaped
+      and as bytes, and a member named `messages` inside the result;
     - U+0000 in the result, and every outcome the executor may not hand over, throw
       `form`.
   - `CommandSize` counts exactly what `Write(OutpostCommandMessage)` writes for the script
@@ -1488,10 +1519,12 @@ approval of this plan.
     rule of names and [`policy.json`](#policyjson) say so; the checks of `OutpostNames`, of
     the parameters and of `AgentPolicyReader` follow it, each with its tests.
   - The owner's answer of 20 November 2026 on tests with 1C: both kinds. Tests that need
-    1C, with the trait `Requires=OneC`, run on the lab machine, never in CI, against a
-    file base built from the repository's own test configuration and against copies of
-    real typical databases. `AGENTS.md`, "Tests And Samples" and "Layout", concept §11,
-    the test lane, L1, S9, S10, S11, R17 and R18 say so.
+    1C live in `Moltaro.OnecOutpost.OneC.Tests`, outside the solution, and run on the lab
+    machine, never in CI, against a file base built from the repository's own test
+    configuration and against copies of real typical databases. `AGENTS.md`, "Tests And
+    Samples", "Layout" and "Working Rules", concept §3 "Rules" and §11, `process.md`,
+    OD1, the epic's Acceptance, the test lane, "The lab machine", L1, S9, S10, S11, R17
+    and R18 say so.
   - **Changes of the public contract that come with `docs/protocol.md`,** for the owner's
     approval together with it, made in the contract step after that approval:
     - **Sizes.**
@@ -1516,6 +1549,8 @@ approval of this plan.
         `OutpostOutcomeCodes`. The fit of a code to a kind moves from `OutpostCodes` to
         `OutpostOutcomeCodes.Fits…`, and the test author changes
         `Server.Tests/Outcomes/OutcomeCodeTests.cs` to match, with the reason in the commit.
+      - The XML documentation of `OutpostCodes.ResultType`, and the lists of codes in that
+        of `OutpostOutcome.Refused` and `OutpostOutcome.Unknown`, follow both.
     - **`policy.json`:**
       - at most 256 bases;
       - a new member `requestTimeout`: the agent's wait for an answer to `pair` or `outcome`,
@@ -1532,17 +1567,22 @@ approval of this plan.
 
       `AgentPolicy`, `AgentPolicyReader` and their tests follow all four.
     - **The audit log:**
-      - `connection` is recorded once per change of state, with the `reason` of §9: the
-        code of a verified refusal, `protocol-version`, `status-` and the HTTP status, or
-        `unreachable`;
+      - `connection` is recorded once per change of the state of the polls, which answers
+        to outcomes do not change, with the `reason` of §9: the code of a verified refusal,
+        `protocol-version`, `status-` and the HTTP status, or `unreachable`;
+      - a new entry `floor`, with the member `number`: the floor of the poll numbers, which
+        the agent records before it sends a number at or above the last floor (§6.2);
       - `refused` is recorded with the codes `signature` and `form` for commands that cannot
         be trusted;
       - a `refused` entry ends its command as `ended` does, and its Refused outcome is kept
         in the outbox until it is confirmed;
       - `received.parameters` is always an object;
       - retention: a file's age counts from its last entry, and no file is removed while it
-        holds an entry of a command whose outcome is not confirmed.
+        holds an entry of a command whose outcome is not confirmed, or the latest `floor`.
     - **The concept and `AGENTS.md`:**
+      - rule 1 says that verified bytes without a `protocol` and an `id` are only recorded,
+        with `form`, since they name no command, and that its checks run in the order §7
+        of the protocol gives;
       - rule 5 says what the size of an outcome is;
       - rule 6, and the correctness item of `AGENTS.md` on an agent that is gone, say the
         lease of §6.2 exactly:
@@ -1558,15 +1598,26 @@ approval of this plan.
           `WriteAsync` show;
         - a live agent that reads an answer for longer than `LeaseGrace` shows as not
           connected until its next poll;
+      - rule 10 adds the floor of §6.2: the agent records a floor of its poll numbers in
+        its audit log and, after a restart, numbers above it, so that a poll captured while
+        its clock was moved ahead can never become the newest again. The correctness item
+        of `AGENTS.md` on a Write that runs twice names it;
       - §4 adds the poll timeout to what every poll carries;
       - rule 14 says that a claimed key is reported in `bases.claimed`;
       - D4, §6 and this plan's "The protocol" say that every answer the agent acts on is
         signed and bound to the request's body, with the one exception of a bare 413 to an
         outcome, acted on whatever its headers and body, and that the other unsigned
         answers are acted on by nobody;
+      - §6 says that a bare 413 comes from an ingress, from the web server, or from the
+        library's own check of the declared length, all before the body is read;
       - "Pairing" says that a refusal of `pair` is a bare 403 without a body, and only ends
         the pairing;
-      - the threat table says what a hop on the path can still do (§13 of the protocol).
+      - the threat table says what a hop on the path can still do (§13 of the protocol),
+        that a hop that also controls the agent's time service is stopped from running a
+        Write twice by the floor of rule 10, and that a compromised application can fill
+        the disk of the agent machine through the audit log, with scripts and parameters
+        of up to `CommandSizeLimit` each, kept for `auditRetentionDays`, which nothing else
+        bounds.
     - **The XML documentation** of `OutpostServerOptions.LeaseGrace` and of
       `OutpostAgent.Connected`, which says that the lease is `PollTimeout` plus
       `LeaseGrace` and that a gone agent shows as connected at most for its lease, follows
@@ -1696,13 +1747,15 @@ approval of this plan.
       read:
       - an unsupported version gets `protocol-version` in the form that later versions
         keep;
-      - a header that breaks §4, a repeated one, or a `Content-Encoding` gets a bare 400;
+      - a header that breaks §4, a repeated one, or a `Content-Encoding` gets a bare 400,
+        and an `outcome` without `Expect` or without `Content-Length` is accepted;
       - an unknown agent and a pending one get a bare 401, and a revoked one a bare 403;
-      - a `pair` and a `poll` body one byte beyond their limits get a bare 413, and one
-        at the limit passes, both with a declared length and with a chunked body that
-        declares none;
-      - an `outcome` up to its limit passes Kestrel, and one byte beyond gets a bare 413.
-        With `Expect: 100-continue`, the 413 comes before the client sends the body;
+      - a `pair`, a `poll` and an `outcome` body at their limits pass, and one byte beyond
+        with a declared length gets a bare 413. The test client sends these with
+        `Expect: 100-continue`, so that the 413 comes before the body and no reset can
+        wipe it out;
+      - a chunked body one byte beyond its limit, which declares no length, ends in a 413
+        or a reset of the connection, either of which passes, and the store is unchanged;
     - an older poll, and an exact replay of the newest, change nothing. The answer to an
       older poll comes at once, signed, and names the newest number recorded;
     - a poll is held for the smaller of the poll timeout it carries and the option, and
@@ -1816,9 +1869,9 @@ as [Order](#order-and-why-these-splits) says.
     - find a command in the audit log and its outcome in the outbox, after a restart
       included;
     - number polls so that the numbers grow across restarts, as concept rule 10 says: from
-      the agent's clock, and above the newest number that an answer to an older poll names.
-      Nothing is stored for it, since the agent's account may not write outside `audit\`
-      and `outcomes\`;
+      the agent's clock, above the newest number that an answer to an older poll names,
+      and above the floor of §6.2 of `docs/protocol.md`, which the agent keeps in its audit
+      log, the one place outside `outcomes\` that its account may write;
     - pair with a token, which the console of S10 calls (principle 12: the console depends
       on the agent).
 - **Study.** Sources, for example: the message loop and job dispatcher of the GitHub
@@ -1832,7 +1885,8 @@ as [Order](#order-and-why-these-splits) says.
 - **To read.** The [concept](../concept.md), §3, §4 and §5 (20 November 2026);
   `docs/protocol.md`; this plan, "The files of the agent".
 - **Acceptance.**
-  - Every check of rule 1, each with its code in the outcome and in the audit log. A
+  - Every check of rule 1, each with its code in the outcome and in the audit log, and,
+    when several fail, the code of the first in the order of §7 of `docs/protocol.md`. A
     signature that does not verify is only recorded, and nothing is reported.
   - The order of the entries in the audit log:
     - `received`, then the outbox file, then `ended`, then `confirmed`;
@@ -1846,8 +1900,9 @@ as [Order](#order-and-why-these-splits) says.
   - The table of §9 of `docs/protocol.md`, one test per row, and a lost answer for each case
     of its list. For a replacement, any answer but a verified `200` counts as lost, and an
     outcome of kind `refused` or `unknown` is never replaced.
-  - The `connection` entries: one per change of state, with each kind of `reason` of §9;
-    a bare 413 that the table names changes no state.
+  - The `connection` entries: one per change of the state of the polls, with each kind of
+    `reason` of §9; an outcome whose answers keep being lost while polls go through
+    records no entry.
   - The waits and the read limits:
     - a poll answer beyond 64 MiB, and any other answer beyond 64 KiB, are lost unread;
     - the wait for a poll answer to begin, and the reading of its body within
@@ -1864,14 +1919,20 @@ as [Order](#order-and-why-these-splits) says.
     test proxy sent with an HTML body: the outbox file and a second `ended` hold Unknown `result-too-large` for a
     Write and Failed `result-too-large` for a Read, and that is what is sent.
   - Workers bound what runs. A fake run that exceeds its limit is ended, giving `run-limit`.
-  - Poll numbers grow across a restart, with the fake clock. After a restart with the clock
-    set behind the last number, the first poll is answered as older, and the next one takes
-    commands.
+  - Poll numbers grow across a restart, with the fake clock:
+    - a floor is recorded and flushed before a poll at or above the last floor;
+    - after a restart with the clock set behind the last number, every poll is above every
+      poll sent before;
+    - end to end against the server: a poll captured while the clock was set ahead,
+      replayed after the clock was set back and the agent restarted and ran a Write, is
+      older, and the Write is not Expired (§13 of `docs/protocol.md`);
+    - with no floor in the audit log and the clock set behind the server's newest number,
+      the first poll is answered as older, and the next one takes commands.
   - An answer whose signature does not verify is treated as a lost answer, and nothing in it
     is acted on.
   - Addresses (§11 of `docs/protocol.md`): `http://` only on a loopback address written as
-    such, never through the proxy; no redirect followed; no `Accept-Encoding` sent;
-    `Expect: 100-continue` on every `outcome`.
+    such, never through the proxy; no redirect followed; `Accept-Encoding: identity` on
+    every request; `Expect: 100-continue` on every `outcome`.
   - An invalid policy serves nothing and is recorded.
   - The entries `connection` and `bases`.
   - The retention of the audit log, which never removes a file that holds an entry of a
@@ -1957,28 +2018,38 @@ Best run before S6, and in any case before the contract of stage 2 is written.
   8.3.17.1851, so that the contracts of stage 2 rest on facts.
 - **How.**
   1. An implementer, assigned by the coordinator, writes a minimal executor as XML sources,
-     and the steps of the check for each open item.
-  2. The owner builds the `.epf` and runs the check on a copy of a database, with that
-     implementer.
+     the steps of the check for each open item, and the test configuration below.
+  2. The owner builds the `.epf` and the test base, and runs the check on the test base
+     and on a copy of a typical base, with that implementer.
   3. The planner writes each answer into concept §12. An answer that changes a decision,
      such as D3, D12 or D14, or a member of `policy.json`, goes to the owner and is written
      on this branch.
-  4. An independent reviewer reviews the edit of the concept, until no P1, P2 or P3 finding
-     is left.
+  4. An independent reviewer reviews the edit of the concept and the test configuration,
+     until no P1, P2 or P3 finding is left.
 
   The minimal executor is not committed: S9 writes the executor from its contract. No
   report file is written.
 - **The 1C test lane.** L1 also sets it up, as `AGENTS.md`, "Tests And Samples", says:
-  - `src/OneC.TestConfiguration`: the XML sources of a minimal test configuration, with a
-    catalog, a document that posts to an accumulation register and a common module, and
-    the script that builds a file base from them through the Designer's command line on
-    the lab machine. It is enough for O2, O4, O6, O7 and O8. No built configuration or
-    base is committed.
+  - `src/OneC.TestConfiguration`: the XML sources of a minimal test configuration, and the
+    script that builds a file base from them through the Designer's command line on the
+    lab machine. No built configuration or base is committed. The configuration has:
+    - a catalog, a document that posts to an accumulation register, and a common module;
+    - two roles, both with the right of external connection: one that reads every object
+      and changes none, and one that also writes and posts;
+    - two users, `outpost-read` and `outpost-write`, one with each role, created by the
+      script without passwords, since the file base never leaves the lab machine.
+
+    The test base is enough for O2, O4, O7 and O8. O1, O3, O5 and O6 need a typical
+    configuration or a client-server base, so they are answered on the copy.
   - The owner provides the lab machine with 1C:Enterprise 8.3.17.1851 and its Designer,
-    the COM connector, the .NET 10 SDK, and a copy of a typical base.
+    the COM connector and the .NET 10 SDK, and at least one copy of a typical base on its
+    1C cluster, a client-server base, with a read account and a write account. The lab
+    machine needs no Docker and no PostgreSQL.
 - **To read.** The [concept](../concept.md), §3 "The two commands" and §12; this plan,
   "The files of the agent".
-- **Done when** O1–O8 are answered in the concept and the change is merged.
+- **Done when** O1–O8 are answered in the concept, the test configuration builds into a
+  file base on the lab machine, and the change, with `src/OneC.TestConfiguration`, is
+  merged.
 
 ### S9 · The executor and the COM worker
 
@@ -1998,6 +2069,11 @@ the contract of stage 2 approved.
 - **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says, completed with
   L1's answers before stage 2 starts. Exception X1 of the [register](exceptions.md) comes
   into force with the commit of the `.epf`.
+  - The executor's outcome object crosses COM as a UTF-16 string, and the worker encodes it
+    as UTF-8, which turns a lone surrogate into U+FFFD. The bytes the agent forwards may
+    then differ in length from those 1C measured. The contract says how, with L1's answer
+    to O4; a difference can only end a command as Unknown or Failed `result-too-large`,
+    never as a wrong success.
 - **Study.** Sources, for example: the worker process model of the Azure Pipelines agent
   (MIT); the job objects of a process-supervision library under a permissive licence.
   Questions: how a child process is tied to its parent's lifetime; how a hung child is
@@ -2013,13 +2089,16 @@ the contract of stage 2 approved.
     - the job object;
     - ending at the run limit;
     - starting again with a growing delay;
-    - bitness chosen from the registered connector.
-  - With `Requires=OneC`, on the lab machine (OD1), against the test base unless a line
-    says otherwise:
+    - bitness chosen from the registered connector;
+    - a connector whose version differs from the cluster's, with the error L1 recorded for
+      it, is reported as such.
+  - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine (OD1), against the test base
+    unless a line says otherwise:
     - a Read query that returns rows;
     - a Write that creates and posts a document of the test configuration;
-    - on the copy of a typical base: a typical document posted by the tunnel has the same
-      register movements as the same document posted by hand (O1);
+    - on each copy of a typical base: the latest posted document of the type that
+      `lab.local.json` names, posted again by the tunnel in safe mode, has the same register
+      movements as it had before, which a person's posting made (O1);
     - a Write whose script raises an error rolls back;
     - a result of a wrong type, and one too large, roll back before the commit;
     - a script that calls `CommitTransaction` or `RollbackTransaction` gives Unknown
@@ -2038,8 +2117,7 @@ the contract of stage 2 approved.
       - the session of a worker lives on between commands;
     - user messages arrive and are trimmed to the limit;
     - safe mode refuses a file operation;
-    - the read account cannot write;
-    - a connector of another version is reported.
+    - the read account cannot write.
   - Manual, on the lab machine, one line per scenario: only what no test can make.
   - The executor's XML sources and its `.epf`, built by the owner with the Designer of
     8.3.17.1851, are committed in `src/Executor`.
@@ -2072,11 +2150,14 @@ the contract of stage 2 approved.
     - `check` reports each case its contract names, against fakes. It checks the server
       without polling, as [The protocol](#the-protocol) says, and a test proves that the
       service's newest poll is not replaced;
-    - every command's exit codes and errors;
+    - every command's exit codes and errors. `pair` and `check` report an answer they do
+      not accept with its status and the console's own reason, as §6.1 and §12 of
+      `docs/protocol.md` say, a server key that does not match the token included, and
+      never with text taken from an unverified body;
     - with the output redirected, every command writes plain text, tested.
-  - With `Requires=OneC`, on the lab machine: `check` against the test base and the copy
-    of a typical base, the rights of the read account included; `metadata` writes a
-    report of each.
+  - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine: `check` against the test base
+    and each copy of a typical base, the rights of the read account included, with the
+    server's part against a stub; `metadata` writes a report of each.
   - Manual, on the lab machine: the owner runs every command in a terminal and accepts
     how it looks.
   - The documents step: `README.md` says how an agent is installed and paired.
@@ -2099,11 +2180,12 @@ the contract of stage 2 approved.
   - Automated: a session of shell commands read from its input against an agent with the
     fake worker, ending when the input ends, so that the shell runs to the end with
     `dotnet run`; with the output redirected, every command writes plain text, tested.
-  - With `Requires=OneC`, on the lab machine: a shell session that sends a Read and a
-    Write of S9's scenarios to an agent on the test base.
-  - Manual, on the lab machine: the same, typed in the shell, with the agent on another
-    machine reaching the shell over HTTPS; the owner runs every command in a terminal
-    and accepts how it looks.
+  - Manual: the shell runs on a machine with PostgreSQL, the agent on the lab machine
+    reaches it over HTTPS, and a Read and a Write of S9's scenarios are typed in the shell
+    against the test base. The owner runs every command in a terminal and accepts how it
+    looks. The shell has no test that needs 1C: it would need PostgreSQL and 1C on one
+    machine, and the automated session with the fake worker and S9's tests cover the
+    rest.
   - The documents step: `README.md` shows a session.
 - **Out of scope.** The release.
 
