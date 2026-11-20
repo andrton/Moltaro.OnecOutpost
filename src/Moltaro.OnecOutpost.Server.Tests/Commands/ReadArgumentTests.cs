@@ -143,6 +143,20 @@ public sealed class ReadArgumentTests : IAsyncDisposable
         Assert.Throws<ArgumentException>(nameof(OutpostReadRequest.Parameters), () => Call(request));
     }
 
+    // A JsonValue may hold any .NET value, and System.Text.Json writes no System.Type.
+    [Fact]
+    public void Parameters_with_a_value_that_JSON_cannot_write_are_refused_with_the_name_of_their_property()
+    {
+        OutpostReadRequest request = new()
+        {
+            BaseKey = "accounting",
+            Script = "Result = 1;",
+            Parameters = new JsonObject { ["type"] = JsonValue.Create(typeof(string)) },
+        };
+
+        Assert.Throws<ArgumentException>(nameof(OutpostReadRequest.Parameters), () => Call(request));
+    }
+
     // The checks are thrown by the call itself, before it returns a task.
     private void Call(OutpostReadRequest request)
     {

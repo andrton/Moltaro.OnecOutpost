@@ -39,16 +39,18 @@ internal static class CommandChecks
     }
 
     // Written as JSON when the call is made, as the contract says. Parsing the text again gives every string unescaped,
-    // whatever the writer escaped. Parameters that cannot be written as JSON are the caller's mistake: the writer
-    // refuses a number that is not finite with ArgumentException and a nesting deeper than its own limit of 1000
-    // levels with InvalidOperationException, and the reader a nesting deeper than MaxNesting with JsonException.
+    // whatever the writer escaped. Parameters that cannot be written as JSON are the caller's mistake, whatever the
+    // reason: the writer refuses, among others, a number that is not finite, a value of a .NET type it cannot write
+    // and a nesting deeper than its own limit, and the reader a nesting deeper than MaxNesting. Each with an exception
+    // of its own, so every exception is caught: the try touches nothing but the caller's object and the text written
+    // from it.
     private static JsonDocument Write(JsonObject parameters)
     {
         try
         {
             return JsonDocument.Parse(parameters.ToJsonString(), new JsonDocumentOptions { MaxDepth = MaxNesting });
         }
-        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or JsonException)
+        catch (Exception exception)
         {
             throw new ArgumentException(
                 $"The parameters cannot be written as JSON: {exception.Message}",

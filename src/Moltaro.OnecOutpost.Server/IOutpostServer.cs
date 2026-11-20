@@ -182,10 +182,11 @@ public interface IOutpostServer
     /// </exception>
     /// <exception cref="ArgumentException">
     /// Thrown by the call: a property of <paramref name="request"/> breaks its rule; its
-    /// <see cref="OutpostReadRequest.Parameters"/> cannot be written as JSON, such as a number that is not finite or a
-    /// nesting deeper than 64 levels, which has the <see cref="ArgumentException.ParamName"/> <c>Parameters</c>; or
-    /// the command is larger than <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the
-    /// <see cref="ArgumentException.ParamName"/> <c>request</c>.
+    /// <see cref="OutpostReadRequest.Parameters"/> cannot be written as JSON, such as a number that is not finite, a
+    /// value of a .NET type that JSON cannot represent or a nesting deeper than 64 levels, which has the
+    /// <see cref="ArgumentException.ParamName"/> <c>Parameters</c>; or the command is larger than
+    /// <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the <see cref="ArgumentException.ParamName"/>
+    /// <c>request</c>.
     /// </exception>
     /// <exception cref="OperationCanceledException">
     /// Reported by the task: <paramref name="cancellationToken"/> was cancelled.
@@ -244,10 +245,11 @@ public interface IOutpostServer
     /// </exception>
     /// <exception cref="ArgumentException">
     /// Thrown by the call: a property of <paramref name="request"/> breaks its rule; its
-    /// <see cref="OutpostWriteRequest.Parameters"/> cannot be written as JSON, such as a number that is not finite or a
-    /// nesting deeper than 64 levels, which has the <see cref="ArgumentException.ParamName"/> <c>Parameters</c>; or
-    /// the command is larger than <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the
-    /// <see cref="ArgumentException.ParamName"/> <c>request</c>.
+    /// <see cref="OutpostWriteRequest.Parameters"/> cannot be written as JSON, such as a number that is not finite, a
+    /// value of a .NET type that JSON cannot represent or a nesting deeper than 64 levels, which has the
+    /// <see cref="ArgumentException.ParamName"/> <c>Parameters</c>; or the command is larger than
+    /// <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the <see cref="ArgumentException.ParamName"/>
+    /// <c>request</c>.
     /// </exception>
     /// <exception cref="OperationCanceledException">
     /// Reported by the task: <paramref name="cancellationToken"/> was cancelled.
