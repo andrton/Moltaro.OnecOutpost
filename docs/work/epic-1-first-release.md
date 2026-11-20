@@ -234,7 +234,7 @@ marker of rule 5.
   | --- | --- |
   | Base key | 1 to 64 characters, each one of `a–z 0–9 - _ .`, the first a letter or a digit; compared exactly |
   | Caller key | 1 to 200 characters, each from U+0021 to U+007E (printable ASCII without the space); compared exactly |
-  | Agent name | 1 to 100 characters, no control character, no white space at the start or the end |
+  | Agent name | A display label of arbitrary characters: 1 to 100, counted as UTF-16 code units (`string.Length`), no control character, no white space at the start or the end (Q2) |
   | Script | At least one character that is not white space, and no U+0000 |
   | Parameters | No string in them holds U+0000, which PostgreSQL cannot store; they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5, waits for the owner) |
   | Schema | 1 to 63 characters, each one of `a–z 0–9 _`, the first a letter |
@@ -1090,6 +1090,9 @@ approval of this plan.
   whole `policy.json` invalid, as the reader of S1 does; and the error says clearly where
   and what, as [`policy.json`](#policyjson) now says. The error texts of
   `AgentPolicyReader` and their tests follow it.
+- **The owner's answer of 20 November 2026 to Q2:** the agent name is a display label, so
+  it takes arbitrary characters; the rule of names stays as S1 has it, counted as UTF-16
+  code units. The XML documentation of `agentName` says so.
 - **The planner's answer and proposals of 20 November 2026** to the
   [open questions](open-questions.md) Q3–Q5 that the sprint found: an answer to Q3, and
   proposals for Q4 and Q5, each with its test where it changes a check:

@@ -40,15 +40,6 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 
 ## Open
 
-### Q2. What "characters" counts in the rules of names
-
-| | |
-| --- | --- |
-| **Found** | 20 November 2026, Epic 1 S1, the tests step |
-| **Question** | The rule of agent names allows 1 to 100 "characters". Are these UTF-16 code units, Unicode scalar values or text elements? The base key, the caller key and the schema are ASCII, so only the agent name is affected |
-| **Until answered** | `OutpostNames` counts UTF-16 code units, as `string.Length` does. No test depends on the difference. To be answered before S4, which stores agent names |
-| **Decides** | The owner: the rules of names are public contract |
-
 ### Q4. The exact text that `SigningKeyPem` accepts
 
 | | |
@@ -81,6 +72,17 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The owner: `policy.json` is public contract |
 | **Answer** | 20 November 2026, the owner, in their words: it does not work at all, and it writes the error well, so that it is clear where and what. Each of these makes the whole file invalid, and the agent serves nothing, as the reader of S1 does. The error says the path of the member, what is wrong with it, and what is expected there, for example `bases[0].server: the value is empty; expected the 1C cluster address such as "srv-1c:1541", or remove "server" and "database" and give "file"` |
 | **Now lives in** | [`policy.json`](epic-1-first-release.md#policyjson) in the epic document, the error texts of `AgentPolicyReader` and their tests |
+
+### Q2. What "characters" counts in the rules of names
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, the tests step |
+| **Question** | The rule of agent names allows 1 to 100 "characters". Are these UTF-16 code units, Unicode scalar values or text elements? The base key, the caller key and the schema are ASCII, so only the agent name is affected |
+| **Until answered** | `OutpostNames` counts UTF-16 code units, as `string.Length` does. No test depends on the difference. To be answered before S4, which stores agent names |
+| **Decides** | The owner: the rules of names are public contract |
+| **Answer** | 20 November 2026, the owner, in their words: if it is a display name of some kind, then arbitrary characters. The agent's identity is its `Guid`, so the name is a display label of arbitrary characters, and the rule stays as S1 has it: 1 to 100 characters counted as UTF-16 code units (`string.Length`), no control character, no white space at the start or the end |
+| **Now lives in** | The rule of names in the [epic document](epic-1-first-release.md), and the XML documentation of `agentName` |
 
 ### Q3. One version of EF Core and its relational package
 
