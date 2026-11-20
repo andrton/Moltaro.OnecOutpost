@@ -4,5 +4,8 @@
   </PropertyGroup>
   <!-- Every package version of the repository is declared here, added by the sprint that first needs it. -->
   <ItemGroup>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.15" />
+    <PackageVersion Include="Moltaro.Signals" Version="0.1.0" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 </Project>

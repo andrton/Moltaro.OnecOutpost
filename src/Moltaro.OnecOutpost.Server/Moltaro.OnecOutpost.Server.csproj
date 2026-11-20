@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The server of Moltaro.OnecOutpost, embedded in an ASP.NET Core application: it pairs agents that run next to 1C:Enterprise 8.3 databases, signs Read and Write commands that carry scripts in the 1C language, hands them to the agents over the HTTPS polls the agents open, and keeps their outcomes in PostgreSQL. Its nodes share nothing in memory.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);AddProtocolAssemblyToPackage</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Moltaro.Signals" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- PQ6: the protocol assembly travels inside this package instead of as a dependency, so that nobody can pair
+         it with another build of its internals. PrivateAssets keeps it out of the dependencies of the package; the
+         target below puts the assembly into lib/ next to the server's own. -->
+    <ProjectReference Include="..\Moltaro.OnecOutpost.Protocol\Moltaro.OnecOutpost.Protocol.csproj" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Takes the copy that the build put next to the server's assembly, so that a pack with NoBuild builds nothing. -->
+  <Target Name="AddProtocolAssemblyToPackage">
+    <ItemGroup>
+      <BuildOutputInPackage Include="$(TargetDir)Moltaro.OnecOutpost.Protocol.dll" />
+    </ItemGroup>
+  </Target>
+
+</Project>

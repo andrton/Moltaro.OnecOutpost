@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The assembly travels inside the package of the server (PQ6), never as a package of its own. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Every type is internal: the parts that speak the protocol reach them, and so do their tests. -->
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Server" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Agent" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Console" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Shell" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Protocol.Tests" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Server.Tests" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Agent.Tests" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Console.Tests" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Shell.Tests" />
+  </ItemGroup>
+
+</Project>
