@@ -7,11 +7,12 @@ namespace Moltaro.OnecOutpost.Server;
 // The rule of the parameters of a command and the rule of its size, which the checks of ReadAsync and WriteAsync run
 // after the rules of the other names.
 //
-// The size is that of the script in UTF-8, plus that of the parameters written as compact JSON in UTF-8. Characters
-// outside ASCII count as they are, never as escapes; only what JSON requires is escaped: '"' and '\' as two
-// characters, U+0008, U+0009, U+000A, U+000C and U+000D as two, and the other characters below U+0020 as six. The
-// built-in encoders of System.Text.Json escape characters outside the Basic Multilingual Plane even when relaxed, so
-// the count walks the parameters instead of measuring a serialized text.
+// The size is that of the script plus that of the parameters written as compact JSON, in UTF-8 with characters outside
+// ASCII as they are, not escaped. One rule for both, with no escape counted anywhere: the script is its UTF-8 bytes;
+// in the parameters every string, names included, is its UTF-8 bytes plus its two quotes, and structure and numbers
+// count as written. Whether the escapes of JSON count is fixed by docs/protocol.md in S2, which fixes the exact count.
+// The built-in encoders of System.Text.Json escape characters outside the Basic Multilingual Plane even when relaxed,
+// so the count walks the parameters instead of measuring a serialized text.
 internal static class CommandChecks
 {
     internal static void Check(string script, JsonObject? parameters, int commandSizeLimit)
@@ -89,21 +90,7 @@ internal static class CommandChecks
                 nameof(OutpostReadRequest.Parameters));
         }
 
-        // The quotes and the characters in UTF-8, then what the escapes add.
-        long size = 2 + Encoding.UTF8.GetByteCount(text);
-
-        foreach (char character in text)
-        {
-            if (character is '"' or '\\' or '\b' or '\t' or '\n' or '\f' or '\r')
-            {
-                size += 1;
-            }
-            else if (character < ' ')
-            {
-                size += 5;
-            }
-        }
-
-        return size;
+        // The two quotes and the characters in UTF-8.
+        return 2 + Encoding.UTF8.GetByteCount(text);
     }
 }

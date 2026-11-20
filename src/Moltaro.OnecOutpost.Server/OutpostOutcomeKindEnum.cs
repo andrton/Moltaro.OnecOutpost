@@ -28,9 +28,12 @@ public enum OutpostOutcomeKindEnum
     Failed,
 
     /// <summary>
-    /// A check refused the command, with a code of <see cref="OutpostCodes"/> that says which. Nothing ran, and the
-    /// caller key is free again.
+    /// A check refused the command, with a code of <see cref="OutpostCodes"/> that says which. Nothing ran.
     /// </summary>
+    /// <remarks>
+    /// A command that ended as Refused frees its caller key. A refusal with <see cref="OutpostCodes.CallerKeyConflict"/>
+    /// created no command and leaves the key with the command that holds it.
+    /// </remarks>
     Refused,
 
     /// <summary>

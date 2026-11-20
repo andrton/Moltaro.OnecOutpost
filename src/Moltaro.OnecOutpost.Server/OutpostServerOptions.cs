@@ -110,12 +110,9 @@ public sealed class OutpostServerOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The size of a command is the number of bytes of its script in UTF-8, plus the number of bytes of its
-    /// parameters written as compact JSON in UTF-8; a command without parameters counts its script alone. Characters
-    /// outside ASCII are counted as they are, never as escapes: <c>é</c> counts 2 bytes, and a character outside the
-    /// Basic Multilingual Plane 4. In the JSON, only what JSON requires is escaped: <c>"</c> and <c>\</c> count 2
-    /// bytes each, U+0008, U+0009, U+000A, U+000C and U+000D 2 bytes each, and the other characters below U+0020 6
-    /// bytes each. Numbers count as they are written.
+    /// The size of a command is that of its script plus that of its parameters written as JSON, counted in UTF-8 with
+    /// characters outside ASCII written as they are, not escaped: <c>é</c> counts 2 bytes, and a character outside the
+    /// Basic Multilingual Plane 4.
     /// </para>
     /// <para>
     /// A command up to the limit is accepted; a larger one is the caller's mistake and gives

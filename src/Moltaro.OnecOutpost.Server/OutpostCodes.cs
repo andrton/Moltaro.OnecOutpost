@@ -7,7 +7,9 @@ namespace Moltaro.OnecOutpost.Server;
 /// <para>
 /// Each code belongs to the kinds its constant names, and the factories of <see cref="OutpostOutcome"/> refuse a code
 /// for any other kind. Every <see cref="OutpostOutcomeKindEnum.Refused"/>, like
-/// <see cref="OutpostOutcomeKindEnum.Expired"/>, means that nothing ran, and frees the caller key.
+/// <see cref="OutpostOutcomeKindEnum.Expired"/>, means that nothing ran. A command that ended as Refused or Expired
+/// frees its caller key; a refusal with <see cref="CallerKeyConflict"/> created no command and leaves the key with the
+/// command that holds it.
 /// </para>
 /// <para>
 /// There is no code for a command whose signature does not verify: the agent cannot trust anything in such a command,
