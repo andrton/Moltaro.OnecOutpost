@@ -506,7 +506,9 @@ public static class OutpostCodes
 | `agent-stopped` | Unknown | A Write whose agent or worker stopped while it ran (rule 3) |
 | `transaction-ended` | Unknown | The script ended the transaction of its Write itself (rule 5) |
 
-- Every Refused, like Expired, means that nothing ran, and frees the caller key (rule 4).
+- Every Refused, like Expired, means that nothing ran. A command that ended as Refused or
+  Expired frees its caller key (rule 4); a refusal with `caller-key-conflict` created no
+  command and leaves the key with the command that holds it.
 - There is no code for a signature that does not verify. The agent cannot trust the
   identity of such a command, so it only records it in the audit log and reports nothing.
   The server ends the command by rules 7 and 11 (concept rule 1).
@@ -1066,6 +1068,11 @@ approval of this plan.
   to `AGENTS.md`, "Code Style", and Spectre.Console to principle 12; the lines of the
   console and of the shell in [Stages 2 and 3](#the-contracts-of-stages-2-and-3) point to
   that rule, and the acceptance of S10 and S11 checks it.
+- **Corrections from the review.** Round 1 found that the sentence of
+  [`OutpostCodes`](#outpostcodes) on Refused said every Refused frees the caller key. As
+  concept rule 4 says, only a command that ended as Refused or Expired frees its key; a
+  refusal with `caller-key-conflict` created no command and leaves the key with the
+  command that holds it. The sentence now says so; no guarantee changed.
 
 ### S2 · The protocol, its signatures and the pairing proof
 

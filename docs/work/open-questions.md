@@ -40,7 +40,41 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 
 ## Open
 
-None.
+### Q1. Values of `policy.json` that its table does not mention
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, the contract step and review round 1 |
+| **Question** | The table of `policy.json` does not say how a member given twice, a member set to `null`, or an empty or white-space string for `server`, `database`, `file` or `account` is treated. Is each of them an invalid file? |
+| **Until answered** | `AgentPolicyReader` refuses all of them, so the whole file is invalid and the error names the member's path. No test states it. To be answered before S6, which reads the policy when the agent starts |
+| **Decides** | The owner: `policy.json` is public contract |
+
+### Q2. What "characters" counts in the rules of names
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, the tests step |
+| **Question** | The rule of agent names allows 1 to 100 "characters". Are these UTF-16 code units, Unicode scalar values or text elements? The base key, the caller key and the schema are ASCII, so only the agent name is affected |
+| **Until answered** | `OutpostNames` counts UTF-16 code units, as `string.Length` does. No test depends on the difference. To be answered before S4, which stores agent names |
+| **Decides** | The owner: the rules of names are public contract |
+
+### Q3. One version of EF Core and its relational package
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, the contract step |
+| **Question** | `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3 brings `Microsoft.EntityFrameworkCore.Relational` at its lowest allowed version, 10.0.4, while the server references `Microsoft.EntityFrameworkCore` 10.0.15. Should the server reference the relational package as well, so that both are at one version? The plan names only the two packages |
+| **Until answered** | Nothing uses EF Core yet, and the versions stay as they are. To be answered before S3's contract step |
+| **Decides** | The planner |
+
+### Q4. The exact text that `SigningKeyPem` accepts
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, review round 1 |
+| **Question** | The check of `SigningKeyPem` reads the first PEM block and ignores any text after it, so a text with a second block passes. Which text exactly does the option accept, so that the sprint that imports the key reads it the same way and never refuses a key that passed the check? |
+| **Until answered** | The first block must be the unencrypted PKCS#8 PEM of an ECDSA P-256 private key; the rest of the text is ignored, and no test states it. To be answered before S2's contract step, which signs with the key |
+| **Decides** | The planner |
 
 ## Answered
 
