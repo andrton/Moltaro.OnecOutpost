@@ -37,8 +37,9 @@ public interface IOutpostServer
     /// gives the console.
     /// </summary>
     /// <param name="agentName">
-    /// The name of the agent, for people: 1 to 100 characters, no control character, and no white space at the start or
-    /// the end. Names need not be unique.
+    /// The name of the agent, a display label for people that takes arbitrary characters: 1 to 100 characters as
+    /// <see cref="string.Length"/> counts them, that is UTF-16 code units, no control character, and no white space at
+    /// the start or the end. Names need not be unique.
     /// </param>
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The token, with the identity the agent will have once it is paired, and its expiry.</returns>

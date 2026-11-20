@@ -7,7 +7,10 @@ namespace Moltaro.OnecOutpost.Server;
 /// The identity of the agent; for a pending agent, the identity it will have once paired, which is
 /// <see cref="OutpostPairingToken.AgentId"/>.
 /// </param>
-/// <param name="Name">The name given to <see cref="IOutpostServer.CreatePairingTokenAsync"/>. Names need not be unique.</param>
+/// <param name="Name">
+/// The name given to <see cref="IOutpostServer.CreatePairingTokenAsync"/>: a display label of arbitrary characters, which
+/// need not be unique.
+/// </param>
 /// <param name="State">Pending, paired or revoked.</param>
 /// <param name="CreatedAt">When the pending agent was created, with its pairing token.</param>
 /// <param name="PairedAt">When the agent paired; <see langword="null"/> for one that never paired.</param>
