@@ -105,8 +105,8 @@ only documents: a required check that does not run would block the pull request.
   builds, tests and packs that commit with the version of the tag and pushes the packages
   to nuget.org; it refuses a tag that is not on `main`. There is no stored API key: the
   workflow signs in through nuget.org Trusted Publishing.
-- **The agent and the tools are not packages.** How they are released, as a signed
-  archive on GitHub Releases, is set up by the sprint that first ships them.
+- **The agent and the tools are not packages.** How they are released, as an archive with its
+  SHA-256 checksum on GitHub Releases, is set up by the sprint that first ships them.
 - **A release tag is permanent.** The ruleset in
   [`.github/rulesets/release-tags.json`](../../.github/rulesets/release-tags.json) refuses
   moving or deleting a `v*` tag. A wrong release is followed by a new version, never by a
