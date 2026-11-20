@@ -801,8 +801,10 @@ It has to say:
   signed: over the bytes of the body, the kind of request and the agent's identity;
 - the form of the pairing token, and the pairing proof;
 - the fingerprint of a key;
-- the nesting limit of every JSON message, parameters and results included: at most 64
-  levels, a fixed limit of the protocol and not an option (Q5);
+- the nesting limit of every JSON message: at most 64 levels, a fixed limit of the
+  protocol and not an option, counted over the whole message, and how deep parameters and
+  results may nest inside the message that carries them (Q5). The limit lives in the
+  protocol assembly, which both sides check it from;
 - **What every poll answer carries:**
   - the commands;
   - the bases the agent holds and those that another agent holds (rule 14);
@@ -1086,7 +1088,11 @@ approval of this plan.
   - Q5: every JSON message of the protocol, parameters and results included, nests at
     most 64 levels. It is a fixed limit of the protocol, not an option, as `AGENTS.md`
     principle 10 now says. The rule of names states it for the parameters, and
-    `docs/protocol.md` states it when S2 writes it.
+    `docs/protocol.md` states it when S2 writes it. Review round 2 narrowed the sentence
+    of principle 10 to a limit that a side needs before it can read what the other side
+    sent, since a limit that travels in a signed message, such as the size of an outcome,
+    stays an option; and S2 counts the limit over the whole message, from the protocol
+    assembly, as [The protocol](#the-protocol) says.
 - **Corrections from the review.** Round 1 found that the sentence of
   [`OutpostCodes`](#outpostcodes) on Refused said every Refused frees the caller key. As
   concept rule 4 says, only a command that ended as Refused or Expired frees its key; a

@@ -81,6 +81,7 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The planner |
 | **Answer** | 20 November 2026, the planner: the option accepts exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it. Any other text, a second block included, is refused with `ArgumentException` whose `ParamName` is `SigningKeyPem`, so that the import of S2 reads exactly what the check accepted |
 | **Now lives in** | The row of `SigningKeyPem` in the options table of the [epic document](epic-1-first-release.md), and the XML documentation of the option |
+| **Owner** | Changes the public contract, so it is put to the owner (review round 2 of S1, 20 November 2026). S1 is not merged before the owner answers |
 
 ### Q5. How deep the parameters of a command may nest
 
@@ -92,3 +93,4 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The planner, and the owner if it becomes an option |
 | **Answer** | 20 November 2026, the planner: a fixed limit of the protocol, not an option, like the lengths of names. Every JSON message of the protocol, parameters and results included, nests at most 64 levels |
 | **Now lives in** | `AGENTS.md` principle 10; the rule of names for the parameters and "The protocol" in the [epic document](epic-1-first-release.md); the XML documentation of `Parameters`; `docs/protocol.md` when S2 writes it |
+| **Owner** | Changes the public contract, so it is put to the owner (review round 2 of S1, 20 November 2026). S1 is not merged before the owner answers |

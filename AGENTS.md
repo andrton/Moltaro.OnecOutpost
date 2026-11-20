@@ -146,10 +146,11 @@ and trust it. A request outside the tunnel is declined, or noted as planned in t
     limit an application or an administrator can observe is an option with a default,
     validated when the object that uses it is created. Examples are the length of a poll,
     the deadline of a command, the size of a result and the COM workers of a base. Such a
-    value is never a constant in the code. A limit that both sides must check alike, such
-    as the length of a name or the nesting of JSON, is not an option: the protocol fixes
-    it, so that both sides check the same limit. A type that takes more than one lock
-    documents the order.
+    value is never a constant in the code. A limit that a side needs before it can read
+    what the other side sent, such as the length of a name or the nesting of JSON, is not
+    an option: the protocol fixes it, so that both sides check the same limit. A limit that
+    travels in a signed message, such as the size of an outcome, stays an option. A type
+    that takes more than one lock documents the order.
 11. **Never an approximate success.** A request is honored or refused with a code. A
     protocol violation ends the request with a reason; it is not guessed around. Not
     connected, refused by the policy, expired, failed in 1C and unknown are distinct
