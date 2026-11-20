@@ -48,6 +48,7 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Question** | `proxy` takes any absolute `http` URL, so a URL with a user and a password in it, such as `http://user:password@proxy.local:3128`, is accepted, and the policy then holds a secret in plain text. The table of `policy.json` says that a proxy which asks for authentication gets the Windows credentials of the agent's account. Is a URL with a user or a password refused? |
 | **Until answered** | `AgentPolicyReader` accepts it. No message of the reader repeats the value of `proxy`, but the internal `AgentPolicy` record would print it in full if anything wrote the record out; nothing does yet. To be answered before S6, which connects through the proxy |
 | **Decides** | The owner: `policy.json` is public contract |
+| **Proposed** | 20 November 2026, the planner, in S2's list of changes of the public contract that come with `docs/protocol.md`: a URL with a user or a password in `proxy` is refused. The owner's approval of that list answers this entry |
 
 ## Answered
 
