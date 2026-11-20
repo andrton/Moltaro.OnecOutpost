@@ -191,16 +191,18 @@ last learnt (§6.2).
 **The agent's wait** for this answer is the `requestTimeout` of its local policy.
 
 **Anything other than a verified `200` ends the pairing.** The console reports the HTTP
-status together with its own reason for not accepting the answer, for example:
+status together with what it saw, in its own words, for example:
 - "the server's key does not match the fingerprint in the token", which points at a wrong
   server or at something that opens TLS on the path;
 - "the answer's signature does not verify";
-- "the server does not speak protocol v1", for the unsigned answer of that form (§9);
-- "the server refused the pairing", for a bare `403`.
+- "an unsigned answer in the form the server uses for a protocol version it does not
+  speak" (§9);
+- "a bare 403: the server answers so to any failure of pairing, and so can anything on
+  the path".
 
-It never shows text taken from a body it has not verified. A pairing whose answer was lost
-leaves the agent paired on the server but not on its machine; the application revokes it
-and creates a new token.
+It never shows text taken from a body it has not verified. A pairing whose answer was lost,
+or replaced on the path by a bare `403`, may leave the agent paired on the server but not
+on its machine; the application revokes it and creates a new token.
 
 ### 6.2 `poll`
 
@@ -209,16 +211,33 @@ and creates a new token.
 ```
 
 - **`number`** is the poll number, from 1 to 2⁶².
-  - The agent takes it from its clock (UTC ticks), always above its previous one, above
-    the `newest` that an answer to an older poll named (concept rule 10), and above its
-    floor.
-  - **The floor.** The agent never sends a number at or above the latest floor in its
-    audit log. Before it would, it records a new floor, that number plus one day of ticks,
-    in the entry `floor`, and flushes it (rule 2). After a restart it numbers above the
-    latest floor in its audit log. So every number sent after a restart is above every
-    number sent before it, even when the agent's clock was moved ahead and back meanwhile
-    (§13). A floor is recorded about once a day.
-  - Numbers taken from a clock stay far below 2⁶².
+  - The agent takes it from its clock (UTC ticks), always above its previous one, and
+    above the `newest` that an answer to an older poll named (concept rule 10). The
+    reservation below bounds it from above while the agent runs, and from below after a
+    restart.
+  - **The reservation.** The agent sends only numbers below the bound it has reserved in
+    its audit log:
+    - before it would send a number at or above the bound, it records a new reservation,
+      the entry `reservation` with its own identity and the bound `below`, that number plus
+      one day of ticks (864 000 000 000). It flushes the entry through to the disk before
+      it sends the poll (rule 2);
+    - when it starts, it takes the highest `below` of the reservations of its identity in
+      its audit log, whatever the files and times they are in. Its first number is at
+      least that bound, so the first poll records a new reservation. An agent with no
+      reservation records one before its first poll.
+
+    Reservations only grow, so the highest is also the last. Every number sent after a
+    restart is therefore above every number sent before it, even when the agent's clock was
+    moved ahead and back meanwhile, once or many times (§13). A reservation is recorded at
+    every start and about once a day while the clock runs as it should. Reservations of
+    another identity, from an earlier pairing, do not count.
+  - **Numbers run out only by force.** Numbers from the clock and from reservations stay
+    far below 2⁶²: each start uses up a day of ticks, so millions of starts fit. Only a
+    `newest` near 2⁶², which only a server holding the signing key can send, could leave
+    no number. When the next number would pass 2⁶², the agent records `connection` `lost`
+    with the reason `poll-numbers-exhausted` and stops; at a start with no number left it
+    records `started` with an error and stops. Pairing the agent anew gives it a new
+    identity, with no reservation.
 - **`time`** is the agent's time (concept rule 7).
 - **`pollTimeoutMs`** is the poll timeout the agent last learnt, from `agent.json` or from the
   last answer, in the range of the option `PollTimeout` (`MinPollTimeout` to
@@ -253,7 +272,8 @@ and creates a new token.
   The lease grace is the option `LeaseGrace` when the poll is recorded. What follows:
   - **Polls held back on the path.** The server cannot tell a poll held back from an agent
     whose clock runs ahead. Together, the polls of an agent that has gone keep it connected
-    for at most `ClockSkew`, plus the lead its clock had over the node's when it sent them,
+    for at most `ClockSkew`, plus the lead the agent's clock had over the node's when it
+    sent them,
     beyond the lease that its last poll would have had. They count together, not each,
     because only the newest poll grants a lease.
   - **An agent whose clock is behind** the node's by more than `ClockSkew` runs no command
@@ -284,7 +304,8 @@ and creates a new token.
   it declared that another agent holds (rule 14). Every key that the newest poll declared is
   in exactly one of the two.
 - **`commands`**: each holds the exact bytes of a command (§7) and the server's signature
-  over them, at most `free` per mode.
+  over them, at most `free` per mode. An answer with more commands than the sum of `free`
+  in its poll breaks the rules of its message, so that `received` can never overfill.
 - **`pollTimeoutMs`** and **`leaseGraceMs`** are the server's options `PollTimeout` and
   `LeaseGrace`, in their ranges (`MinPollTimeout` to `MaxPollTimeout`, `MinLeaseGrace` to
   `MaxLeaseGrace`). The agent keeps them for its next poll. The pairing answer carries them
@@ -325,9 +346,11 @@ The server then confirms the outcome (rule 11):
 - a later one, one from another agent, and one for a command the server does not know are
   confirmed and change nothing;
 - the one exception is a command whose outcome the server set itself, Unknown or Failed
-  `lost`: the outcome of the agent it was handed to replaces it, as rule 11 says. An outcome that the agent sends after a refusal for its size is no exception: when
-  the server kept nothing, it is the first, and when the server kept the first, it changes
-  nothing.
+  `lost`: the outcome of the agent it was handed to replaces it, as rule 11 says.
+
+An outcome that the agent sends after a refusal for its size follows the same rules. It is
+kept when the server kept nothing yet, it replaces an outcome that the server set itself,
+and it changes nothing when the server already kept an outcome of the agent.
 
 ## 7. The command
 
@@ -366,7 +389,9 @@ here:
 
 **What the agent does with a command:**
 1. It verifies the signature over the bytes with the pinned key.
-2. It reads `protocol` and `id`.
+2. It reads `protocol` and `id`. When the audit log already holds that `id`, the agent
+   does nothing more with these bytes: the command runs once (rule 3), and its recorded
+   outcome, or the refusal recorded for it, stays as it is.
    - A command of another version is refused with `protocol-version` under that `id`, and
      the rest of its bytes are not read.
    - Bytes that do not verify are only recorded in the audit log, with the code
@@ -425,21 +450,22 @@ it first.
 `result-type` or `result-too-large`, or, for a Write, `unknown` with `transaction-ended`.
 - **The executor checks its result before the commit of a Write.** A result that holds
   U+0000 or a lone surrogate, or that nests beyond 64 levels, fails with `result-type`.
-- **The agent repairs the executor's object, then checks it, before it sends it.**
-  1. **The repair.** In the strings of the top-level members `messages` and `errorText`
-     only, it replaces each escape `\u0000`, each escape of a lone surrogate, and each lone
-     surrogate written as its three bytes, with U+FFFD written as its three bytes. An
-     escaped backslash followed by `u0000` is not an escape of U+0000, and a surrogate
-     pair, escaped or not, is not a lone surrogate. Nothing else of the bytes changes, so
-     the repair is never longer than what the executor wrote.
-  2. **The check** by §2 and this section. Anything not allowed, or anything it cannot
-     read, becomes Failed `result-type` for a Read and Unknown `result-type` for a Write.
+- **The executor cleans its messages and its error text** before it writes and measures
+  the object: it replaces each U+0000 and each lone surrogate in them with U+FFFD. So the
+  text it hands over is valid Unicode without U+0000, and its UTF-8 bytes are the same
+  wherever they are encoded.
+- **The agent checks the executor's object by §2 and this section, and changes nothing.**
+  Anything not allowed, or anything it cannot read, becomes Failed `result-type` for a Read
+  and Unknown `result-type` for a Write.
 
 **The size of an outcome** is the length in bytes of the UTF-8 text of this object, exactly
 as it travels, every escape counted as it is written:
-- the executor writes the object and measures it, before the commit of a Write (rule 5);
-- the agent forwards those bytes, repaired, which is never longer. It writes the outcomes
-  of its own, such as `refused` or `unknown`, by §2;
+- the executor writes the object and measures its UTF-8 bytes, before the commit of a
+  Write (rule 5);
+- the object crosses COM as UTF-16 text, and the COM worker encodes it as UTF-8. Since the
+  text is valid Unicode, these are exactly the bytes the executor measured;
+- the agent forwards those bytes as they are. It writes the outcomes of its own, such as
+  `refused` or `unknown`, by §2;
 - the server measures the raw text of the `outcome` member it received.
 
 ## 9. Answers, refusals and lost answers
@@ -493,9 +519,13 @@ that needs such a bound adds rate limiting to the group that `MapOutpostAgents` 
 connection while the client is still sending its body may cause a reset that wipes out the
 answer (RFC 9112 §9.6). So an `outcome` carries `Expect: 100-continue`, and Kestrel and
 common ingresses refuse a declared length beyond their limit before the agent sends the
-body. A hop that ignores `Expect`, or that drops `Content-Length`, can still lose that 413.
-The agent then sees a lost answer and sends the outcome again, and the outcome stays unsent
-until the path is fixed, as below for an outcome the server cannot read.
+body. The agent waits for `100 Continue` or a final answer for one second, the default of
+.NET, and then sends the body anyway. A hop that ignores `Expect`, a refusal that comes
+later than that second, or a hop that drops `Content-Length` can still lose that 413. The
+agent then sees a lost answer and sends the outcome again, and the outcome stays unsent
+until the path is fixed, as below for an outcome the server cannot read. Such an outcome
+shows only as an `ended` without its `confirmed` in the audit log: the state of the
+connection follows the polls, and the console's check, with its small outcome, passes.
 
 **What the agent does with an answer.** An answer is **verified** when:
 - its `Content-Type` is exactly `application/json`;
@@ -601,7 +631,7 @@ service's place (rule 10).
 | Replayed | Stopped by |
 | --- | --- |
 | `pair` | The token works once |
-| `poll` | A number not greater than the newest is older and takes nothing (rule 10). The agent waits before it polls again after such an answer (§6.2). The floor keeps every number sent after a restart above every number sent before it (§6.2) |
+| `poll` | A number not greater than the newest is older and takes nothing (rule 10). The agent waits before it polls again after such an answer (§6.2). The reservation keeps every number sent after a restart above every number sent before it (§6.2) |
 | `outcome` | Only the first outcome of a command counts (rule 11) |
 | An answer | Its signature covers the agent and the hash of the one request it answers |
 | A command | The audit log and the take deadline with the skew the command carries (rules 1, 3, 7) |
@@ -612,7 +642,8 @@ nobody signed, or make an outcome claim more than happened. What it can do:
 - it can make outcomes late. A taken Write then ends as Unknown `disconnected`, a taken Read
   as Failed `lost`, and a command never taken as Expired;
 - it can hold back the polls of an agent that has gone. Together they keep the agent
-  connected for at most `ClockSkew`, plus the lead of the agent's clock over the node's,
+  connected for at most `ClockSkew`, plus the lead the agent's clock had over the node's
+  when it sent them,
   beyond the lease of its last poll (§6.2). In that time `GetAgentsAsync` shows the agent
   as connected, and a command created for it waits and then ends as above, not as
   Unavailable;
@@ -622,12 +653,23 @@ nobody signed, or make an outcome claim more than happened. What it can do:
   `ClockSkew` refuses every command (rule 1).
 
   Such a hop could also keep a poll it captured while the clock was ahead: a high number
-  and a late `time`. Without the floor of §6.2, an agent restarted after its clock was set
-  back would number its polls below that one. The hop could then replay it after the agent
-  had run a Write: the poll would become the newest, its list and its time would make the
-  Write Expired (rules 7, 11), the caller key would be free, and a repeat would run the
-  Write a second time. The floor closes this: every poll after the restart is above the
-  captured one, which stays older and changes nothing.
+  and a late `time`. Without the reservation of §6.2, an agent restarted after its clock
+  was set back would number its polls below that one. The hop could then replay it after
+  the agent had run a Write: the poll would become the newest, its list and its time would
+  make the Write Expired (rules 7, 11), the caller key would be free, and a repeat would
+  run the Write a second time. The reservation closes this: every poll after the restart
+  is above the captured one, which stays older and changes nothing. That holds however
+  often the clock is moved and the agent restarted, because the agent starts above the
+  highest reservation, which no clock orders.
+
+**What the reservation rests on.** It lives as long as the audit log of the agent's
+identity. An administrator who clears `audit\`, or restores an older data folder or a
+snapshot of the machine, brings numbering from the clock back, and with it the replay
+above; such an agent is paired anew, as a clone is (concept "What protects what"). An agent
+that cannot read its audit log when it starts records `started` with an error and stops,
+since the log is also its journal of rules 3, 10 and 11. A last line cut short, without its
+line end, is a write that never completed: the agent went on from no such entry, so it
+ignores that line.
 
 Dropping messages already gives such a hop the power over outcomes, so nothing more is built
 against it.

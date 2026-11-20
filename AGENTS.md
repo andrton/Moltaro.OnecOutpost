@@ -42,6 +42,7 @@ in code, tests, samples or documents.
 | Path | Contents |
 | --- | --- |
 | `src` | The solution, every project and the build settings. Run `dotnet` from here |
+| `src/OneC.TestConfiguration` | Planned: the XML sources of the repository's own 1C test configuration, and the script that builds the lab's test base from them; see the table of projects below |
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | Planned: the wire protocol, written with the sprint that introduces it |
 | `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
@@ -64,7 +65,7 @@ every other project is not.
 | `src/OneC.TestConfiguration` | Planned: the XML sources of the repository's own 1C test configuration, with a script that builds a file base from them through the Designer's command line on the lab machine. No built configuration or base is committed |
 | `Moltaro.OnecOutpost.Samples` | The samples of use: an ASP.NET Core application that embeds the server. Each runs to the end with `dotnet run` |
 | `Moltaro.OnecOutpost.Measurements` | Planned: the program that measures the latency target of the concept, run by hand, never in CI or in the tests |
-| `src/*.Tests` | Tests, one project per library or program |
+| `src/*.Tests` | Tests, one project per library or program, and `Moltaro.OnecOutpost.OneC.Tests` for the tests that need 1C |
 | `Moltaro.OnecOutpost.OneC.Tests` | Planned: the tests that need 1C, run only on the lab machine. It is not in the solution, so `dotnet test` from `src` never runs it; CI builds it and checks its format |
 | `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake clock, the PostgreSQL fixture and the fake of the COM worker. Never shipped; no tests |
 
@@ -362,9 +363,12 @@ From `src`:
 dotnet build
 dotnet test
 dotnet format --verify-no-changes
+dotnet build Moltaro.OnecOutpost.OneC.Tests
+dotnet format Moltaro.OnecOutpost.OneC.Tests/Moltaro.OnecOutpost.OneC.Tests.csproj --verify-no-changes
 ```
 
-On the lab machine, also from `src`, the tests that need 1C:
+The last two lines apply once that project exists. On the lab machine, also from `src`, the
+tests that need 1C:
 
 ```bash
 dotnet test --project Moltaro.OnecOutpost.OneC.Tests
