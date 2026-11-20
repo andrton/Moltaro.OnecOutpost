@@ -48,8 +48,9 @@ public sealed class OutpostServerOptions
     /// <c>ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()</c>.
     /// </para>
     /// <para>
-    /// Every node uses the same key. A new key takes a new pairing of every agent. The validation reads only the first
-    /// PEM block; its error never contains the key.
+    /// The text is exactly one PEM block, labelled <c>PRIVATE KEY</c>, with nothing but white space before or after
+    /// it. Any other text, a second block included, gives <see cref="ArgumentException"/>, whose message never
+    /// contains the key. Every node uses the same key. A new key takes a new pairing of every agent.
     /// </para>
     /// </remarks>
     public string? SigningKeyPem { get; set; }
@@ -207,7 +208,7 @@ public sealed class OutpostServerOptions
         if (SigningKeyPem is null || !IsSigningKey(SigningKeyPem))
         {
             throw new ArgumentException(
-                "The signing key is required, as the PKCS#8 PEM, not encrypted, of an ECDSA P-256 private key.",
+                "The signing key is required, as exactly one PEM block, the PKCS#8 PEM, not encrypted, of an ECDSA P-256 private key, with nothing but white space around it.",
                 nameof(SigningKeyPem));
         }
 
@@ -241,11 +242,15 @@ public sealed class OutpostServerOptions
         ArgumentOutOfRangeException.ThrowIfGreaterThan(value, maximum, paramName);
     }
 
-    // True when the first PEM block is labelled PRIVATE KEY, which is PKCS#8 and not encrypted, and its key is an
-    // ECDSA key on the named curve P-256.
+    // True when the text is one PEM block with only white space around it, labelled PRIVATE KEY, which is PKCS#8 and
+    // not encrypted, and its key is an ECDSA key on the named curve P-256. Nothing else may be in the text, so that the
+    // import of the key reads exactly what this check accepted (Q4).
     private static bool IsSigningKey(string pem)
     {
-        if (!PemEncoding.TryFind(pem, out PemFields fields) || !pem.AsSpan(fields.Label).SequenceEqual("PRIVATE KEY"))
+        if (!PemEncoding.TryFind(pem, out PemFields fields)
+            || !pem.AsSpan(fields.Label).SequenceEqual("PRIVATE KEY")
+            || !pem.AsSpan(..fields.Location.Start).IsWhiteSpace()
+            || !pem.AsSpan(fields.Location.End..).IsWhiteSpace())
         {
             return false;
         }

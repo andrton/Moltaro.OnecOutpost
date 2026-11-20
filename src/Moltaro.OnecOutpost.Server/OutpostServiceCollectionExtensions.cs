@@ -46,8 +46,9 @@ public static class OutpostServiceCollectionExtensions
     /// </exception>
     /// <exception cref="ArgumentException">
     /// Thrown by the call: any other value of the options is wrong, such as a required property left
-    /// <see langword="null"/>, a schema or a prefix that breaks its rule, or a signing key that is not the PKCS#8 PEM of
-    /// an ECDSA P-256 private key. The <see cref="ArgumentException.ParamName"/> is the name of the property.
+    /// <see langword="null"/>, a schema or a prefix that breaks its rule, or a signing key that is not exactly one
+    /// PKCS#8 PEM block of an ECDSA P-256 private key. The <see cref="ArgumentException.ParamName"/> is the name of the
+    /// property.
     /// </exception>
     public static IServiceCollection AddOutpostServer(
         this IServiceCollection services,

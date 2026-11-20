@@ -199,14 +199,25 @@ public sealed class OutpostServerOptionsTests
             () => AddServer(options => options.SignalKeyPrefix = null!));
     }
 
-    // Each wrong kind of key once: no PEM at all, an EC key that is not in PKCS#8, a key of another algorithm, and an
-    // ECDSA key on another curve.
+    [Fact]
+    public void A_signing_key_with_white_space_around_its_one_block_is_accepted()
+    {
+        string key = $" \r\n\t{CreateSigningKey()}\n \n";
+
+        AddServer(options => options.SigningKeyPem = key);
+    }
+
+    // Each wrong kind of text once: no PEM at all, an EC key that is not in PKCS#8, a key of another algorithm, an ECDSA
+    // key on another curve, and a right key with text before it, text after it or a second block after it.
     [Theory]
     [InlineData("text")]
     [InlineData("SEC1")]
     [InlineData("RSA")]
     [InlineData("P-384")]
-    public void A_signing_key_that_is_not_the_PKCS8_PEM_of_an_ECDSA_P256_private_key_is_refused_without_the_key_in_the_message(
+    [InlineData("text before")]
+    [InlineData("text after")]
+    [InlineData("second block")]
+    public void A_signing_key_that_is_not_exactly_one_PKCS8_PEM_block_of_an_ECDSA_P256_private_key_is_refused_without_the_key_in_the_message(
         string kind)
     {
         string key = CreateBrokenSigningKey(kind);
@@ -330,8 +341,25 @@ public sealed class OutpostServerOptionsTests
                     return key.ExportPkcs8PrivateKeyPem();
                 }
 
+            case "text before":
+                return $"Node 1\n{CreateSigningKey()}";
+
+            case "text after":
+                return $"{CreateSigningKey()}\nNode 1";
+
+            case "second block":
+                return $"{CreateSigningKey()}\n{CreateSigningKey()}";
+
             default:
                 throw new ArgumentOutOfRangeException(nameof(kind), kind, "Not a kind of broken key.");
         }
+    }
+
+    // The unencrypted PKCS#8 PEM of an ECDSA P-256 private key, as the options require.
+    private static string CreateSigningKey()
+    {
+        using ECDsa key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+
+        return key.ExportPkcs8PrivateKeyPem();
     }
 }
