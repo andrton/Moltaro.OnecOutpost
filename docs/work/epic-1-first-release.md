@@ -2345,11 +2345,13 @@ the contract of the executor and the COM worker approved.
       length in bytes of the UTF-8 text of the outcome object alone, as the executor measured
       it before the commit of a Write.
     - Safe mode is not its parameter: the worker opens it in safe mode or without.
-    - It never raises: every error of the script is an outcome.
+    - It never raises: every error of the script is an outcome. How it measures UTF-8 in
+      the mode 8.2.13 is its own matter, and a lab test holds the result.
     - After the script of a Read or a Write it rolls back every transaction the script
       left open, and the outcome is Failed `script-error` with the executor's own sentence
-      (Q12). So a Read leaves no transaction to the next command of its worker. How it measures UTF-8 in
-      the mode 8.2.13 is its own matter, and a lab test holds the result.
+      (Q12), unless the script raised, or its result fails the type or size check, which
+      keep their code and text. So a Read leaves no transaction to the next command of its
+      worker.
 
     **The worker's command line:** `Moltaro.OnecOutpost.ComWorker.exe <base key> <read|write>`.
     The base key only names the worker in its diagnostics. Anything else ends it with exit
@@ -2362,7 +2364,10 @@ the contract of the executor and the COM worker approved.
     such as the failure message of 1C or of .NET, it writes there only when the text holds
     the password neither as it is nor with its quotes doubled; otherwise it writes its own
     sentence that the text was withheld. Replacing the password inside such a text would
-    give a short one away. An outcome line is never changed.
+    give a short one away. Two limits stay: that a text was withheld says the password is
+    part of it, which over many failures can narrow a password of one or two characters,
+    and a password that 1C quotes cut or in another case is not seen. An outcome line is
+    never changed.
 
     | Direction | Line | When |
     | --- | --- | --- |
