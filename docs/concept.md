@@ -4,8 +4,9 @@ This document is the authority for what the library guarantees: its semantics, i
 protocol principles, its decisions and its non-goals. It describes the design;
 [README.md](../README.md) says what of it is built.
 
-**Status.** The owner agrees to this concept by merging it into `main`. The open items O1
-and O5 of section 12 are still to be answered on a lab machine and may reopen decision D12.
+**Status.** The owner agrees to this concept by merging it into `main`. The lab check of
+section 12 reopened decision D12: a typical document does not post in safe mode (O1). The
+owner decides it before the executor is built.
 
 ## 1. Where it comes from
 
@@ -567,22 +568,23 @@ licences checked at that time:
 
 The check L1 ran on 21 November 2026 on a lab machine with 1C:Enterprise 8.3.17.1851,
 against a copy of a typical client-server base, a configuration on the ordinary application
-in the compatibility mode 8.2.13. O1 and O5 are still open.
+in the compatibility mode 8.2.13.
 
-- **O1. Posting in safe mode.** *Open.* Does a typical document post in safe mode, with
-  the same register movements as when a person posts it? Common modules of typical
-  configurations switch to privileged mode, which has no effect in safe mode, so the rights
-  of the account apply where they did not before. If the movements differ, decision D12
-  goes back to the owner. Weakening it then requires COM workers under an account of their
-  own, which cannot read the agent's secrets or its audit log; they become part of the
-  sprint that weakens it.
+- **O1. Posting in safe mode.** *Answered: it does not post, and decision D12 is with
+  the owner.* In safe mode the write of a typical document fails: a handler of the typical
+  configuration itself, its versioning of objects, opens a file when a document is
+  written, and safe mode refuses that. Without safe mode the same document posts through
+  the external connection with the same movements in all of its 32 registers as when a
+  person posted it. Reads work in safe mode. Weakening D12 for a Write requires COM workers
+  under an account of their own, which cannot read the agent's secrets or its audit log;
+  they become part of the sprint that weakens it.
 
-  What L1 found instead: the document could not be written at all, with safe mode and
-  without it. The base carries two common modules of its own whose event subscriptions
-  cover its documents and registers, and neither module is available to an external
-  connection. 1C then calls the handler on the server and refuses to pass the document to
-  it. Every subscription of the typical configuration itself is available. The check is
-  repeated once those two modules have the flag.
+  Before that, the document could not be written at all, with safe mode and without it.
+  The base carried two common modules of its own whose event subscriptions cover its
+  documents and registers, and neither was available to an external connection. 1C then
+  calls the handler on the server and refuses to pass the document to it. Every
+  subscription of the typical configuration itself is available. Setting the one flag on
+  the two modules was enough.
 - **O2. Opening the executor.** *Answered.* An external connection opens the executor from
   a file on the agent machine with `ExternalDataProcessors.Create`, in safe mode, on
   8.3.17.1851. The platform's protection against dangerous actions refuses the call, since
@@ -597,9 +599,10 @@ in the compatibility mode 8.2.13. O1 and O5 are still open.
   exception: `WriteJSON` refuses `Null`, alone or inside a value. The executor replaces
   `Null` with `Undefined` before it writes. A `Map` with a key that is not a string and a
   reference are refused, as section 3 expects.
-- **O5. Long Writes.** *Open,* with O1: no posting ran. A Write holds the managed locks of
-  its transaction until it ends. What run limits are reasonable for typical postings, for
-  Read and for Write?
+- **O5. Long Writes.** *Answered in part.* Posting one typical document again took under
+  four seconds, one measurement on an idle lab base. A Write holds the managed locks of its
+  transaction until it ends, so the run limits of the plan stand until a loaded base says
+  otherwise.
 - **O6. Where scripts run.** *Answered.* For a client-server base too, the script runs in
   the process of the COM connector on the agent machine. So safe mode is what keeps a
   script away from that machine, and the code of the configuration takes part only where
