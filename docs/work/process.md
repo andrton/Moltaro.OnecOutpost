@@ -21,7 +21,8 @@ record of its own in `docs/decisions`, created when the first such decision is.
 The coordinator picks the track for each sprint and the plan records it. When in doubt, full.
 
 Every sprint, on any track, is reviewed by an independent reviewer, and the review
-repeats after the fixes until it finds nothing that blocks; see [Review](#review).
+repeats after the fixes until it finds nothing that blocks or reaches its limit of rounds;
+see [Review](#review).
 
 ## Roles
 
@@ -48,7 +49,8 @@ with one brief per sprint. A brief has to be enough for an agent that knows noth
 - **To read** — the decisions and documents the sprint depends on, with their dates.
 - **Acceptance** — the behaviors the tests have to state. For a sprint whose goal names a
   performance target, also what is measured: a benchmark or a query count. For a sprint
-  that needs a real 1C, the manual acceptance on a copy of a database on a lab machine.
+  that needs a real 1C, its tests on a lab machine and the manual acceptance of what no
+  test can make, on the lab's test base or on a copy of a database.
 - **Out of scope** — what the sprint deliberately leaves alone.
 - **Track** — full, refactoring or light.
 
@@ -56,6 +58,24 @@ with one brief per sprint. A brief has to be enough for an agent that knows noth
 that later sprints build on. A long epic may have more than one. Technical debt grows
 however carefully each sprint is done; a sprint of its own removes it without mixing it
 into a change of behavior.
+
+**The first sprints make one command work end to end.** The plan orders the sprints so
+that the thinnest path through the whole product runs as early as possible: an agent
+polls the server, runs a script in a real 1C and returns its result. The sprints that
+harden that path — signatures, the audit log, several nodes — come after it. What the
+riskiest unknown depends on is checked first, on the lab machine.
+
+**A design document covers what its sprint builds.** The protocol says what is on the
+wire; a brief names the types its tests address. The behavior of a later sprint — what
+the agent keeps on its disk, how it recovers — is written in the brief of that sprint and
+proven by its tests, not described ahead in prose.
+
+**Until the first release the public contract is a draft.** The owner approves the
+contract of a stage as before, but no consumer depends on it yet, so it does not have to
+be perfect before code is written. A sprint that finds the contract should change makes
+the change in its branch, lists it in the epic document for the owner and goes on; the
+owner sees the list when the sprint closes and may overturn it. From the first release
+on, every change of the public contract waits for the owner.
 
 **The contract is written stage by stage.** An epic of many sprints is divided into
 stages, and every sprint has its brief from the start. For the sprints of the first
@@ -76,15 +96,14 @@ the public contract or a decision only the owner can make.
 
 Before any sprint starts:
 
-1. An independent reviewer reviews the plan the way a sprint is reviewed, and reviews it
-   again after the corrections, until no P1, P2 or P3 finding is left. A wrong plan is
-   the most expensive mistake, and it is the cheapest to catch here.
+1. An independent reviewer reviews the plan the way a sprint is reviewed, and once more
+   after the corrections, within the limit for a document ([Review](#review), "Rounds").
+   A wrong plan is the most expensive mistake, and it is the cheapest to catch here.
 2. The owner approves the plan, and with it the contracts of the first stages.
 
 Before a later stage starts, the planner goes through the [open questions](open-questions.md)
 and takes up those the stage touches. It then completes the contracts of its sprints, an
-independent reviewer reviews them as the plan was reviewed, until no P1, P2 or P3 finding
-is left, and the owner approves them. The coordinator does not start the first sprint of
+independent reviewer reviews them as the plan was reviewed, and the owner approves them. The coordinator does not start the first sprint of
 a stage without that approval.
 
 If a decision the plan depends on changes while the epic runs, the coordinator
@@ -106,7 +125,8 @@ stops and has the plan corrected before the next sprint.
 5. **Review.** The coordinator reviews, and an independent reviewer reviews.
 6. **Fixes.** The implementer fixes every P1, P2 and P3 finding. The next review covers
    only what changed and what was still open. Review and fixes repeat until an
-   independent review ends with no P1, P2 or P3 finding that is still open.
+   independent review ends with no P1, P2 or P3 finding that is still open, within the
+   limit of rounds that [Review](#review) sets.
 7. **Documents.** The coordinator compares `README.md`, the [concept](../concept.md),
    `docs/protocol.md` and the explanations in `docs/explanations` with what the sprint
    delivered: what exists and what is planned, names, limits, described behavior. What
@@ -155,6 +175,14 @@ sprint closes, and goes through all of them with the owner when the epic closes.
 that names a sprint as its limit is read when that sprint is prepared: the sprint does
 not start before the entry is answered or moved to a later one. A question that does
 block is not entered there: the coordinator stops and asks.
+
+**A question does not hold a run.** A question blocks only when a wrong answer cannot be
+undone cheaply: it is destructive, it leaves the repository, or it changes a released
+contract. For any other question the coordinator takes the answer the planner
+recommends, enters it in the open questions as taken, and goes on with the sprint; the
+owner may overturn it. A run that the owner does not watch has its goal stated as a
+result — "the codec of S2 with its tests green" — not as an activity, and the
+coordinator's report says how far from that result it ended.
 
 A test that turns out to be wrong is changed by the test author, or by the coordinator,
 with the reason in the commit message. Never by the implementer on its own.
@@ -216,7 +244,7 @@ goes wrong because of it: a concrete failure or a concrete cost. Then its severi
 | --- | --- | --- |
 | **P1** | Wrong result: a command run without a valid signature, twice under one caller key, after its deadline or against the local policy; an outcome given to the caller of another command; an unknown outcome reported as known; a secret leaked; a dead agent reported as connected; a guarantee of the concept or the contract broken; a security problem; the build or a test fails | Yes |
 | **P2** | An accepted decision or an architectural principle is violated; a stated behavior has no test; a concurrency or lifetime hazard; the contract changed without approval | Yes |
-| **P3** | It will cost later: duplication, unclear ownership or naming, missing or misleading public documentation, needless complexity, the quality priorities of the zone ignored | Yes |
+| **P3** | It will cost later: duplication, unclear ownership or naming, missing or misleading public documentation, needless complexity, the quality priorities of the zone ignored | In code, yes; in a document, no ("Rounds") |
 | **P4** | A suggestion or a matter of taste | No; listed for the coordinator |
 
 A finding that names no rule and no failure is P4. A reviewer does not widen the scope:
@@ -237,12 +265,28 @@ for defects; it does not ask for a test of every line.
 **Disputes.** The implementer may contest a finding, with its reason. The coordinator
 decides. What the coordinator cannot decide goes to the owner.
 
-**Rounds.** Review and fixes repeat for as long as an independent review finds a P1, P2
-or P3. A sprint or a plan is never closed on its author's word that a finding was fixed:
-the fix is reviewed. The rounds are not limited by a number: a round that finds something
-new, which is then fixed and reviewed, is the review doing its work, and the sprint goes
-on. But when the fixes of one area keep producing new findings, the area is over-built
-(`AGENTS.md`, "Keep It Simple"): the coordinator has it simplified instead of fixed again,
+**Rounds.** A sprint or a plan is never closed on its author's word that a finding was
+fixed: the fix is reviewed. Every review has a limit of rounds, and reaching it is a
+reason to stop and report, not to go on (the owner's rule of 21 November 2026, after ten
+rounds on `docs/protocol.md` that produced no code):
+
+- **Code: three rounds.** Review and fixes repeat while an independent review finds a
+  P1, P2 or P3, for at most three rounds. When the third still finds one, the coordinator
+  stops and gives the owner the open findings in a few lines. The owner decides: fix
+  again, accept, or move to a named sprint.
+- **A document: two rounds.** This is a plan, a brief, an internal contract, the
+  protocol or any other design document. Only a P1 or a P2 blocks it. A P3 that costs a
+  sentence is fixed in the same pass; any other goes to the
+  [open questions](open-questions.md). A P3 never causes another round. A round that
+  finds no P1 and no P2 closes the review. After the second round the coordinator stops,
+  and what is still open goes to the owner as a short list.
+- **A document that grows is over-built.** When the fixes of a round leave a document
+  longer than it was, the coordinator orders no further round. It has the document cut
+  to what its sprint builds (`AGENTS.md`, "Keep It Simple"), and what was cut moves to
+  the brief of the sprint that builds it.
+
+When the fixes of one area of the code keep producing new findings, that area is
+over-built in the same way: the coordinator has it simplified instead of fixed again,
 and a simplification that changes the contract or a decision goes to the owner.
 
 A finding that comes back is another matter. When a finding is found again after its fix
@@ -298,12 +342,15 @@ what was adapted and what was only taken as an idea.
 
 ## When to stop and ask the owner
 
-- The public contract has to change.
+- The public contract has to change, from the first release on. Before it, the change
+  is made and listed, as "Until the first release the public contract is a draft" says.
 - A decision of the concept contradicts the brief, or has changed.
 - A finding keeps coming back after the coordinator has settled it once, as
-  [Review](#review) describes. The number of review rounds alone is no reason to stop.
+  [Review](#review) describes.
+- A review has reached its limit of rounds: three for code, two for a document.
 - A dispute the coordinator cannot settle.
-- A check that would need a real 1C database other than a copy on a lab machine.
+- A check that would need a real 1C database other than the test base or a copy of a
+  database on a lab machine.
 - Anything destructive, or anything that leaves this repository: a push, a pull request,
   a merge, a release tag. A standing permission of the owner, as
   [branches and releases](branches.md#who-does-what) describes it, covers the push, the

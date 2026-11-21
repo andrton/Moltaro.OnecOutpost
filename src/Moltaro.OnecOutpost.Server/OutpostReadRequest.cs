@@ -35,8 +35,9 @@ public sealed class OutpostReadRequest
     /// The script, in the 1C language. Required.
     /// </summary>
     /// <remarks>
-    /// At least one character that is not white space, and no U+0000. Together with <see cref="Parameters"/> it is the
-    /// command, whose size <see cref="OutpostServerOptions.CommandSizeLimit"/> bounds.
+    /// At least one character that is not white space, no U+0000, and no lone surrogate, a code unit from U+D800 to
+    /// U+DFFF without its pair, which UTF-8 cannot carry. Together with <see cref="Parameters"/> it is the command, whose
+    /// size <see cref="OutpostServerOptions.CommandSizeLimit"/> bounds.
     /// </remarks>
     public required string Script { get; init; }
 
@@ -50,9 +51,12 @@ public sealed class OutpostReadRequest
     /// value, and <c>null</c> becomes <c>Undefined</c>. A string is never turned into a date by guessing.
     /// </para>
     /// <para>
-    /// No string in them, the name of a member included, holds U+0000, which PostgreSQL cannot store. They nest at most
-    /// 64 levels, counted from their own outer value, the outer object being level 1: a fixed limit of the protocol.
-    /// They are written as JSON when the call is made: a later change of the object has no effect on the command.
+    /// No string in them, the name of a member included, holds U+0000, which PostgreSQL cannot store, or a lone
+    /// surrogate, which UTF-8 cannot carry. A string inside another .NET value wrapped in a <see cref="JsonValue"/>, such
+    /// as a <see cref="char"/> or an array, is written as System.Text.Json writes it, with U+FFFD in place of a lone
+    /// surrogate. They nest at most 64 levels, counted from their own outer value, the outer object being level 1: a
+    /// fixed limit of the protocol. They are written as JSON when the call is made: a later change of the object has no
+    /// effect on the command.
     /// </para>
     /// </remarks>
     public JsonObject? Parameters { get; init; }

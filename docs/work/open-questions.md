@@ -40,15 +40,6 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 
 ## Open
 
-### Q6. Strings that UTF-8 cannot carry
-
-| | |
-| --- | --- |
-| **Found** | 20 November 2026, Epic 1 S1, review rounds 6 and 8 |
-| **Question** | A string of .NET can hold a lone surrogate, a code unit from U+D800 to U+DFFF without its pair, which no UTF-8 can carry. It meets the library in two places. First, the agent name, a script and the strings of the parameters accept one; strict UTF-8, as the store and the protocol will use, would then fail inside the task of the call, where the rules for every member want an argument error thrown by the call itself, as for U+0000. Second, in `policy.json` an escaped lone surrogate, in a string or in a member name, makes `AgentPolicyReader` throw `InvalidOperationException` instead of an error that says where and what. Is a lone surrogate refused as an argument by the rules of names, of scripts and of parameters? And is it a fault that makes `policy.json` invalid, reported at its path? |
-| **Until answered** | The checks of S1 accept a lone surrogate in the agent name, a script and the parameters; nothing stores or sends a string yet. `AgentPolicyReader` throws `InvalidOperationException` for an escaped lone surrogate; the agent program does not read its policy yet. Both parts are answered at once, before S2, whose codec first turns these strings into UTF-8 bytes and signs them |
-| **Decides** | The owner: the answer changes the rules of names, of scripts and of parameters and the format of `policy.json`, which are public contract |
-
 ### Q7. A user and a password in the URL of the proxy
 
 | | |
@@ -57,6 +48,25 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Question** | `proxy` takes any absolute `http` URL, so a URL with a user and a password in it, such as `http://user:password@proxy.local:3128`, is accepted, and the policy then holds a secret in plain text. The table of `policy.json` says that a proxy which asks for authentication gets the Windows credentials of the agent's account. Is a URL with a user or a password refused? |
 | **Until answered** | `AgentPolicyReader` accepts it. No message of the reader repeats the value of `proxy`, but the internal `AgentPolicy` record would print it in full if anything wrote the record out; nothing does yet. To be answered before S6, which connects through the proxy |
 | **Decides** | The owner: `policy.json` is public contract |
+| **Proposed** | 20 November 2026, the planner, in S2's list of changes of the public contract that come with `docs/protocol.md`: a URL with a user or a password in `proxy` is refused. The owner's approval of that list answers this entry |
+
+### Q8. Which code a verified command gets for a fault the brief does not place
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S2, the tests and the implementation steps |
+| **Question** | §7 of `docs/protocol.md` gives `form` without an identity to verified bytes that yield no `protocol` and no `id`, and `malformed` with the identity to a verified command of this version that breaks §7. It does not place every fault. Which code does each of these get: an `id` in another form than the 36 lowercase characters; a `protocol` or an `id` given twice; bytes that are not JSON, or nest beyond the 72 levels of a message; a fault of §2 in a command whose `protocol` and `id` can be read, such as a duplicated member, U+0000 or parameters deeper than 64 levels; and `protocol` 0? |
+| **Taken** | 21 November 2026, the coordinator, as the recommended reading: an `id` in another form, a `protocol` or an `id` given twice, and bytes that are not JSON within 72 levels yield no identity, so they get `form` without one. A fault of §2 in a command whose `protocol` 1 and `id` were read gets `malformed` with its identity. `protocol` 0 is another version and gets `protocol-version`. The codec does so; its tests show an `id` in another form, bytes that are not JSON, the faults of §2 and `protocol` 0 |
+| **Decides** | The owner: the codes of a refusal are public contract. A cheap change of the codec if overturned; nothing is sent or stored yet |
+
+### Q9. Rules of §6 and §8 that the readers apply more strictly than the text says
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S2, the implementation step |
+| **Question** | Three rules are read strictly where the text of `docs/protocol.md` allows another reading. Does each hold? (a) For `failed` with `script-error`, `errorText` is a string and never `null` (§8 says "the text of the error 1C raised", and `null` otherwise). (b) The keys in `bases.held` and `bases.claimed` of a poll answer follow the rule of base keys (§6.2). (c) A signed refusal is checked only for its code against its status, not against the kind of the request (§9) |
+| **Taken** | 21 November 2026, the coordinator, as the recommended reading: (a) and (b) yes, so a reader refuses such a message with `form`; (c) as the brief's contract of `ReadRefusal` states it. The codec does so |
+| **Decides** | The planner, for (b) and (c), which follow from rules that stand; the owner for (a), a rule of the outcome object. To be answered before S6, whose agent writes and reads these messages |
 
 ## Answered
 
@@ -116,3 +126,14 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The owner: the proposal changes the public contract (review round 2 of S1) |
 | **Answer** | 20 November 2026, the owner, in their words: yes, a hard rule. The owner approves the proposal: the parameters of a command and the result of an outcome nest at most 64 levels, counted from their own outer value, a fixed limit of the protocol and not an option, the same on both sides; `docs/protocol.md` states it in S2; the narrowed sentence of `AGENTS.md` principle 10 stands |
 | **Now lives in** | `AGENTS.md` principle 10; the rule of names and "The protocol" in the [epic document](epic-1-first-release.md); the XML documentation of `Parameters`; `docs/protocol.md` when S2 writes it |
+
+### Q6. Strings that UTF-8 cannot carry
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, review rounds 6 and 8 |
+| **Question** | A string of .NET can hold a lone surrogate, a code unit from U+D800 to U+DFFF without its pair, which no UTF-8 can carry. It meets the library in two places. First, the agent name, a script and the strings of the parameters accept one; strict UTF-8, as the store and the protocol will use, would then fail inside the task of the call, where the rules for every member want an argument error thrown by the call itself, as for U+0000. Second, in `policy.json` an escaped lone surrogate, in a string or in a member name, makes `AgentPolicyReader` throw `InvalidOperationException` instead of an error that says where and what. Is a lone surrogate refused as an argument by the rules of names, of scripts and of parameters? And is it a fault that makes `policy.json` invalid, reported at its path? |
+| **Until answered** | The checks of S1 accept a lone surrogate in the agent name, a script and the parameters; nothing stores or sends a string yet. `AgentPolicyReader` throws `InvalidOperationException` for an escaped lone surrogate; the agent program does not read its policy yet. Both parts are answered at once, before S2, whose codec first turns these strings into UTF-8 bytes and signs them |
+| **Decides** | The owner: the answer changes the rules of names, of scripts and of parameters and the format of `policy.json`, which are public contract |
+| **Answer** | 20 November 2026, the owner, in their words: yes. A lone surrogate is refused at once, with a clear argument error, in the agent name, the script and the parameters of `ReadAsync` and `WriteAsync`; and it makes `policy.json` invalid, reported at its path as Q1 requires |
+| **Now lives in** | The rule of names and [`policy.json`](epic-1-first-release.md#policyjson) in the epic document; the checks of `OutpostNames`, of the parameters and of `AgentPolicyReader`, and their tests, carried into S2 |

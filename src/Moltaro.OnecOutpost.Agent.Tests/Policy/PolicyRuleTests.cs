@@ -10,6 +10,9 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Policy;
 // member of a valid policy: the owner of the member is given by its path, with "" for the root.
 public sealed class PolicyRuleTests
 {
+    // A string that WithEscapedString replaces, as a name or as a value.
+    private const string Placeholder = "placeholder";
+
     // The owner's example of an error that says where and what (Q1), word for word.
     [Fact]
     public void An_empty_server_is_refused_with_an_error_that_says_where_and_what()
@@ -207,6 +210,55 @@ public sealed class PolicyRuleTests
         Assert.DoesNotContain(secret, exception.Message, StringComparison.Ordinal);
     }
 
+    // A lone surrogate reaches the file only as an escape of JSON, since no UTF-8 can carry one: here a half of the
+    // emoji U+1F600 without the other. The cases are a URL of the proxy that ends with the high half, an account that
+    // starts with the low one, and a string where a number is expected. Each holds a secret that the error must not
+    // repeat (principle 9).
+    [Theory]
+    [InlineData("", "proxy", "http://svc:S3cret@proxy.local:3128\\uD83D")]
+    [InlineData("bases[0].read", "account", "\\uDE00S3cret")]
+    [InlineData("bases[0].read", "workers", "S3cret\\uD83D")]
+    public void An_escaped_lone_surrogate_in_a_string_makes_the_policy_invalid_at_its_path(
+        string owner,
+        string member,
+        string escaped)
+    {
+        JsonObject policy = ValidPolicy();
+        Owner(policy, owner)[member] = Placeholder;
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(WithEscapedString(policy, escaped)));
+
+        AssertSaysWhereAndWhat(exception, PathOf(owner, member));
+        Assert.DoesNotContain("S3cret", exception.Message, StringComparison.Ordinal);
+    }
+
+    // A name is not a value, so the path shows the name as the file writes it, escape included, as the path of an
+    // unknown member shows its name.
+    [Fact]
+    public void An_escaped_lone_surrogate_in_a_member_name_makes_the_policy_invalid_at_its_path()
+    {
+        JsonObject policy = ValidPolicy();
+        Owner(policy, "bases[0].read")[Placeholder] = "outpost-read";
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(WithEscapedString(policy, "acc\\uDC00ount")));
+
+        AssertSaysWhereAndWhat(exception, "bases[0].read.acc\\uDC00ount");
+    }
+
+    // The two halves of the emoji U+1F600, escaped one after the other, are the emoji.
+    [Fact]
+    public void An_escaped_surrogate_pair_is_read_as_the_character_it_encodes()
+    {
+        JsonObject policy = ValidPolicy();
+        Owner(policy, "bases[0].read")["account"] = Placeholder;
+
+        AgentPolicy read = AgentPolicyReader.Read(WithEscapedString(policy, "outpost-\\uD83D\\uDE00"));
+
+        Assert.Equal("outpost-\U0001F600", read.Bases[0].Read.Account);
+    }
+
     // A policy written as a JSON string by mistake, for example encoded twice, holds the whole policy with its secrets.
     [Fact]
     public void A_file_that_is_a_string_is_refused_without_repeating_it()
@@ -308,6 +360,14 @@ public sealed class PolicyRuleTests
     private static string PathOf(string owner, string member)
     {
         return owner.Length == 0 ? member : $"{owner}.{member}";
+    }
+
+    // The text of the policy with the escaped string in place of the string Placeholder, which a test puts where the
+    // escape goes, as a name or as a value. JsonNode cannot write an escaped lone surrogate, so the text is changed by
+    // hand. In C#, "\\uD83D" is the escape of JSON, and "\uD83D" the surrogate itself.
+    private static string WithEscapedString(JsonObject policy, string escaped)
+    {
+        return policy.ToJsonString().Replace($"\"{Placeholder}\"", $"\"{escaped}\"", StringComparison.Ordinal);
     }
 
     // The error names the member, then says what is wrong there and what is expected, without pinning the words: a

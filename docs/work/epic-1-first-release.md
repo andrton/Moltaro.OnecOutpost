@@ -52,7 +52,7 @@ Also left out, because nothing needs them now:
 
 | # | Decision |
 | --- | --- |
-| OD1 | **The lab machine** (20 November 2026). The owner provides, when a sprint asks for it, a Windows machine with 1C:Enterprise 8.3.17.1851 and a copy of a database, and builds the executor `.epf` from its XML sources with the Designer of that version. No CI job needs 1C. |
+| OD1 | **The lab machine** (20 November 2026). The owner provides, when a sprint asks for it, a Windows machine with 1C:Enterprise 8.3.17.1851 and its Designer, and builds the executor `.epf` from its XML sources with the Designer of that version. No CI job needs 1C. By the owner's answer of the same day on tests with 1C, the machine holds the repository's test base, built from `src/OneC.TestConfiguration`, and at least one copy of a typical base on its 1C cluster, and runs the tests that need 1C there. |
 | OD2 | **Waiting for a busy worker** (20 November 2026, with the merge of the concept). A command for a base whose workers are all busy waits up to its take deadline, 30 seconds by default, and then ends as Expired (rule 7, D10). |
 | OD3 | **The built executor in Git** (20 November 2026). The `.epf` is committed with its XML sources, because only the Designer builds it. The departure from the working rules is exception X1 of the [register](exceptions.md). |
 | OD4 | The answers to PQ1–PQ6 below (20 November 2026). |
@@ -81,8 +81,8 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R14 | The console: install, uninstall, pair, write a secret, check, write a metadata report | Concept §5 | Must | Absent | S10 |
 | R15 | The shell: a server of its own, pairing tokens, Read and Write by hand | Concept §2, §5 | Must | Absent | S11 |
 | R16 | Every timeout and limit that an application or an administrator can observe is an option with a default, validated when it is set; time comes from `TimeProvider` | `AGENTS.md`, principle 10 | Must | Absent | S1–S11 |
-| R17 | Tests as concept §11 and `AGENTS.md` require: a deterministic test of every numbered rule, the transport over loopback HTTP, the store against a real PostgreSQL, a fake clock, no sleeps, no 1C | Concept §11; `AGENTS.md` | Must | Absent | S1–S11 |
-| R18 | The answers to open items O1–O8, from the lab check, written into the concept; the manual acceptance of S9, S10 and S11 on the lab machine | Concept §11, §12; OD1 | Must | Absent | L1, S9, S10, S11 |
+| R17 | Tests as concept §11 and `AGENTS.md` require: a deterministic test of every numbered rule, the transport over loopback HTTP, the store against a real PostgreSQL, a fake clock, no sleeps; 1C only in the tests of `Moltaro.OnecOutpost.OneC.Tests` on the lab machine, never in CI | Concept §11; `AGENTS.md` | Must | Absent | S1–S11 |
+| R18 | The answers to open items O1–O8, from the lab check, written into the concept; the tests that need 1C and the manual acceptance of S9, S10 and S11 on the lab machine, on the test base and on each copy of a typical base | Concept §11, §12; OD1 | Must | Absent | L1, S9, S10, S11 |
 | R19 | The measurement program for the latency target of concept §11, with the figures under [Measured results](#measured-results) | Concept §11 | Release | Absent | S7, S12 |
 | R20 | The explanations E1 "The path of a command" (animated), E2 "Why a command never runs twice" (animated), E3 "How the library is built" (a still figure), each as Markdown and HTML | `AGENTS.md`, "Documentation" | Release | Absent | S7, S12 |
 | R21 | The packages of PQ6, published from a version tag through nuget.org Trusted Publishing; the archive of the agent on GitHub Releases with its SHA-256 checksum | Concept D15, D16; PQ4 | Release | The workflows of the packages exist; no package | S1, S12 |
@@ -102,13 +102,16 @@ The epic is done when all of the following hold.
    and in the contracts of stages 2 and 3, with the changes the owner agreed to during
    the epic and nothing else.
 4. `dotnet build` and `dotnet test` pass from `src` on both CI jobs, and
-   `dotnet format --verify-no-changes` on the `build` job. The samples and the shell run
-   to the end, and the code in `README.md` is the code of the samples.
+   `dotnet format --verify-no-changes` on the `build` job, with the build of
+   `Moltaro.OnecOutpost.OneC.Tests` on both jobs and its format on the `build` job. The
+   samples and the shell run to the end, and the code in `README.md` is the code of the
+   samples.
 5. Every figure of [Measured results](#measured-results) is recorded on the final build,
    and the target of concept §11 is met, or its miss was handled by the rule of the
    [development process](process.md#when-to-stop-and-ask-the-owner) and decided by the
    owner.
-6. Every scenario of the manual acceptance of S9, S10 and S11 passed on the lab machine.
+6. Every test of `Moltaro.OnecOutpost.OneC.Tests` passed on the lab machine, on the final
+   build, and every scenario of the manual acceptance of S9, S10 and S11 passed there.
 7. The three explanations exist in both forms, agree with each other and with what was
    delivered, and their status lines say "built".
 8. Everything [The first release](#the-first-release) lists holds, so that the owner can
@@ -207,6 +210,10 @@ the outline the concept had before S1, this contract adds `CommandId` to an outc
 that a caller can find the command in the agent's audit log, and `MessagesTrimmed`, the
 marker of rule 5.
 
+Text marked *(S2)* was changed in S2 together with `docs/protocol.md`. It waits for the
+owner's approval of the protocol, with the changes that S2's brief lists, and holds only
+after it.
+
 ### Rules for every member
 
 - **Thread safety.** Every public member may be called from any thread at any time.
@@ -234,18 +241,21 @@ marker of rule 5.
   | --- | --- |
   | Base key | 1 to 64 characters, each one of `a–z 0–9 - _ .`, the first a letter or a digit; compared exactly |
   | Caller key | 1 to 200 characters, each from U+0021 to U+007E (printable ASCII without the space); compared exactly |
-  | Agent name | A display label: 1 to 100 characters of any kind but control characters, counted as UTF-16 code units (`string.Length`), with no white space at the start or the end (Q2) |
-  | Script | At least one character that is not white space, and no U+0000 |
-  | Parameters | No string in them holds U+0000, which PostgreSQL cannot store; they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
+  | Agent name | A display label: 1 to 100 characters of any kind but control characters, counted as UTF-16 code units (`string.Length`), with no white space at the start or the end, and no lone surrogate, a code unit from U+D800 to U+DFFF without its pair (Q2, Q6) |
+  | Script | At least one character that is not white space, no U+0000, and no lone surrogate (Q6) |
+  | Parameters | No string in them, names included, holds U+0000, which PostgreSQL cannot store, or a lone surrogate, which UTF-8 cannot carry (Q6); they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
   | Schema | 1 to 63 characters, each one of `a–z 0–9 _`, the first a letter |
   | Endpoint prefix | `/` followed by one or more segments of `A–Z a–z 0–9 - _ .` separated by `/`, not ending with `/`; no segment is `.` or `..` |
 - **Sizes.** Every size is counted on the bytes that the protocol carries: UTF-8, with
   characters outside ASCII written as they are, not escaped.
-  - The size of a command is that of its script plus that of its parameters written as
-    JSON. A call whose command is larger than `CommandSizeLimit` is a caller's mistake
-    and gives `ArgumentException`.
-  - The size of an outcome is that of its result as the executor wrote it, plus its
-    messages and its error text (rule 5).
+  - *(S2)* The size of a command is the length of the text of its script between its
+    quotes plus the text of its parameters, `{}` when there are none, both as the command
+    carries them, every escape counted as it is written (`docs/protocol.md` §7). A call
+    whose command is larger than `CommandSizeLimit` is a caller's mistake and gives
+    `ArgumentException`.
+  - *(S2)* The size of an outcome is the length of the UTF-8 text of its outcome object as
+    it travels, with its result, its messages and its error text, every escape counted as
+    it is written (rule 5; `docs/protocol.md` §8).
 - **Options** are a plain class with settable properties and defaults. `AddOutpostServer`
   runs the delegate on a new options object, validates it and keeps a copy: a later change
   of that object has no effect.
@@ -478,6 +488,7 @@ public static class OutpostCodes
     public const string NotServed = "not-served";
     public const string NotAddressed = "not-addressed";
     public const string ProtocolVersion = "protocol-version";
+    public const string Malformed = "malformed";
     public const string Expired = "expired";
     public const string ClockSkew = "clock-skew";
     public const string Revoked = "revoked";
@@ -490,7 +501,7 @@ public static class OutpostCodes
 | Code | Kinds | Meaning |
 | --- | --- | --- |
 | `script-error` | Failed | 1C raised an error; `ErrorText` holds its text. A Write rolled back |
-| `result-type` | Failed | The result holds a value that cannot be written as JSON (rule 5) |
+| `result-type` | Failed, Unknown | The result holds a value that cannot be written as JSON (rule 5). *(S2)* Also a result deeper than 64 levels, and an outcome of the executor that the agent cannot accept: Failed for a Read, and for a Write that 1C rolled back; Unknown for a Write whose outcome the agent could not accept (`docs/protocol.md` §8) |
 | `result-too-large` | Failed, Unknown | The outcome is larger than its limit (rule 5). Unknown for a Write whose outcome was refused for its size, by the server or by something on the path; S5 and S6 state it |
 | `run-limit` | Failed (Read), Unknown (Write) | The script exceeded its run limit (rule 9) |
 | `lost` | Failed | A Read whose agent or worker stopped, whose agent stayed away, or whose agent was revoked (rules 3, 11, 13) |
@@ -500,6 +511,7 @@ public static class OutpostCodes
 | `not-served` | Refused | The agent's local policy does not serve the base or the mode (rule 1) |
 | `not-addressed` | Refused | The command names another agent (rule 1) |
 | `protocol-version` | Refused | The agent does not support the protocol version of the command (rule 1) |
+| `malformed` | Refused | *(S2)* A verified command of this protocol version breaks §7 of `docs/protocol.md` (rule 1) |
 | `expired` | Refused | By the agent's clock, the take deadline passed longer than the skew ago (rule 1) |
 | `clock-skew` | Refused | By the agent's clock, the command was issued further ahead than the skew (rule 1) |
 | `revoked` | Refused, Unknown | Refused: no poll had taken the command when its agent was revoked. Unknown: a Write that a poll had taken (rule 13) |
@@ -625,7 +637,7 @@ folder.
 | --- | --- | --- | --- |
 | `policy.json` | The administrator | Yes | The local policy, below |
 | `audit\YYYY-MM-DD.jsonl` | The agent | Yes | The audit log, one file per UTC day, below |
-| `agent.json` | The console, when it pairs | No | The server's address, the agent's identity, the pinned server key |
+| `agent.json` | The console, when it pairs | No | The server's address, the agent's identity, the pinned server key, and the poll timeout and lease grace of the pairing answer |
 | `secrets.dat` | The console | No | The agent's private key and the 1C passwords, encrypted with DPAPI for the machine |
 | `outcomes\` | The agent | No | The outbox: outcomes not yet confirmed by the server, one file per command |
 
@@ -671,7 +683,8 @@ folder.
 - **An invalid file serves nothing.** An unknown member, a member given twice, a wrong
   type, a member set to `null`, or a value out of its rule makes the whole file invalid;
   an empty or white-space string is out of the rule of `server`, `database`, `file` and
-  `account` (Q1). The agent then serves nothing and records why in the audit log. JSON
+  `account` (Q1), and a lone surrogate, escaped in a string or in a member name, is out of
+  the rule of every string (Q6). The agent then serves nothing and records why in the audit log. JSON
   comments are not allowed.
 - **The error says clearly where and what** (Q1): the path of the member, such as
   `bases[1].read.workers`, what is wrong with it, and what is expected there. For example:
@@ -700,13 +713,29 @@ Each line is one JSON object in UTF-8, written and flushed before the agent goes
 | `ended` | `command`, `outcome` (`succeeded`, `failed` or `unknown`), `code` (or `null`), `durationMs` | A command ended (rules 3, 5, 9). A second `ended` of the same command replaces the first; it is written only when the outcome was refused for its size, as below |
 | `confirmed` | `command` | The server confirmed the outcome (rule 11) |
 
+- *(S2)* **Writing.** The agent alone writes the log, and holds `audit\lock` open without
+  sharing for its whole run. It writes one entry at a time, with the writer of §2 of
+  `docs/protocol.md`: no white space between tokens, text outside ASCII as it is, and
+  `parameters` written again rather than copied. Each entry ends with LF, counts as
+  written only with it, and is on the disk before the next is written and before the
+  agent goes on. At a start and after a failed write, the agent treats its log as §13 of
+  `docs/protocol.md` says.
 - **The outbox.** The result of a command is not in the audit log. Before the agent records
   `ended`, it writes and flushes the outcome to `outcomes\`. The file is removed after
   `confirmed`.
+  - *(S2)* A file of the outbox is written under a temporary name and renamed over the
+    old one, both through to the disk, before the agent goes on, and `confirmed` is on
+    the disk before its file is removed. A temporary file left at a start is removed.
+  - *(S2)* The agent reads a file of the outbox with `ReadOutcome` of §8 for the mode of
+    its command, which accepts everything its writer writes. A file it cannot read, and a
+    command with an `ended` but neither its file nor its `confirmed`, make it record
+    `started` with an error and stop, as a line of the log it cannot read does.
 - **At a restart.** A file without its `ended` is recorded as `ended` and sent. A
   `received` without a file or an `ended` becomes Unknown or `lost` (rule 3). The audit log
   stays the one record of what happened (D7); the outbox only holds what must still be
-  sent.
+  sent. *(S2)* A file whose kind and code differ from the last `ended` or `refused` of its
+  command, as after a stop between the replacement of a file and its second `ended`, gets
+  an `ended` that matches it.
 - **An outcome refused for its size.** The server refuses it with its protocol code, or
   something on the path refuses it with HTTP 413. The agent then replaces the outbox file
   with Unknown `result-too-large` for a Write, or Failed `result-too-large` for a Read,
@@ -728,6 +757,7 @@ Two places hold the checks that both sides need, so that each rule lives once:
       public static void CheckAgentName(string value, string paramName);
       public static void CheckScript(string value, string paramName);
       public static bool IsBaseKey(string value);
+      public static bool HasLoneSurrogate(string value);
   }
 
   internal static class OutpostProtocol
@@ -796,11 +826,14 @@ The protocol is public contract (concept §6, D15). It is designed in S2, after 
 by the planner, not by the contract author:
 
 1. The planner writes `docs/protocol.md` exactly.
-2. An independent reviewer reviews it until no P1, P2 or P3 finding is left.
+2. An independent reviewer reviews it, within the limit the
+   [development process](process.md#review) sets for a document.
 3. The owner approves it.
 4. The contract author commits it in S2's contract step.
 
-It has to say:
+It has to say what follows. The bullets marked *(S2)* were changed in S2 together with
+`docs/protocol.md`. They wait for the owner's approval of it, with the changes that S2's
+brief lists, and hold only after it.
 - the requests `pair`, `poll` and `outcome` under `{prefix}/{version}/`, and the answer to
   an unsupported version;
 - the JSON of each body and answer, and the body limit of each request; the limit of
@@ -817,25 +850,30 @@ It has to say:
   message is checked, so that a command that `ReadAsync` or `WriteAsync` accepted is never
   refused for its nesting, and what an outcome whose result nests deeper becomes. The
   limit lives in the protocol assembly, which both sides check it from;
-- **What every poll answer carries:**
+- **What every poll answer carries** *(S2)*:
   - the commands;
   - the bases the agent holds and those that another agent holds (rule 14);
   - the server's time;
-  - the poll timeout and the lease grace. The agent waits for an answer for no longer than
-    their sum, and then counts the poll as lost. The pairing answer carries them too, and
-    the console writes them into `agent.json` when it pairs, so that the first poll is
-    bounded as well; later answers bring the current values.
-- **The answer to an older poll** comes at once, not at the end of the poll timeout. It has
-  no commands, carries the other members of a poll answer, and names the newest poll number
-  that the server recorded for the agent (rule 10).
-- **What every other answer carries:** the server's time.
-- **Every answer is signed** by the server over its exact bytes and bound to the request
-  it answers by the SHA-256 of that request's exact body, which carries the poll number
-  and the agent's time. The agent verifies it before it acts on any of it, and treats one
-  that does not verify as a lost answer. The one exception is a bare HTTP 413 to an
-  `outcome` request, as concept §6 says.
-- **The type of a poll number:** a signed 64-bit integer. A named newest number that
-  leaves no room above it is a protocol violation.
+  - the poll timeout and the lease grace. Every poll carries the poll timeout the agent
+    last learnt, and the server holds it for no longer than the smaller of that and its
+    option. The agent waits for an answer to begin for no longer than the poll timeout it
+    sent plus the lease grace, and then counts the poll as lost. The pairing answer carries
+    both too, and the console writes them into `agent.json` when it pairs, so that the
+    first poll is bounded as well; later answers bring the current values.
+- **The answer to an older poll** *(S2)* comes at once, not at the end of the poll timeout.
+  It has no commands, carries the other members of a poll answer, and names the newest
+  poll number that the server recorded for the agent (rule 10). The agent waits a tenth of
+  its `retryDelayMax` before it polls again.
+- **What every other signed answer carries** *(S2)*: the server's time.
+- **Every answer the agent acts on is signed** *(S2)* by the server over its exact bytes,
+  and bound to the request it answers by the SHA-256 of that request's exact body, which
+  carries the poll number and the agent's time. The agent verifies it before it acts on any
+  of it.
+  - The one exception is a bare HTTP 413 to an `outcome` request, as concept §6 says,
+    acted on whatever its headers and body.
+  - Every other unsigned answer to a poll or an outcome counts as lost.
+- **The type of a poll number:** a signed 64-bit integer, from 1 to 2⁶², as
+  `docs/protocol.md` fixes it.
 - **How sizes are counted**, exactly: which bytes, and whether the escapes of JSON such as
   `\"`, `\\` and those of control characters count, so that the executor, the agent and
   the server count the same number. The refusal of an outcome for its size carries the
@@ -878,14 +916,16 @@ The concept fixes the principles; S2 fixes the bytes.
   - a code of `OutpostCodes`;
   - the protocol.
 
-  A sprint that finds the contract should change stops, and the change goes to the owner.
+  From the first release on, a sprint that finds the contract should change stops, and
+  the change goes to the owner. Before it, the sprint makes the change, lists it for the
+  owner and goes on, as the [development process](process.md#the-plan) says.
 - **Internal contracts after the study.** S2, S3, S4, S5, S6 and S9 build mechanisms.
   - Each begins with the study that the
     [development process](process.md#a-study-comes-before-a-design) requires, answering
     the questions its brief names.
   - The planner then writes into the brief the internal types that its tests address,
-    with what the study taught. An independent reviewer reviews them until no P1, P2 or
-    P3 finding is left, and the coordinator approves them (PQ2), before the contract step.
+    with what the study taught. An independent reviewer reviews them, and the
+    coordinator approves them (PQ2), before the contract step.
   - The study never reopens the public contract.
 - **Studies.** The implementer of the sprint carries out its study, before any code.
   - It reads two to four established systems in their source at pinned commits, with the
@@ -902,11 +942,31 @@ The concept fixes the principles; S2 fixes the bytes.
   - The fake clock is `FakeTimeProvider` of `Microsoft.Extensions.TimeProvider.Testing`.
     PostgreSQL comes from Testcontainers (`Testcontainers.PostgreSql`).
   - A test that needs PostgreSQL has the trait `Requires=PostgreSQL`, and one that needs
-    Windows has `Requires=Windows`. No test needs both.
+    Windows has `Requires=Windows`. No test needs both. The tests that need 1C have no
+    trait: they live apart, as below.
   - The `build` job and the Publish workflow run every test without `Requires=Windows`.
     The `windows` job runs every test without `Requires=PostgreSQL`, because GitHub's
-    Windows runners have no Linux containers. A developer's machine with Docker runs them
-    all. S1 writes the exact commands into `ci.yml` and `publish.yml`.
+    Windows runners have no Linux containers. A developer's machine with Docker runs all
+    of the solution's tests. S1 writes the exact commands into `ci.yml` and `publish.yml`.
+  - The tests that need 1C live in `Moltaro.OnecOutpost.OneC.Tests`, as `AGENTS.md` says.
+    - S9 creates the project, outside the solution, so that `dotnet test` from `src`, in
+      CI and on a developer's machine, never runs it. S9 adds
+      `dotnet build Moltaro.OnecOutpost.OneC.Tests --configuration Release` to both jobs of
+      `ci.yml`, and
+      `dotnet format Moltaro.OnecOutpost.OneC.Tests/Moltaro.OnecOutpost.OneC.Tests.csproj --verify-no-changes`
+      to the `build` job, so that the project keeps compiling and keeps its form.
+    - On the lab machine it runs alone, from `src`, with
+      `dotnet test --project Moltaro.OnecOutpost.OneC.Tests`, after the test base is built
+      from `src/OneC.TestConfiguration`.
+    - Its tests need Windows and 1C only. None needs PostgreSQL, Docker or a server's
+      store.
+    - The bases, the accounts and the objects of a typical configuration that a test uses
+      come from `src/OneC.TestConfiguration/lab.local.json`, which L1 creates and Git
+      ignores (`*.local.json`). It names the test base with the passwords of its users,
+      and for each copy of a typical base its cluster and database, its configuration and
+      version, its accounts with their passwords and the document type to post. It never
+      leaves the lab machine. Data comes from the base while a test runs, never as a
+      literal.
   - Loopback tests start Kestrel on port `0` of `127.0.0.1`.
   - A test waits for an observed event and never sleeps.
   - A test with the fake clock waits until the code under test has armed its timer before
@@ -933,9 +993,12 @@ The concept fixes the principles; S2 fixes the bytes.
   sprint reviews it with the rest. Its status line says what is built and what is
   intended.
 - **The lab machine.** A sprint whose acceptance needs 1C asks the owner for the lab
-  machine (OD1) when its implementation is ready. The coordinator runs the scenarios of
-  the brief with the owner, on a copy of a database. It records one line per scenario,
-  passed or failed, in the sprint's status. No raw output is committed.
+  machine (OD1) when its implementation is ready. The owner runs the tests that need 1C
+  there, with the command of the test lane, and the coordinator runs the manual scenarios
+  of the brief with the owner. Both use the test base and the copies of typical bases,
+  never a customer's working database. In the sprint's status the coordinator records the
+  number of 1C tests passed and failed with the name of each failed one, and one line per
+  manual scenario, passed or failed. No raw output is committed.
 - **Documents.** In the documents step of every sprint the coordinator brings `README.md`,
   the concept, `docs/protocol.md` and the explanations that exist up to what exists, both
   forms of an explanation together, as `AGENTS.md` and the process say.
@@ -943,18 +1006,27 @@ The concept fixes the principles; S2 fixes the bytes.
 ### Order and why these splits
 
 ```text
-Stage 1 — the tunnel without 1C
-  S1 contract ── S2 protocol ── S3 store ── S4 pairing ── S5 commands ── S6 agent ── S7 nodes, losses
+The contract and the wire
+  S1 contract ── S2 protocol
+The riskiest unknown: a script in a real 1C
+  L1 lab check ── S9 executor, COM worker
+The tunnel, with a fake in place of the worker
+  S3 store ── S4 pairing ── S5 commands ── S6 agent ── S7 nodes, losses
   S8 refactoring
-Stage 2 — 1C and the tools           (L1, the lab check, best before S6, at the latest before stage 2)
-  S9 executor, COM worker ── S10 console ── S11 shell
-Stage 3 — the release
+The agent with 1C, and the tools
+  S9b the agent runs the workers ── S10 console ── S11 shell
+The release
   S12 documents, packages, archive
 ```
 
-- **Stage 1 without 1C.** Every guarantee of the tunnel, from the signature to the cases
-  of a doubled run, is built and tested in CI, with a fake behind the COM worker's
-  boundary. Stage 2 then adds what only a lab machine can show, with nothing else open.
+- **1C first** (the owner, 21 November 2026). Everything rests on a script that runs in a
+  real 1C through COM, in safe mode, under both accounts, and on the answers to O1–O8,
+  which can still change D3, D12 and D14. So L1 and S9 follow S2 at once: if 1C does not
+  behave as the concept expects, it is known before the server and the agent are built.
+  The sprints keep their numbers and branches; only their order changes.
+- **The tunnel without 1C.** Every guarantee of the tunnel, from the signature to the
+  cases of a doubled run, is still built and tested in CI, with a fake behind the COM
+  worker's boundary.
 - **S2, the protocol, alone.** It is the public wire contract and the security core:
   signatures over exact bytes, the agent's signed requests and the pairing proof. It is
   reviewed alone, as the zone of `AGENTS.md` with the strictest priorities.
@@ -970,12 +1042,14 @@ Stage 3 — the release
   drops and holds messages, and because it is where a wrong rule shows.
 - **S8, refactoring,** after stage 1, the middle of the epic, before stage 2 builds on the
   agent.
-- **L1 early.** Its answers to O1–O8 can change decisions D3, D12 and D14. They can also
-  add members to `policy.json`: an account of its own for COM workers after O1, or a
-  connector per base after O8. Run before S6, they reach S6's brief through the owner.
-  Run later, they are a change of the contract, through the owner.
-- **S9 alone.** The executor and the COM worker are one piece of acceptance on the lab
-  machine; split, each half could not be accepted.
+- **L1 right after S2.** Its answers to O1–O8 can change decisions D3, D12 and D14. They
+  can also add members to `policy.json`: an account of its own for COM workers after O1,
+  or a connector per base after O8. They reach the briefs of S9 and S6 through the owner.
+- **S9, the executor and the COM worker together.** They are one piece of acceptance on
+  the lab machine; split, each half could not be accepted. Its tests drive the worker
+  program directly, so it needs no agent.
+- **S9b, the agent runs the workers,** after S8: what of the old S9 needs the agent of S6.
+  It is where a command first travels from `ReadAsync` to a real 1C and back.
 - **S10 and S11.** The console works on the agent machine, the shell next to a server.
   They share nothing.
 
@@ -984,7 +1058,7 @@ Stage 3 — the release
 | Sprint | Result | Track | Status |
 | --- | --- | --- | --- |
 | S1 | The public contract of stage 1, the projects and the test lane | Full | Done |
-| S2 | The protocol, its signatures and the pairing proof | Full | Not started |
+| S2 | The protocol, its signatures and the pairing proof | Full | Done, 21 November 2026: the codec, the signatures and the pairing proof with their tests; the code review closed in two rounds, after the ten rounds of `docs/protocol.md`. What it changed in the public contract is listed in its brief for the owner |
 | S3 | The store | Full | Not started |
 | S4 | Pairing and agents on the server | Full | Not started |
 | S5 | Commands on the server | Full | Not started |
@@ -992,7 +1066,8 @@ Stage 3 — the release
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Not started |
-| S9 | The executor and the COM worker | Full | Not started |
+| S9 | The executor and the COM worker, run after L1 and before S3 | Full | Not started |
+| S9b | The agent runs the COM workers | Full | Not started |
 | S10 | The console | Full | Not started |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
@@ -1139,21 +1214,278 @@ approval of this plan.
   - *Public:* `docs/protocol.md`, written by the planner after the study, reviewed and
     approved as [The protocol](#the-protocol) says, and committed in the contract step.
   - *Internal:* the codec and the signing types in `Moltaro.OnecOutpost.Protocol`, written
-    into this brief after the study. They have to be able to:
-    - build the bytes of a command from its fields and sign them with the server key;
-    - verify the signature of command bytes with a pinned public key, and only then parse
-      them;
-    - sign an agent request (its kind, the agent's identity and the bytes of its body) and
-      verify it with the agent's public key;
-    - compute and check the pairing proof;
-    - read and write the pairing token;
-    - compute the fingerprint of a public key;
-    - read and write every body and answer of the three requests;
-    - sign every answer of the server, bound to the request it answers, and verify it with
-      the pinned key;
-    - refuse with the codes of the protocol: version, signature, size, form.
+    here after the study. They perform no I/O and know nothing of HTTP or the store. Every
+    rule they apply is a rule of `docs/protocol.md`, and their documentation names its
+    section.
 
-    They perform no I/O and know nothing of HTTP or the store.
+    In the namespace `Moltaro.OnecOutpost.Protocol`:
+
+    ```csharp
+    internal static class OutpostProtocol
+    {
+        public const int Version = 1;
+        public const int MaxMessageDepth = 72;
+        public const int MaxValueDepth = 64;
+        public const int PairBodyLimit = 16 * 1024;
+        public const int PollBodyLimit = 1024 * 1024;
+        public const int PollAnswerLimit = 64 * 1024 * 1024;
+        public const int AnswerLimit = 64 * 1024;
+        public const int OutcomeEnvelopeAllowance = 4 * 1024;
+        public const int MaxBases = 256;
+        public const int MaxReceived = 10_000;
+        public const long MaxPollNumber = 1L << 62;
+
+        // Ranges that the options, `policy.json` and the codec check alike (§2, "Ranges").
+        public static readonly TimeSpan MinClockSkew = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan MaxClockSkew = TimeSpan.FromHours(1);
+        public static readonly TimeSpan MinTakeTimeout = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan MaxTakeTimeout = TimeSpan.FromHours(1);
+        public static readonly TimeSpan MinPollTimeout = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan MaxPollTimeout = TimeSpan.FromMinutes(5);
+        public static readonly TimeSpan MinLeaseGrace = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan MaxLeaseGrace = TimeSpan.FromMinutes(5);
+        public static readonly TimeSpan MinRunLimit = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan MaxRunLimit = TimeSpan.FromDays(1);
+        public const int MinOutcomeSizeLimit = 64 * 1024;
+        public const int MaxOutcomeSizeLimit = 64 * 1024 * 1024;
+        public const int MinCommandSizeLimit = 4 * 1024;
+        public const int MaxCommandSizeLimit = 16 * 1024 * 1024;
+        public const int MaxWorkers = 8;
+
+        public const string AgentHeader = "Outpost-Agent";
+        public const string SignatureHeader = "Outpost-Signature";
+    }
+
+    internal enum OutpostRequestKindEnum { Pair, Poll, Outcome }
+
+    internal static class OutpostProtocolCodes
+    {
+        public const string Form = "form";
+        public const string Signature = "signature";
+        public const string ResultTooLarge = OutpostOutcomeCodes.ResultTooLarge;
+        public const string ProtocolVersion = OutpostOutcomeCodes.ProtocolVersion;
+
+        // `ServerKey` alone is a code of the codec only, never sent (§6.1).
+        public const string ServerKey = "server-key";
+    }
+
+    internal static class OutpostForms
+    {
+        public static string WriteBase64Url(ReadOnlySpan<byte> bytes);
+        public static bool TryReadBase64Url(ReadOnlySpan<char> text, [NotNullWhen(true)] out byte[]? bytes);
+        public static string WriteId(Guid id);
+        public static bool TryReadId(ReadOnlySpan<char> text, out Guid id);
+    }
+
+    internal sealed class OutpostProtocolException : Exception
+    {
+        public OutpostProtocolException(string code, string reason, Guid? commandId = null);
+        public string Code { get; }
+        public Guid? CommandId { get; }
+    }
+
+    internal static class OutpostHeaders
+    {
+        public static string FormatAgent(Guid agent);
+        public static bool TryParseAgent(string? value, out Guid agent);
+        public static string FormatSignature(ReadOnlySpan<byte> signature);
+        public static bool TryParseSignature(string? value, [NotNullWhen(true)] out byte[]? signature);
+    }
+    ```
+
+    - `OutpostProtocolException.CommandId` is set for the two refusals of a verified command
+      that name it: `protocol-version` and `malformed` (§7).
+    - `TryParseSignature` accepts exactly 86 base64url characters that decode to 64 bytes.
+    - `OutpostForms` is the one home of the forms of §2 that the headers, the token and the
+      codec all need: canonical base64url and the 36-character lowercase identity. It sits
+      in the root, which `.Signing` and `.Codec` reference already, so that neither needs
+      the other for it. `OutpostHeaders` uses it.
+    - `OutpostModeEnum` stays in `.Outcomes`: in the root it would make a cycle with
+      `OutpostProtocolCodes`, whose constants come from `OutpostOutcomeCodes`.
+
+    In `Moltaro.OnecOutpost.Protocol.Outcomes`, the one place of every outcome code and of
+    which code fits which kind:
+
+    ```csharp
+    internal enum OutpostAgentOutcomeKindEnum { Unknown = 0, Succeeded, Failed, Refused }
+    internal enum OutpostModeEnum { Read, Write }
+
+    internal static class OutpostOutcomeCodes
+    {
+        public const string ScriptError = "script-error";
+        // … one constant for each code of `OutpostCodes`, `malformed` included, with the same names and values.
+
+        public static bool FitsFailed(string code);
+        public static bool FitsRefused(string code);
+        public static bool FitsUnknown(string code);
+        public static bool IsAgentOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code);
+        public static bool IsExecutorOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code);
+    }
+    ```
+
+    - The three `Fits…` answer the kinds column of the table of `OutpostCodes`. The public
+      factories of `OutpostOutcome` use them, so that the fit of a code to a kind lives once.
+    - `IsAgentOutcome` answers the table "The outcomes an agent may send, by mode" of §8.
+      `IsExecutorOutcome` answers the paragraph on the executor. Both take a `null` code for
+      `succeeded`.
+    - The public `OutpostCodes` of the server defines each of its constants as the constant
+      here, so that every code string lives once.
+
+    In `Moltaro.OnecOutpost.Protocol.Signing`, the keys, the signatures, the pairing proof and
+    the token of §2, §3 and §5:
+
+    ```csharp
+    internal static class OutpostKeys
+    {
+        public static byte[] ExportPublicKey(ECDsa key);
+        public static ECDsa ImportPublicKey(ReadOnlySpan<byte> subjectPublicKeyInfo);
+        public static string Fingerprint(ReadOnlySpan<byte> subjectPublicKeyInfo);
+    }
+
+    internal static class OutpostSignatures
+    {
+        public static byte[] SignRequest(ECDsa agentKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body);
+        public static byte[] SignAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody);
+        public static byte[] SignCommand(ECDsa serverKey, ReadOnlySpan<byte> commandBytes);
+        public static bool VerifyRequest(ECDsa agentKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static bool VerifyAnswer(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody, ReadOnlySpan<byte> signature);
+        public static bool VerifyCommand(ECDsa serverKey, ReadOnlySpan<byte> commandBytes, ReadOnlySpan<byte> signature);
+    }
+
+    internal static class OutpostPairingProof
+    {
+        public static byte[] Compute(ReadOnlySpan<byte> secret, Guid agent, ReadOnlySpan<byte> agentKey);
+        public static bool Check(ReadOnlySpan<byte> secret, Guid agent, ReadOnlySpan<byte> agentKey, ReadOnlySpan<byte> proof);
+    }
+
+    internal sealed record OutpostPairingTokenText(Guid Agent, byte[] Secret, string Fingerprint)
+    {
+        public string Write();
+        public static bool TryRead(string text, [NotNullWhen(true)] out OutpostPairingTokenText? token);
+    }
+    ```
+
+    - `ImportPublicKey` accepts exactly the 91-byte form of §2, and refuses anything else
+      with `OutpostProtocolException` and `form`.
+    - `Fingerprint` gives the 64 lowercase hexadecimal digits of §2.
+    - `Check` compares in constant time.
+    - `ToString` of `OutpostPairingTokenText` leaves the secret out.
+    - The signing inputs of §3 are built only in `OutpostSignatures`, for signing and for
+      verifying alike. The readers of the codec call the `Verify…` methods before they
+      parse, and nothing else parses signed bytes, so no caller parses unverified bytes.
+
+    In `Moltaro.OnecOutpost.Protocol.Messages`, one record per message of §6 to §9, with
+    the members of its JSON:
+
+    ```csharp
+    internal sealed record OutpostPairRequest(string AgentVersion, byte[] Key, byte[] Proof);
+    internal sealed record OutpostPairAnswer(DateTimeOffset Time, Guid Agent, byte[] Key, byte[] ServerKey, TimeSpan PollTimeout, TimeSpan LeaseGrace);
+    internal sealed record OutpostPollMode(int Free, TimeSpan RunLimit);
+    internal sealed record OutpostPollBase(string Key, OutpostPollMode Read, OutpostPollMode? Write);
+    internal sealed record OutpostPollRequest(long Number, DateTimeOffset Time, string AgentVersion, TimeSpan PollTimeout, IReadOnlyList<OutpostPollBase> Bases, IReadOnlyList<Guid> Received);
+    internal sealed record OutpostSignedCommand(byte[] Bytes, byte[] Signature);
+    internal sealed record OutpostPollAnswer(DateTimeOffset Time, long? Newest, TimeSpan PollTimeout, TimeSpan LeaseGrace, IReadOnlyList<string> Held, IReadOnlyList<string> Claimed, IReadOnlyList<OutpostSignedCommand> Commands);
+    internal sealed record OutpostCommandMessage(int Protocol, Guid Id, Guid Agent, string Base, OutpostModeEnum Mode, string? CallerKey, string Script, JsonElement Parameters, DateTimeOffset Issued, DateTimeOffset Deadline, TimeSpan Skew, int OutcomeLimit);
+    internal sealed record OutpostOutcomeMessage(OutpostAgentOutcomeKindEnum Kind, string? Code, JsonElement? Result, string? ErrorText, IReadOnlyList<string> Messages, bool MessagesTrimmed);
+    internal sealed record OutpostOutcomeRequest(Guid Command, ReadOnlyMemory<byte> Outcome);
+    internal sealed record OutpostOutcomeAnswer(DateTimeOffset Time, Guid Confirmed);
+    internal sealed record OutpostRefusal(DateTimeOffset Time, string Code);
+    ```
+
+    - `OutpostOutcomeRequest.Outcome` holds the exact bytes of the outcome object (§6.3,
+      §8); its size is their length.
+    - `OutpostPollBase.Write` is `null` when the policy does not open writing, and is then
+      written as `"write":null` (§6.2).
+    - `OutpostOutcomeMessage.Result` is a `JsonElement` for `succeeded`, of kind `Null` when
+      the result is `null`, and a C# `null` for every other kind.
+
+    In `Moltaro.OnecOutpost.Protocol.Codec`:
+
+    ```csharp
+    internal static class OutpostCodec
+    {
+        // Writers, by §2.
+        public static byte[] Write(OutpostPairRequest message);
+        public static byte[] Write(OutpostPairAnswer message);
+        public static byte[] Write(OutpostPollRequest message);
+        public static byte[] Write(OutpostPollAnswer message);
+        public static byte[] Write(OutpostCommandMessage message);
+        public static byte[] Write(OutpostOutcomeMessage message);
+        public static byte[] Write(OutpostOutcomeRequest message);
+        public static byte[] Write(OutpostOutcomeAnswer message);
+        public static byte[] Write(OutpostRefusal message);
+        public static byte[] WriteUnsupportedVersion();
+        public static long CommandSize(string script, JsonElement parameters);
+
+        // Readers of the server: they verify the request, then parse it; `pair` the other way round (§3).
+        public static OutpostPairRequest ReadPairRequest(Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostPollRequest ReadPollRequest(ECDsa agentKey, Guid agent, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostOutcomeRequest ReadOutcomeRequest(ECDsa agentKey, Guid agent, ReadOnlyMemory<byte> body, ReadOnlySpan<byte> signature);
+
+        // Readers of the agent: they verify the answer, then parse it; `pair` checks the fingerprint first (§3).
+        public static OutpostPairAnswer ReadPairAnswer(string fingerprint, Guid agent, ReadOnlySpan<byte> sentKey, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostPollAnswer ReadPollAnswer(ECDsa serverKey, Guid agent, int totalFree, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostOutcomeAnswer ReadOutcomeAnswer(ECDsa serverKey, Guid agent, Guid command, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostRefusal ReadRefusal(ECDsa serverKey, OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> body, ReadOnlySpan<byte> signature);
+        public static OutpostCommandMessage ReadCommand(ECDsa serverKey, OutpostSignedCommand command);
+
+        // Unsigned: the one unsigned body of §9, recognized for a reason and the console.
+        public static bool IsUnsupportedVersion(ReadOnlySpan<byte> body);
+
+        // Unsigned: the outcome object inside a verified request, or in a file of the outbox.
+        public static OutpostOutcomeMessage ReadOutcome(OutpostModeEnum? mode, ReadOnlySpan<byte> outcome);
+
+        public static int ValueDepth(JsonElement value);
+    }
+    ```
+
+    - **The readers verify first.** Every signed reader verifies the signature of §3 before
+      it parses anything. On failure it throws `OutpostProtocolException` with `signature`,
+      and with `form` for a verified body that breaks §2 or the rules of its message.
+    - **The two exceptions of §3.** `ReadPairRequest` parses the body, then verifies it with
+      the key it carries. `ReadPairAnswer` checks the fingerprint of the server key in the
+      body against `fingerprint` and throws `server-key` on a mismatch, then verifies with
+      that key and throws `signature` when it fails. `server-key` is a code of the codec
+      only, never sent: it lets the console report the mismatch as its own reason (§6.1).
+      It then checks that the answer's `agent` is `agent` and its `key` is `sentKey`. It
+      throws `form` for that, and for a body from which no server key can be read; the
+      console reports `form` as an answer that is not the pairing answer it expected. A
+      refusal of `pair` is a bare 403 without a body, and has no reader.
+    - **The answers' own rules** (§9, "verified"). Each reader of an answer takes what it
+      compares as parameters, and only hashes `requestBody`:
+      - `ReadPollAnswer` throws `form` for more commands than `totalFree`, the sum of
+        `free` in the poll, and for commands in an answer whose `newest` is not `null`.
+        The count by base and mode needs the commands checked, so the agent makes it
+        (§6.2);
+      - `ReadOutcomeAnswer` throws `form` when `confirmed` is not `command`;
+      - `ReadRefusal` throws `form` for a code that is not one of the signed refusals of
+        §9 under `status`.
+    - **`IsUnsupportedVersion`** tells whether an unsigned body is exactly the body that
+      `WriteUnsupportedVersion` writes, for reason 2 of §9 and the console. It verifies
+      nothing, and nothing is acted on because of it.
+    - **`ReadCommand`** verifies, then reads `protocol` and `id`.
+      - A command of another version throws `protocol-version` with `CommandId`.
+      - Bytes that do not yield both throw `form` without it.
+      - A verified command of this version that breaks §7 throws `malformed` with
+        `CommandId`.
+    - **`ReadOutcomeRequest`** reads the whole body by §2, the `outcome` member included
+      (step 1 of §6.3), and keeps that member as a slice of `body`, without a copy. The size
+      check and `ReadOutcome` follow it, in the order of §6.3.
+    - **`ReadOutcome`** applies the member rules of §8 for the mode, the outcomes an agent
+      may send included, and throws `form`. A `null` mode, for a command the server does not
+      know, accepts what either mode allows.
+    - **The executor's object** (§8) is checked by the agent with `ReadOutcome` for its
+      mode and then `IsExecutorOutcome`. Nothing changes it: the agent forwards the bytes as
+      they are, or, when either check fails, sends `result-type` instead.
+    - **`CommandSize`** is the size of §7, computed by the same writer as
+      `Write(OutpostCommandMessage)`, `{}` included, as a `long`; `CommandChecks` of the
+      server uses it.
+    - **`WriteUnsupportedVersion`** writes the one unsigned body of §9.
+    - **Size checks.** The checks of size belong to the callers: the server checks the
+      outcome member's length against its command's limit, and the endpoints check the body
+      limits of §10.
+    - **`ValueDepth`** counts the levels of §2: a scalar is 0, and an object or an array is
+      1 plus the deepest of its members.
 - **Study.** Sources, for example: the GitHub Actions runner (MIT); the Azure Pipelines agent
   (MIT); Octopus Deploy's Halibut (Apache-2.0). Questions:
   1. How each authenticates the agent to the server and the server to the agent, and what
@@ -1163,31 +1495,225 @@ approval of this plan.
   3. How each binds a new agent's key to a one-time credential at registration.
   4. How each refuses a replayed message.
   5. Which key formats and fingerprints each uses, and how a key is pinned.
-- **To read.** The [concept](../concept.md), §3 ("Rules" 1, "Pairing", "What protects
-  what") and §6 (20 November 2026); `AGENTS.md`, principles 3, 9, 11 and 12; this plan,
-  "The protocol".
+- **To read.**
+  - The [concept](../concept.md), §3 ("Rules" 1, 5, 7, 10, 11 and 14, "Pairing", "What
+    protects what") and §6 (20 November 2026);
+  - `AGENTS.md`, principles 3, 9, 10, 11 and 12;
+  - this plan, "The public contract", "The files of the agent" and "The protocol";
+  - `docs/protocol.md`, as the owner approved it.
 - **Acceptance.**
   - Tests of the command signature:
-    - a command whose bytes changed in any place is refused;
+    - a command whose bytes changed in any place is refused with `signature`;
     - one signed with another key is refused;
-    - bytes that do not parse are never parsed before their signature is checked.
+    - bytes that do not parse and carry no valid signature are refused with `signature`,
+      never with `form`, which shows that nothing parsed them;
+    - verified bytes that yield no `protocol` or no `id` are refused with `form` and no
+      `CommandId`;
+    - a verified command of another version is refused with `protocol-version`, and a
+      verified command of this version that breaks §7 with `malformed`, each with its
+      `CommandId`.
   - Tests of the request signatures:
-    - the same three cases;
+    - the same cases;
     - a body sent as another kind of request is refused;
     - the same bytes under another agent's identity are refused.
+  - Tests of the answer signatures: an answer whose bytes changed, one signed with another
+    key, and one bound to another request, agent, status or kind are refused. Also refused
+    with `form`: a poll answer with more commands than the sum of `free`, one with
+    commands and a `newest`, an outcome answer whose `confirmed` is another command, a
+    refusal whose code does not fit its status, and a pairing answer without a readable
+    server key. `IsUnsupportedVersion` is true only for the exact body of
+    `WriteUnsupportedVersion`.
+  - Known values of §3, computed outside the codec from the strings of §3 written out in
+    the test:
+    - the output of each `Sign…` verifies with `ECDsa.VerifyData` over the documented
+      signing input;
+    - one pairing proof equals a fixed HMAC-SHA256 over the documented input;
+    - one fingerprint equals the fixed SHA-256 of a fixed key.
   - Tests of pairing:
     - a proof made with another secret is refused;
+    - a signed answer whose `agent` or `key` is not what was sent is refused with `form`;
     - a key swapped after the proof was made is refused;
-    - a server key whose fingerprint differs from the token's is refused.
-  - Every message round-trips.
-  - Every limit of `docs/protocol.md` is refused one byte beyond it and accepted at it,
-    with characters outside ASCII counted as they travel, unescaped.
-  - Tests of the answer signatures: an answer whose bytes changed, one signed with another
-    key, and one bound to another request are refused.
-  - An unknown protocol version is refused with `protocol-version`.
+    - an answer whose server key does not match the token's fingerprint is refused with
+      `server-key`, even when it is signed with that key, and one with the right key and a
+      wrong signature with `signature`;
+    - a token round-trips, and a token of another form is not read;
+    - `ToString` of `OutpostPairingTokenText` leaves the secret out.
+  - Tests of §2:
+    - the escapes a writer writes, and no white space;
+    - a reader that accepts white space and every escape;
+    - U+0000 and lone surrogates refused;
+    - duplicated members refused at every depth, names compared after unescaping;
+    - non-canonical base64url, a key that is not the 91-byte form, and a proof that is not
+      32 bytes, each refused;
+    - times and durations truncated to milliseconds;
+    - refused: a missing member, an unknown one, `null` where it is not allowed, a value of
+      the wrong type, an integer with a fraction or an exponent, a byte order mark, and a
+      time or an identity in any other form;
+    - `"write":null` read as a base without writing;
+    - `ValueDepth` at 64 and 65, and a scalar at 0;
+    - the forms of `OutpostForms` and `OutpostHeaders`, a signature of exactly 64 bytes.
+  - Tests of §8:
+    - for each mode, every outcome an agent may send is accepted, and every other
+      combination is refused;
+    - with a `null` mode, `ReadOutcome` accepts what either mode allows and refuses what
+      neither does;
+    - an outcome member that breaks §2 gets `form` from `ReadOutcomeRequest`, before any
+      check of its size.
+  - Tests of `IsExecutorOutcome`: every outcome the executor may hand over is accepted, and
+    every other one refused; `ReadOutcome` refuses U+0000 and a lone surrogate anywhere in
+    the object.
+  - `CommandSize` counts exactly what `Write(OutpostCommandMessage)` writes for the script
+    and the parameters, the 2 bytes of `{}` included.
+  - Every message round-trips. Every limit that the codec owns, and every range of a
+    member, is refused one step beyond it and accepted at it. The body limits of §10 are
+    the endpoints', and S4 and S5 state them.
   - The documents step: `docs/protocol.md` says that the codec exists and that no endpoint
     serves it yet.
 - **Out of scope.** HTTP, the store, the agent's loop.
+- **Small changes during the sprint.**
+  - The owner's answer of 20 November 2026 to Q6 of the
+    [open questions](open-questions.md): a lone surrogate is refused at once, with a clear
+    argument error, in the agent name, the script and the parameters of `ReadAsync` and
+    `WriteAsync`. It makes `policy.json` invalid, reported at its path as Q1 requires. The
+    rule of names and [`policy.json`](#policyjson) say so; the checks of `OutpostNames`, of
+    the parameters and of `AgentPolicyReader` follow it, each with its tests.
+  - The owner's answer of 20 November 2026 on tests with 1C: both kinds. Tests that need
+    1C live in `Moltaro.OnecOutpost.OneC.Tests`, outside the solution, and run on the lab
+    machine, never in CI, against a file base built from the repository's own test
+    configuration and against copies of real typical databases. `AGENTS.md`, "Tests And
+    Samples", "Layout" and "Working Rules", concept §3 "Rules" and §11, `process.md`,
+    OD1, the epic's Acceptance, the test lane, "The lab machine", L1, S9, S10, S11, R17
+    and R18 say so.
+  - **What S2 makes of this list, and what later sprints make** (the planner, 21 November
+    2026, by the owner's rules of that day). The list holds as a draft of the contract,
+    without waiting for the owner, who may overturn any item; the coordinator lists it for
+    the owner when S2 closes. S2 makes only what its codec makes true: **Sizes**, **Codes**,
+    the two "Edits that state nothing new", and in the concept the two sentences of rule 1
+    and of rule 5 on the size of an outcome. The items on `policy.json`, on the audit log
+    and the exception to principle 10 are in the brief of S6, which builds them. Every
+    other item under "The concept and `AGENTS.md`" and "The XML documentation" is made by
+    the sprint that builds the behavior it describes, S4 for the lease and S6 for the
+    agent; the planner writes it into that brief when the sprint is prepared.
+  - **Changes of the public contract that come with `docs/protocol.md`,** for the owner's
+    approval together with it, made in the contract step after that approval:
+    - **Sizes.**
+      - The size of a command counts the text of its script between its quotes and the
+        text of its parameters, as written in the command with their escapes, and `{}`
+        when there are none (§7).
+        - `CommandChecks` of S1 uses `OutpostCodec.CommandSize`, and its tests follow.
+        - `Server.Tests/Commands/CommandSizeTests.A_script_of_exactly_the_limit_in_UTF8_passes_the_checks`
+          then fails by the 2 bytes of `{}`. The test author changes it to a script of the
+          limit less those 2 bytes, with the reason in the commit.
+        - "Rules for every member", Sizes, and the XML documentation of
+          `OutpostServerOptions.CommandSizeLimit` follow it.
+      - The size of an outcome is its outcome object as it travels (§8). "Rules for every
+        member", Sizes, already says so; the XML documentation of
+        `OutpostServerOptions.OutcomeSizeLimit` follows it.
+    - **Codes.**
+      - `result-type` also covers a result deeper than 64 levels and an outcome of the
+        executor that the agent cannot accept. For a Write it is Unknown (§8).
+      - A new Refused code, `malformed`, for a verified command of this version that breaks
+        §7.
+      - The rows of `OutpostCodes` follow this, and its constants take their values from
+        `OutpostOutcomeCodes`. The fit of a code to a kind moves from `OutpostCodes` to
+        `OutpostOutcomeCodes.Fits…`, and the test author changes
+        `Server.Tests/Outcomes/OutcomeCodeTests.cs` to match, with the reason in the commit.
+      - The XML documentation of `OutpostCodes.ResultType`, and the lists of codes in that
+        of `OutpostOutcome.Refused` and `OutpostOutcome.Unknown`, follow both.
+    - **The concept and `AGENTS.md`:**
+      - rule 1 says that verified bytes without a `protocol` and an `id` are only recorded,
+        with `form`, since they name no command, and that its checks run in the order §7
+        of the protocol gives;
+      - rule 5 says what the size of an outcome is, and that the executor replaces U+0000
+        and lone surrogates in its messages and error text with U+FFFD, then trims them,
+        never inside a surrogate pair;
+        the XML documentation of `OutpostOutcome.Messages` and `OutpostOutcome.ErrorText`
+        follows;
+      - rule 6, and the correctness item of `AGENTS.md` on an agent that is gone, say the
+        lease of §6.2 exactly:
+        - the lease of a poll is its hold, the smaller of the poll timeout it carries and
+          `PollTimeout`, plus `LeaseGrace`, and ends no later than the poll's signed time
+          plus `ClockSkew` plus that hold and grace;
+        - so polls held back on the path keep an agent that has gone connected, together,
+          for at most `ClockSkew` plus the lead the agent's clock had over the node's when
+          it sent them;
+        - an agent whose clock is behind by more than `ClockSkew` plus `LeaseGrace` shows
+          as connected only for part of each poll, and by more than `ClockSkew` plus the
+          hold plus `LeaseGrace` never. Calls for it may get Unavailable where they got
+          Refused `clock-skew`, which `OutpostAgent.Connected`, `ReadAsync` and
+          `WriteAsync` show;
+        - a live agent that reads an answer for longer than `LeaseGrace` shows as not
+          connected until its next poll;
+      - rule 2 adds rule 10 to what the audit log is the journal for;
+      - rule 10 adds the reservation of §6.2: the agent reserves its poll numbers in its
+        audit log and, after a restart, numbers above the highest reservation, so that a
+        poll captured while its clock was moved ahead can never become the newest again.
+        An agent with no reservation numbers its first poll 1, and an answer that it is
+        older stops the agent, since its log was cleared; this is the one older answer
+        after which the agent does not continue above `newest`.
+        The correctness item of `AGENTS.md` on a Write that runs twice adds the condition:
+        also after a restart with the agent's clock set back, while the audit log is kept;
+      - rule 7 drops "an agent whose clock jumps back voids this rule". A command reaches
+        the agent only in the answer to its open poll, every command it received is listed
+        before its next poll opens, and the reservation keeps every later poll newer than
+        any captured one, so a clock set back no longer lets a command run after the
+        server ended it. It says instead, in one sentence, that this rests on the audit
+        log, and that a log cleared, cut short or restored acts as a clone does;
+      - §4 adds the poll timeout to what every poll carries, and no longer says that the
+        server's time in its answers is only for the console: the agent's retention also
+        acts on it;
+      - rule 14 says that a claimed key is reported in `bases.claimed`;
+      - D4, §6 and this plan's "The protocol" say that every answer the agent acts on is
+        signed and bound to the request's body, with the one exception of a bare 413 to an
+        outcome, acted on whatever its headers and body, and that the other unsigned
+        answers are acted on by nobody;
+      - §6 says that a bare 413 comes from an ingress, from the web server, or from the
+        library's own check of the declared length, all before the body is read;
+      - "Pairing" says that a refusal of `pair` is a bare 403 without a body, and only ends
+        the pairing;
+      - the threat table says what a hop on the path can still do (§13 of the protocol),
+        that a hop that also controls the agent's time service is stopped from running a
+        Write twice by the reservation of rule 10, which lives as long as the audit log,
+        that a compromised application that also controls the agent's time service can
+        make retention remove the confirmed history, that a cleared audit log stops the
+        agent at its first poll, that removing only some audit files brings lower
+        reservations back and can forget a received Write, which may then run twice,
+        and that a compromised application can fill the disk of the agent machine through
+        the audit log, with scripts and parameters of up to `CommandSizeLimit` each. They
+        are kept for `auditRetentionDays` and a day, and for as long as the server's signed
+        `time` is more than a day away from the agent's clock, which a compromised
+        application can keep it, so nothing else bounds them.
+    - **The XML documentation** of `OutpostServerOptions.LeaseGrace` and of
+      `OutpostAgent.Connected`, which says that the lease is `PollTimeout` plus
+      `LeaseGrace` and that a gone agent shows as connected at most for its lease, follows
+      rule 6 as above. The rows of `PollTimeout` and `LeaseGrace` in the table of the
+      options follow it too.
+    - **The bullets marked *(S2)*** in "The public contract" and "The protocol" of this
+      plan hold once the owner approves.
+  - **Edits that state nothing new**, in the contract step:
+    - the ranges of the options and of `policy.json` that the protocol mirrors move into
+      constants of `OutpostProtocol`, which the options check, `AgentPolicyReader` and the
+      codec all use;
+    - the depth check of S1 moves into `OutpostCodec.ValueDepth`.
+- **What S2 changed in the public contract, as a draft for the owner** (the coordinator,
+  21 November 2026). Each holds until the owner overturns it:
+  - a new Refused code, `OutpostCodes.Malformed`, for a verified command of this version
+    that breaks §7;
+  - `result-type` is also an Unknown code, for a Write whose outcome the agent could not
+    accept, and also covers a result deeper than 64 levels. `OutpostOutcome.Unknown`
+    accepts it. The XML documentation of `OutpostCodes.ResultType`, `OutpostOutcome.Refused`
+    and `OutpostOutcome.Unknown` says so;
+  - the size of a command counts `{}` when there are no parameters, and every escape as
+    the writer of §2 writes it. A script of exactly `CommandSizeLimit` without parameters
+    is now 2 bytes over the limit and refused. The XML documentation of `CommandSizeLimit`
+    and of `OutcomeSizeLimit` says what each size is;
+  - parameters deeper than 64 levels still give `ArgumentException` with `ParamName`
+    `Parameters`, and its message now names the 64 levels;
+  - in the concept, the two sentences of rule 1 on verified bytes without a `protocol` and
+    an `id` and on the order of its checks, and the sentence of rule 5 on the size of an
+    outcome;
+  - the readings Q8 and Q9 of the [open questions](open-questions.md), taken as
+    recommended.
 
 ### S3 · The store
 
@@ -1296,17 +1822,37 @@ approval of this plan.
 - **Acceptance.**
   - Over loopback HTTP, with a test agent built from the protocol's internal types:
     - pairing succeeds once, and the token's secret is gone after it;
-    - a second use, an expired token, a wrong proof and a swapped key are refused;
+    - a second use, an expired token, a wrong proof, a swapped key and a body that breaks
+      §2 all get the same bare `403` without a body;
+    - two pairings racing on one token: one wins and the other gets the `403`;
     - the answer is signed and repeats the registered key;
-    - a request with a changed body or another agent's key is refused;
-    - a revoked agent's requests are refused;
-    - an older poll, and an exact replay of the newest, change nothing; the answer to an
+    - a request with a changed body or another agent's key gets the signed `signature`;
+    - the unsigned answers of §9 of `docs/protocol.md`, each one sent before the body is
+      read:
+      - an unsupported version gets `protocol-version` in the form that later versions
+        keep;
+      - a required header of §4 that is missing, repeated or in another form, and a
+        `Content-Encoding`, each get a bare 400. An `outcome` without `Expect` or without
+        `Content-Length` is not answered with a bare 400 or 413;
+      - an unknown agent and a pending one get a bare 401, and a revoked one a bare 403;
+      - a `pair`, a `poll` and an `outcome` body at their limits are not answered with a
+        bare 413, and one byte beyond with a declared length gets one. The test client
+        sends these with `Expect: 100-continue` and an `Expect100ContinueTimeout` longer
+        than the test's own wait, so that the 413 comes before the body and no reset can
+        wipe it out;
+      - a chunked body one byte beyond its limit, which declares no length, ends in a 413
+        or a reset of the connection, either of which passes, and the store is unchanged;
+    - an older poll, and an exact replay of the newest, change nothing. The answer to an
       older poll comes at once, signed, and names the newest number recorded;
-    - a poll ends without commands at its timeout, with the fake clock;
-    - `Connected` follows the lease, with the fake clock;
+    - a poll is held for the smaller of the poll timeout it carries and the option, and
+      ends without commands at that time, with the fake clock;
+    - `Connected` follows the lease of §6.2, with the fake clock: a poll recorded on time
+      grants its hold plus the lease grace; a poll whose signed time is behind the node's
+      by more than `ClockSkew` grants less by the part of its lag beyond `ClockSkew`; and
+      an agent whose clock is behind
+      by more than `ClockSkew` plus the hold plus the lease grace never shows as
+      connected;
     - base keys follow rule 14, release included, and the poll answer reports them;
-    - an unsupported version is answered with `protocol-version`;
-    - an `outcome` request up to its limit passes Kestrel;
     - the purge removes an unused token and its pending agent.
   - The documents step: `README.md` says that agents can pair and poll.
 - **Out of scope.** Commands; the signals, which commands need first.
@@ -1369,10 +1915,17 @@ approval of this plan.
   - Rule 12: a cancelled call leaves its command running, and its repeat returns the
     outcome.
   - Rule 13: revoking ends commands, with the codes of `OutpostCodes`.
+  - The hand-out (§6.2 and §10 of `docs/protocol.md`):
+    - a poll takes at most `free` commands per mode, oldest first, and a command handed out
+      again counts against `free`;
+    - an answer is filled up to 64 MiB, and always holds one command when one is due, the
+      largest one included;
+    - an outcome is checked by §8 for the mode of its command.
   - The signals:
     - the keys carry the prefix;
     - two calls waiting on one command both return;
-    - the newest poll is woken while an older poll of the same agent still waits;
+    - the newest poll is woken while an older poll of the same agent still waits, and the
+      older one takes nothing and is answered as older when it wakes or its hold ends;
     - a wait reads the store again after its subscription rejoins a restarted Signals host.
   - The documents step: `README.md` says that commands work against an agent that speaks
     the protocol.
@@ -1397,14 +1950,17 @@ as [Order](#order-and-why-these-splits) says.
   - *Internal:* written into this brief after the study. They have to be able to:
     - run a command in a base and mode through a boundary that the COM worker of S9
       implements, and a fake implements in tests;
+    - write the audit log and the outbox through a boundary that tests replace, so that the
+      order of writes, a torn entry, a failed write and a torn outbox file can be tested;
     - keep the secrets, and check the access list of the data folder, through boundaries
       that Windows implements, with fakes elsewhere;
     - find a command in the audit log and its outcome in the outbox, after a restart
       included;
     - number polls so that the numbers grow across restarts, as concept rule 10 says: from
-      the agent's clock, and above the newest number that an answer to an older poll names.
-      Nothing is stored for it, since the agent's account may not write outside `audit\`
-      and `outcomes\`;
+      the agent's clock, above the newest number that an answer to an older poll names,
+      and within the reservation of §6.2 of `docs/protocol.md`, which the agent keeps in its
+      audit log, the one place outside `outcomes\` that its account may write. The day of
+      ticks that a reservation adds is a constant of the agent;
     - pair with a token, which the console of S10 calls (principle 12: the console depends
       on the agent).
 - **Study.** Sources, for example: the message loop and job dispatcher of the GitHub
@@ -1418,7 +1974,8 @@ as [Order](#order-and-why-these-splits) says.
 - **To read.** The [concept](../concept.md), §3, §4 and §5 (20 November 2026);
   `docs/protocol.md`; this plan, "The files of the agent".
 - **Acceptance.**
-  - Every check of rule 1, each with its code in the outcome and in the audit log. A
+  - Every check of rule 1, each with its code in the outcome and in the audit log, and,
+    when several fail, the code of the first in the order of §7 of `docs/protocol.md`. A
     signature that does not verify is only recorded, and nothing is reported.
   - The order of the entries in the audit log:
     - `received`, then the outbox file, then `ended`, then `confirmed`;
@@ -1429,26 +1986,169 @@ as [Order](#order-and-why-these-splits) says.
       `lost` for a Read;
     - an outbox file without its `ended` is recorded and sent.
   - Outcomes are sent until confirmed.
+  - The table of §9 of `docs/protocol.md`, one test per row, and a lost answer for each case
+    of its list. For a replacement, any answer but a verified `200` counts as lost, and an
+    outcome of kind `refused` or `unknown` is never replaced.
+  - The `connection` entries: one per change of the state of the polls, with each kind of
+    `reason` of §9; an outcome whose answers keep being lost while polls go through
+    records no entry.
+  - The waits and the read limits:
+    - a poll answer beyond 64 MiB, and any other answer beyond 64 KiB, are lost unread;
+    - the wait for a poll answer to begin, and the reading of its body within
+      `requestTimeout`;
+    - the waits for an outcome and a pair, with the fake clock;
+    - every poll carries the poll timeout the agent last learnt.
+  - After an answer to an older poll, the agent waits a tenth of `retryDelayMax` before it
+    polls again.
+  - The sum of `free` never exceeds the room left in `received`.
+  - The executor's object goes through `OutpostCodec.ReadOutcome` and `IsExecutorOutcome`:
+    one that §8 does not allow becomes Unknown or Failed `result-type`, and any other is
+    sent as it came.
   - An outcome refused for its size, by the server's code and by a bare HTTP 413 of the
-    test proxy: the outbox file and a second `ended` hold Unknown `result-too-large` for a
-    Write and Failed `result-too-large` for a Read, and that is what is sent.
+    test proxy sent with an HTML body: the outbox file and a second `ended` hold Unknown
+    `result-too-large` for a Write and Failed `result-too-large` for a Read, and that is
+    what is sent.
   - Workers bound what runs. A fake run that exceeds its limit is ended, giving `run-limit`.
-  - Poll numbers grow across a restart, with the fake clock. After a restart with the clock
-    set behind the last number, the first poll is answered as older, and the next one takes
-    commands.
+  - Poll numbers grow across a restart, with the fake clock:
+    - a reservation is recorded and flushed before a poll at or above the last bound, and
+      at every start;
+    - after a restart with the clock set behind the last number, every poll is above every
+      poll sent before;
+    - two periods with the clock set ahead by different amounts, the larger first, each
+      followed by setting it back and a restart: every poll after the last restart is
+      above every poll sent before, whatever the names and times of the audit files;
+    - a reservation of another identity does not count;
+    - a cleared log, end to end against the server: an agent with no reservation of its
+      identity numbers its first poll 1. After a new pairing that poll is the newest and
+      takes commands. After a Write was received, the log cleared and the agent started
+      again, that poll is answered as older; the agent stops without running anything, the
+      Write is not handed out again, and every later start records `started` with an
+      error;
+    - with its reservation and the clock set behind the server's newest number, the first
+      poll is answered as older, and the next one takes commands;
+    - an answer to an older poll whose `newest` is 2⁶² stops the agent after it records the
+      reservation of the next number, and every later start records `started` with an
+      error.
+  - The audit log (§13 of `docs/protocol.md`):
+    - nothing runs before its `received` is on the disk, and no entry is written before the
+      one before it is on the disk;
+    - a second copy of the agent exits with an error while the first runs;
+    - a last line without its LF, and a last line that is not JSON, are cut at a start, and
+      the agent then starts normally twice in a row;
+    - a torn last line, then a start that stops on an access list that admits someone
+      else, then a start with the access lists fixed: the last start runs normally;
+    - after a failed write the file is cut back to its length before that write, nothing
+      more is written, and the agent stops;
+    - a `received` whose parameters nest 64 levels is read back, also as the last line;
+    - any other line it cannot read, and an audit file it cannot open, stop the agent with
+      `started` and an error.
+  - The outbox:
+    - a torn temporary file is removed at a start;
+    - a file it cannot read, and an `ended` with neither its file nor its `confirmed`,
+      stop the agent with `started` and an error;
+    - a file whose kind and code differ from its last `ended` gets a matching `ended` at a
+      start.
+  - A poll answer whose commands that pass §7 exceed `free` for a base and mode is lost, and
+    none of its commands is recorded or run. So is an answer with two commands of one
+    `id`. A command for a base or mode that the local policy does not serve is refused with
+    `not-served`, and the others run.
   - An answer whose signature does not verify is treated as a lost answer, and nothing in it
     is acted on.
+  - Addresses (§11 of `docs/protocol.md`): `http://` only on a loopback address written as
+    such, never through the proxy; no redirect followed; `Accept-Encoding: identity` on
+    every request; `Expect: 100-continue` on every `outcome`.
   - An invalid policy serves nothing and is recorded.
   - The entries `connection` and `bases`.
-  - The retention of the audit log.
+  - The retention of the audit log, with the fake clock:
+    - a file that holds an entry of a command whose outcome is not confirmed, and the file
+      that holds the highest reservation, are kept past `auditRetentionDays`;
+    - other files go once they are older than `auditRetentionDays` plus a day;
+    - nothing is removed before the first verified poll answer of a run, nor after an
+      answer whose `time` is more than a day away from the agent's clock.
   - Over loopback against the server of S5: a Read and a Write from `ReadAsync` and
     `WriteAsync` to the fake and back, through a test proxy named in `policy.json`.
   - With `Requires=Windows`:
+    - the proxy is offered the computer's credentials by Kerberos only;
     - the secrets file is encrypted with DPAPI for the machine;
     - a data folder, or a file in it, whose access list admits anybody else makes the
       agent stop, recorded;
     - the program runs as a Windows service.
   - The documents step: `README.md` says that the agent works with a fake in place of 1C.
+- **Carried over from S2** (the planner, 21 November 2026): the changes of the public
+  contract that came with `docs/protocol.md` and that this sprint builds. They hold as a
+  draft; `AgentPolicy`, `AgentPolicyReader`, the audit log and their tests follow them.
+  - **`policy.json`:**
+    - at most 256 bases;
+    - a new member `requestTimeout`: the agent's wait for an answer to `pair` or `outcome`,
+      and for the body of a poll answer, in the form of `runLimit`, from 10 seconds to 1
+      hour, 5 minutes when absent;
+    - the `proxy` row:
+      - the agent offers the proxy the computer's credentials by Kerberos only, never by
+        NTLM, so a machine outside a domain reaches only a proxy that asks for no
+        credentials;
+      - a URL with a user or a password is refused, which answers Q7;
+      - the example host is not a `.local` name;
+    - `retryDelayMax` gains a second meaning: a tenth of it is also the wait after an
+      answer to an older poll (§6.2).
+
+    `AgentPolicy`, `AgentPolicyReader` and their tests follow all four.
+  - **The audit log:**
+    - `connection` is recorded once per change of the state of the polls, which answers
+      to outcomes do not change, with the `reason` of §9: the code of a verified refusal,
+      `protocol-version`, `status-` and the HTTP status, or `unreachable`;
+    - the agent alone writes the log, holding `audit\lock` without sharing, one entry at a
+      time with the writer of §2, each ending with LF and on the disk before the next;
+      outbox files are written under a temporary name and renamed, through to the disk,
+      and read with `ReadOutcome`; a file that differs from its last `ended` gets a
+      matching one at a restart. The bullets marked *(S2)* in "The audit log" say so;
+    - a new entry `reservation`, with the members `agent` and `below`: the bound below
+      which the agent sends its poll numbers, recorded before it sends a number at or
+      above the last bound. The agent starts at or above the highest one of its own
+      identity. With none, it numbers its first poll 1; when the server answers that
+      poll as older, the log was cleared, and the agent records a reservation that
+      leaves no number and stops (§6.2). This is the owner's answer of 21 November 2026
+      on a cleared audit log;
+    - torn entries (§13): an entry counts as written only with its LF. At a start the
+      agent reads and cuts its log before it writes any entry, and cuts the last line of
+      a file when it lacks its LF or is not JSON. After a failed write it cuts the file
+      back to its length before that write, writes nothing more and stops. Any other line
+      it cannot read, an audit file it cannot open, an outbox file it cannot read, a
+      command with an `ended` but neither its file nor its `confirmed`, and a start with
+      no poll number left at or below 2⁶², make it record `started` with an error and
+      stop. The administrator pairs it anew, after moving `audit\` aside when the log
+      cannot be read, and the application revokes the old identity. The readers of the
+      log and of the outbox accept every depth and length their writer writes;
+    - the row of `ended` says that a later `ended` replaces an earlier one, and is
+      written after a refusal for size and at a restart, when the outbox file no longer
+      matches the last one;
+    - `refused` is recorded with the codes `signature` and `form` for commands that cannot
+      be trusted;
+    - a `refused` entry ends its command as `ended` does, and its Refused outcome is kept
+      in the outbox until it is confirmed;
+    - `received.parameters` is always an object;
+    - retention:
+      - a file's age counts from its last entry;
+      - no file is removed while it holds an entry of a command whose outcome is not
+        confirmed, or the highest `reservation` of the agent's identity;
+      - retention runs only right after a verified poll answer of the current run, and
+        only when the agent's clock is within a day of that answer's `time`. An agent
+        that has had no such answer since it started, or whose clock is further off,
+        removes nothing. So a clock moved ahead, by a hop that controls its time service
+        or by a fault, wipes nothing out;
+      - a file is removed when it is older than `auditRetentionDays` plus one day, so that
+        with the day of tolerance it is still older than `auditRetentionDays` by the
+        server's clock;
+      - entries written while the agent's clock was behind count as older by that much,
+        and may be removed early once the clock is right;
+      - so rule 2's "for at least a day", concept §5's "never for less than a day" and
+        the "Retention" bullet of "The audit log" ("never one younger than a day") each
+        add "by the agent's clock when it wrote them". D7 rests on the same.
+  - **An exception to principle 10**, for the [register](exceptions.md): the agent's
+    wait of one second for `100 Continue` (§9) is a constant of the agent, the default of
+    .NET, not a member of `policy.json`. Its only effect is a second added to an outcome
+    sent through a hop that strips `Expect`, and nobody has a reason to change it. Since
+    S6, until permanent. The coordinator enters it under "Approved, not in force yet"
+    once the owner approves.
 - **Out of scope.** COM, the executor, the console.
 
 ### S7 · Several nodes and lost messages
@@ -1475,15 +2175,21 @@ as [Order](#order-and-why-these-splits) says.
       when a poll whose agent time is past the take deadline plus the skew does not list
       it (rule 7);
     - the signals host stopped: waits end at their deadlines, polls at their timeouts, and
-      nothing is lost.
+      nothing is lost;
+    - the replay of §13 of `docs/protocol.md`: a poll captured while the agent's clock was
+      set ahead is replayed after the clock was set back, the agent restarted and ran a
+      Write, and the proxy held back the Write's outcome. The poll is older, and the Write
+      is not Expired.
   - *Reported*, by the new program `Moltaro.OnecOutpost.Measurements`, its scenarios
     written by the test author. On loopback without 1C, with one node and with two:
     - the time from a call to the command reaching a waiting poll;
     - the time from an outcome to the waiting caller.
 
-    Each is given as p50, p95 and maximum. The target of concept §11 is 100 ms at p95.
-    The figures stay the same with a `PollTimeout` of 5 minutes, which shows that no hop
-    waits for a fixed interval.
+    Neither includes the agent's flushes to the disk, which come between the two: the
+    `received` before a command runs, and the outbox file and `ended` before its outcome
+    is sent. Each is given as p50, p95 and maximum. The target of concept §11 is 100 ms at
+    p95. The figures stay the same with a `PollTimeout` of 5 minutes, which shows that no
+    hop waits for a fixed interval.
   - **Explanation E1**, "The path of a command", animated: a call, the store, the signal,
     the poll, the agent's checks and audit log, the worker, the outcome, the caller.
   - **Explanation E2**, "Why a command never runs twice", animated: a repeated call with
@@ -1514,32 +2220,50 @@ as [Order](#order-and-why-these-splits) says.
 
 ### L1 · The lab check of open items O1–O8
 
-**Track:** light · **Branch:** `docs/lab-check` · **Needs:** the owner's lab machine (OD1).
-Best run before S6, and in any case before the contract of stage 2 is written.
+**Track:** light · **Branch:** `chore/lab-check` · **Needs:** the owner's lab machine (OD1).
+Runs right after S2, before S9 and before the contract of stage 2 is written.
 
 - **Goal.** Each open item of concept §12 has an answer from a real 1C:Enterprise
   8.3.17.1851, so that the contracts of stage 2 rest on facts.
 - **How.**
   1. An implementer, assigned by the coordinator, writes a minimal executor as XML sources,
-     and the steps of the check for each open item.
-  2. The owner builds the `.epf` and runs the check on a copy of a database, with that
-     implementer.
+     the steps of the check for each open item, and the test configuration below.
+  2. The owner builds the `.epf` and the test base, and runs the check on the test base
+     and on a copy of a typical base, with that implementer.
   3. The planner writes each answer into concept §12. An answer that changes a decision,
      such as D3, D12 or D14, or a member of `policy.json`, goes to the owner and is written
      on this branch.
-  4. An independent reviewer reviews the edit of the concept, until no P1, P2 or P3 finding
-     is left.
+  4. An independent reviewer reviews the edit of the concept and the test configuration.
 
   The minimal executor is not committed: S9 writes the executor from its contract. No
   report file is written.
+- **The 1C test lane.** L1 also sets it up, as `AGENTS.md`, "Tests And Samples", says:
+  - `src/OneC.TestConfiguration`: the XML sources of a minimal test configuration, and the
+    script that builds a file base from them through the Designer's command line on the
+    lab machine. No built configuration or base is committed. The configuration has:
+    - a catalog, a document that posts to an accumulation register, and a common module;
+    - two roles, both with the right of external connection and whatever else O2 finds
+      that opening the executor needs: one that reads every object and changes none, and
+      one that also writes and posts;
+    - two users, `outpost-read` and `outpost-write`, one with each role, created by the
+      script with the passwords that `lab.local.json` gives them.
+
+    The test base is enough for O2, O4, O7 and O8. O1, O3, O5 and O6 need a typical
+    configuration or a client-server base, so they are answered on the copy.
+  - The owner provides the lab machine with 1C:Enterprise 8.3.17.1851 and its Designer,
+    the COM connector and the .NET 10 SDK, and at least one copy of a typical base on its
+    1C cluster, a client-server base, with a read account and a write account. The tests
+    need no Docker and no PostgreSQL.
 - **To read.** The [concept](../concept.md), §3 "The two commands" and §12; this plan,
   "The files of the agent".
-- **Done when** O1–O8 are answered in the concept and the change is merged.
+- **Done when** O1–O8 are answered in the concept, the test configuration builds into a
+  file base on the lab machine, and the change, with `src/OneC.TestConfiguration`, is
+  merged.
 
 ### S9 · The executor and the COM worker
 
-**Track:** full · **Branch:** `epic-1/sprint-09-com-worker` · **Needs:** S8, L1, and
-the contract of stage 2 approved.
+**Track:** full · **Branch:** `epic-1/sprint-09-com-worker` · **Needs:** S2, L1, and
+the contract of the executor and the COM worker approved.
 
 - **Goal.** A real base runs scripts. For each command, the COM worker:
   - holds the external connection under the account of its mode;
@@ -1548,12 +2272,21 @@ the contract of stage 2 approved.
   - runs a Write in one transaction, with the checks of rule 5 before the commit;
   - collects the user messages and reports the outcome.
 
-  The agent starts the workers of each base and mode with the connector's bitness, inside
-  a job object that ends them with the agent. It ends a worker at its run limit, and
-  starts it again with a growing delay, up to `retryDelayMax`.
+  The tests start the worker program themselves and speak to it as the agent will. How
+  the agent starts, limits and restarts its workers is S9b.
 - **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says, completed with
   L1's answers before stage 2 starts. Exception X1 of the [register](exceptions.md) comes
   into force with the commit of the `.epf`.
+  - The executor replaces each U+0000 and each lone surrogate in its messages and its
+    error text with U+FFFD, then trims them, never inside a surrogate pair, before it
+    writes and measures its outcome object (§8 of `docs/protocol.md`). The object crosses
+    COM as UTF-16 text, and the worker encodes it as UTF-8; since the text is then valid
+    Unicode, these are the bytes 1C measured.
+  - The executor writes its object with the line breaks of the 1C JSON writer turned off,
+    so that it travels as one line between the worker and the agent, and returns the size
+    it measured beside it. The agent compares that size with the length of the bytes it
+    received; a difference is an outcome it cannot accept: Failed `result-type` for a
+    Read, Unknown `result-type` for a Write.
 - **Study.** Sources, for example: the worker process model of the Azure Pipelines agent
   (MIT); the job objects of a process-supervision library under a permissive licence.
   Questions: how a child process is tied to its parent's lifetime; how a hung child is
@@ -1566,20 +2299,25 @@ the contract of stage 2 approved.
   - Automated, with `Requires=Windows`:
     - the worker program against a fake of the COM connection, behind the worker's own
       boundary;
-    - the job object;
-    - ending at the run limit;
-    - starting again with a growing delay;
-    - bitness chosen from the registered connector.
-  - Manual, on the lab machine (OD1), one line per scenario:
+    - a connector whose version differs from the cluster's, with the error L1 recorded for
+      it, is reported as such.
+  - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine (OD1), against the test base
+    unless a line says otherwise:
     - a Read query that returns rows;
-    - a Write that creates and posts a typical document, with the same movements as by
-      hand;
+    - a Write that creates and posts a document of the test configuration;
+    - on each copy of a typical base: the latest posted document of the type that
+      `lab.local.json` names, posted again by the tunnel in safe mode, has the same register
+      movements as it had before, which a person's posting made (O1). The owner names a
+      type whose posting depends on no sequence and no later document, in a period that
+      no closing date of changes covers;
+    - messages and an error text with U+0000, a lone surrogate, and a character outside
+      the Basic Multilingual Plane at the point of trimming arrive with U+FFFD where it
+      belongs and the pair kept whole, and the size the executor measured equals the
+      length of the bytes the agent receives;
     - a Write whose script raises an error rolls back;
     - a result of a wrong type, and one too large, roll back before the commit;
     - a script that calls `CommitTransaction` or `RollbackTransaction` gives Unknown
       `transaction-ended`;
-    - a script beyond its run limit: a Read fails and a Write is Unknown;
-    - stopping the agent during a Write gives Unknown;
     - the script contract:
       - `Parameters` maps JSON as concept §3 says: an object to a `Map`, an array to an
         `Array`, `null` to `Undefined`, no parameters to an empty `Map`, and a string that
@@ -1592,16 +2330,45 @@ the contract of stage 2 approved.
       - the session of a worker lives on between commands;
     - user messages arrive and are trimmed to the limit;
     - safe mode refuses a file operation;
-    - the read account cannot write;
-    - a connector of another version is reported.
+    - the read account cannot write.
+  - Manual, on the lab machine, one line per scenario: only what no test can make.
   - The executor's XML sources and its `.epf`, built by the owner with the Designer of
     8.3.17.1851, are committed in `src/Executor`.
+  - The documents step: `README.md` says that the COM worker runs scripts in 1C and that
+    no agent starts it yet.
+- **Out of scope.** The agent's supervision of its workers, the console, the shell.
+
+### S9b · The agent runs the COM workers
+
+**Track:** full · **Branch:** `epic-1/sprint-09b-workers` · **Needs:** S8, S9.
+
+- **Goal.** A command travels from `ReadAsync` and `WriteAsync` to a real 1C and back. The
+  agent starts the workers of each base and mode with the connector's bitness, inside a
+  job object that ends them with the agent. It ends a worker at its run limit, and starts
+  it again with a growing delay, up to `retryDelayMax`.
+- **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says. The planner
+  writes the internal types into this brief when the sprint is prepared.
+- **Study.** The study of S9 answers its questions; none of its own.
+- **To read.** The [concept](../concept.md), rules 3, 8 and 9 and §5; `AGENTS.md`,
+  principle 8; the brief of S9.
+- **Acceptance.**
+  - Automated, with `Requires=Windows`, against the worker program with a fake of the COM
+    connection:
+    - the job object;
+    - ending at the run limit;
+    - starting again with a growing delay;
+    - bitness chosen from the registered connector.
+  - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine (OD1), against the test base:
+    - a script beyond its run limit: a Read fails and a Write is Unknown;
+    - stopping the agent during a Write gives Unknown.
+  - Manual, on the lab machine: a Read and a Write sent from a server on another machine
+    reach the test base through the agent and return their outcomes.
   - The documents step: `README.md` says the agent works with 1C.
 - **Out of scope.** The console, the shell.
 
 ### S10 · The console
 
-**Track:** full · **Branch:** `epic-1/sprint-10-console` · **Needs:** S9.
+**Track:** full · **Branch:** `epic-1/sprint-10-console` · **Needs:** S9b.
 
 - **Goal.** The administrator does everything for an agent from the console:
   - installs the service under its virtual account, with the data folder and its access
@@ -1625,11 +2392,16 @@ the contract of stage 2 approved.
     - `check` reports each case its contract names, against fakes. It checks the server
       without polling, as [The protocol](#the-protocol) says, and a test proves that the
       service's newest poll is not replaced;
-    - every command's exit codes and errors;
+    - every command's exit codes and errors. `pair` and `check` report an answer they do
+      not accept with its status and the console's own reason, as §6.1 and §12 of
+      `docs/protocol.md` say, a server key that does not match the token included, and
+      never with text taken from an unverified body;
     - with the output redirected, every command writes plain text, tested.
-  - Manual, on the lab machine: `check` against a real base, the rights of the read
-    account included; `metadata` writes a report of a real base; the owner runs every
-    command in a terminal on the lab machine and accepts how it looks.
+  - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine: `check` against the test base
+    and each copy of a typical base, the rights of the read account included, with the
+    server's part against a stub; `metadata` writes a report of each.
+  - Manual, on the lab machine: the owner runs every command in a terminal and accepts
+    how it looks.
   - The documents step: `README.md` says how an agent is installed and paired.
 - **Out of scope.** The shell.
 
@@ -1650,9 +2422,12 @@ the contract of stage 2 approved.
   - Automated: a session of shell commands read from its input against an agent with the
     fake worker, ending when the input ends, so that the shell runs to the end with
     `dotnet run`; with the output redirected, every command writes plain text, tested.
-  - Manual, on the lab machine: a Read and a Write of S9's scenarios typed in the shell,
-    with the agent on another machine reaching the shell over HTTPS; the owner runs every
-    command in a terminal on the lab machine and accepts how it looks.
+  - Manual: the shell runs on a machine with PostgreSQL, the agent on the lab machine
+    reaches it over HTTPS, and a Read and a Write of S9's scenarios are typed in the shell
+    against the test base. The owner runs every command in a terminal and accepts how it
+    looks. The shell has no test that needs 1C: it would need PostgreSQL and 1C on one
+    machine, and the automated session with the fake worker and S9's tests cover the
+    rest.
   - The documents step: `README.md` shows a session.
 - **Out of scope.** The release.
 
@@ -1688,8 +2463,7 @@ the contract of stage 2 approved.
 ## The contracts of stages 2 and 3
 
 The planner writes these contracts out exactly before stage 2 starts, with L1's answers.
-An independent reviewer reviews them until no P1, P2 or P3 finding is left, and the
-owner approves them. Until then this is what they have to be able to do.
+An independent reviewer reviews them, and the owner approves them. Until then this is what they have to be able to do.
 
 - **The executor**, an external data processor:
   - one exported function that runs a script in a mode with its parameters, caller key and

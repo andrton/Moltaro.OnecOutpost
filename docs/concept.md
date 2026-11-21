@@ -139,8 +139,8 @@ The script's contract is the same for both:
 ### Rules
 
 These are the guarantees. Each numbered rule has a deterministic test. The parts that only
-1C can show, such as the transaction of the executor in rule 5, are also accepted by hand,
-as section 11 says.
+1C can show, such as the transaction of the executor in rule 5, are also tested on a lab
+machine, as section 11 says.
 
 1. **Only a signed command runs.** The agent runs a command only when all of these hold:
    - its signature verifies, over its exact bytes, with the server key the agent pinned at
@@ -155,7 +155,10 @@ as section 11 says.
    Anything else is refused with a code, among them `expired` and `clock-skew`, and
    recorded in the audit log. A command whose signature does not verify is only recorded:
    nothing in it can be trusted, its identity included, so the agent reports nothing for
-   it, and the server ends it by rules 7 and 11.
+   it, and the server ends it by rules 7 and 11. Verified bytes that do not yield both a
+   `protocol` and an `id` are only recorded too, with `form`, since they name no command that a
+   refusal could answer. The checks run in the order that §7 of the
+   [protocol](protocol.md) gives.
 2. **The audit log comes first.** The agent records each command in the audit log:
    - when it receives it: time, identity, base, mode, caller key, script and parameters;
    - when it ends: its outcome and duration;
@@ -180,8 +183,9 @@ as section 11 says.
 5. **Failed means nothing was written.** A Write fails only when 1C rolled back its
    transaction.
    - The executor checks the type of the result and the size of the whole outcome before
-     it commits. The size covers the result, the user messages and the error text,
-     counted in UTF-8 as they travel, with characters outside ASCII not escaped. Before
+     it commits. The size of an outcome is the length of the UTF-8 text of its outcome
+     object as it travels, with the result, the user messages and the error text, every
+     escape counted as it is written (§8 of the [protocol](protocol.md)). Before
      the check, the executor trims the messages and the text to fit and marks that it did.
      An outcome that still fails either check rolls the Write back and fails it with
      `result-type` or `result-too-large`. The size limit, 16 MiB by default, travels in the
@@ -546,9 +550,10 @@ licences checked at that time:
   tests cover several nodes, a stopped node, a lost poll answer, an older poll, and a lost
   outcome.
 - The store is tested against a real PostgreSQL.
-- No automated test needs 1C. What only 1C can show is accepted by hand on a lab machine,
-  on a copy of a database, with 1C:Enterprise 8.3.17.1851: the executor, the COM worker,
-  the script contract and the open items below.
+- What only 1C can show, such as the executor, the COM worker, the script contract and the
+  open items below, is tested on a lab machine with 1C:Enterprise 8.3.17.1851, never in
+  CI: against a file base built from the repository's own test configuration, and against
+  copies of real typical databases. What no test can make is accepted by hand there.
 - Latency. On a loopback stand without 1C, a command reaches a waiting poll and its
   outcome reaches the waiting caller each within 100 milliseconds at the 95th percentile.
   No hop waits for a fixed interval.

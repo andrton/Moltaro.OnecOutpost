@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Server;
 
@@ -157,7 +158,7 @@ public sealed class OutpostOutcome
         IReadOnlyList<string> messages,
         bool messagesTrimmed)
     {
-        CheckCode(code, OutpostOutcomeKindEnum.Failed);
+        CheckCode(code, OutpostOutcomeKindEnum.Failed, OutpostOutcomeCodes.FitsFailed);
         ArgumentNullException.ThrowIfNull(messages);
 
         return new OutpostOutcome(
@@ -180,7 +181,8 @@ public sealed class OutpostOutcome
     /// One of <see cref="OutpostCodes.CallerKeyConflict"/>, <see cref="OutpostCodes.UnknownBase"/>,
     /// <see cref="OutpostCodes.ModeClosed"/>, <see cref="OutpostCodes.NotServed"/>,
     /// <see cref="OutpostCodes.NotAddressed"/>, <see cref="OutpostCodes.ProtocolVersion"/>,
-    /// <see cref="OutpostCodes.Expired"/>, <see cref="OutpostCodes.ClockSkew"/> and <see cref="OutpostCodes.Revoked"/>.
+    /// <see cref="OutpostCodes.Malformed"/>, <see cref="OutpostCodes.Expired"/>, <see cref="OutpostCodes.ClockSkew"/>
+    /// and <see cref="OutpostCodes.Revoked"/>.
     /// </param>
     /// <returns>The outcome.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="code"/> is <see langword="null"/>.</exception>
@@ -189,7 +191,7 @@ public sealed class OutpostOutcome
     /// </exception>
     public static OutpostOutcome Refused(Guid? commandId, string code)
     {
-        CheckCode(code, OutpostOutcomeKindEnum.Refused);
+        CheckCode(code, OutpostOutcomeKindEnum.Refused, OutpostOutcomeCodes.FitsRefused);
 
         return new OutpostOutcome(OutpostOutcomeKindEnum.Refused, commandId, null, code, null, [], false);
     }
@@ -218,9 +220,10 @@ public sealed class OutpostOutcome
     /// </summary>
     /// <param name="commandId">The identity of the command.</param>
     /// <param name="code">
-    /// One of <see cref="OutpostCodes.ResultTooLarge"/>, <see cref="OutpostCodes.RunLimit"/>,
-    /// <see cref="OutpostCodes.Revoked"/>, <see cref="OutpostCodes.Disconnected"/>,
-    /// <see cref="OutpostCodes.AgentStopped"/> and <see cref="OutpostCodes.TransactionEnded"/>.
+    /// One of <see cref="OutpostCodes.ResultType"/>, <see cref="OutpostCodes.ResultTooLarge"/>,
+    /// <see cref="OutpostCodes.RunLimit"/>, <see cref="OutpostCodes.Revoked"/>,
+    /// <see cref="OutpostCodes.Disconnected"/>, <see cref="OutpostCodes.AgentStopped"/> and
+    /// <see cref="OutpostCodes.TransactionEnded"/>.
     /// </param>
     /// <returns>The outcome.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="code"/> is <see langword="null"/>.</exception>
@@ -229,16 +232,17 @@ public sealed class OutpostOutcome
     /// </exception>
     public static OutpostOutcome Unknown(Guid commandId, string code)
     {
-        CheckCode(code, OutpostOutcomeKindEnum.Unknown);
+        CheckCode(code, OutpostOutcomeKindEnum.Unknown, OutpostOutcomeCodes.FitsUnknown);
 
         return new OutpostOutcome(OutpostOutcomeKindEnum.Unknown, commandId, null, code, null, [], false);
     }
 
-    private static void CheckCode(string code, OutpostOutcomeKindEnum kind)
+    // The fit of a code to a kind lives once, in the protocol assembly, which the checks of an agent's outcome use too.
+    private static void CheckCode(string code, OutpostOutcomeKindEnum kind, Func<string, bool> fits)
     {
         ArgumentNullException.ThrowIfNull(code);
 
-        if (!OutpostCodes.Fits(code, kind))
+        if (!fits(code))
         {
             throw new ArgumentException($"'{code}' is not a code of OutpostCodes that a {kind} outcome carries.", nameof(code));
         }

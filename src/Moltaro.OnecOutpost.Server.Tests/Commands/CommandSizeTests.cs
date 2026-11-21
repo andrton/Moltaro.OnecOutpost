@@ -3,12 +3,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Commands;
 
-// The size of a command is that of its script in UTF-8 plus that of its parameters written as JSON in UTF-8, with the
-// characters outside ASCII as they are, not escaped. A command up to CommandSizeLimit passes; a larger one is refused.
-// The rule is stated in full through ReadAsync; WriteAsync shows that it applies it.
+// The size of a command is the length of the text of its script between its quotes plus that of the text of its
+// parameters, both in UTF-8 as the command carries them: every escape counted as it is written, the characters
+// outside ASCII as they are, not escaped, and the 2 bytes of {} for a command without parameters (protocol §7). A
+// command up to CommandSizeLimit passes; a larger one is refused. The rule is stated in full through ReadAsync;
+// WriteAsync shows that it applies it.
 public sealed class CommandSizeTests : IAsyncDisposable
 {
     private const int Limit = 4 * 1024;
+
+    // What the limit leaves for the script of a command without parameters: the limit less the 2 bytes of {}.
+    private const int ScriptLimit = Limit - 2;
 
     // U+00E9: 2 bytes in UTF-8; escaped as \u00e9 it would count 6, and as a UTF-16 unit 1.
     private const string TwoBytes = "\u00e9";
@@ -25,7 +30,7 @@ public sealed class CommandSizeTests : IAsyncDisposable
     [Fact]
     public void A_script_of_exactly_the_limit_in_UTF8_passes_the_checks()
     {
-        OutpostReadRequest request = new() { BaseKey = "accounting", Script = Repeat(TwoBytes, Limit / 2) };
+        OutpostReadRequest request = new() { BaseKey = "accounting", Script = Repeat(TwoBytes, ScriptLimit / 2) };
 
         ArgumentChecks.AssertPassed(() => Server.ReadAsync(request, ArgumentChecks.Cancelled));
     }
@@ -33,7 +38,7 @@ public sealed class CommandSizeTests : IAsyncDisposable
     [Fact]
     public void A_script_one_byte_over_the_limit_in_UTF8_is_refused()
     {
-        OutpostReadRequest request = new() { BaseKey = "accounting", Script = Repeat(TwoBytes, Limit / 2) + "a" };
+        OutpostReadRequest request = new() { BaseKey = "accounting", Script = Repeat(TwoBytes, ScriptLimit / 2) + "a" };
 
         Assert.Throws<ArgumentException>(() => { _ = Server.ReadAsync(request, TestContext.Current.CancellationToken); });
     }
@@ -61,7 +66,7 @@ public sealed class CommandSizeTests : IAsyncDisposable
         {
             BaseKey = "accounting",
             CallerKey = "invoice-42",
-            Script = Repeat(TwoBytes, Limit / 2) + "a",
+            Script = Repeat(TwoBytes, ScriptLimit / 2) + "a",
         };
 
         Assert.Throws<ArgumentException>(() => { _ = Server.WriteAsync(request, TestContext.Current.CancellationToken); });

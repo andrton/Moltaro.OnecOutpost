@@ -25,8 +25,9 @@ oldest platform supported is 8.3.17.1851.
 What exists today is the [concept](docs/concept.md), these rules, the development process,
 the build settings, and the public contract of the first stage in code: the server
 library, the protocol assembly and the agent program. Only the checks that need no
-implementation work: every operation of the server throws `NotSupportedException`, and the
-agent program starts and stops and does nothing else. The server is the one
+implementation work, and the codec of the protocol with its signatures and pairing proof,
+which no endpoint serves yet: every operation of the server throws `NotSupportedException`,
+and the agent program starts and stops and does nothing else. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions
@@ -42,6 +43,7 @@ in code, tests, samples or documents.
 | Path | Contents |
 | --- | --- |
 | `src` | The solution, every project and the build settings. Run `dotnet` from here |
+| `src/OneC.TestConfiguration` | Planned: the XML sources of the repository's own 1C test configuration, with a script that builds a file base from them through the Designer's command line on the lab machine, and the git-ignored `lab.local.json` of the lab. No built configuration or base is committed |
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | Planned: the wire protocol, written with the sprint that introduces it |
 | `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
@@ -64,6 +66,7 @@ every other project is not.
 | `Moltaro.OnecOutpost.Samples` | The samples of use: an ASP.NET Core application that embeds the server. Each runs to the end with `dotnet run` |
 | `Moltaro.OnecOutpost.Measurements` | Planned: the program that measures the latency target of the concept, run by hand, never in CI or in the tests |
 | `src/*.Tests` | Tests, one project per library or program |
+| `Moltaro.OnecOutpost.OneC.Tests` | Planned: the tests that need 1C, run only on the lab machine. It is not in the solution, so `dotnet test` from `src` never runs it; CI builds it and checks its format |
 | `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake clock, the PostgreSQL fixture and the fake of the COM worker. Never shipped; no tests |
 
 The repository root holds only repository-level files. Code never lives there.
@@ -322,9 +325,23 @@ Console programs:
 - The store is tested against a real PostgreSQL, never an in-memory provider.
 - The transport is tested over loopback HTTP, with an agent and a server in one test. The
   tests cover polls, a lost connection, a restarted node and a second node.
-- No automated test needs 1C. The COM worker is replaced by a fake behind its boundary. A
-  check that needs a real 1C is a manual acceptance on a machine with 1C 8.3.17.1851 or
-  later. The document of the sprint describes it, and its raw output stays out of Git.
+- Tests that need 1C live in one project, `Moltaro.OnecOutpost.OneC.Tests`, and run only
+  on a lab machine with 1C:Enterprise 8.3.17.1851, the oldest platform supported (concept
+  D14), never in CI: GitHub's runners have no 1C, and no self-hosted runner is attached to
+  a public repository. A test there needs Windows and 1C, never PostgreSQL or a server's
+  store. Every other test replaces 1C with a fake: the COM worker behind its boundary, or,
+  in the tests of the worker program itself, the COM connection.
+- The 1C tests run against two kinds of base: a file base built on the lab machine from
+  the repository's own test configuration, and at least one copy of a real typical
+  database on the lab's 1C cluster, which is a client-server base. A typical
+  configuration, a customer's database and its data never enter the repository:
+  - a test takes the bases, the accounts and the objects of a typical configuration it
+    uses, such as a document type, from `src/OneC.TestConfiguration/lab.local.json`, which
+    Git ignores;
+  - it takes data, such as which document to post again, from the base while it runs,
+    never as a literal.
+- A check that no test can make is a manual acceptance, described in the document of the
+  sprint. Raw output stays out of Git.
 - Code that two or more test projects need lives once, in a
   `Moltaro.OnecOutpost.TestSupport` project, created when the second test project needs
   it. It is never shipped and contains no tests.
@@ -346,6 +363,15 @@ From `src`:
 dotnet build
 dotnet test
 dotnet format --verify-no-changes
+dotnet build Moltaro.OnecOutpost.OneC.Tests
+dotnet format Moltaro.OnecOutpost.OneC.Tests/Moltaro.OnecOutpost.OneC.Tests.csproj --verify-no-changes
+```
+
+The last two lines apply once that project exists. On the lab machine, also from `src`, the
+tests that need 1C:
+
+```bash
+dotnet test --project Moltaro.OnecOutpost.OneC.Tests
 ```
 
 ## Documentation
@@ -391,8 +417,8 @@ dotnet format --verify-no-changes
 - Keep plans, progress and findings in the conversation. Do not create report, audit or
   plan files unless the user asks for that document.
 - Never revert the user's changes or unrelated work.
-- A check against a real 1C runs on a copy of a database on a lab machine, never on a
-  working database of a customer.
+- A check against a real 1C runs on a lab machine, on its test base or on a copy of a
+  database, never on a working database of a customer.
 - Do not commit or push unless asked. Stage only the files of the task. No secrets,
   tokens, machine paths, build output or run output in Git.
 - Never commit to `main`. Work on a branch named as
