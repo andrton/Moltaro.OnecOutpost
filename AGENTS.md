@@ -43,7 +43,7 @@ in code, tests, samples or documents.
 | Path | Contents |
 | --- | --- |
 | `src` | The solution, every project and the build settings. Run `dotnet` from here |
-| `src/OneC.TestConfiguration` | Planned: the XML sources of the repository's own 1C test configuration, with a script that builds a file base from them through the Designer's command line on the lab machine, and the git-ignored `lab.local.json` of the lab. No built configuration or base is committed |
+| `src/OneC.TestConfiguration` | The XML sources of the repository's own 1C test configuration, with a script that builds a file base from them through the Designer's command line on the lab machine, and the git-ignored `lab.local.json` of the lab. Not yet built on a real 1C. No built configuration or base is committed |
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | Planned: the wire protocol, written with the sprint that introduces it |
 | `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |

@@ -1073,7 +1073,7 @@ The release
 | S6 | The agent | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
-| L1 | The lab check of open items O1–O8 | Light | In progress: the check ran on 21 November 2026 and the concept has its answers to O1–O8. O1 reopens D12, which waits for the owner; the test configuration is not written |
+| L1 | The lab check of open items O1–O8 | Light | In progress: the check ran on 21 November 2026 and the concept has its answers to O1–O8, with D12 as the owner changed it after O1. The test configuration and the script that builds its file base are written in `src/OneC.TestConfiguration` and reviewed, in two rounds; neither has run on a real 1C. What is left is the owner's run of the script on the lab machine: L1 is done, and its pull request merged, when the base builds there |
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Not started |
 | S9b | The agent runs the COM workers | Full | Not started |
 | S10 | The console | Full | Not started |

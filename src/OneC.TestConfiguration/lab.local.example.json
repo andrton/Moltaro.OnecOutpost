@@ -1,0 +1,8 @@
+{
+  "testBase": {
+    "path": "<full path of the folder of the test base>",
+    "administrator": { "user": "outpost-admin", "password": "<password>" },
+    "read": { "user": "outpost-read", "password": "<password>" },
+    "write": { "user": "outpost-write", "password": "<password>" }
+  }
+}
