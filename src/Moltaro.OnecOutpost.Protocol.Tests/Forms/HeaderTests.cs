@@ -1,5 +1,3 @@
-using Moltaro.OnecOutpost.TestSupport;
-
 namespace Moltaro.OnecOutpost.Protocol.Tests.Forms;
 
 // The values of the headers of §4 of docs/protocol.md: `Outpost-Agent` is an identity in the form of §2, and
@@ -9,13 +7,13 @@ public sealed class HeaderTests
     // 64 bytes of zero are 86 times the character A, and its last character carries four padding bits.
     private static readonly string ZeroSignature = new('A', 86);
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_identity_of_an_agent_is_written_in_the_form_of_identities()
     {
         Assert.Equal(Sample.AgentText, OutpostHeaders.FormatAgent(Sample.Agent));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_identity_in_its_form_is_read()
     {
         Assert.True(OutpostHeaders.TryParseAgent(Sample.AgentText, out Guid agent));
@@ -23,7 +21,7 @@ public sealed class HeaderTests
         Assert.Equal(Sample.Agent, agent);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("3F2B6C1E-8A4D-4C2F-9B7E-1D0A5E6F7C8B")]
@@ -34,7 +32,7 @@ public sealed class HeaderTests
         Assert.False(OutpostHeaders.TryParseAgent(value, out _));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_signature_is_written_as_86_characters_and_read_back()
     {
         byte[] signature = System.Security.Cryptography.RandomNumberGenerator.GetBytes(64);
@@ -47,7 +45,7 @@ public sealed class HeaderTests
         Assert.Equal(signature, read);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_signature_of_exactly_64_bytes_is_read()
     {
         Assert.True(OutpostHeaders.TryParseSignature(ZeroSignature, out byte[]? signature));
@@ -55,14 +53,14 @@ public sealed class HeaderTests
         Assert.Equal(new byte[64], signature);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_missing_signature_is_not_read()
     {
         Assert.False(OutpostHeaders.TryParseSignature(null, out byte[]? signature));
         Assert.Null(signature);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
 
     // 0, 63 and 65 bytes.
     [InlineData(0)]
@@ -73,7 +71,7 @@ public sealed class HeaderTests
         Assert.False(OutpostHeaders.TryParseSignature(new string('A', characters), out _));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
 
     // Padding bits that are not zero; the alphabet of base64; padding, as base64 writes 64 bytes; white space.
     [InlineData("B", "")]

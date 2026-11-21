@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -48,7 +47,7 @@ public sealed class CommandSignatureTests : IDisposable
         _otherKey.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_command_signed_with_the_pinned_key_is_read()
     {
         OutpostSignedCommand command = Signed(CommandSample.Text.ToBytes(), _serverKey);
@@ -58,7 +57,7 @@ public sealed class CommandSignatureTests : IDisposable
         Assert.Equal(Sample.Command, read.Id);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_command_whose_bytes_changed_in_any_place_is_refused_with_signature()
     {
         byte[] bytes = CommandSample.Text.ToBytes();
@@ -75,7 +74,7 @@ public sealed class CommandSignatureTests : IDisposable
         }
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_command_with_bytes_added_or_cut_is_refused_with_signature()
     {
         byte[] bytes = CommandSample.Text.ToBytes();
@@ -91,7 +90,7 @@ public sealed class CommandSignatureTests : IDisposable
             () => OutpostCodec.ReadCommand(_serverKey, new OutpostSignedCommand(shorter, signature)));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_command_signed_with_another_key_is_refused_with_signature()
     {
         OutpostSignedCommand command = Signed(CommandSample.Text.ToBytes(), _otherKey);
@@ -100,7 +99,7 @@ public sealed class CommandSignatureTests : IDisposable
     }
 
     // Had anything parsed these bytes, the refusal would be `form`.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0)]
     [InlineData(63)]
     [InlineData(64)]
@@ -117,7 +116,7 @@ public sealed class CommandSignatureTests : IDisposable
             () => OutpostCodec.ReadCommand(_serverKey, Signed(bytes, _otherKey)));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(BytesThatNameNoCommand))]
     public void Verified_bytes_that_yield_no_protocol_or_no_id_are_refused_with_form_and_name_no_command(string text)
     {
@@ -130,7 +129,7 @@ public sealed class CommandSignatureTests : IDisposable
         Assert.Null(refusal.CommandId);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(CommandsOfAnotherVersion))]
     public void A_verified_command_of_another_version_is_refused_with_protocol_version_under_its_identity(string text)
     {
@@ -143,7 +142,7 @@ public sealed class CommandSignatureTests : IDisposable
         Assert.Equal(Sample.Command, refusal.CommandId);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_verified_command_of_this_version_that_breaks_the_rules_of_a_command_is_refused_with_malformed_under_its_identity()
     {
         OutpostSignedCommand command = Signed(CommandSample.Text.Without("script").ToBytes(), _serverKey);

@@ -4,7 +4,6 @@ using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -146,7 +145,7 @@ public sealed class CommandRuleTests : IDisposable
 
     public void Dispose() => _serverKey.Dispose();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_command_that_the_protocol_shows_is_read_into_its_members()
     {
         OutpostCommandMessage command = Read(CommandSample.Text.ToString());
@@ -166,7 +165,7 @@ public sealed class CommandRuleTests : IDisposable
         Assert.Equal(16 * 1024 * 1024, command.OutcomeLimit);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_Read_without_a_caller_key_is_read_with_none()
     {
         OutpostCommandMessage command = Read(
@@ -176,7 +175,7 @@ public sealed class CommandRuleTests : IDisposable
         Assert.Null(command.CallerKey);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(GoodCommands))]
     public void A_command_that_keeps_the_rules_of_its_members_is_read(string text)
     {
@@ -185,14 +184,14 @@ public sealed class CommandRuleTests : IDisposable
         Assert.Equal(Sample.Command, command.Id);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(BrokenCommands))]
     public void A_command_that_breaks_a_rule_of_its_members_is_refused_with_malformed_under_its_identity(string text)
     {
         AssertMalformed(text);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Ranges))]
     public void A_member_is_accepted_at_the_ends_of_its_range_and_refused_one_step_beyond_them(
         string member,
@@ -211,7 +210,7 @@ public sealed class CommandRuleTests : IDisposable
         }
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_command_round_trips()
     {
         using JsonDocument parameters = JsonDocument.Parse("{\"date\":\"2026-11-20\",\"rows\":[1,2.5,null,true,{\"\u00e9\":\"\\\"\"}]}");

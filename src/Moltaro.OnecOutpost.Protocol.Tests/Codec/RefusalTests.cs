@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -16,7 +15,7 @@ public sealed class RefusalTests : IDisposable
 
     public void Dispose() => _serverKey.Dispose();
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(400, "form")]
     [InlineData(401, "signature")]
     [InlineData(413, "result-too-large")]
@@ -28,7 +27,7 @@ public sealed class RefusalTests : IDisposable
         Assert.Equal(code, refusal.Code);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(400, "form")]
     [InlineData(401, "signature")]
     [InlineData(413, "result-too-large")]
@@ -41,7 +40,7 @@ public sealed class RefusalTests : IDisposable
         Assert.Equal(written, read);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
 
     // A code of the table under the status of another.
     [InlineData(400, "signature")]
@@ -70,7 +69,7 @@ public sealed class RefusalTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(status, body));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_refusal_without_a_code_is_refused_with_form()
     {
         byte[] body = BodySample.Refusal.With("code", "null").ToBytes();

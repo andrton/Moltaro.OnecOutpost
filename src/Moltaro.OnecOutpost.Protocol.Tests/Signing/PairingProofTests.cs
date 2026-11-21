@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Signing;
 
@@ -16,7 +15,7 @@ public sealed class PairingProofTests
 
     private static readonly byte[] Proof = Convert.FromHexString(ProofHex);
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_proof_is_the_HMAC_of_the_secret_over_the_identity_and_the_hash_of_the_key()
     {
         byte[] proof = OutpostPairingProof.Compute(Secret, Sample.Agent, Sample.PublicKey);
@@ -24,13 +23,13 @@ public sealed class PairingProofTests
         Assert.Equal(ProofHex, Convert.ToHexStringLower(proof));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_proof_of_the_secret_the_identity_and_the_key_is_accepted()
     {
         Assert.True(OutpostPairingProof.Check(Secret, Sample.Agent, Sample.PublicKey, Proof));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_proof_made_with_another_secret_is_refused()
     {
         byte[] otherSecret = [.. Secret];
@@ -41,7 +40,7 @@ public sealed class PairingProofTests
         Assert.False(OutpostPairingProof.Check(Secret, Sample.Agent, Sample.PublicKey, proof));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_key_swapped_after_the_proof_was_made_is_refused()
     {
         using System.Security.Cryptography.ECDsa other = Sample.NewKey();
@@ -50,13 +49,13 @@ public sealed class PairingProofTests
         Assert.False(OutpostPairingProof.Check(Secret, Sample.Agent, swappedKey, Proof));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_proof_made_for_another_identity_is_refused()
     {
         Assert.False(OutpostPairingProof.Check(Secret, Sample.OtherAgent, Sample.PublicKey, Proof));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0)]
     [InlineData(31)]
     [InlineData(33)]

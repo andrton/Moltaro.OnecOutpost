@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Moltaro.OnecOutpost.Protocol;
@@ -7,29 +9,68 @@ namespace Moltaro.OnecOutpost.Protocol;
 // the codec needs the other for them.
 internal static class OutpostForms
 {
+    // The alphabet of base64url (RFC 4648 §5), without the padding character.
+    private static readonly SearchValues<char> Base64UrlAlphabet =
+        SearchValues.Create("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_");
+
     // Writes a binary value as §2 says: base64url without padding (RFC 4648 §5).
     public static string WriteBase64Url(ReadOnlySpan<byte> bytes)
     {
-        throw new NotSupportedException();
+        return Base64Url.EncodeToString(bytes);
     }
 
     // Reads a binary value of §2. False, without an exception, for any text but canonical base64url without padding:
     // a character outside the alphabet, padding, a length that no bytes give and non-zero padding bits included.
     public static bool TryReadBase64Url(ReadOnlySpan<char> text, [NotNullWhen(true)] out byte[]? bytes)
     {
-        throw new NotSupportedException();
+        bytes = null;
+
+        // The decoder of .NET also accepts padding and white space, so only the alphabet itself is let through to it.
+        if (text.ContainsAnyExcept(Base64UrlAlphabet))
+        {
+            return false;
+        }
+
+        // What is left for the decoder to refuse is a length that no bytes give and padding bits that are not zero,
+        // so that one value has one text.
+        if (!Base64Url.IsValid(text))
+        {
+            return false;
+        }
+
+        bytes = Base64Url.DecodeFromChars(text);
+
+        return true;
     }
 
     // Writes an identity as §2 says: 36 lowercase characters in the form xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.
     public static string WriteId(Guid id)
     {
-        throw new NotSupportedException();
+        return id.ToString("D");
     }
 
     // Reads an identity of §2. False, without an exception, for any text but exactly the form that WriteId writes:
     // uppercase digits, braces and every other form of a GUID are refused.
     public static bool TryReadId(ReadOnlySpan<char> text, out Guid id)
     {
-        throw new NotSupportedException();
+        id = Guid.Empty;
+
+        if (text.Length != 36)
+        {
+            return false;
+        }
+
+        // Guid.TryParseExact also reads uppercase digits, so the form is checked here character by character.
+        for (int index = 0; index < text.Length; index++)
+        {
+            bool isHyphen = index is 8 or 13 or 18 or 23;
+
+            if (isHyphen ? text[index] != '-' : !char.IsAsciiHexDigitLower(text[index]))
+            {
+                return false;
+            }
+        }
+
+        return Guid.TryParseExact(text, "D", out id);
     }
 }

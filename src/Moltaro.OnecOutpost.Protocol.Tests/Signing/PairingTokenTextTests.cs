@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Signing;
 
@@ -16,7 +15,7 @@ public sealed class PairingTokenTextTests
 
     private static readonly byte[] Secret = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_token_is_written_as_its_prefix_its_identity_its_secret_and_its_fingerprint_separated_by_dots()
     {
         OutpostPairingTokenText token = new(Sample.Agent, Secret, Sample.PublicKeyFingerprint);
@@ -24,7 +23,7 @@ public sealed class PairingTokenTextTests
         Assert.Equal(TokenText, token.Write());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_token_is_read_into_its_parts()
     {
         Assert.True(OutpostPairingTokenText.TryRead(TokenText, out OutpostPairingTokenText? token));
@@ -34,7 +33,7 @@ public sealed class PairingTokenTextTests
         Assert.Equal(Sample.PublicKeyFingerprint, token.Fingerprint);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_token_round_trips()
     {
         byte[] secret = System.Security.Cryptography.RandomNumberGenerator.GetBytes(16);
@@ -47,7 +46,7 @@ public sealed class PairingTokenTextTests
         Assert.Equal(written.Fingerprint, read.Fingerprint);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
 
     // Another prefix.
@@ -85,7 +84,7 @@ public sealed class PairingTokenTextTests
         Assert.Null(token);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_text_that_shows_a_token_leaves_the_secret_out()
     {
         OutpostPairingTokenText token = new(Sample.Agent, Secret, Sample.PublicKeyFingerprint);

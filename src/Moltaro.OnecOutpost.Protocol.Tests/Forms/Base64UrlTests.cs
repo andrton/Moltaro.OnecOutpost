@@ -1,12 +1,10 @@
-using Moltaro.OnecOutpost.TestSupport;
-
 namespace Moltaro.OnecOutpost.Protocol.Tests.Forms;
 
 // The binary values of §2 of docs/protocol.md: base64url without padding (RFC 4648 §5). A reader refuses any other
 // form, non-zero padding bits included, so that one value has one text.
 public sealed class Base64UrlTests
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("00", "AA")]
     [InlineData("0001", "AAE")]
     [InlineData("000102", "AAEC")]
@@ -19,7 +17,7 @@ public sealed class Base64UrlTests
         Assert.Equal(text, OutpostForms.WriteBase64Url(Convert.FromHexString(bytesInHex)));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("AA", "00")]
     [InlineData("AAE", "0001")]
     [InlineData("AAEC", "000102")]
@@ -32,7 +30,7 @@ public sealed class Base64UrlTests
         Assert.Equal(Convert.FromHexString(bytesInHex), bytes);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Bytes_of_every_length_round_trip()
     {
         for (int length = 1; length <= 100; length++)
@@ -45,7 +43,7 @@ public sealed class Base64UrlTests
         }
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
 
     // Padding.
     [InlineData("AA==")]

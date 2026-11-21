@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.Protocol.Tests.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -107,7 +106,7 @@ public sealed class OutcomeObjectTests
         Outcome("failed", "script-error", errorText: "\"\\ud83d\\ud83d\\ude00\""),
     ];
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Combinations))]
     public void An_outcome_is_read_only_with_a_kind_and_a_code_that_an_agent_may_send_for_the_mode_and_for_either_mode_when_the_mode_is_not_known(
         string? mode,
@@ -138,7 +137,7 @@ public sealed class OutcomeObjectTests
         }
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_outcome_that_succeeded_is_read_with_its_result_and_its_messages()
     {
         OutpostOutcomeMessage outcome = Read(
@@ -154,7 +153,7 @@ public sealed class OutcomeObjectTests
         Assert.True(outcome.MessagesTrimmed);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("null", JsonValueKind.Null)]
     [InlineData("true", JsonValueKind.True)]
     [InlineData("12.5", JsonValueKind.Number)]
@@ -170,7 +169,7 @@ public sealed class OutcomeObjectTests
         Assert.Equal(kind, outcome.Result.Value.ValueKind);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_result_of_exactly_64_levels_is_read()
     {
         OutpostOutcomeMessage outcome = Read("read", Outcome("succeeded", null, result: MessageText.Nested(64)));
@@ -179,7 +178,7 @@ public sealed class OutcomeObjectTests
         Assert.Equal(64, OutpostCodec.ValueDepth(outcome.Result.Value));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_outcome_that_failed_in_1C_is_read_with_its_error_text_and_no_result()
     {
         OutpostOutcomeMessage outcome = Read(
@@ -199,7 +198,7 @@ public sealed class OutcomeObjectTests
         Assert.True(outcome.MessagesTrimmed);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("refused", "not-addressed")]
     [InlineData("unknown", "transaction-ended")]
     public void An_outcome_that_was_refused_or_is_unknown_is_read_with_its_code_and_nothing_else(string kind, string code)
@@ -214,21 +213,21 @@ public sealed class OutcomeObjectTests
         Assert.False(outcome.MessagesTrimmed);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(OutcomesThatBreakTheRulesOfTheirMembers))]
     public void An_outcome_that_breaks_a_rule_of_its_members_is_refused_with_form(string mode, string outcome)
     {
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(mode, outcome));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(OutcomesWithACharacterThatNoStringHolds))]
     public void U0000_and_a_lone_surrogate_are_refused_with_form_anywhere_in_the_object(string outcome)
     {
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read("read", outcome));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_surrogate_pair_is_read_as_its_character()
     {
         OutpostOutcomeMessage outcome = Read(
@@ -240,7 +239,7 @@ public sealed class OutcomeObjectTests
     }
 
     // CESU-8, the bytes that a writer gives when it encodes a lone UTF-16 surrogate by itself: no UTF-8.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_lone_surrogate_written_as_bytes_is_refused_with_form()
     {
         byte[] before = MessageText.Utf8("{\"kind\":\"succeeded\",\"code\":null,\"result\":\"");
@@ -250,7 +249,7 @@ public sealed class OutcomeObjectTests
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => OutpostCodec.ReadOutcome(OutpostModeEnum.Read, outcome));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_outcome_of_every_kind_round_trips()
     {
         using JsonDocument result = JsonDocument.Parse("{\"rows\":[1,2.5,null,\"\u00e9\"]}");

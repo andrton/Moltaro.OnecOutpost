@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -36,7 +35,7 @@ public sealed class PollAnswerTests : IDisposable
 
     public void Dispose() => _serverKey.Dispose();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_with_a_command_is_read_into_its_members()
     {
         byte[] bytes = CommandSample.Text.ToBytes();
@@ -60,7 +59,7 @@ public sealed class PollAnswerTests : IDisposable
         Assert.Equal(signature, command.Signature);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_answer_to_an_older_poll_is_read_with_the_newest_number_and_no_commands()
     {
         OutpostPollAnswer answer = Read(BodySample.PollAnswer.With("newest", "639307665001230001").ToString(), totalFree: 2);
@@ -70,7 +69,7 @@ public sealed class PollAnswerTests : IDisposable
     }
 
     // Nothing in the bytes of a command is trusted before its own signature is verified, and that is not this reader's.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_reader_of_an_answer_verifies_and_reads_no_command()
     {
         byte[] bytes = MessageText.Utf8("not a command");
@@ -83,7 +82,7 @@ public sealed class PollAnswerTests : IDisposable
         Assert.Equal(bytes, Assert.Single(answer.Commands).Bytes);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_round_trips()
     {
         OutpostPollAnswer written = new(
@@ -114,7 +113,7 @@ public sealed class PollAnswerTests : IDisposable
         Assert.Equal(written.Commands[1].Signature, read.Commands[1].Signature);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_answer_to_an_older_poll_round_trips()
     {
         OutpostPollAnswer written = new(
@@ -135,7 +134,7 @@ public sealed class PollAnswerTests : IDisposable
         Assert.Empty(read.Commands);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0, 0, true)]
     [InlineData(2, 2, true)]
     [InlineData(3, 2, false)]
@@ -147,7 +146,7 @@ public sealed class PollAnswerTests : IDisposable
         AssertReadOnlyIf(within, text, totalFree);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_with_commands_and_a_newest_is_refused_with_form()
     {
         string text = BodySample.PollAnswer.With("newest", "7").With("commands", Commands(1)).ToString();
@@ -155,7 +154,7 @@ public sealed class PollAnswerTests : IDisposable
         AssertReadOnlyIf(false, text, totalFree: 2);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Ranges))]
     public void A_member_is_accepted_at_the_ends_of_its_range_and_refused_one_step_beyond_them(
         string member,
@@ -165,7 +164,7 @@ public sealed class PollAnswerTests : IDisposable
         AssertReadOnlyIf(within, BodySample.PollAnswer.With(member, value).ToString(), totalFree: 2);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
 
     // A signature of 63 bytes and one of 65; bytes and a signature that are not canonical base64url; a command that
     // has not exactly its two members.

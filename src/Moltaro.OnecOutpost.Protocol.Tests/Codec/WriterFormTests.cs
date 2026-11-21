@@ -3,7 +3,6 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -15,7 +14,7 @@ public sealed class WriterFormTests
 {
     private static readonly DateTimeOffset Time = new(2026, 11, 20, 10, 15, 0, 123, TimeSpan.Zero);
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_writer_escapes_the_quote_the_backslash_and_the_control_characters_and_nothing_else()
     {
         // The quote, the backslash, the five control characters with a short escape, the first and the last of the
@@ -37,7 +36,7 @@ public sealed class WriterFormTests
         Assert.Contains(Expected, Text(OutpostCodec.Write(outcome)));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_writer_writes_no_white_space_between_tokens_and_no_byte_order_mark()
     {
         byte[] body = OutpostCodec.Write(Poll());
@@ -47,7 +46,7 @@ public sealed class WriterFormTests
         Assert.DoesNotContain(body, value => value is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n');
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_writer_writes_every_member_a_null_one_included()
     {
         OutpostOutcomeMessage outcome = new(
@@ -68,7 +67,7 @@ public sealed class WriterFormTests
         Assert.Contains("\"messagesTrimmed\":false", text);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_base_without_writing_is_written_with_a_null_write()
     {
         string text = Text(OutpostCodec.Write(Poll()));
@@ -77,7 +76,7 @@ public sealed class WriterFormTests
         Assert.Contains("\"write\":null", text);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_time_is_written_in_UTC_and_truncated_to_milliseconds()
     {
         // 10:15:00.1239999 in UTC, given two hours east of it.
@@ -88,7 +87,7 @@ public sealed class WriterFormTests
         Assert.Contains("\"time\":\"2026-11-20T10:15:00.123Z\"", text);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_duration_is_written_as_whole_milliseconds_and_truncated_to_them()
     {
         OutpostPairAnswer answer = new(
@@ -105,7 +104,7 @@ public sealed class WriterFormTests
         Assert.Equal("10000", written.RootElement.GetProperty("leaseGraceMs").GetRawText());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_identity_and_a_binary_value_are_written_in_their_forms()
     {
         OutpostPairAnswer answer = new(
@@ -123,7 +122,7 @@ public sealed class WriterFormTests
         Assert.Contains($"\"key\":\"{Sample.PublicKeyText}\"", text);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_parameters_of_a_command_are_written_again_by_the_rules_of_the_writers()
     {
         // The parameters as a caller's JSON may hold them: white space, and escapes that the writers do not write.
@@ -151,7 +150,7 @@ public sealed class WriterFormTests
         Assert.Contains("\"mode\":\"read\"", text);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_outcome_object_of_a_request_is_written_as_the_bytes_it_was_given()
     {
         // The executor is not a writer of the library: its object keeps its own form, white space and escapes

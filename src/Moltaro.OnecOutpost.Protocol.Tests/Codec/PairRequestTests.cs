@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -24,7 +23,7 @@ public sealed class PairRequestTests : IDisposable
         _otherKey.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_request_signed_with_the_key_it_carries_is_read_into_its_members()
     {
         byte[] body = Body().ToBytes();
@@ -36,7 +35,7 @@ public sealed class PairRequestTests : IDisposable
         Assert.Equal(_proof, request.Proof);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_request_round_trips()
     {
         OutpostPairRequest written = new("0.1.0-rc.1+build-7", _agentKey.ExportSubjectPublicKeyInfo(), _proof);
@@ -49,7 +48,7 @@ public sealed class PairRequestTests : IDisposable
         Assert.Equal(written.Proof, read.Proof);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_request_signed_with_another_key_than_the_one_it_carries_is_refused_with_signature()
     {
         byte[] body = Body().ToBytes();
@@ -62,7 +61,7 @@ public sealed class PairRequestTests : IDisposable
 
     // The proof was made for one key; a request that carries another key no longer verifies with the signature that
     // the first key made.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_request_whose_key_was_swapped_after_it_was_signed_is_refused_with_signature()
     {
         byte[] signature = Sign(_agentKey, Body().ToBytes());
@@ -75,7 +74,7 @@ public sealed class PairRequestTests : IDisposable
             () => OutpostCodec.ReadPairRequest(Sample.Agent, swapped, signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_request_whose_bytes_changed_is_refused_with_signature()
     {
         byte[] signature = Sign(_agentKey, Body().ToBytes());
@@ -86,7 +85,7 @@ public sealed class PairRequestTests : IDisposable
             () => OutpostCodec.ReadPairRequest(Sample.Agent, changed, signature));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Poll")]
     [InlineData("Outcome")]
     public void A_body_signed_as_another_kind_of_request_is_refused_with_signature(string signedAs)
@@ -103,7 +102,7 @@ public sealed class PairRequestTests : IDisposable
             () => OutpostCodec.ReadPairRequest(Sample.Agent, body, signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_same_bytes_under_another_identity_are_refused_with_signature()
     {
         byte[] body = Body().ToBytes();
@@ -114,7 +113,7 @@ public sealed class PairRequestTests : IDisposable
             () => OutpostCodec.ReadPairRequest(Sample.OtherAgent, body, signature));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0)]
     [InlineData(63)]
     [InlineData(64)]
@@ -128,7 +127,7 @@ public sealed class PairRequestTests : IDisposable
     }
 
     // The one request that is parsed before it is verified: there is no key to verify these bytes with.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_body_that_does_not_parse_is_refused_with_form_whatever_its_signature()
     {
         byte[] body = MessageText.Utf8("not a request");
@@ -138,7 +137,7 @@ public sealed class PairRequestTests : IDisposable
             () => OutpostCodec.ReadPairRequest(Sample.Agent, body, new byte[64]));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_key_that_is_not_canonical_base64url_is_refused_with_form()
     {
         // The 91 bytes of a key are 122 characters, the last with four padding bits; here they are not zero.
@@ -149,7 +148,7 @@ public sealed class PairRequestTests : IDisposable
         AssertForm(Body().With("key", MessageText.Quote(key + "==")));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_key_that_is_not_the_91_byte_form_is_refused_with_form()
     {
         using ECDsa otherCurve = ECDsa.Create(ECCurve.NamedCurves.nistP384);
@@ -161,7 +160,7 @@ public sealed class PairRequestTests : IDisposable
         AssertForm(Body().With("key", "null"));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0)]
     [InlineData(31)]
     [InlineData(33)]
@@ -170,7 +169,7 @@ public sealed class PairRequestTests : IDisposable
         AssertForm(Body().With("proof", MessageText.Quote(MessageText.Base64Url(new byte[length]))));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_proof_that_is_not_canonical_base64url_is_refused_with_form()
     {
         // 32 bytes are 43 characters, the last with two padding bits: A keeps them zero, and B does not.
@@ -179,7 +178,7 @@ public sealed class PairRequestTests : IDisposable
     }
 
     // The rule of agent versions is stated in full on the poll; the reader of `pair` applies it.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
     [InlineData("0.1 0")]
     [InlineData("01234567890123456789012345678901234567890123456789012345678901234")]
@@ -188,7 +187,7 @@ public sealed class PairRequestTests : IDisposable
         AssertForm(Body().With("agentVersion", MessageText.Quote(version)));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_request_that_has_not_exactly_its_three_members_is_refused_with_form()
     {
         AssertForm(Body().Without("agentVersion"));

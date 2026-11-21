@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace Moltaro.OnecOutpost.Protocol.Signing;
 
@@ -15,7 +17,7 @@ internal static class OutpostSignatures
     // Signs a request with the agent's key, over `outpost/1 request {kind} {agent} {bodyHash}` (§3).
     public static byte[] SignRequest(ECDsa agentKey, OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body)
     {
-        throw new NotSupportedException();
+        return Sign(agentKey, RequestInput(kind, agent, body));
     }
 
     // Signs an answer with the server's key, over
@@ -29,13 +31,13 @@ internal static class OutpostSignatures
         ReadOnlySpan<byte> requestBody,
         ReadOnlySpan<byte> answerBody)
     {
-        throw new NotSupportedException();
+        return Sign(serverKey, AnswerInput(kind, agent, status, requestBody, answerBody));
     }
 
     // Signs the exact bytes of a command with the server's key, over `outpost/1 command {bodyHash}` (§3).
     public static byte[] SignCommand(ECDsa serverKey, ReadOnlySpan<byte> commandBytes)
     {
-        throw new NotSupportedException();
+        return Sign(serverKey, CommandInput(commandBytes));
     }
 
     // Verifies the signature of a request with the agent's key, over the signing input of SignRequest.
@@ -46,7 +48,7 @@ internal static class OutpostSignatures
         ReadOnlySpan<byte> body,
         ReadOnlySpan<byte> signature)
     {
-        throw new NotSupportedException();
+        return Verify(agentKey, RequestInput(kind, agent, body), signature);
     }
 
     // Verifies the signature of an answer with the server's key, over the signing input of SignAnswer.
@@ -59,13 +61,72 @@ internal static class OutpostSignatures
         ReadOnlySpan<byte> answerBody,
         ReadOnlySpan<byte> signature)
     {
-        throw new NotSupportedException();
+        return Verify(serverKey, AnswerInput(kind, agent, status, requestBody, answerBody), signature);
     }
 
     // Verifies the signature of the exact bytes of a command with the server's key, over the signing input of
     // SignCommand.
     public static bool VerifyCommand(ECDsa serverKey, ReadOnlySpan<byte> commandBytes, ReadOnlySpan<byte> signature)
     {
-        throw new NotSupportedException();
+        return Verify(serverKey, CommandInput(commandBytes), signature);
+    }
+
+    // The signing inputs of §3: ASCII fields separated by single spaces, each of a fixed form, so that no input can be
+    // read as another. The identity has 36 characters, a hash 64 lowercase hexadecimal digits, and an HTTP status
+    // three digits.
+    private static byte[] RequestInput(OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body)
+    {
+        return Encoding.ASCII.GetBytes($"outpost/1 request {KindWord(kind)} {OutpostForms.WriteId(agent)} {Hash(body)}");
+    }
+
+    private static byte[] AnswerInput(
+        OutpostRequestKindEnum kind,
+        Guid agent,
+        int status,
+        ReadOnlySpan<byte> requestBody,
+        ReadOnlySpan<byte> answerBody)
+    {
+        string input = string.Create(
+            CultureInfo.InvariantCulture,
+            $"outpost/1 answer {KindWord(kind)} {OutpostForms.WriteId(agent)} {status} {Hash(requestBody)} {Hash(answerBody)}");
+
+        return Encoding.ASCII.GetBytes(input);
+    }
+
+    private static byte[] CommandInput(ReadOnlySpan<byte> commandBytes)
+    {
+        return Encoding.ASCII.GetBytes($"outpost/1 command {Hash(commandBytes)}");
+    }
+
+    private static string KindWord(OutpostRequestKindEnum kind)
+    {
+        return kind switch
+        {
+            OutpostRequestKindEnum.Pair => "pair",
+            OutpostRequestKindEnum.Poll => "poll",
+            OutpostRequestKindEnum.Outcome => "outcome",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+    }
+
+    // SHA-256 over the exact bytes, as 64 lowercase hexadecimal digits.
+    private static string Hash(ReadOnlySpan<byte> bytes)
+    {
+        return Convert.ToHexStringLower(SHA256.HashData(bytes));
+    }
+
+    private static byte[] Sign(ECDsa key, byte[] input)
+    {
+        return key.SignData(input, HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
+    }
+
+    // A signature in another form, such as DER, or of another length does not verify.
+    private static bool Verify(ECDsa key, byte[] input, ReadOnlySpan<byte> signature)
+    {
+        return key.VerifyData(
+            input,
+            signature,
+            HashAlgorithmName.SHA256,
+            DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
     }
 }

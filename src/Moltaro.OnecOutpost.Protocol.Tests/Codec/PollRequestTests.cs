@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -55,7 +54,7 @@ public sealed class PollRequestTests : IDisposable
 
     public void Dispose() => _agentKey.Dispose();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_poll_that_the_protocol_shows_is_read_into_its_members()
     {
         OutpostPollRequest poll = Read(BodySample.Poll.ToString());
@@ -74,7 +73,7 @@ public sealed class PollRequestTests : IDisposable
         Assert.Equal(Sample.Command, Assert.Single(poll.Received));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_base_with_a_null_write_is_read_as_a_base_without_writing()
     {
         OutpostPollRequest poll = Read(BodySample.Poll.ToString());
@@ -84,7 +83,7 @@ public sealed class PollRequestTests : IDisposable
         Assert.Null(poll.Bases[1].Write);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_poll_round_trips()
     {
         OutpostPollRequest written = new(
@@ -112,7 +111,7 @@ public sealed class PollRequestTests : IDisposable
         Assert.Equal<Guid>(written.Received, read.Received);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_poll_with_no_bases_and_nothing_received_is_read()
     {
         OutpostPollRequest poll = Read(BodySample.Poll.With("bases", "[]").With("received", "[]").ToString());
@@ -121,7 +120,7 @@ public sealed class PollRequestTests : IDisposable
         Assert.Empty(poll.Received);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Ranges))]
     public void A_member_is_accepted_at_the_ends_of_its_range_and_refused_one_step_beyond_them(
         string member,
@@ -131,7 +130,7 @@ public sealed class PollRequestTests : IDisposable
         AssertReadOnlyIf(within, BodySample.Poll.With(member, value).ToString());
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(ModeRanges))]
     public void A_member_of_a_mode_is_accepted_at_the_ends_of_its_range_and_refused_one_step_beyond_them(
         string mode,
@@ -146,7 +145,7 @@ public sealed class PollRequestTests : IDisposable
         AssertReadOnlyIf(within, PollWith([Base("accounting", read, write)], received: 0));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(256, true)]
     [InlineData(257, false)]
     public void A_poll_declares_at_most_256_bases(int count, bool within)
@@ -156,7 +155,7 @@ public sealed class PollRequestTests : IDisposable
         AssertReadOnlyIf(within, PollWith(bases, received: 0));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
 
     // A key that repeats, and keys that break the rule of names.
     [InlineData("accounting", "accounting")]
@@ -168,7 +167,7 @@ public sealed class PollRequestTests : IDisposable
         AssertReadOnlyIf(false, PollWith([Base(first, Mode(), "null"), Base(second, Mode(), "null")], received: 0));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
 
     // `read` is an object, and `write` an object or null; each mode has exactly its two members.
     [InlineData("""{"key":"accounting","read":null,"write":null}""")]
@@ -187,7 +186,7 @@ public sealed class PollRequestTests : IDisposable
     }
 
     // The sum of `free` over all modes is at most the room left in the list, so that no answer can overfill it.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(10_000, 0, 0, true)]
     [InlineData(10_001, 0, 0, false)]
     [InlineData(9_999, 1, 0, true)]
@@ -206,7 +205,7 @@ public sealed class PollRequestTests : IDisposable
         AssertReadOnlyIf(within, PollWith([@base], received));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_free_workers_of_every_base_count_against_the_room_left_in_the_list()
     {
         string first = Base("accounting", Mode(free: "1"), "null");
@@ -216,7 +215,7 @@ public sealed class PollRequestTests : IDisposable
         AssertReadOnlyIf(false, PollWith([first, second], received: 9_999));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_received_command_listed_twice_is_refused_with_form()
     {
         string received = MessageText.Array([MessageText.Quote(Sample.CommandText), MessageText.Quote(Sample.CommandText)]);
@@ -224,7 +223,7 @@ public sealed class PollRequestTests : IDisposable
         AssertReadOnlyIf(false, BodySample.Poll.With("received", received).ToString());
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("\"9C1E2F3A-4B5C-4D6E-8F70-A1B2C3D4E5F6\"")]
     [InlineData("\"{9c1e2f3a-4b5c-4d6e-8f70-a1b2c3d4e5f6}\"")]
     [InlineData("null")]
@@ -235,7 +234,7 @@ public sealed class PollRequestTests : IDisposable
     }
 
     // An agent version is 1 to 64 characters, each one of A–Z a–z 0–9 . - + (§2).
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("1", true)]
     [InlineData("AZaz09.-+", true)]
     [InlineData("0123456789012345678901234567890123456789012345678901234567890123", true)]

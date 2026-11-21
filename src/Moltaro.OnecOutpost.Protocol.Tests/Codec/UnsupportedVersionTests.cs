@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.Protocol.Codec;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -10,20 +9,20 @@ public sealed class UnsupportedVersionTests
 {
     private const string Body = """{"code":"protocol-version"}""";
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_body_is_written_exactly_as_the_protocol_gives_it()
     {
         Assert.Equal(MessageText.Utf8(Body), OutpostCodec.WriteUnsupportedVersion());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_exact_body_is_recognized()
     {
         Assert.True(OutpostCodec.IsUnsupportedVersion(MessageText.Utf8(Body)));
         Assert.True(OutpostCodec.IsUnsupportedVersion(OutpostCodec.WriteUnsupportedVersion()));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
     [InlineData("""{"code": "protocol-version"}""")]
     [InlineData("""{"code":"protocol-version"} """)]
@@ -40,7 +39,7 @@ public sealed class UnsupportedVersionTests
         Assert.False(OutpostCodec.IsUnsupportedVersion(MessageText.Utf8(body)));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_body_after_a_byte_order_mark_is_not_recognized()
     {
         byte[] body = [0xEF, 0xBB, 0xBF, .. MessageText.Utf8(Body)];

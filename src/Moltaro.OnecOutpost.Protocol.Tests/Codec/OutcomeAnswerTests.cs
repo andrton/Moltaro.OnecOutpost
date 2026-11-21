@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -16,7 +15,7 @@ public sealed class OutcomeAnswerTests : IDisposable
 
     public void Dispose() => _serverKey.Dispose();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_answer_that_confirms_the_command_of_the_request_is_read()
     {
         OutpostOutcomeAnswer answer = Read(BodySample.OutcomeAnswer.ToBytes(), Sample.Command);
@@ -25,7 +24,7 @@ public sealed class OutcomeAnswerTests : IDisposable
         Assert.Equal(Sample.Command, answer.Confirmed);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_round_trips()
     {
         OutpostOutcomeAnswer written = new(new DateTimeOffset(2026, 11, 20, 10, 15, 2, 789, TimeSpan.Zero), Sample.Command);
@@ -35,7 +34,7 @@ public sealed class OutcomeAnswerTests : IDisposable
         Assert.Equal(written, read);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_verified_answer_that_confirms_another_command_is_refused_with_form()
     {
         byte[] body = BodySample.OutcomeAnswer.ToBytes();
@@ -43,7 +42,7 @@ public sealed class OutcomeAnswerTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(body, Sample.OtherCommand));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("\"9C1E2F3A-4B5C-4D6E-8F70-A1B2C3D4E5F6\"")]
     [InlineData("\"{9c1e2f3a-4b5c-4d6e-8f70-a1b2c3d4e5f6}\"")]
     [InlineData("\"9c1e2f3a4b5c4d6e8f70a1b2c3d4e5f6\"")]

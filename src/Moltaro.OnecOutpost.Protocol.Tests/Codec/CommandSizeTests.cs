@@ -2,7 +2,6 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -67,7 +66,7 @@ public sealed class CommandSizeTests
 
     // The size is the one number of both the server's check and the writer (§7): what a script and parameters add to
     // the bytes of a command is exactly what they add to its size.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(ScriptsAndParameters))]
     public void The_size_counts_exactly_the_bytes_that_the_writer_writes_for_the_script_and_the_parameters(
         string script,

@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -40,7 +39,7 @@ public sealed class OutcomeRequestTests : IDisposable
 
     public void Dispose() => _agentKey.Dispose();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_request_is_read_into_the_identity_of_its_command_and_the_exact_bytes_of_its_outcome()
     {
         OutpostOutcomeRequest request = Read(BodySample.OutcomeRequest.With("outcome", OutcomeOfTheExecutor).ToBytes());
@@ -50,7 +49,7 @@ public sealed class OutcomeRequestTests : IDisposable
     }
 
     // The size of an outcome is the length of these bytes, and they may be 64 MiB: the reader does not copy them.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_outcome_is_kept_as_a_slice_of_the_body_without_a_copy()
     {
         byte[] body = BodySample.OutcomeRequest.ToBytes();
@@ -62,7 +61,7 @@ public sealed class OutcomeRequestTests : IDisposable
         Assert.Equal(MessageText.Utf8(BodySample.Outcome), slice.ToArray());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_request_round_trips_with_the_bytes_of_its_outcome_as_they_were_given()
     {
         byte[] outcome = MessageText.Utf8(OutcomeOfTheExecutor);
@@ -73,7 +72,7 @@ public sealed class OutcomeRequestTests : IDisposable
         Assert.Equal(outcome, read.Outcome.ToArray());
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(OutcomesThatBreakTheFormOfMessages))]
     public void An_outcome_member_that_breaks_the_form_of_messages_is_refused_with_form(string outcome)
     {
@@ -83,7 +82,7 @@ public sealed class OutcomeRequestTests : IDisposable
     }
 
     // The member rules of §8 are step 3 of §6.3, after the check of the size, which the caller makes between the two.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_outcome_that_keeps_the_form_of_messages_and_breaks_a_rule_of_its_members_is_read()
     {
         const string Outcome =
@@ -94,7 +93,7 @@ public sealed class OutcomeRequestTests : IDisposable
         Assert.Equal(MessageText.Utf8(Outcome), request.Outcome.ToArray());
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("\"9C1E2F3A-4B5C-4D6E-8F70-A1B2C3D4E5F6\"")]
     [InlineData("\"{9c1e2f3a-4b5c-4d6e-8f70-a1b2c3d4e5f6}\"")]
     [InlineData("\"9c1e2f3a4b5c4d6e8f70a1b2c3d4e5f6\"")]
@@ -106,7 +105,7 @@ public sealed class OutcomeRequestTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(body));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_request_that_has_not_exactly_its_two_members_is_refused_with_form()
     {
         byte[] withoutCommand = BodySample.OutcomeRequest.Without("command").ToBytes();

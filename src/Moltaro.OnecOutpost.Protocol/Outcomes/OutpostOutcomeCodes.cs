@@ -82,7 +82,34 @@ internal static class OutpostOutcomeCodes
     // other combination is the server's, and gives false.
     public static bool IsAgentOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code)
     {
-        throw new NotSupportedException();
+        return kind switch
+        {
+            OutpostAgentOutcomeKindEnum.Succeeded => code is null,
+
+            // A Write fails only after 1C rolled back, so only these codes can say so.
+            OutpostAgentOutcomeKindEnum.Failed when mode == OutpostModeEnum.Write =>
+                code is ScriptError or ResultType or ResultTooLarge,
+
+            OutpostAgentOutcomeKindEnum.Failed => code is ScriptError or ResultType or ResultTooLarge or RunLimit or Lost,
+
+            OutpostAgentOutcomeKindEnum.Refused => code
+                is NotServed
+                or NotAddressed
+                or ProtocolVersion
+                or Malformed
+                or Expired
+                or ClockSkew,
+
+            // Only a Write ends unknown.
+            OutpostAgentOutcomeKindEnum.Unknown when mode == OutpostModeEnum.Write => code
+                is RunLimit
+                or AgentStopped
+                or TransactionEnded
+                or ResultTooLarge
+                or ResultType,
+
+            _ => false,
+        };
     }
 
     // Answers the paragraph "The executor" of §8: true when the executor may hand the agent an outcome of this kind
@@ -90,6 +117,12 @@ internal static class OutpostOutcomeCodes
     // `result-type` or `result-too-large`; and, for a Write, `unknown` with `transaction-ended`.
     public static bool IsExecutorOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code)
     {
-        throw new NotSupportedException();
+        return kind switch
+        {
+            OutpostAgentOutcomeKindEnum.Succeeded => code is null,
+            OutpostAgentOutcomeKindEnum.Failed => code is ScriptError or ResultType or ResultTooLarge,
+            OutpostAgentOutcomeKindEnum.Unknown => mode == OutpostModeEnum.Write && code is TransactionEnded,
+            _ => false,
+        };
     }
 }

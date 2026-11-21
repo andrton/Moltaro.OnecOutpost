@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -51,7 +50,7 @@ public sealed class PairAnswerTests : IDisposable
         _otherKey.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_answer_of_the_server_that_the_token_names_is_read_into_its_members()
     {
         byte[] body = Body().ToBytes();
@@ -66,7 +65,7 @@ public sealed class PairAnswerTests : IDisposable
         Assert.Equal(TimeSpan.FromSeconds(10), answer.LeaseGrace);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_round_trips()
     {
         OutpostPairAnswer written = new(
@@ -90,7 +89,7 @@ public sealed class PairAnswerTests : IDisposable
 
     // Something that opens TLS on the path can answer with a key of its own and sign with it: the signature verifies,
     // and only the fingerprint of the token tells.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_whose_server_key_does_not_match_the_fingerprint_of_the_token_is_refused_with_server_key_even_when_it_is_signed_with_that_key()
     {
         byte[] body = Body().With("serverKey", KeyText(_otherKey)).ToBytes();
@@ -99,7 +98,7 @@ public sealed class PairAnswerTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.ServerKey, () => Read(body, signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_fingerprint_is_checked_before_the_signature()
     {
         byte[] body = Body().With("serverKey", KeyText(_otherKey)).ToBytes();
@@ -107,7 +106,7 @@ public sealed class PairAnswerTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.ServerKey, () => Read(body, new byte[64]));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_with_the_right_server_key_and_a_wrong_signature_is_refused_with_signature()
     {
         byte[] body = Body().ToBytes();
@@ -117,7 +116,7 @@ public sealed class PairAnswerTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Signature, () => Read(body, []));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_whose_bytes_changed_is_refused_with_signature()
     {
         byte[] signature = Sign(_serverKey, Body().ToBytes());
@@ -126,7 +125,7 @@ public sealed class PairAnswerTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Signature, () => Read(changed, signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_bound_to_another_request_is_refused_with_signature()
     {
         byte[] body = Body().ToBytes();
@@ -142,7 +141,7 @@ public sealed class PairAnswerTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Signature, () => Read(body, signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_bound_to_another_agent_is_refused_with_signature()
     {
         byte[] body = Body().ToBytes();
@@ -157,7 +156,7 @@ public sealed class PairAnswerTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Signature, () => Read(body, signature));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Pair", 403)]
     [InlineData("Poll", 200)]
     [InlineData("Outcome", 200)]
@@ -175,7 +174,7 @@ public sealed class PairAnswerTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Signature, () => Read(body, signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_signed_answer_whose_agent_is_not_the_one_that_was_sent_is_refused_with_form()
     {
         byte[] body = Body().With("agent", MessageText.Quote(Sample.OtherAgentText)).ToBytes();
@@ -183,7 +182,7 @@ public sealed class PairAnswerTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(body, Sign(_serverKey, body)));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_signed_answer_whose_key_is_not_the_one_that_was_sent_is_refused_with_form()
     {
         byte[] body = Body().With("key", KeyText(_otherKey)).ToBytes();
@@ -191,7 +190,7 @@ public sealed class PairAnswerTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(body, Sign(_serverKey, body)));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_without_a_readable_server_key_is_refused_with_form()
     {
         byte[] key = _serverKey.ExportSubjectPublicKeyInfo();
@@ -218,7 +217,7 @@ public sealed class PairAnswerTests : IDisposable
         }
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_signed_answer_that_has_not_exactly_its_members_is_refused_with_form()
     {
         byte[] withoutTime = Body().Without("time").ToBytes();
@@ -232,7 +231,7 @@ public sealed class PairAnswerTests : IDisposable
             () => Read(withATimeInAnotherForm, Sign(_serverKey, withATimeInAnotherForm)));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Ranges))]
     public void A_member_is_accepted_at_the_ends_of_its_range_and_refused_one_step_beyond_them(
         string member,

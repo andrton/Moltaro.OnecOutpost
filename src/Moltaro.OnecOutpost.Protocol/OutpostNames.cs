@@ -27,7 +27,7 @@ internal static class OutpostNames
     {
         ArgumentNullException.ThrowIfNull(value, paramName);
 
-        if (value.Length is 0 or > CallerKeyMaxLength || value.AsSpan().ContainsAnyExceptInRange('!', '~'))
+        if (!IsCallerKey(value))
         {
             throw new ArgumentException(
                 $"A caller key is 1 to {CallerKeyMaxLength} characters, each from U+0021 to U+007E: printable ASCII without the space.",
@@ -58,19 +58,32 @@ internal static class OutpostNames
     {
         ArgumentNullException.ThrowIfNull(value, paramName);
 
-        if (string.IsNullOrWhiteSpace(value) || value.Contains('\0'))
-        {
-            throw new ArgumentException(
-                "A script has at least one character that is not white space, and no U+0000.",
-                paramName);
-        }
-
         if (HasLoneSurrogate(value))
         {
             throw new ArgumentException(
                 "A script may not hold a lone surrogate, a code unit from U+D800 to U+DFFF without its pair, which UTF-8 cannot carry.",
                 paramName);
         }
+
+        if (!IsScript(value))
+        {
+            throw new ArgumentException(
+                "A script has at least one character that is not white space, and no U+0000.",
+                paramName);
+        }
+    }
+
+    // True for 1 to 200 characters, each from U+0021 to U+007E. The codec reads the caller key of a command by it.
+    public static bool IsCallerKey(string value)
+    {
+        return value.Length is > 0 and <= CallerKeyMaxLength && !value.AsSpan().ContainsAnyExceptInRange('!', '~');
+    }
+
+    // True for a text with at least one character that is not white space, and without U+0000 or a lone surrogate.
+    // The codec reads the script of a command by it.
+    public static bool IsScript(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value) && !value.Contains('\0') && !HasLoneSurrogate(value);
     }
 
     // True when the text holds a lone surrogate: a UTF-16 code unit from U+D800 to U+DFFF without its pair, which no

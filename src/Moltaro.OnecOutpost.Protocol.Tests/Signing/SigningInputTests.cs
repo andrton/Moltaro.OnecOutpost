@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Signing;
 
@@ -23,7 +22,7 @@ public sealed class SigningInputTests : IDisposable
 
     public void Dispose() => _key.Dispose();
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Pair", "outpost/1 request pair 3f2b6c1e-8a4d-4c2f-9b7e-1d0a5e6f7c8b 3d6a916e86efba9105154ea95dda8d8da47df173d931c23e7a346c7babd81a3e")]
     [InlineData("Poll", "outpost/1 request poll 3f2b6c1e-8a4d-4c2f-9b7e-1d0a5e6f7c8b 3d6a916e86efba9105154ea95dda8d8da47df173d931c23e7a346c7babd81a3e")]
     [InlineData("Outcome", "outpost/1 request outcome 3f2b6c1e-8a4d-4c2f-9b7e-1d0a5e6f7c8b 3d6a916e86efba9105154ea95dda8d8da47df173d931c23e7a346c7babd81a3e")]
@@ -35,7 +34,7 @@ public sealed class SigningInputTests : IDisposable
         Assert.True(VerifiesOutsideTheCodec(input, signature));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Pair", 200, "outpost/1 answer pair 3f2b6c1e-8a4d-4c2f-9b7e-1d0a5e6f7c8b 200 3d6a916e86efba9105154ea95dda8d8da47df173d931c23e7a346c7babd81a3e 658c369feb0767db91d307b27905d57528b7cd112d84027216231fdbf8e0e76f")]
     [InlineData("Poll", 400, "outpost/1 answer poll 3f2b6c1e-8a4d-4c2f-9b7e-1d0a5e6f7c8b 400 3d6a916e86efba9105154ea95dda8d8da47df173d931c23e7a346c7babd81a3e 658c369feb0767db91d307b27905d57528b7cd112d84027216231fdbf8e0e76f")]
     [InlineData("Outcome", 413, "outpost/1 answer outcome 3f2b6c1e-8a4d-4c2f-9b7e-1d0a5e6f7c8b 413 3d6a916e86efba9105154ea95dda8d8da47df173d931c23e7a346c7babd81a3e 658c369feb0767db91d307b27905d57528b7cd112d84027216231fdbf8e0e76f")]
@@ -50,7 +49,7 @@ public sealed class SigningInputTests : IDisposable
         Assert.True(VerifiesOutsideTheCodec(input, signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_command_is_signed_over_the_hash_of_its_exact_bytes()
     {
         byte[] signature = OutpostSignatures.SignCommand(_key, RequestBody);
@@ -59,7 +58,7 @@ public sealed class SigningInputTests : IDisposable
         Assert.True(VerifiesOutsideTheCodec(CommandInput, signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_signature_made_outside_the_codec_over_the_input_of_a_request_verifies()
     {
         byte[] signature = SignOutsideTheCodec(
@@ -68,7 +67,7 @@ public sealed class SigningInputTests : IDisposable
         Assert.True(OutpostSignatures.VerifyRequest(_key, OutpostRequestKindEnum.Poll, Sample.Agent, RequestBody, signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_signature_made_outside_the_codec_over_the_input_of_an_answer_verifies()
     {
         byte[] signature = SignOutsideTheCodec(
@@ -84,7 +83,7 @@ public sealed class SigningInputTests : IDisposable
             signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_signature_made_outside_the_codec_over_the_input_of_a_command_verifies()
     {
         byte[] signature = SignOutsideTheCodec(CommandInput);
@@ -92,7 +91,7 @@ public sealed class SigningInputTests : IDisposable
         Assert.True(OutpostSignatures.VerifyCommand(_key, RequestBody, signature));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0)]
     [InlineData(63)]
     [InlineData(65)]
@@ -112,7 +111,7 @@ public sealed class SigningInputTests : IDisposable
             signature));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_signature_in_the_DER_form_does_not_verify()
     {
         byte[] signature = _key.SignData(

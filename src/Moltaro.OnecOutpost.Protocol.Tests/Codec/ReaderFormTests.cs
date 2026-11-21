@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.Protocol.Signing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -101,7 +100,7 @@ public sealed class ReaderFormTests : IDisposable
 
     public void Dispose() => _serverKey.Dispose();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_body_in_the_form_of_the_writers_is_read()
     {
         OutpostPollAnswer answer = Read(BodySample.PollAnswer.ToString());
@@ -110,7 +109,7 @@ public sealed class ReaderFormTests : IDisposable
         Assert.Equal(["accounting"], answer.Held);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void White_space_between_tokens_is_accepted()
     {
         string text = BodySample.PollAnswer.ToString()
@@ -127,7 +126,7 @@ public sealed class ReaderFormTests : IDisposable
         Assert.Equal(TimeSpan.FromSeconds(25), answer.PollTimeout);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_order_of_the_members_carries_no_meaning()
     {
         OutpostPollAnswer answer = Read(BodySample.PollAnswer.Reversed().ToString());
@@ -136,7 +135,7 @@ public sealed class ReaderFormTests : IDisposable
         Assert.Equal(TimeSpan.FromSeconds(10), answer.LeaseGrace);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_escape_in_a_name_or_in_a_value_is_read_as_its_character()
     {
         string text = BodySample.PollAnswer
@@ -152,7 +151,7 @@ public sealed class ReaderFormTests : IDisposable
     }
 
     // The outcome object is the one message with a free text, so every escape of RFC 8259 is shown on it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Every_escape_of_JSON_is_accepted()
     {
         const string Text =
@@ -163,14 +162,14 @@ public sealed class ReaderFormTests : IDisposable
         Assert.Equal("\"\\/\b\f\n\r\t\u00e9\u00e9\U0001F600", outcome.ErrorText);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(BrokenBodies))]
     public void A_verified_body_that_breaks_the_form_of_messages_is_refused_with_form(string text)
     {
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(text));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_body_that_begins_with_a_byte_order_mark_is_refused_with_form()
     {
         byte[] body = [0xEF, 0xBB, 0xBF, .. BodySample.PollAnswer.ToBytes()];

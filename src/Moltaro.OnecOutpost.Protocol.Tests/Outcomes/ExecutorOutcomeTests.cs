@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Outcomes;
 
@@ -10,7 +9,7 @@ public sealed class ExecutorOutcomeTests
 {
     public static TheoryData<string, string, string?> Combinations => OutcomeTable.Combinations;
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Combinations))]
     public void The_executor_may_hand_over_exactly_the_outcomes_that_the_protocol_gives_it(string mode, string kind, string? code)
     {

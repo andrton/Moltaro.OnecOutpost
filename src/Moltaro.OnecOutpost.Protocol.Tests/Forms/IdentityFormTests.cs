@@ -1,12 +1,10 @@
-using Moltaro.OnecOutpost.TestSupport;
-
 namespace Moltaro.OnecOutpost.Protocol.Tests.Forms;
 
 // The identities of §2 of docs/protocol.md: a GUID as 36 lowercase characters in the form
 // xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx, in JSON and in headers alike. No other form of a GUID is an identity.
 public sealed class IdentityFormTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_identity_is_written_as_36_lowercase_characters()
     {
         Guid id = Guid.Parse("3F2B6C1E-8A4D-4C2F-9B7E-1D0A5E6F7C8B");
@@ -14,7 +12,7 @@ public sealed class IdentityFormTests
         Assert.Equal("3f2b6c1e-8a4d-4c2f-9b7e-1d0a5e6f7c8b", OutpostForms.WriteId(id));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_identity_in_its_form_is_read()
     {
         Assert.True(OutpostForms.TryReadId("3f2b6c1e-8a4d-4c2f-9b7e-1d0a5e6f7c8b", out Guid id));
@@ -22,7 +20,7 @@ public sealed class IdentityFormTests
         Assert.Equal(Guid.Parse("3f2b6c1e-8a4d-4c2f-9b7e-1d0a5e6f7c8b"), id);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
 
     // Uppercase digits, all of them and one of them.

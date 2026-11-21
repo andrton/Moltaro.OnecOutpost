@@ -7,22 +7,54 @@ namespace Moltaro.OnecOutpost.Protocol.Signing;
 // hexadecimal digits (§2).
 internal sealed record OutpostPairingTokenText(Guid Agent, byte[] Secret, string Fingerprint)
 {
+    private const string Prefix = "outpost1";
+
+    private const int SecretLength = 16;
+
+    private const int FingerprintLength = 64;
+
     // Writes the token in the form of §5.
     public string Write()
     {
-        throw new NotSupportedException();
+        return $"{Prefix}.{OutpostForms.WriteId(Agent)}.{OutpostForms.WriteBase64Url(Secret)}.{Fingerprint}";
     }
 
     // Reads a token of §5. False, without an exception, for a text with another prefix, another number of parts, or a
     // part of another form: such a text is not a token.
     public static bool TryRead(string text, [NotNullWhen(true)] out OutpostPairingTokenText? token)
     {
-        throw new NotSupportedException();
+        token = null;
+
+        string[] parts = text.Split('.');
+
+        if (parts.Length != 4 || parts[0] != Prefix)
+        {
+            return false;
+        }
+
+        if (!OutpostForms.TryReadId(parts[1], out Guid agent))
+        {
+            return false;
+        }
+
+        if (!OutpostForms.TryReadBase64Url(parts[2], out byte[]? secret) || secret.Length != SecretLength)
+        {
+            return false;
+        }
+
+        if (parts[3].Length != FingerprintLength || parts[3].AsSpan().ContainsAnyExcept("0123456789abcdef"))
+        {
+            return false;
+        }
+
+        token = new OutpostPairingTokenText(agent, secret, parts[3]);
+
+        return true;
     }
 
     // Leaves the secret out, so that a log line or a message that shows the record never holds it.
     public override string ToString()
     {
-        throw new NotSupportedException();
+        return $"{nameof(OutpostPairingTokenText)} {{ {nameof(Agent)} = {Agent}, {nameof(Fingerprint)} = {Fingerprint} }}";
     }
 }
