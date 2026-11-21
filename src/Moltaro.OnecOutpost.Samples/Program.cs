@@ -54,6 +54,25 @@ try
     OutpostPairingToken token = await server.CreatePairingTokenAsync("Sample agent");
     Console.WriteLine(token);
 
+    // The agent of the token is pending until the console on the agent machine pairs with the token. Once paired, it
+    // polls, and the list shows whether it is connected and which bases it declared.
+    step = "GetAgentsAsync";
+    IReadOnlyList<OutpostAgent> agents = await server.GetAgentsAsync();
+    OutpostAgent created = agents.Single(agent => agent.Id == token.AgentId);
+    Console.WriteLine($"The server knows {agents.Count} agents; the new one is {created.State}.");
+
+    // A base key belongs to the first agent that declares it. Releasing it lets another agent take it, once the agent
+    // that holds it no longer declares it; here no agent has declared it.
+    step = "ReleaseBaseAsync";
+    OutpostReleaseResultEnum released = await server.ReleaseBaseAsync("accounting");
+    Console.WriteLine($"Releasing the base accounting: {released}.");
+
+    // Revoking an agent refuses its requests from then on and frees its base keys; for a pending agent, it ends its
+    // token, which the sample never gives an agent.
+    step = "RevokeAgentAsync";
+    bool revoked = await server.RevokeAgentAsync(token.AgentId);
+    Console.WriteLine($"Revoking the new agent: {revoked}.");
+
     step = "ReadAsync";
     OutpostOutcome outcome = await server.ReadAsync(new OutpostReadRequest { BaseKey = "accounting", Script = "Result = 1 + 1;" });
     Console.WriteLine($"The read in the base accounting ended as {outcome.Kind} {outcome.Code}.");
