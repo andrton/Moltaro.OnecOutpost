@@ -2451,6 +2451,16 @@ the contract of the executor and the COM worker approved.
       (Q12), unless the script raised, or its result fails the type or size check, which
       keep their code and text. So a Read leaves no transaction to the next command of its
       worker.
+    - **Before it commits a Write it asks the base a question that needs no table,** the
+      query `SELECT 1`. In the compatibility mode 8.2.13 a nested `BeginTransaction` and
+      `RollbackTransaction`, in the script or in the code of the configuration it calls,
+      rolls the whole transaction back and leaves it active, and its commit does not
+      raise; only the next access to the base does (the lab, 21 November 2026). When the
+      query raises, the executor rolls back and the outcome is Failed `script-error` with
+      its own sentence: nothing was written. It judges by the raise, never by the wording
+      of 1C. A lab test writes an item, begins and rolls back a nested transaction, and
+      finds Failed and no item; another does the same without the nested pair and finds
+      Succeeded and the item.
 
     **The worker's command line:** `Moltaro.OnecOutpost.ComWorker.exe <base key> <read|write>`.
     The base key only names the worker in its diagnostics. Anything else ends it with exit
