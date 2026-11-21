@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Moltaro.OnecOutpost.Server.Store;
 using Moltaro.OnecOutpost.TestSupport;
 using Npgsql;
 
@@ -67,6 +69,113 @@ public sealed class MigrationTests(PostgreSqlFixture postgres) : IClassFixture<P
 
         Assert.NotEmpty(migrated.Tables);
         Assert.Equal(migrated.Lines, scripted.Lines);
+    }
+
+    // The snapshot takes the schema, as the model does. A schema other than outpost, the default of the options, shows a
+    // snapshot made for one schema only.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task The_model_has_no_pending_changes_against_its_snapshot()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string connectionString = await postgres.GetConnectionStringAsync(cancellationToken);
+
+        await using StoreContext context = StoreContextFactory.Create(connectionString, "model_against_snapshot");
+
+        Assert.False(context.Database.HasPendingModelChanges());
+    }
+
+    // Driven to the order in which both migrations create the schema together: another connection creates it and holds
+    // it uncommitted until both are seen waiting to create it, then rolls back, which leaves the schema new to both.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task Two_MigrateAsync_running_at_once_into_one_new_schema_both_complete_and_give_the_schema_that_one_gives()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string connectionString = await postgres.GetConnectionStringAsync(cancellationToken);
+        const string AloneSchema = "migrated_alone";
+        const string AtOnceSchema = "migrated_at_once";
+
+        await OutpostMigrations.MigrateAsync(connectionString, AloneSchema, cancellationToken);
+
+        await using HeldLock schemaLock = await HeldLock.TakeAsync(
+            connectionString,
+            $"CREATE SCHEMA {AtOnceSchema}",
+            cancellationToken);
+
+        Task first = OutpostMigrations.MigrateAsync(connectionString, AtOnceSchema, cancellationToken);
+        Task second = OutpostMigrations.MigrateAsync(connectionString, AtOnceSchema, cancellationToken);
+
+        await schemaLock.WaitForAsync([first, second], cancellationToken);
+        await schemaLock.ReleaseAsync(cancellationToken);
+
+        await Task.WhenAll(first, second);
+
+        SchemaSnapshot alone = await SchemaSnapshot.TakeAsync(connectionString, AloneSchema, cancellationToken);
+        SchemaSnapshot atOnce = await SchemaSnapshot.TakeAsync(connectionString, AtOnceSchema, cancellationToken);
+
+        Assert.NotEmpty(alone.Tables);
+        Assert.Equal(alone.Lines, atOnce.Lines);
+    }
+
+    // The record of applied migrations is in the schema as well: kept anywhere else, the second schema would find the
+    // migrations of the first applied and get no tables.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task Two_schemas_in_one_database_each_get_their_own_tables()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string connectionString = await postgres.GetConnectionStringAsync(cancellationToken);
+        const string FirstSchema = "own_tables_first";
+        const string SecondSchema = "own_tables_second";
+
+        await OutpostMigrations.MigrateAsync(connectionString, FirstSchema, cancellationToken);
+        SchemaSnapshot firstAlone = await SchemaSnapshot.TakeAsync(connectionString, FirstSchema, cancellationToken);
+
+        await OutpostMigrations.MigrateAsync(connectionString, SecondSchema, cancellationToken);
+        SchemaSnapshot first = await SchemaSnapshot.TakeAsync(connectionString, FirstSchema, cancellationToken);
+        SchemaSnapshot second = await SchemaSnapshot.TakeAsync(connectionString, SecondSchema, cancellationToken);
+
+        Assert.Contains("agents", second.Tables);
+        Assert.Contains("pairing_tokens", second.Tables);
+        Assert.Equal(first.Lines, second.Lines);
+        Assert.Equal(firstAlone.Lines, first.Lines);
+    }
+
+    // A model built for one schema and reused for another would show here: the context of the other schema would read
+    // the row written in the first, or a context would work in a schema that this test did not migrate.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task A_context_of_one_schema_never_reads_the_rows_of_another()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string connectionString = await postgres.GetConnectionStringAsync(cancellationToken);
+        const string WrittenSchema = "rows_written";
+        const string OtherSchema = "rows_not_written";
+        Guid agentId = Guid.NewGuid();
+
+        await OutpostMigrations.MigrateAsync(connectionString, WrittenSchema, cancellationToken);
+        await OutpostMigrations.MigrateAsync(connectionString, OtherSchema, cancellationToken);
+
+        await using (StoreContext written = StoreContextFactory.Create(connectionString, WrittenSchema))
+        {
+            written.Agents.Add(new AgentRow
+            {
+                Id = agentId,
+                Name = "Agent of one schema",
+                State = OutpostAgentStateEnum.Pending,
+                CreatedAt = new DateTimeOffset(2026, 11, 21, 12, 0, 0, TimeSpan.Zero),
+            });
+
+            await written.SaveChangesAsync(cancellationToken);
+        }
+
+        await using (StoreContext other = StoreContextFactory.Create(connectionString, OtherSchema))
+        {
+            Assert.Empty(await other.Agents.ToListAsync(cancellationToken));
+        }
+
+        await using (StoreContext written = StoreContextFactory.Create(connectionString, WrittenSchema))
+        {
+            AgentRow agent = Assert.Single(await written.Agents.ToListAsync(cancellationToken));
+            Assert.Equal(agentId, agent.Id);
+        }
     }
 
     private static async Task ExecuteAsync(NpgsqlConnection connection, string sql, CancellationToken cancellationToken)
