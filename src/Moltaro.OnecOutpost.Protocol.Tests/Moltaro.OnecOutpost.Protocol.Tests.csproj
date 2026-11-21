@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Moltaro.OnecOutpost.Protocol\Moltaro.OnecOutpost.Protocol.csproj" />
+    <ProjectReference Include="..\Moltaro.OnecOutpost.TestSupport\Moltaro.OnecOutpost.TestSupport.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,7 +1,9 @@
 namespace Moltaro.OnecOutpost.Server.Tests.Outcomes;
 
 // The factories accept a code only when it is one of OutpostCodes and belongs to the kind of the outcome, by the table
-// of codes of the contract. The codes are written out as the contract gives them, so a constant that drifts fails too.
+// of codes of the contract. The fit of a code to a kind lives once, in OutpostOutcomeCodes of the protocol, whose own
+// tests state it; these show that the factories apply it. The codes are written out as the contract gives them, so a
+// constant that drifts fails too.
 public sealed class OutcomeCodeTests
 {
     private static readonly Guid CommandId = Guid.Parse("0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0");
@@ -10,7 +12,7 @@ public sealed class OutcomeCodeTests
     public static TheoryData<string, bool, bool, bool> CodeTable => new()
     {
         { "script-error", true, false, false },
-        { "result-type", true, false, false },
+        { "result-type", true, false, true },
         { "result-too-large", true, false, true },
         { "run-limit", true, false, true },
         { "lost", true, false, false },
@@ -20,6 +22,7 @@ public sealed class OutcomeCodeTests
         { "not-served", false, true, false },
         { "not-addressed", false, true, false },
         { "protocol-version", false, true, false },
+        { "malformed", false, true, false },
         { "expired", false, true, false },
         { "clock-skew", false, true, false },
         { "revoked", false, true, true },
