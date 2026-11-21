@@ -1,7 +1,8 @@
 # The 1C test configuration
 
-The tests that need 1C run on the lab machine against a file base built from this folder, as `AGENTS.md`,
-"Tests And Samples", says. Nothing here runs in CI.
+The tests that need 1C run on the lab machine against a base built from this folder on the lab's 1C cluster, as
+`AGENTS.md`, "Tests And Samples", says. Nothing here runs in CI. The base is a client-server one because the lab's
+1C server gives a licence to nobody who opens a file base.
 
 **Status:** neither the sources nor the script have run against a real 1C yet. The first run on the lab machine is
 their first test.
@@ -24,8 +25,8 @@ their first test.
 
 ## Building the base
 
-On the lab machine, with 1C:Enterprise 8.3.17.1851 installed and its COM connector registered, run from the
-repository root:
+On the lab machine, with 1C:Enterprise 8.3.17.1851, its server with a cluster, PostgreSQL and the registered COM
+connector, run from the repository root:
 
 ```
 powershell -ExecutionPolicy Bypass -File src\OneC.TestConfiguration\Build-TestBase.ps1
@@ -37,25 +38,27 @@ first and says how to register the connector when it is missing; it never regist
 
 A run rebuilds the base from scratch:
 
-1. It reads `lab.local.json`. When the file is missing, it creates it with the base in `.local\test-base` of the
-   repository and generated passwords, and goes on.
+1. It reads `lab.local.json`. When the file is missing, it creates it for a cluster and a PostgreSQL on the same
+   machine, the base `outpost_test` and generated passwords, and goes on.
 2. It finds `1cv8.exe` of 8.3.17.1851 under `Program Files\1cv8` or `Program Files (x86)\1cv8`.
-3. It deletes the base folder, but only when the folder is empty or holds `outpost-test-base.txt`, the marker it
-   writes into every base it builds; any other folder, another 1C file base included, stops it. Then it creates a
-   file base there and writes the marker into it.
-4. It loads the configuration with the Designer and updates the database configuration. It prints the Designer's
+3. It asks for the password of the PostgreSQL user, without echoing it, and keeps it nowhere.
+4. It drops the base of an earlier run with its database, and creates the base and its database again, through
+   the administration of the cluster. It accepts only a base name that starts with `outpost_`, and a base of that
+   name which it did not build refuses the administrator of `lab.local.json`, so it drops nobody else's base.
+5. It loads the configuration with the Designer and updates the database configuration. It prints the Designer's
    log after each run: the Designer can drop a property it does not accept, say so in the log and still succeed.
-5. It creates the users `outpost-admin`, `outpost-read` and `outpost-write` through the COM connector, each with
+6. It creates the users `outpost-admin`, `outpost-read` and `outpost-write` through the COM connector, each with
    its role and the password from `lab.local.json`.
 
 Besides what 1C itself keeps in the profile of the Windows account for every base it opens, such as its cache, the
-script changes only `lab.local.json`, the base folder, and a log of the Designer in the temporary folder, which it
-deletes at the end. It writes no registry entry, registers nothing, and does not add the base to the list of bases
-of 1C.
+script changes only `lab.local.json`, the one base on the cluster with its database, and a log of the Designer in
+the temporary folder, which it deletes at the end. It writes no registry entry, registers nothing, and does not
+add the base to the list of bases of the 1C client.
 
 ## lab.local.json
 
-It holds the full path of the test base and the user and password of each of its three accounts. Git ignores it
+It holds the address of the cluster and of its agent, the name of the test base, the PostgreSQL server and user,
+and the user and password of each of the three accounts of the base. The password of PostgreSQL is not in it. Git ignores it
 (`*.local.json`), and it never leaves the lab machine. The script puts the passwords on no command line, in no
 log and on no screen. The tests read their bases and accounts from this file; the copies of typical bases are
 added to it by the sprint whose tests use them.

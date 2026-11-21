@@ -1,6 +1,10 @@
 {
   "testBase": {
-    "path": "<full path of the folder of the test base>",
+    "server": "localhost:1541",
+    "agent": "tcp://localhost:1540",
+    "database": "outpost_test",
+    "dbServer": "localhost",
+    "dbUser": "postgres",
     "administrator": { "user": "outpost-admin", "password": "<password>" },
     "read": { "user": "outpost-read", "password": "<password>" },
     "write": { "user": "outpost-write", "password": "<password>" }

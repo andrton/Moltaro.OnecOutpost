@@ -1,13 +1,17 @@
-# Moltaro.OnecOutpost: builds the file base of the 1C test configuration on a lab machine.
+# Moltaro.OnecOutpost: builds the base of the 1C test configuration on the 1C cluster of a lab machine.
 #
 # Run it from the repository root in Windows PowerShell 5.1:
 #
 #   powershell -ExecutionPolicy Bypass -File src\OneC.TestConfiguration\Build-TestBase.ps1
 #
 # It reads lab.local.json next to this script, and creates that file with generated passwords when it is missing.
-# Then it deletes the test base, creates it again as a file base, loads the configuration of the Configuration
-# folder into it with the Designer, and creates the users through the COM connector. The passwords never reach a
-# command line, a log or the screen. Exit code 0: the base is ready; 1: the script stopped, and says why.
+# It asks for the password of the PostgreSQL user and keeps it nowhere. Then it drops the test base on the cluster,
+# creates it again with its database, loads the configuration of the Configuration folder into it with the
+# Designer, and creates the users through the COM connector. The passwords never reach a command line, a log or
+# the screen. Exit code 0: the base is ready; 1: the script stopped, and says why.
+#
+# The base is a client-server one because a lab machine gets its licences from its 1C server, which gives none to
+# whoever opens a file base.
 
 $ErrorActionPreference = "Stop"
 
@@ -17,9 +21,9 @@ $platformVersion = "8.3.17.1851"
 $labPath = Join-Path $PSScriptRoot "lab.local.json"
 $sourcesPath = Join-Path $PSScriptRoot "Configuration"
 
-# The file the script writes into every base it builds. A rerun deletes the base folder only when it holds this
-# file or nothing.
-$markerName = "outpost-test-base.txt"
+# The name of the test base and of its database starts with this. The script drops no base of another name, so a
+# wrong name in lab.local.json cannot point it at somebody's base.
+$namePrefix = "outpost_"
 
 # The /Out log of the Designer. Each run of 1cv8.exe overwrites it; the script deletes it when it ends.
 $logPath = Join-Path $env:TEMP "outpost-test-base.log"
@@ -47,12 +51,15 @@ function New-Password {
     return -join $characters
 }
 
-# Writes lab.local.json with the default base path, which Git ignores, and new passwords.
+# Writes lab.local.json for a cluster and a PostgreSQL on this machine, with new passwords.
 function New-LabFile([string] $Path) {
-    $repositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
     $lab = [ordered] @{
         testBase = [ordered] @{
-            path = (Join-Path $repositoryRoot ".local\test-base")
+            server = "localhost:1541"
+            agent = "tcp://localhost:1540"
+            database = "outpost_test"
+            dbServer = "localhost"
+            dbUser = "postgres"
             administrator = [ordered] @{ user = "outpost-admin"; password = (New-Password) }
             read = [ordered] @{ user = "outpost-read"; password = (New-Password) }
             write = [ordered] @{ user = "outpost-write"; password = (New-Password) }
@@ -75,14 +82,15 @@ function Read-LabFile([string] $Path) {
     }
 
     $testBase = $lab.testBase
-    if ($null -eq $testBase -or -not $testBase.path) {
-        throw ($Path + " gives no testBase.path.")
+    foreach ($member in "server", "agent", "database", "dbServer", "dbUser") {
+        if ($null -eq $testBase -or -not $testBase.$member) {
+            throw ($Path + " gives no testBase." + $member + ". Delete a file of an earlier form of this script, and the script writes a new one.")
+        }
     }
 
-    # The base folder is deleted, so its path must depend on no current folder or drive: it has to be a full path
-    # already, as GetFullPath would write it.
-    if ([IO.Path]::GetFullPath($testBase.path) -ne $testBase.path) {
-        throw ($Path + " gives testBase.path " + $testBase.path + ", which is not a full path in its plain form, such as C:\lab\test-base.")
+    # The base is dropped with its database, so only a name of the script's own kind is accepted.
+    if ($testBase.database -cnotmatch ("^" + $script:namePrefix + "[a-z0-9_]+$")) {
+        throw ($Path + " gives testBase.database " + $testBase.database + "; the name has to start with " + $script:namePrefix + " and hold only small Latin letters, digits and underscores.")
     }
 
     foreach ($account in "administrator", "read", "write") {
@@ -184,27 +192,68 @@ function Assert-Connector([string] $Version) {
     throw $message
 }
 
-# Deletes the base folder, but only when it is empty or holds the marker of a base this script built. A wrong path
-# in lab.local.json, even one that points at another 1C file base, then stops the script instead of deleting the
-# folder. A folder that holds a copy of the marker is not told apart.
-function Remove-TestBase([string] $Path) {
-    if (-not (Test-Path -LiteralPath $Path)) {
+function Read-Password([string] $Prompt) {
+    $secure = Read-Host -AsSecureString $Prompt
+    $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+    try {
+        return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
+    }
+    finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
+    }
+}
+
+# Connects to a working process of the cluster, which is where bases are created and dropped. The objects of the
+# cluster's administration have type information, so PowerShell reads them with a dot.
+function Connect-WorkingProcess($Connector, $TestBase) {
+    $agent = $Connector.ConnectAgent($TestBase.agent)
+    $cluster = @($agent.GetClusters())[0]
+    if ($null -eq $cluster) {
+        throw ("The agent of the 1C server at " + $TestBase.agent + " has no cluster.")
+    }
+
+    # A cluster without administrators accepts an empty name; one with administrators refuses, and says so.
+    $agent.Authenticate($cluster, "", "")
+    $process = @($agent.GetWorkingProcesses($cluster)) | Where-Object { $_.Running -eq 1 } | Select-Object -First 1
+    if ($null -eq $process) {
+        throw ("The cluster at " + $TestBase.agent + " has no running working process.")
+    }
+
+    $working = $Connector.ConnectWorkingProcess("tcp://" + $process.HostName + ":" + $process.MainPort)
+    $working.AddAuthentication("", "")
+    return , $working
+}
+
+# Drops the test base of an earlier run with its database. Its name was checked when lab.local.json was read, and
+# a base of that name that this script did not build refuses the administrator of lab.local.json.
+function Remove-TestBase($Working, $TestBase) {
+    $existing = @($Working.GetInfoBases()) | Where-Object { $_.Name -eq $TestBase.database } | Select-Object -First 1
+    if ($null -eq $existing) {
         return
     }
 
-    $isEmpty = @(Get-ChildItem -LiteralPath $Path -Force).Count -eq 0
-    $holdsMarker = Test-Path -LiteralPath (Join-Path $Path $script:markerName) -PathType Leaf
-    if (-not $isEmpty -and -not $holdsMarker) {
-        throw ($Path + " is not empty and holds no " + $script:markerName + ", so this script did not build it and does not delete it. Move it away, or give another testBase.path in lab.local.json.")
-    }
+    Write-Host ("Dropping the previous base " + $TestBase.database + " with its database")
+    $Working.AddAuthentication($TestBase.administrator.user, $TestBase.administrator.password)
 
-    Write-Host ("Deleting the previous base in " + $Path)
-    Remove-Item -LiteralPath $Path -Recurse -Force
+    # 1: the database is deleted with the base.
+    $Working.DropInfoBase($existing, 1)
 }
 
-function Write-Marker([string] $Path) {
-    $text = "Build-TestBase.ps1 of Moltaro.OnecOutpost built the 1C test base in this folder, and deletes the folder when it runs again."
-    [IO.File]::WriteAllText((Join-Path $Path $script:markerName), $text, (New-Object Text.UTF8Encoding $false))
+function New-TestBase($Working, $TestBase, [string] $DbPassword) {
+    $info = $Working.CreateInfoBaseInfo()
+    $info.Name = $TestBase.database
+    $info.Descr = "The test base of Moltaro.OnecOutpost, built by Build-TestBase.ps1"
+    $info.DBMS = "PostgreSQL"
+    $info.dbServerName = $TestBase.dbServer
+    $info.dbName = $TestBase.database
+    $info.dbUser = $TestBase.dbUser
+    $info.dbPassword = $DbPassword
+    $info.Locale = "en_US"
+    $info.ScheduledJobsDenied = $true
+    $info.LicenseDistributionAllowed = 1
+
+    # 1: the database is created when it does not exist.
+    [void] $Working.CreateInfoBase($info, 1)
 }
 
 function Write-PlatformLog {
@@ -302,20 +351,17 @@ function New-TestUser($Connection, $Account, [string] $RoleName) {
 # The Designer's command line cannot create users, so the COM connector does. A base with no users accepts a
 # connection without a user and gives it every right. 1C refuses to write the first user unless it has the
 # Administration right, so the administrator comes first.
-function New-TestUsers([string] $BasePath, $TestBase) {
-    $connector = $null
+function New-TestUsers($Connector, $TestBase) {
     $connection = $null
     try {
-        $connector = New-Object -ComObject V83.COMConnector
-        $connection = $connector.Connect("File=`"" + $BasePath + "`";")
+        $connection = $Connector.Connect("Srvr=`"" + $TestBase.server + "`";Ref=`"" + $TestBase.database + "`";")
         New-TestUser $connection $TestBase.administrator "Administrator"
         New-TestUser $connection $TestBase.read "OutpostRead"
         New-TestUser $connection $TestBase.write "OutpostWrite"
     }
     finally {
-        # The session ends, and the base is free, once nothing refers to the connection any more.
+        # The session ends once nothing refers to the connection any more.
         $connection = $null
-        $connector = $null
         [GC]::Collect()
         [GC]::WaitForPendingFinalizers()
         [GC]::Collect()
@@ -324,6 +370,7 @@ function New-TestUsers([string] $BasePath, $TestBase) {
 
 $scriptExitCode = 0
 $testBase = $null
+$dbPassword = $null
 try {
     Write-Step ("Reading " + $labPath)
     if (-not (Test-Path -LiteralPath $labPath)) {
@@ -331,8 +378,6 @@ try {
         Write-Host "It was missing, so the script created it with the default base path and generated passwords."
     }
     $testBase = Read-LabFile $labPath
-    # Without a trailing backslash, which would sit right before the closing quote on the command line of 1C.
-    $basePath = $testBase.path.TrimEnd([char] "\")
 
     Write-Step ("Finding 1C:Enterprise " + $platformVersion)
     $designer = Find-Designer $platformVersion
@@ -341,20 +386,23 @@ try {
     Write-Step "Checking the COM connector"
     Write-Host (Assert-Connector $platformVersion)
 
-    Write-Step ("Creating the file base in " + $basePath)
-    Remove-TestBase $basePath
-    [void] [IO.Directory]::CreateDirectory($basePath)
-    Invoke-Platform $designer ("CREATEINFOBASE File=`"" + $basePath + "`" /DisableStartupDialogs")
-    Write-Marker $basePath
+    $dbPassword = Read-Password ("Password of the PostgreSQL user " + $testBase.dbUser + " on " + $testBase.dbServer)
+
+    Write-Step ("Creating the base " + $testBase.database + " on " + $testBase.server)
+    $connector = New-Object -ComObject V83.COMConnector
+    $working = Connect-WorkingProcess $connector $testBase
+    Remove-TestBase $working $testBase
+    New-TestBase $working $testBase $dbPassword
+    $working = $null
 
     Write-Step "Loading the configuration and updating the database configuration"
-    Invoke-Platform $designer ("DESIGNER /F `"" + $basePath + "`" /LoadConfigFromFiles `"" + $sourcesPath + "`" /UpdateDBCfg /DisableStartupDialogs /DisableStartupMessages")
+    Invoke-Platform $designer ("DESIGNER /S `"" + $testBase.server + "\" + $testBase.database + "`" /LoadConfigFromFiles `"" + $sourcesPath + "`" /UpdateDBCfg /DisableStartupDialogs /DisableStartupMessages")
 
     Write-Step "Creating the users"
-    New-TestUsers $basePath $testBase
+    New-TestUsers $connector $testBase
 
     Write-Host ""
-    Write-Host ("The test base is ready in " + $basePath)
+    Write-Host ("The test base is ready: " + $testBase.server + " / " + $testBase.database)
     Write-Host ("Its users: " + $testBase.administrator.user + ", " + $testBase.read.user + ", " + $testBase.write.user + ". Their passwords are in " + $labPath + ".")
 }
 catch {
@@ -365,6 +413,9 @@ catch {
         foreach ($account in $testBase.administrator, $testBase.read, $testBase.write) {
             $message = $message.Replace([string] $account.password, "<password>")
         }
+    }
+    if ($dbPassword) {
+        $message = $message.Replace($dbPassword, "<password>")
     }
 
     Write-Host ""

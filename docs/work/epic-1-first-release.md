@@ -1587,8 +1587,10 @@ approval of this plan.
     the parameters and of `AgentPolicyReader` follow it, each with its tests.
   - The owner's answer of 20 November 2026 on tests with 1C: both kinds. Tests that need
     1C live in `Moltaro.OnecOutpost.OneC.Tests`, outside the solution, and run on the lab
-    machine, never in CI, against a file base built from the repository's own test
-    configuration and against copies of real typical databases. `AGENTS.md`, "Tests And
+    machine, never in CI, against a base built from the repository's own test
+    configuration and against copies of real typical databases. On 21 November 2026 the
+    owner made that base a client-server one on the lab's cluster: the lab has no licence
+    for a file base. The library still serves both kinds. `AGENTS.md`, "Tests And
     Samples", "Layout" and "Working Rules", concept §3 "Rules" and §11, `process.md`,
     OD1, the epic's Acceptance, the test lane, "The lab machine", L1, S9, S10, S11, R17
     and R18 say so.
@@ -2250,8 +2252,8 @@ Runs right after S2, before S9 and before the contract of stage 2 is written.
   report file is written.
 - **The 1C test lane.** L1 also sets it up, as `AGENTS.md`, "Tests And Samples", says:
   - `src/OneC.TestConfiguration`: the XML sources of a minimal test configuration, and the
-    script that builds a file base from them through the Designer's command line on the
-    lab machine. No built configuration or base is committed. The configuration has:
+    script that builds a base from them on the lab's 1C cluster, through the Designer's
+    command line. No built configuration or base is committed. The configuration has:
     - the compatibility mode 8.2.13, the lowest in use (L1);
     - a catalog, a document that posts to an accumulation register, and a common module;
     - two roles, both with the right of external connection and whatever else O2 finds
@@ -2269,7 +2271,7 @@ Runs right after S2, before S9 and before the contract of stage 2 is written.
 - **To read.** The [concept](../concept.md), §3 "The two commands" and §12; this plan,
   "The files of the agent".
 - **Done when** O1–O8 are answered in the concept, the test configuration builds into a
-  file base on the lab machine, and the change, with `src/OneC.TestConfiguration`, is
+  base on the lab's cluster, and the change, with `src/OneC.TestConfiguration`, is
   merged.
 
 ### S9 · The executor and the COM worker

@@ -564,8 +564,11 @@ licences checked at that time:
 - The store is tested against a real PostgreSQL.
 - What only 1C can show, such as the executor, the COM worker, the script contract and the
   open items below, is tested on a lab machine with 1C:Enterprise 8.3.17.1851, never in
-  CI: against a file base built from the repository's own test configuration, and against
-  copies of real typical databases. What no test can make is accepted by hand there.
+  CI: against a base built from the repository's own test configuration, and against
+  copies of real typical databases. Both are client-server bases: the lab's 1C server
+  gives a licence to nobody who opens a file base, so a file base, which the library
+  serves through the same external connection, is not tried there. What no test can make
+  is accepted by hand there.
 - Latency. On a loopback stand without 1C, a command reaches a waiting poll and its
   outcome reaches the waiting caller each within 100 milliseconds at the 95th percentile.
   No hop waits for a fixed interval.
