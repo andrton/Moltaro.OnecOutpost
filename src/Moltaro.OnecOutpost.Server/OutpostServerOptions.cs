@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Moltaro.OnecOutpost.Protocol;
 
 namespace Moltaro.OnecOutpost.Server;
 
@@ -111,9 +112,11 @@ public sealed class OutpostServerOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The size of a command is that of its script plus that of its parameters written as JSON, counted in UTF-8 with
-    /// characters outside ASCII written as they are, not escaped: <c>é</c> counts 2 bytes, and a character outside the
-    /// Basic Multilingual Plane 4.
+    /// The size of a command is the length of the text of its script between its quotes plus the text of its
+    /// parameters, <c>{}</c> when there are none, both as the command carries them: JSON without white space in UTF-8,
+    /// every escape counted as it is written. A character outside ASCII is written as it is, not escaped: <c>é</c>
+    /// counts 2 bytes, and a character outside the Basic Multilingual Plane 4. A quote, a backslash, and a control
+    /// character that has a short escape, such as a line feed, count 2 bytes, and any other control character 6.
     /// </para>
     /// <para>
     /// A command up to the limit is accepted; a larger one is the caller's mistake and gives
@@ -128,9 +131,10 @@ public sealed class OutpostServerOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The size of an outcome is that of its result as the executor wrote it, plus its user messages and its error
-    /// text, in UTF-8 with characters outside ASCII not escaped. The limit travels in every signed command, so that
-    /// the executor, the agent and the server judge by the same number.
+    /// The size of an outcome is the length of the UTF-8 text of its outcome object as it travels from the agent to
+    /// the server, with its result, its user messages and its error text, every escape counted as it is written. The
+    /// limit travels in every signed command, so that the executor, the agent and the server judge by the same
+    /// number.
     /// </para>
     /// <para>
     /// The executor trims the messages and the error text to fit and marks that it did. An outcome that still does not
@@ -219,12 +223,21 @@ public sealed class OutpostServerOptions
 
         ServerNames.CheckSignalKeyPrefix(SignalKeyPrefix, nameof(SignalKeyPrefix));
 
-        CheckRange(PollTimeout, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(5), nameof(PollTimeout));
-        CheckRange(LeaseGrace, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(5), nameof(LeaseGrace));
-        CheckRange(TakeTimeout, TimeSpan.FromSeconds(1), TimeSpan.FromHours(1), nameof(TakeTimeout));
-        CheckRange(ClockSkew, TimeSpan.FromSeconds(1), TimeSpan.FromHours(1), nameof(ClockSkew));
-        CheckRange(CommandSizeLimit, 4 * 1024, 16 * 1024 * 1024, nameof(CommandSizeLimit));
-        CheckRange(OutcomeSizeLimit, 64 * 1024, 64 * 1024 * 1024, nameof(OutcomeSizeLimit));
+        // The ranges that the protocol mirrors live in its assembly, so that the agent and the codec check the same.
+        CheckRange(PollTimeout, OutpostProtocol.MinPollTimeout, OutpostProtocol.MaxPollTimeout, nameof(PollTimeout));
+        CheckRange(LeaseGrace, OutpostProtocol.MinLeaseGrace, OutpostProtocol.MaxLeaseGrace, nameof(LeaseGrace));
+        CheckRange(TakeTimeout, OutpostProtocol.MinTakeTimeout, OutpostProtocol.MaxTakeTimeout, nameof(TakeTimeout));
+        CheckRange(ClockSkew, OutpostProtocol.MinClockSkew, OutpostProtocol.MaxClockSkew, nameof(ClockSkew));
+        CheckRange(
+            CommandSizeLimit,
+            OutpostProtocol.MinCommandSizeLimit,
+            OutpostProtocol.MaxCommandSizeLimit,
+            nameof(CommandSizeLimit));
+        CheckRange(
+            OutcomeSizeLimit,
+            OutpostProtocol.MinOutcomeSizeLimit,
+            OutpostProtocol.MaxOutcomeSizeLimit,
+            nameof(OutcomeSizeLimit));
         CheckRange(OutcomeRetention, TimeSpan.FromHours(1), TimeSpan.FromDays(365), nameof(OutcomeRetention));
         CheckRange(PairingTokenLifetime, TimeSpan.FromMinutes(1), TimeSpan.FromDays(1), nameof(PairingTokenLifetime));
         CheckRange(PurgeInterval, TimeSpan.FromMinutes(1), TimeSpan.FromDays(1), nameof(PurgeInterval));

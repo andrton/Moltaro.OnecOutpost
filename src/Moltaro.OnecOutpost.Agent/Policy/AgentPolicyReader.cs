@@ -276,15 +276,15 @@ internal static class AgentPolicyReader
                     break;
 
                 case "workers":
-                    workers = ReadWholeNumber(member, memberPath, 1, 8);
+                    workers = ReadWholeNumber(member, memberPath, 1, OutpostProtocol.MaxWorkers);
                     break;
 
                 case "runLimit":
                     runLimit = ReadTimeSpan(
                         member,
                         memberPath,
-                        TimeSpan.FromSeconds(1),
-                        TimeSpan.FromDays(1),
+                        OutpostProtocol.MinRunLimit,
+                        OutpostProtocol.MaxRunLimit,
                         DefaultRunLimit);
                     break;
 
