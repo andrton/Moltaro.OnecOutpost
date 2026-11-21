@@ -132,6 +132,88 @@ public sealed class MigrationTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.Equal(alone.Lines, atOnce.Lines);
     }
 
+    // The migrations of one schema run one after another, under the session advisory lock with the key
+    // (hashtext('Moltaro.OnecOutpost.Migrations'), hashtext(schema)): EF Core and Npgsql create the schema and its history
+    // table before they lock that table, where four or more migrations at once can collide. Another connection holds the
+    // lock until all four are seen waiting for it, then lets them go; without the lock none would wait.
+    [Fact]
+    public async Task Four_MigrateAsync_at_once_into_one_new_schema_wait_for_its_lock_and_all_give_the_schema_that_one_gives()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string connectionString = await postgres.GetConnectionStringAsync(cancellationToken);
+        const string AloneSchema = "four_compared_alone";
+        const string AtOnceSchema = "four_at_once";
+
+        await OutpostMigrations.MigrateAsync(connectionString, AloneSchema, cancellationToken);
+
+        await using HeldLock migrationLock = await HeldLock.TakeAsync(
+            connectionString,
+            $"SELECT pg_advisory_xact_lock(hashtext('Moltaro.OnecOutpost.Migrations'), hashtext('{AtOnceSchema}'))",
+            cancellationToken);
+
+        Task[] migrations =
+        [
+            .. Enumerable.Range(0, 4).Select(_ => OutpostMigrations.MigrateAsync(connectionString, AtOnceSchema, cancellationToken)),
+        ];
+
+        await migrationLock.WaitForAsync(migrations, cancellationToken);
+        await migrationLock.ReleaseAsync(cancellationToken);
+
+        await Task.WhenAll(migrations);
+
+        SchemaSnapshot alone = await SchemaSnapshot.TakeAsync(connectionString, AloneSchema, cancellationToken);
+        SchemaSnapshot atOnce = await SchemaSnapshot.TakeAsync(connectionString, AtOnceSchema, cancellationToken);
+
+        Assert.NotEmpty(alone.Tables);
+        Assert.Equal(alone.Lines, atOnce.Lines);
+    }
+
+    // A wait for the lock of the schema honors cancellation (AGENTS.md, principle 10). Another connection holds the lock
+    // until the migration is seen waiting for it, and the token is cancelled while it waits.
+    [Fact]
+    public async Task A_MigrateAsync_waiting_for_the_lock_of_its_schema_ends_cancelled_with_its_token_and_creates_no_schema()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string connectionString = await postgres.GetConnectionStringAsync(cancellationToken);
+        const string Schema = "migration_cancelled_waiting";
+
+        await using HeldLock migrationLock = await HeldLock.TakeAsync(
+            connectionString,
+            $"SELECT pg_advisory_xact_lock(hashtext('Moltaro.OnecOutpost.Migrations'), hashtext('{Schema}'))",
+            cancellationToken);
+
+        using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task migration = OutpostMigrations.MigrateAsync(connectionString, Schema, cancellation.Token);
+
+        await migrationLock.WaitForAsync([migration], cancellationToken);
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => migration);
+
+        await migrationLock.ReleaseAsync(cancellationToken);
+
+        Assert.False(await SchemaSnapshot.ExistsAsync(connectionString, Schema, cancellationToken));
+    }
+
+    // The lock needs a connection to the database, so the database is created before it; the role of the container may
+    // create one.
+    [Fact]
+    public async Task MigrateAsync_creates_a_database_that_does_not_exist()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string serverConnectionString = await postgres.GetConnectionStringAsync(cancellationToken);
+        string connectionString = new NpgsqlConnectionStringBuilder(serverConnectionString)
+        {
+            Database = "migration_into_new_database",
+        }.ConnectionString;
+        const string Schema = "schema_in_new_database";
+
+        await OutpostMigrations.MigrateAsync(connectionString, Schema, cancellationToken);
+
+        SchemaSnapshot migrated = await SchemaSnapshot.TakeAsync(connectionString, Schema, cancellationToken);
+        Assert.Contains("agents", migrated.Tables);
+    }
+
     // The record of applied migrations is in the schema as well: kept anywhere else, the second schema would find the
     // migrations of the first applied and get no tables.
     [Fact]
