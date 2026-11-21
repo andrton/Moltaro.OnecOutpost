@@ -100,8 +100,9 @@ public sealed class MigrationTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.False(context.Database.HasPendingModelChanges());
     }
 
-    // Driven to the order in which both migrations create the schema together: another connection creates it and holds
-    // it uncommitted until both are seen waiting to create it, then rolls back, which leaves the schema new to both.
+    // Driven to the order in which both migrations start on a schema that is still new: another connection creates it
+    // and holds it uncommitted until both are seen waiting, one to create it and the other behind it for the lock of
+    // the schema, then rolls back, which leaves the schema new to both.
     [Fact]
     public async Task Two_MigrateAsync_running_at_once_into_one_new_schema_both_complete_and_give_the_schema_that_one_gives()
     {
