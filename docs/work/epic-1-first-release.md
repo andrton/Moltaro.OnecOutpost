@@ -1004,18 +1004,27 @@ The concept fixes the principles; S2 fixes the bytes.
 ### Order and why these splits
 
 ```text
-Stage 1 — the tunnel without 1C
-  S1 contract ── S2 protocol ── S3 store ── S4 pairing ── S5 commands ── S6 agent ── S7 nodes, losses
+The contract and the wire
+  S1 contract ── S2 protocol
+The riskiest unknown: a script in a real 1C
+  L1 lab check ── S9 executor, COM worker
+The tunnel, with a fake in place of the worker
+  S3 store ── S4 pairing ── S5 commands ── S6 agent ── S7 nodes, losses
   S8 refactoring
-Stage 2 — 1C and the tools           (L1, the lab check, best before S6, at the latest before stage 2)
-  S9 executor, COM worker ── S10 console ── S11 shell
-Stage 3 — the release
+The agent with 1C, and the tools
+  S9b the agent runs the workers ── S10 console ── S11 shell
+The release
   S12 documents, packages, archive
 ```
 
-- **Stage 1 without 1C.** Every guarantee of the tunnel, from the signature to the cases
-  of a doubled run, is built and tested in CI, with a fake behind the COM worker's
-  boundary. Stage 2 then adds what only a lab machine can show, with nothing else open.
+- **1C first** (the owner, 21 November 2026). Everything rests on a script that runs in a
+  real 1C through COM, in safe mode, under both accounts, and on the answers to O1–O8,
+  which can still change D3, D12 and D14. So L1 and S9 follow S2 at once: if 1C does not
+  behave as the concept expects, it is known before the server and the agent are built.
+  The sprints keep their numbers and branches; only their order changes.
+- **The tunnel without 1C.** Every guarantee of the tunnel, from the signature to the
+  cases of a doubled run, is still built and tested in CI, with a fake behind the COM
+  worker's boundary.
 - **S2, the protocol, alone.** It is the public wire contract and the security core:
   signatures over exact bytes, the agent's signed requests and the pairing proof. It is
   reviewed alone, as the zone of `AGENTS.md` with the strictest priorities.
@@ -1031,12 +1040,14 @@ Stage 3 — the release
   drops and holds messages, and because it is where a wrong rule shows.
 - **S8, refactoring,** after stage 1, the middle of the epic, before stage 2 builds on the
   agent.
-- **L1 early.** Its answers to O1–O8 can change decisions D3, D12 and D14. They can also
-  add members to `policy.json`: an account of its own for COM workers after O1, or a
-  connector per base after O8. Run before S6, they reach S6's brief through the owner.
-  Run later, they are a change of the contract, through the owner.
-- **S9 alone.** The executor and the COM worker are one piece of acceptance on the lab
-  machine; split, each half could not be accepted.
+- **L1 right after S2.** Its answers to O1–O8 can change decisions D3, D12 and D14. They
+  can also add members to `policy.json`: an account of its own for COM workers after O1,
+  or a connector per base after O8. They reach the briefs of S9 and S6 through the owner.
+- **S9, the executor and the COM worker together.** They are one piece of acceptance on
+  the lab machine; split, each half could not be accepted. Its tests drive the worker
+  program directly, so it needs no agent.
+- **S9b, the agent runs the workers,** after S8: what of the old S9 needs the agent of S6.
+  It is where a command first travels from `ReadAsync` to a real 1C and back.
 - **S10 and S11.** The console works on the agent machine, the shell next to a server.
   They share nothing.
 
@@ -1053,7 +1064,8 @@ Stage 3 — the release
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Not started |
-| S9 | The executor and the COM worker | Full | Not started |
+| S9 | The executor and the COM worker, run after L1 and before S3 | Full | Not started |
+| S9b | The agent runs the COM workers | Full | Not started |
 | S10 | The console | Full | Not started |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
@@ -2188,7 +2200,7 @@ as [Order](#order-and-why-these-splits) says.
 ### L1 · The lab check of open items O1–O8
 
 **Track:** light · **Branch:** `chore/lab-check` · **Needs:** the owner's lab machine (OD1).
-Best run before S6, and in any case before the contract of stage 2 is written.
+Runs right after S2, before S9 and before the contract of stage 2 is written.
 
 - **Goal.** Each open item of concept §12 has an answer from a real 1C:Enterprise
   8.3.17.1851, so that the contracts of stage 2 rest on facts.
@@ -2229,8 +2241,8 @@ Best run before S6, and in any case before the contract of stage 2 is written.
 
 ### S9 · The executor and the COM worker
 
-**Track:** full · **Branch:** `epic-1/sprint-09-com-worker` · **Needs:** S8, L1, and
-the contract of stage 2 approved.
+**Track:** full · **Branch:** `epic-1/sprint-09-com-worker` · **Needs:** S2, L1, and
+the contract of the executor and the COM worker approved.
 
 - **Goal.** A real base runs scripts. For each command, the COM worker:
   - holds the external connection under the account of its mode;
@@ -2239,9 +2251,8 @@ the contract of stage 2 approved.
   - runs a Write in one transaction, with the checks of rule 5 before the commit;
   - collects the user messages and reports the outcome.
 
-  The agent starts the workers of each base and mode with the connector's bitness, inside
-  a job object that ends them with the agent. It ends a worker at its run limit, and
-  starts it again with a growing delay, up to `retryDelayMax`.
+  The tests start the worker program themselves and speak to it as the agent will. How
+  the agent starts, limits and restarts its workers is S9b.
 - **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says, completed with
   L1's answers before stage 2 starts. Exception X1 of the [register](exceptions.md) comes
   into force with the commit of the `.epf`.
@@ -2267,10 +2278,6 @@ the contract of stage 2 approved.
   - Automated, with `Requires=Windows`:
     - the worker program against a fake of the COM connection, behind the worker's own
       boundary;
-    - the job object;
-    - ending at the run limit;
-    - starting again with a growing delay;
-    - bitness chosen from the registered connector;
     - a connector whose version differs from the cluster's, with the error L1 recorded for
       it, is reported as such.
   - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine (OD1), against the test base
@@ -2290,8 +2297,6 @@ the contract of stage 2 approved.
     - a result of a wrong type, and one too large, roll back before the commit;
     - a script that calls `CommitTransaction` or `RollbackTransaction` gives Unknown
       `transaction-ended`;
-    - a script beyond its run limit: a Read fails and a Write is Unknown;
-    - stopping the agent during a Write gives Unknown;
     - the script contract:
       - `Parameters` maps JSON as concept §3 says: an object to a `Map`, an array to an
         `Array`, `null` to `Undefined`, no parameters to an empty `Map`, and a string that
@@ -2308,12 +2313,41 @@ the contract of stage 2 approved.
   - Manual, on the lab machine, one line per scenario: only what no test can make.
   - The executor's XML sources and its `.epf`, built by the owner with the Designer of
     8.3.17.1851, are committed in `src/Executor`.
+  - The documents step: `README.md` says that the COM worker runs scripts in 1C and that
+    no agent starts it yet.
+- **Out of scope.** The agent's supervision of its workers, the console, the shell.
+
+### S9b · The agent runs the COM workers
+
+**Track:** full · **Branch:** `epic-1/sprint-09b-workers` · **Needs:** S8, S9.
+
+- **Goal.** A command travels from `ReadAsync` and `WriteAsync` to a real 1C and back. The
+  agent starts the workers of each base and mode with the connector's bitness, inside a
+  job object that ends them with the agent. It ends a worker at its run limit, and starts
+  it again with a growing delay, up to `retryDelayMax`.
+- **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says. The planner
+  writes the internal types into this brief when the sprint is prepared.
+- **Study.** The study of S9 answers its questions; none of its own.
+- **To read.** The [concept](../concept.md), rules 3, 8 and 9 and §5; `AGENTS.md`,
+  principle 8; the brief of S9.
+- **Acceptance.**
+  - Automated, with `Requires=Windows`, against the worker program with a fake of the COM
+    connection:
+    - the job object;
+    - ending at the run limit;
+    - starting again with a growing delay;
+    - bitness chosen from the registered connector.
+  - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine (OD1), against the test base:
+    - a script beyond its run limit: a Read fails and a Write is Unknown;
+    - stopping the agent during a Write gives Unknown.
+  - Manual, on the lab machine: a Read and a Write sent from a server on another machine
+    reach the test base through the agent and return their outcomes.
   - The documents step: `README.md` says the agent works with 1C.
 - **Out of scope.** The console, the shell.
 
 ### S10 · The console
 
-**Track:** full · **Branch:** `epic-1/sprint-10-console` · **Needs:** S9.
+**Track:** full · **Branch:** `epic-1/sprint-10-console` · **Needs:** S9b.
 
 - **Goal.** The administrator does everything for an agent from the console:
   - installs the service under its virtual account, with the data folder and its access
