@@ -4,10 +4,11 @@
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <!-- Every test here has Requires=Windows, so the Linux job of CI, which leaves those out, runs none of them, and
-         Microsoft.Testing.Platform ends a run of zero tests with exit code 8. This project alone accepts that code; any
-         other project that runs no test still fails the job. The platform's targets add these arguments to
-         RunArguments, which dotnet test reads in its Microsoft.Testing.Platform mode. -->
-    <TestingPlatformCommandLineArguments>--ignore-exit-code 8</TestingPlatformCommandLineArguments>
+         Microsoft.Testing.Platform ends a run of zero tests with exit code 8. This project accepts that code off Windows
+         only: the Windows job is the one lane where these tests run, and there a run of zero of them must still fail.
+         Any other project that runs no test fails the job on every system. The platform's targets add these arguments
+         to RunArguments, which dotnet test reads in its Microsoft.Testing.Platform mode. -->
+    <TestingPlatformCommandLineArguments Condition="'$(OS)' != 'Windows_NT'">--ignore-exit-code 8</TestingPlatformCommandLineArguments>
   </PropertyGroup>
 
   <ItemGroup>
