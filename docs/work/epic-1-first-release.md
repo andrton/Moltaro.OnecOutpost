@@ -77,7 +77,7 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R10 | The wake-ups through the `ISignals` the application provides: keys under a prefix, a group of its own for every waiting poll and call, every wait reading the store again when it rejoins | Concept §5, D9 | Must | Absent | S5, S7 |
 | R11 | Several nodes, a stopped node, a lost poll answer, an older or replayed poll, a lost outcome and an outage of the signals behave as the rules say | Concept §4, §11 | Must | Absent | S7 |
 | R12 | The agent as a Windows service under its own virtual account, with the data folder that only it and administrators can use, the local policy, the secrets protected with DPAPI for the machine, and the audit log with its retention | Concept §5, D6, D13 | Must | Absent | S1, S6, S10 |
-| R13 | The COM worker and the executor: the external connection under the account of the mode, a fresh executor per command in safe mode, the JSON rules, the user messages, the Write transaction with its checks before the commit, the connector's bitness, the workers ending with the agent, a worker ended at its run limit | Concept §3, §5, D3, D11, D12, D14 | Must | Absent | S9 |
+| R13 | The COM worker and the executor: the external connection under the account of the mode, a fresh executor per command in safe mode unless D12 turns it off for the Writes of a base, the JSON rules, the user messages, the Write transaction with its checks before the commit, the connector's bitness, the workers ending with the agent, a worker ended at its run limit | Concept §3, §5, D3, D11, D12, D14 | Must | Absent | S9 |
 | R14 | The console: install, uninstall, pair, write a secret, check, write a metadata report | Concept §5 | Must | Absent | S10 |
 | R15 | The shell: a server of its own, pairing tokens, Read and Write by hand | Concept §2, §5 | Must | Absent | S11 |
 | R16 | Every timeout and limit that an application or an administrator can observe is an option with a default, validated when it is set; time comes from `TimeProvider` | `AGENTS.md`, principle 10 | Must | Absent | S1–S11 |
@@ -464,7 +464,8 @@ public sealed class OutpostOutcome
   `JsonElement` of the kind `Null`, never a missing value.
 - `Code` is one of [`OutpostCodes`](#outpostcodes) for Failed, Refused and Unknown, and
   `null` otherwise.
-- `ErrorText` is the text of the error that 1C raised, for Failed with `script-error`.
+- `ErrorText` is the text of the error that 1C raised, for Failed with `script-error`, or
+  the executor's own sentence for a transaction a Write script left open *(S9)*.
 - `Messages` holds the user messages of 1C for Succeeded and Failed, and is empty
   otherwise.
 - `MessagesTrimmed` says that the executor trimmed the messages or the error text to fit
@@ -495,12 +496,14 @@ public static class OutpostCodes
     public const string Disconnected = "disconnected";
     public const string AgentStopped = "agent-stopped";
     public const string TransactionEnded = "transaction-ended";
+    public const string BaseUnreachable = "base-unreachable";
+    public const string ConnectionLost = "connection-lost";
 }
 ```
 
 | Code | Kinds | Meaning |
 | --- | --- | --- |
-| `script-error` | Failed | 1C raised an error; `ErrorText` holds its text. A Write rolled back |
+| `script-error` | Failed | 1C raised an error; `ErrorText` holds its text. *(S9)* Also a Write script that left a transaction of its own open; `ErrorText` is then the executor's own sentence. A Write rolled back |
 | `result-type` | Failed, Unknown | The result holds a value that cannot be written as JSON (rule 5). *(S2)* Also a result deeper than 64 levels, and an outcome of the executor that the agent cannot accept: Failed for a Read, and for a Write that 1C rolled back; Unknown for a Write whose outcome the agent could not accept (`docs/protocol.md` §8) |
 | `result-too-large` | Failed, Unknown | The outcome is larger than its limit (rule 5). Unknown for a Write whose outcome was refused for its size, by the server or by something on the path; S5 and S6 state it |
 | `run-limit` | Failed (Read), Unknown (Write) | The script exceeded its run limit (rule 9) |
@@ -517,7 +520,9 @@ public static class OutpostCodes
 | `revoked` | Refused, Unknown | Refused: no poll had taken the command when its agent was revoked. Unknown: a Write that a poll had taken (rule 13) |
 | `disconnected` | Unknown | A Write whose agent stayed away longer than its run limit (rule 11) |
 | `agent-stopped` | Unknown | A Write whose agent or worker stopped while it ran (rule 3) |
-| `transaction-ended` | Unknown | The script ended the transaction of its Write itself (rule 5) |
+| `transaction-ended` | Unknown | The script ended the transaction of its Write itself (rule 5). *(S9)* Also a commit of the executor that raised, so it cannot tell whether the Write was written |
+| `base-unreachable` | Failed | *(S9)* For a Read and a Write: the COM worker has no session in the base, or could not open the executor, so the script did not start. `ErrorText` is `null` |
+| `connection-lost` | Failed (Read), Unknown (Write) | *(S9)* The session of the COM worker ended while the script ran |
 
 - Every Refused, like Expired, means that nothing ran. A command that ended as Refused or
   Expired frees its caller key (rule 4); a refusal with `caller-key-conflict` created no
@@ -525,15 +530,12 @@ public static class OutpostCodes
 - There is no code for a signature that does not verify. The agent cannot trust the
   identity of such a command, so it only records it in the audit log and reports nothing.
   The server ends the command by rules 7 and 11 (concept rule 1).
-- A failure of the connection to 1C gets two codes in S9, a draft of the contract for the
-  owner (the planner, 21 November 2026, after L1):
-  - `base-unreachable`, Failed, for a Read and a Write: the COM worker has no session in
-    the base, or could not open the executor, so the script did not start. Examples are a
-    wrong password, a cluster that does not answer, no free licence, a COM connector that
-    is not registered. `ErrorText` is `null`: the text of 1C goes to the audit log only,
-    since it may name an account or a path;
-  - `connection-lost`, Failed for a Read and Unknown for a Write: the session ended while
-    the script ran, for example because the cluster restarted.
+- A failure of the connection to 1C got two codes in S9, `base-unreachable` and
+  `connection-lost`, a draft of the contract for the owner (the planner, 21 November 2026,
+  after L1). Examples of `base-unreachable` are a wrong password, a cluster that does not
+  answer, no free licence, a COM connector that is not registered; its `ErrorText` is
+  `null`, since the text of 1C may name an account or a path and goes to the audit log
+  only. An example of `connection-lost` is a cluster that restarted while the script ran.
 
 #### `OutpostPairingToken`
 
@@ -2343,7 +2345,10 @@ the contract of the executor and the COM worker approved.
       length in bytes of the UTF-8 text of the outcome object alone, as the executor measured
       it before the commit of a Write.
     - Safe mode is not its parameter: the worker opens it in safe mode or without.
-    - It never raises: every error of the script is an outcome. How it measures UTF-8 in
+    - It never raises: every error of the script is an outcome.
+    - After the script of a Read or a Write it rolls back every transaction the script
+      left open, and the outcome is Failed `script-error` with the executor's own sentence
+      (Q12). So a Read leaves no transaction to the next command of its worker. How it measures UTF-8 in
       the mode 8.2.13 is its own matter, and a lab test holds the result.
 
     **The worker's command line:** `Moltaro.OnecOutpost.ComWorker.exe <base key> <read|write>`.
@@ -2353,9 +2358,11 @@ the contract of the executor and the COM worker approved.
     **The lines.** One JSON object per line in UTF-8, ended with LF, without a BOM, on the
     raw standard streams. The standard output carries these lines and nothing else;
     `Console.Out` is pointed at the standard error. The standard error carries diagnostics
-    for a person. The worker never writes its first input line, and it replaces the password
-    with `<password>` in every text it writes there, since 1C or .NET may quote a value it
-    refused. An outcome line is never changed.
+    for a person. The worker never writes its first input line. A text that is not its own,
+    such as the failure message of 1C or of .NET, it writes there only when the text holds
+    the password neither as it is nor with its quotes doubled; otherwise it writes its own
+    sentence that the text was withheld. Replacing the password inside such a text would
+    give a short one away. An outcome line is never changed.
 
     | Direction | Line | When |
     | --- | --- | --- |
@@ -2382,7 +2389,8 @@ the contract of the executor and the COM worker approved.
       type — ends it with exit code 1 and a reason on the standard error. It is not skipped.
     - **The end of the input** ends the worker with exit code 0, once the command it runs
       has its outcome written, and also before the first line. A last line without its LF
-      is a line. A worker that ends with exit code 1 writes nothing to the standard output.
+      is a line. A worker that ends with exit code 1 writes nothing to the standard output
+      for the line that ended it.
 
     **The types,** in `Moltaro.OnecOutpost.ComWorker`. The loop is synchronous: the worker
     is one thread that owns one COM session and has nothing else to do while a script runs.
@@ -2452,8 +2460,8 @@ the contract of the executor and the COM worker approved.
       Read worker told to run without safe mode, the end of the input, and that the
       standard output carries nothing but the lines;
     - parameters of 64 levels reach the executor;
-    - the password appears in no output of the worker, also when the failure of the fake
-      quotes it.
+    - the password appears in no output of the worker: a failure of the fake that quotes
+      it, also a short one and one with its quotes doubled, is withheld.
 
     L1 installed one version of the connector, so it recorded no error of a connector
     whose version differs from the cluster's; nothing is asserted about one.
@@ -2462,7 +2470,7 @@ the contract of the executor and the COM worker approved.
     - a Read query that returns rows;
     - a Write that creates and posts a document of the test configuration;
     - on each copy of a typical base: the latest posted document of the type that
-      `lab.local.json` names, posted again by the tunnel with the safe mode that
+      `lab.local.json` names, posted again through the worker with the safe mode that
       `writeSafeMode` gives, has the same register
       movements as it had before, which a person's posting made (O1). The owner names a
       type whose posting depends on no sequence and no later document, in a period that
@@ -2493,6 +2501,19 @@ the contract of the executor and the COM worker approved.
     8.3.17.1851, are committed in `src/Executor`.
   - The documents step: `README.md` says that the COM worker runs scripts in 1C and that
     no agent starts it yet.
+- **What S9 changed in the public contract, as a draft for the owner** (the coordinator,
+  21 November 2026). Each holds until the owner overturns it:
+  - two codes, `OutpostCodes.BaseUnreachable` and `OutpostCodes.ConnectionLost`, which an
+    agent may send as §8 of `docs/protocol.md` lists them, and which
+    `OutpostOutcome.Failed` and `OutpostOutcome.Unknown` accept;
+  - `transaction-ended` also covers a commit of the executor that raised, and
+    `script-error` a Write script that left a transaction of its own open, with the
+    executor's own sentence as `ErrorText` (Q12 of the [open questions](open-questions.md));
+  - in the concept, rule 5 says that a Write also fails when its script never started, and
+    names the two cases above;
+  - in the Acceptance, the line on a connector of another version gave way to the lines of
+    the internal contract, since L1 recorded no error for one;
+  - the readings Q10, Q11 and Q12 of the open questions, taken as recommended.
 - **Out of scope.** The agent's supervision of its workers, the console, the shell.
 
 ### S9b · The agent runs the COM workers
