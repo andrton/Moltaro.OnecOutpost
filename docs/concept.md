@@ -4,8 +4,8 @@ This document is the authority for what the library guarantees: its semantics, i
 protocol principles, its decisions and its non-goals. It describes the design;
 [README.md](../README.md) says what of it is built.
 
-**Status.** The owner agrees to this concept by merging it into `main`. The open items of
-section 12 are checked on a lab machine and may still reopen decisions D3, D12 and D14.
+**Status.** The owner agrees to this concept by merging it into `main`. The open items O1
+and O5 of section 12 are still to be answered on a lab machine and may reopen decision D12.
 
 ## 1. Where it comes from
 
@@ -37,6 +37,12 @@ offers the whole query language and everything the configuration does outside it
 posting, register movements, event subscriptions, its common modules. What it does not run
 is the logic of forms, such as filling a field when a user picks a value. A program fills
 those fields itself.
+
+One condition comes with it. The code of an external connection runs in the process of the
+COM connector, so a common module takes part only when the configuration makes it available
+to an external connection. A typical configuration does that for its own modules. A module
+that somebody added without it stops every write that reaches one of its handlers, until
+the developer of that configuration sets the one flag of the module (section 12, O1).
 
 What is missing is a safe way to use that connection from outside the network. The
 observation behind this project is that a caller does not need an API for 1C. It needs a
@@ -130,8 +136,7 @@ The script's contract is the same for both:
   external components and starting programs, and privileged mode has no effect in it. The
   script can still do everything the account's rights allow with the data.
   - In an external connection, the script and the configuration code it calls run in the
-    COM worker on the agent machine, as far as is known; open item O6 checks this for
-    client-server bases.
+    COM worker on the agent machine, for a client-server base as well (section 12, O6).
   - Safe mode is what keeps a script away from the files of that machine, the agent's key
     and the local policy included.
   - Open item O1 checks that typical posting gives the same result in safe mode.
@@ -560,32 +565,59 @@ licences checked at that time:
 
 ## 12. Open items
 
-These are checked on the lab machine before the sprint that depends on them is planned in
-detail:
+The check L1 ran on 21 November 2026 on a lab machine with 1C:Enterprise 8.3.17.1851,
+against a copy of a typical client-server base, a configuration on the ordinary application
+in the compatibility mode 8.2.13. O1 and O5 are still open.
 
-- **O1. Posting in safe mode.** Does a typical document post in safe mode, with the same
-  register movements as when a person posts it? Common modules of typical configurations
-  switch to privileged mode, which has no effect in safe mode, so the rights of the account
-  apply where they did not before. If the movements differ, decision D12 goes back to the
-  owner. Weakening it then requires COM workers under an account of their own, which
-  cannot read the agent's secrets or its audit log; they become part of the sprint that
-  weakens it.
-- **O2. Opening the executor.** Can an external connection open the executor with
-  `ExternalDataProcessors.Create`, in safe mode, under both accounts on 8.3.17.1851? The
-  check covers:
-  - which rights that needs, the right of external connection included;
-  - whether the account's protection against dangerous actions interferes;
-  - whether the file is read on the agent machine.
-- **O3. Licences.** Does a session of an external connection take a client licence, and
-  how many workers does a typical licence set allow?
-- **O4. JSON.** Do `ReadJSON` into a `Map` and `WriteJSON` in safe mode behave as section 3
-  says, `null` and `Undefined` included?
-- **O5. Long Writes.** A Write holds the managed locks of its transaction until it ends. What
-  run limits are reasonable for typical postings, for Read and for Write?
-- **O6. Where scripts run.** For a client-server base, does the code of an external
-  connection run in the COM worker or on the cluster? The answer decides what safe mode
-  protects.
-- **O7. User messages.** Can the executor collect and clear the user messages of one
-  command in an external connection?
-- **O8. One connector per bitness.** Is only one version of the COM connector registered
-  per bitness on a machine?
+- **O1. Posting in safe mode.** *Open.* Does a typical document post in safe mode, with
+  the same register movements as when a person posts it? Common modules of typical
+  configurations switch to privileged mode, which has no effect in safe mode, so the rights
+  of the account apply where they did not before. If the movements differ, decision D12
+  goes back to the owner. Weakening it then requires COM workers under an account of their
+  own, which cannot read the agent's secrets or its audit log; they become part of the
+  sprint that weakens it.
+
+  What L1 found instead: the document could not be written at all, with safe mode and
+  without it. The base carries two common modules of its own whose event subscriptions
+  cover its documents and registers, and neither module is available to an external
+  connection. 1C then calls the handler on the server and refuses to pass the document to
+  it. Every subscription of the typical configuration itself is available. The check is
+  repeated once those two modules have the flag.
+- **O2. Opening the executor.** *Answered.* An external connection opens the executor from
+  a file on the agent machine with `ExternalDataProcessors.Create`, in safe mode, on
+  8.3.17.1851. The platform's protection against dangerous actions refuses the call, since
+  nobody can answer its warning; the call passes with an
+  `UnsafeOperationProtectionDescription` whose warnings are off, which changes nothing in
+  the base, in the account or on the machine. Checked with one account of full rights; the
+  rights a narrow account needs are checked with the test configuration.
+- **O3. Licences.** *Answered.* Every session of an external connection takes a client
+  licence, here from the pool of the server. So a COM worker costs one licence for as long
+  as it holds its session.
+- **O4. JSON.** *Answered.* `ReadJSON` and `WriteJSON` behave as section 3 says, with one
+  exception: `WriteJSON` refuses `Null`, alone or inside a value. The executor replaces
+  `Null` with `Undefined` before it writes. A `Map` with a key that is not a string and a
+  reference are refused, as section 3 expects.
+- **O5. Long Writes.** *Open,* with O1: no posting ran. A Write holds the managed locks of
+  its transaction until it ends. What run limits are reasonable for typical postings, for
+  Read and for Write?
+- **O6. Where scripts run.** *Answered.* For a client-server base too, the script runs in
+  the process of the COM connector on the agent machine. So safe mode is what keeps a
+  script away from that machine, and the code of the configuration takes part only where
+  it is available to an external connection (section 1).
+- **O7. User messages.** *Answered.* The executor collects the user messages of one
+  command, in their order, and clears them before the next.
+- **O8. One connector per bitness.** *Answered in part.* Installing 1C does not register
+  the COM connector: it has to be registered before the first connection. One version was
+  installed, so two versions of one bitness were not tried.
+
+L1 also found:
+
+- **The compatibility mode limits the language.** In the compatibility mode 8.2.13 a
+  function that the platform has, such as `StrSplit`, is not defined, while JSON works. A
+  script can use what the mode of its base allows. The executor is written for the lowest
+  mode in use, and the test configuration runs in it.
+- **The first connection of a process takes several seconds,** a later one about two, which
+  is why a COM worker keeps its session between commands.
+- Safe mode refuses a file and a COM object. A script that declares a procedure is
+  refused. A Write whose script raises an error rolls back. A script that commits the
+  transaction itself is recognized.

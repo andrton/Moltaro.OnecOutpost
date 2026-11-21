@@ -1065,7 +1065,7 @@ The release
 | S6 | The agent | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
-| L1 | The lab check of open items O1–O8 | Light | Not started |
+| L1 | The lab check of open items O1–O8 | Light | In progress: the check ran on 21 November 2026 and the concept has its answers to O2, O3, O4, O6, O7 and O8; O1 and O5 wait for a base whose own modules are available to an external connection; the test configuration is not written |
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Not started |
 | S9b | The agent runs the COM workers | Full | Not started |
 | S10 | The console | Full | Not started |
@@ -2241,6 +2241,7 @@ Runs right after S2, before S9 and before the contract of stage 2 is written.
   - `src/OneC.TestConfiguration`: the XML sources of a minimal test configuration, and the
     script that builds a file base from them through the Designer's command line on the
     lab machine. No built configuration or base is committed. The configuration has:
+    - the compatibility mode 8.2.13, the lowest in use (L1);
     - a catalog, a document that posts to an accumulation register, and a common module;
     - two roles, both with the right of external connection and whatever else O2 finds
       that opening the executor needs: one that reads every object and changes none, and
@@ -2470,7 +2471,10 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     outcome limit, and returns the outcome as JSON;
   - safe mode;
   - the transaction of a Write and the checks of rule 5 before its commit;
-  - the user messages, trimmed with a marker.
+  - the user messages, trimmed with a marker;
+  - after L1: it uses only the language that the compatibility mode 8.2.13 allows, and it
+    replaces `Null` with `Undefined` before it writes a result, since `WriteJSON` refuses
+    `Null`.
 - **The COM worker**, a program:
   - its command line names the base and the mode;
   - it receives the connection, with its password, from the agent over its standard input,
@@ -2478,7 +2482,10 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   - it exchanges one JSON message per line with the agent over standard input and output:
     a command in, an outcome out. The outcome's JSON from the executor is forwarded as it
     is, so that its size is what the executor measured;
-  - it ends when the agent closes its input.
+  - it ends when the agent closes its input;
+  - after L1: it opens the executor with an `UnsafeOperationProtectionDescription` whose
+    warnings are off, since nobody can answer the platform's warning in an external
+    connection.
 - **The console**, a program that references the agent, the protocol, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says, with
   these commands and their exit codes:
@@ -2486,11 +2493,18 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   - `pair <server address> <token>`;
   - `secret <base key> <read|write>`, which asks for the password without echoing it;
   - `check`, which reports, each as passed or failed with its reason:
-    - the COM connector and its version;
+    - the COM connector and its version: whether one is registered for each bitness, and
+      where a `comcntr.dll` that is not registered lies (the owner, 21 November 2026, after
+      L1: the console finds, diagnoses and registers the connector);
     - the connection to each base under each account;
+    - for each base, the event subscriptions whose common module is not available to an
+      external connection, named with their modules, since a write that reaches one of
+      them fails (concept §1 and §12, O1);
     - the rights to change data that each read account has;
     - the server;
     - the clock skew;
+  - `connector register`, after L1, which registers the COM connector of the installed
+    platform for its bitness, and says so when it lacks the rights of an administrator;
   - `metadata <base key> <file>`.
 - **The shell**, a program that references the server, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says:
