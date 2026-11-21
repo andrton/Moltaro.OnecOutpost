@@ -465,7 +465,7 @@ public sealed class OutpostOutcome
 - `Code` is one of [`OutpostCodes`](#outpostcodes) for Failed, Refused and Unknown, and
   `null` otherwise.
 - `ErrorText` is the text of the error that 1C raised, for Failed with `script-error`, or
-  the executor's own sentence for a transaction a Write script left open *(S9)*.
+  the executor's own sentence for a transaction the script left open *(S9)*.
 - `Messages` holds the user messages of 1C for Succeeded and Failed, and is empty
   otherwise.
 - `MessagesTrimmed` says that the executor trimmed the messages or the error text to fit
@@ -503,7 +503,7 @@ public static class OutpostCodes
 
 | Code | Kinds | Meaning |
 | --- | --- | --- |
-| `script-error` | Failed | 1C raised an error; `ErrorText` holds its text. *(S9)* Also a Write script that left a transaction of its own open; `ErrorText` is then the executor's own sentence. A Write rolled back |
+| `script-error` | Failed | 1C raised an error; `ErrorText` holds its text. *(S9)* Also a script that left a transaction of its own open, which the executor rolled back; `ErrorText` is then the executor's own sentence. A Write rolled back |
 | `result-type` | Failed, Unknown | The result holds a value that cannot be written as JSON (rule 5). *(S2)* Also a result deeper than 64 levels, and an outcome of the executor that the agent cannot accept: Failed for a Read, and for a Write that 1C rolled back; Unknown for a Write whose outcome the agent could not accept (`docs/protocol.md` §8) |
 | `result-too-large` | Failed, Unknown | The outcome is larger than its limit (rule 5). Unknown for a Write whose outcome was refused for its size, by the server or by something on the path; S5 and S6 state it |
 | `run-limit` | Failed (Read), Unknown (Write) | The script exceeded its run limit (rule 9) |
@@ -2507,7 +2507,7 @@ the contract of the executor and the COM worker approved.
     agent may send as §8 of `docs/protocol.md` lists them, and which
     `OutpostOutcome.Failed` and `OutpostOutcome.Unknown` accept;
   - `transaction-ended` also covers a commit of the executor that raised, and
-    `script-error` a Write script that left a transaction of its own open, with the
+    `script-error` a script that left a transaction of its own open, with the
     executor's own sentence as `ErrorText` (Q12 of the [open questions](open-questions.md));
   - in the concept, rule 5 says that a Write also fails when its script never started, and
     names the two cases above;

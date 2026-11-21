@@ -68,6 +68,33 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Taken** | 21 November 2026, the coordinator, as the recommended reading: (a) and (b) yes, so a reader refuses such a message with `form`; (c) as the brief's contract of `ReadRefusal` states it. The codec does so |
 | **Decides** | The planner, for (b) and (c), which follow from rules that stand; the owner for (a), a rule of the outcome object. To be answered before S6, whose agent writes and reads these messages |
 
+### Q10. The behaviors of the COM worker that its Acceptance does not list one by one
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S9, review round 1 of the internal contract |
+| **Question** | The automated Acceptance of S9 names some lines of the worker and not others: that the executor's text is written byte for byte, that `{"ready":true}` is written, that `safeMode` reaches the executor of a Write, that every command gets a fresh executor that is released, that `parameters`, `callerKey` and `outcomeLimit` pass through, and that the next line is read only after the outcome is written. Does each need a test of its own? |
+| **Taken** | 21 November 2026, the coordinator, as the planner recommends: the Acceptance's line on every line of the internal contract covers them, so the test author writes them as tests of those lines |
+| **Decides** | The planner |
+
+### Q11. The cost of measuring UTF-8 in the executor
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S9, review round 1 of the internal contract |
+| **Question** | The compatibility mode 8.2.13 reportedly has no binary data functions, so the executor counts the UTF-8 bytes of its outcome character by character. For an outcome near its limit, 16 MiB by default and up to 64 MiB, that loop runs inside the transaction of a Write and holds its locks. Is the default of the outcome limit still right? |
+| **Taken** | 21 November 2026, the coordinator, as the planner recommends: a `CharCode` loop is accepted for S9. Its cost inside the transaction of a Write is measured on the lab machine before the default of the outcome limit is trusted, with a result near the limit and with many thousands of user messages, since the executor builds its texts by joining strings (S9 code review, round 1) |
+| **Decides** | The planner, with the figure of the lab; the owner if the default of the limit, a public option, has to change |
+
+### Q12. A commit that raises, and a transaction the script leaves open
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S9, the implementation step |
+| **Question** | Rule 5 names one way a Write's outcome cannot be known: the script ended the executor's transaction itself. Two more cases have no code. The executor's `CommitTransaction` may raise, so it cannot tell whether the Write was written. The script may also begin a nested transaction and leave it open; the executor then rolls everything back, and nothing was written. Which outcomes do they get? |
+| **Taken** | 21 November 2026, the coordinator, as the planner recommends, with no new code: a commit that raises is Unknown `transaction-ended`, whose meaning widens to "the script ended the transaction of its Write itself, or the commit raised"; a transaction left open is Failed `script-error`, with a fixed English sentence of the executor as its `errorText`, since 1C raised nothing. After round 1 of the code review the same holds for a Read: the executor rolls back every transaction a script left open, so none outlives its command in the session of the worker. The executor does so, and lab tests state it |
+| **Decides** | The owner: the meaning of a code and of `errorText` is public contract. Listed with the drafts of S9 |
+
 ## Answered
 
 ### Q1. Values of `policy.json` that its table does not mention

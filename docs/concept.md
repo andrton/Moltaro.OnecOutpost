@@ -107,6 +107,7 @@ A command travels like this:
 - **Read** runs the script under the read account of the base, outside a transaction. It
   is read-only only through the rights of that account. The administrator gives the read
   account no right to change data, and the console's check lists every such right it has.
+  A transaction that its script leaves open is rolled back, and the Read fails.
 - **Write** runs the script under the write account of the base, inside one 1C
   transaction. Either everything the script did is committed, or nothing, with the one
   exception that rule 5 names.
@@ -193,7 +194,7 @@ machine, as section 11 says.
      again and a repeat creates a new command.
    - An outcome is kept for its retention, 7 days by default. After that the key is free.
 5. **Failed means nothing was written.** A Write fails only when 1C rolled back its
-   transaction.
+   transaction, or when its script never started.
    - The executor checks the type of the result and the size of the whole outcome before
      it commits. The size of an outcome is the length of the UTF-8 text of its outcome
      object as it travels, with the result, the user messages and the error text, every
@@ -208,7 +209,8 @@ machine, as section 11 says.
    - The server never turns the outcome of a Write into Failed after the agent reported it.
    - A script that ends the executor's transaction itself, with `CommitTransaction` or
      `RollbackTransaction`, voids this rule for its Write. The executor reports Unknown
-     when it finds no active transaction after such a script.
+     when it finds no active transaction after such a script, and when its own commit
+     raises. A script that leaves a transaction of its own open is rolled back and fails.
 6. **An agent that is not connected is an error at once.** An agent counts as connected
    while the lease of its newest poll in the store has not run out. The lease is the poll
    timeout plus a grace, 10 seconds by default.

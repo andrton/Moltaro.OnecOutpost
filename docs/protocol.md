@@ -444,7 +444,7 @@ largest `CommandSizeLimit`, 16 MiB, therefore fits a poll answer (§10).
 | `kind` | `succeeded`, `failed`, `refused` or `unknown`. Only the server sets Expired and Unavailable |
 | `code` | `null` for `succeeded`; otherwise a code the table below allows for the kind and the mode |
 | `result` | For `succeeded`, any JSON value, `null` included, of at most 64 levels. `null` for every other kind |
-| `errorText` | The text of the error 1C raised, for `failed` with `script-error`; `null` otherwise |
+| `errorText` | The text of the error 1C raised, for `failed` with `script-error`, or the executor's own sentence when the script left a transaction of its own open; `null` otherwise |
 | `messages` | The user messages of 1C, an array of strings, for `succeeded` and `failed`; empty for `refused` and `unknown` |
 | `messagesTrimmed` | `true` when the executor trimmed the messages or the error text to fit the limit; `false` for `refused` and `unknown` |
 
@@ -453,16 +453,19 @@ largest `CommandSizeLimit`, 16 MiB, therefore fits a poll answer (§10).
 | Kind | Read | Write |
 | --- | --- | --- |
 | `succeeded` | Yes | Yes |
-| `failed` | `script-error`, `result-type`, `result-too-large`, `run-limit`, `lost` | `script-error`, `result-type`, `result-too-large`: only after 1C rolled back |
+| `failed` | `script-error`, `result-type`, `result-too-large`, `run-limit`, `lost`, `base-unreachable`, `connection-lost` | `script-error`, `result-type`, `result-too-large`: only after 1C rolled back; `base-unreachable`: the script never started |
 | `refused` | `not-served`, `not-addressed`, `protocol-version`, `malformed`, `expired`, `clock-skew` | The same |
-| `unknown` | None | `run-limit`, `agent-stopped`, `transaction-ended`, `result-too-large`, `result-type` |
+| `unknown` | None | `run-limit`, `agent-stopped`, `transaction-ended`, `result-too-large`, `result-type`, `connection-lost` |
 
 Every other combination is the server's, and an outcome that carries one is refused with
 `form`. A new code of an agent needs a new version of the protocol, or a server that knows
 it first.
 
 **The executor** may hand the agent only `succeeded`, `failed` with `script-error`,
-`result-type` or `result-too-large`, or, for a Write, `unknown` with `transaction-ended`.
+`result-type` or `result-too-large`, or, for a Write, `unknown` with `transaction-ended`: the
+script ended the transaction itself, or the commit raised. The COM worker writes
+`base-unreachable`, `connection-lost` and, for a text of the executor that holds a line
+break, `result-type` itself, in the same form.
 - **The executor checks its result before the commit of a Write.** A result that holds
   U+0000 or a lone surrogate, or that nests beyond 64 levels, fails with `result-type`.
 - **The executor cleans, then trims, its messages and its error text** before it writes

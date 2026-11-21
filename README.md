@@ -14,9 +14,14 @@ documentation. Only the checks work: the options of the server, the arguments of
 call, the outcome factories, and the rules of the agent's local policy file, which the
 agent program does not read yet. The protocol assembly holds the codec of the
 [wire protocol](docs/protocol.md): its messages, the signatures of commands, requests and
-answers, and the pairing proof, with their tests; no endpoint serves it yet. Everything
-else throws `NotSupportedException`: pairing, Read and Write, the endpoints of the agents
-and the migrations of the store. Nothing below works yet.
+answers, and the pairing proof, with their tests; no endpoint serves it yet. The COM worker
+runs scripts in 1C: it holds an external connection to one base and runs each command
+through the executor, an external data processor in `src/Executor`, in safe mode or
+without it. No agent starts it yet. Its tests run against a fake of the COM connection;
+its tests against a real 1C, in `src/Moltaro.OnecOutpost.OneC.Tests`, have not yet run on
+the lab machine, and the executor's `.epf` is not built yet. Everything else throws
+`NotSupportedException`: pairing, Read and Write, the endpoints of the agents and the
+migrations of the store. Nothing below works yet.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from

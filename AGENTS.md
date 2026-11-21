@@ -25,9 +25,10 @@ oldest platform supported is 8.3.17.1851.
 What exists today is the [concept](docs/concept.md), these rules, the development process,
 the build settings, and the public contract of the first stage in code: the server
 library, the protocol assembly and the agent program. Only the checks that need no
-implementation work, and the codec of the protocol with its signatures and pairing proof,
-which no endpoint serves yet: every operation of the server throws `NotSupportedException`,
-and the agent program starts and stops and does nothing else. The server is the one
+implementation work, the codec of the protocol with its signatures and pairing proof,
+which no endpoint serves yet, and the COM worker with the executor, which no agent starts
+yet: every operation of the server throws `NotSupportedException`, and the agent program
+starts and stops and does nothing else. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions
@@ -45,13 +46,14 @@ in code, tests, samples or documents.
 | `src` | The solution, every project and the build settings. Run `dotnet` from here |
 | `src/OneC.TestConfiguration` | The XML sources of the repository's own 1C test configuration, with a script that builds a base from them on the 1C cluster of the lab machine, through the Designer's command line, and the git-ignored `lab.local.json` of the lab. No built configuration or base is committed |
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
-| `docs/protocol.md` | Planned: the wire protocol, written with the sprint that introduces it |
+| `docs/protocol.md` | The wire protocol, extended by the sprint that introduces a part of it |
 | `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
 Each project is created by the sprint that first needs it, under the name the plan of the
-first epic fixes. The protocol, the server, the agent, the samples, the test support and
-the test projects of these three exist; the others are planned. Only the server is packed;
+first epic fixes. The protocol, the server, the agent, the COM worker, the executor's
+sources, the samples, the test support, the test projects of these four and the tests that
+need 1C exist; the others are planned. Only the server is packed;
 every other project is not.
 
 | Project | Contents |
@@ -66,7 +68,7 @@ every other project is not.
 | `Moltaro.OnecOutpost.Samples` | The samples of use: an ASP.NET Core application that embeds the server. Each runs to the end with `dotnet run` |
 | `Moltaro.OnecOutpost.Measurements` | Planned: the program that measures the latency target of the concept, run by hand, never in CI or in the tests |
 | `src/*.Tests` | Tests, one project per library or program |
-| `Moltaro.OnecOutpost.OneC.Tests` | Planned: the tests that need 1C, run only on the lab machine. It is not in the solution, so `dotnet test` from `src` never runs it; CI builds it and checks its format |
+| `Moltaro.OnecOutpost.OneC.Tests` | The tests that need 1C, run only on the lab machine. It is not in the solution, so `dotnet test` from `src` never runs it; CI builds it and checks its format |
 | `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake clock, the PostgreSQL fixture and the fake of the COM worker. Never shipped; no tests |
 
 The repository root holds only repository-level files. Code never lives there.
@@ -369,8 +371,7 @@ dotnet build Moltaro.OnecOutpost.OneC.Tests
 dotnet format Moltaro.OnecOutpost.OneC.Tests/Moltaro.OnecOutpost.OneC.Tests.csproj --verify-no-changes
 ```
 
-The last two lines apply once that project exists. On the lab machine, also from `src`, the
-tests that need 1C:
+On the lab machine, also from `src`, the tests that need 1C:
 
 ```bash
 dotnet test --project Moltaro.OnecOutpost.OneC.Tests
