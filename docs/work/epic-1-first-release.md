@@ -1570,6 +1570,16 @@ approval of this plan.
     Samples", "Layout" and "Working Rules", concept §3 "Rules" and §11, `process.md`,
     OD1, the epic's Acceptance, the test lane, "The lab machine", L1, S9, S10, S11, R17
     and R18 say so.
+  - **What S2 makes of this list, and what later sprints make** (the planner, 21 November
+    2026, by the owner's rules of that day). The list holds as a draft of the contract,
+    without waiting for the owner, who may overturn any item; the coordinator lists it for
+    the owner when S2 closes. S2 makes only what its codec makes true: **Sizes**, **Codes**,
+    the two "Edits that state nothing new", and in the concept the two sentences of rule 1
+    and of rule 5 on the size of an outcome. The items on `policy.json`, on the audit log
+    and the exception to principle 10 are in the brief of S6, which builds them. Every
+    other item under "The concept and `AGENTS.md`" and "The XML documentation" is made by
+    the sprint that builds the behavior it describes, S4 for the lease and S6 for the
+    agent; the planner writes it into that brief when the sprint is prepared.
   - **Changes of the public contract that come with `docs/protocol.md`,** for the owner's
     approval together with it, made in the contract step after that approval:
     - **Sizes.**
@@ -1596,72 +1606,6 @@ approval of this plan.
         `Server.Tests/Outcomes/OutcomeCodeTests.cs` to match, with the reason in the commit.
       - The XML documentation of `OutpostCodes.ResultType`, and the lists of codes in that
         of `OutpostOutcome.Refused` and `OutpostOutcome.Unknown`, follow both.
-    - **`policy.json`:**
-      - at most 256 bases;
-      - a new member `requestTimeout`: the agent's wait for an answer to `pair` or `outcome`,
-        and for the body of a poll answer, in the form of `runLimit`, from 10 seconds to 1
-        hour, 5 minutes when absent;
-      - the `proxy` row:
-        - the agent offers the proxy the computer's credentials by Kerberos only, never by
-          NTLM, so a machine outside a domain reaches only a proxy that asks for no
-          credentials;
-        - a URL with a user or a password is refused, which answers Q7;
-        - the example host is not a `.local` name;
-      - `retryDelayMax` gains a second meaning: a tenth of it is also the wait after an
-        answer to an older poll (§6.2).
-
-      `AgentPolicy`, `AgentPolicyReader` and their tests follow all four.
-    - **The audit log:**
-      - `connection` is recorded once per change of the state of the polls, which answers
-        to outcomes do not change, with the `reason` of §9: the code of a verified refusal,
-        `protocol-version`, `status-` and the HTTP status, or `unreachable`;
-      - the agent alone writes the log, holding `audit\lock` without sharing, one entry at a
-        time with the writer of §2, each ending with LF and on the disk before the next;
-        outbox files are written under a temporary name and renamed, through to the disk,
-        and read with `ReadOutcome`; a file that differs from its last `ended` gets a
-        matching one at a restart. The bullets marked *(S2)* in "The audit log" say so;
-      - a new entry `reservation`, with the members `agent` and `below`: the bound below
-        which the agent sends its poll numbers, recorded before it sends a number at or
-        above the last bound. The agent starts at or above the highest one of its own
-        identity. With none, it numbers its first poll 1; when the server answers that
-        poll as older, the log was cleared, and the agent records a reservation that
-        leaves no number and stops (§6.2). This is the owner's answer of 21 November 2026
-        on a cleared audit log;
-      - torn entries (§13): an entry counts as written only with its LF. At a start the
-        agent reads and cuts its log before it writes any entry, and cuts the last line of
-        a file when it lacks its LF or is not JSON. After a failed write it cuts the file
-        back to its length before that write, writes nothing more and stops. Any other line
-        it cannot read, an audit file it cannot open, an outbox file it cannot read, a
-        command with an `ended` but neither its file nor its `confirmed`, and a start with
-        no poll number left at or below 2⁶², make it record `started` with an error and
-        stop. The administrator pairs it anew, after moving `audit\` aside when the log
-        cannot be read, and the application revokes the old identity. The readers of the
-        log and of the outbox accept every depth and length their writer writes;
-      - the row of `ended` says that a later `ended` replaces an earlier one, and is
-        written after a refusal for size and at a restart, when the outbox file no longer
-        matches the last one;
-      - `refused` is recorded with the codes `signature` and `form` for commands that cannot
-        be trusted;
-      - a `refused` entry ends its command as `ended` does, and its Refused outcome is kept
-        in the outbox until it is confirmed;
-      - `received.parameters` is always an object;
-      - retention:
-        - a file's age counts from its last entry;
-        - no file is removed while it holds an entry of a command whose outcome is not
-          confirmed, or the highest `reservation` of the agent's identity;
-        - retention runs only right after a verified poll answer of the current run, and
-          only when the agent's clock is within a day of that answer's `time`. An agent
-          that has had no such answer since it started, or whose clock is further off,
-          removes nothing. So a clock moved ahead, by a hop that controls its time service
-          or by a fault, wipes nothing out;
-        - a file is removed when it is older than `auditRetentionDays` plus one day, so that
-          with the day of tolerance it is still older than `auditRetentionDays` by the
-          server's clock;
-        - entries written while the agent's clock was behind count as older by that much,
-          and may be removed early once the clock is right;
-        - so rule 2's "for at least a day", concept §5's "never for less than a day" and
-          the "Retention" bullet of "The audit log" ("never one younger than a day") each
-          add "by the agent's clock when it wrote them". D7 rests on the same.
     - **The concept and `AGENTS.md`:**
       - rule 1 says that verified bytes without a `protocol` and an `id` are only recorded,
         with `form`, since they name no command, and that its checks run in the order §7
@@ -1730,12 +1674,6 @@ approval of this plan.
       `LeaseGrace` and that a gone agent shows as connected at most for its lease, follows
       rule 6 as above. The rows of `PollTimeout` and `LeaseGrace` in the table of the
       options follow it too.
-    - **An exception to principle 10**, for the [register](exceptions.md): the agent's
-      wait of one second for `100 Continue` (§9) is a constant of the agent, the default of
-      .NET, not a member of `policy.json`. Its only effect is a second added to an outcome
-      sent through a hop that strips `Expect`, and nobody has a reason to change it. Since
-      S6, until permanent. The coordinator enters it under "Approved, not in force yet"
-      once the owner approves.
     - **The bullets marked *(S2)*** in "The public contract" and "The protocol" of this
       plan hold once the owner approves.
   - **Edits that state nothing new**, in the contract step:
@@ -2103,6 +2041,81 @@ as [Order](#order-and-why-these-splits) says.
       agent stop, recorded;
     - the program runs as a Windows service.
   - The documents step: `README.md` says that the agent works with a fake in place of 1C.
+- **Carried over from S2** (the planner, 21 November 2026): the changes of the public
+  contract that came with `docs/protocol.md` and that this sprint builds. They hold as a
+  draft; `AgentPolicy`, `AgentPolicyReader`, the audit log and their tests follow them.
+  - **`policy.json`:**
+    - at most 256 bases;
+    - a new member `requestTimeout`: the agent's wait for an answer to `pair` or `outcome`,
+      and for the body of a poll answer, in the form of `runLimit`, from 10 seconds to 1
+      hour, 5 minutes when absent;
+    - the `proxy` row:
+      - the agent offers the proxy the computer's credentials by Kerberos only, never by
+        NTLM, so a machine outside a domain reaches only a proxy that asks for no
+        credentials;
+      - a URL with a user or a password is refused, which answers Q7;
+      - the example host is not a `.local` name;
+    - `retryDelayMax` gains a second meaning: a tenth of it is also the wait after an
+      answer to an older poll (§6.2).
+
+    `AgentPolicy`, `AgentPolicyReader` and their tests follow all four.
+  - **The audit log:**
+    - `connection` is recorded once per change of the state of the polls, which answers
+      to outcomes do not change, with the `reason` of §9: the code of a verified refusal,
+      `protocol-version`, `status-` and the HTTP status, or `unreachable`;
+    - the agent alone writes the log, holding `audit\lock` without sharing, one entry at a
+      time with the writer of §2, each ending with LF and on the disk before the next;
+      outbox files are written under a temporary name and renamed, through to the disk,
+      and read with `ReadOutcome`; a file that differs from its last `ended` gets a
+      matching one at a restart. The bullets marked *(S2)* in "The audit log" say so;
+    - a new entry `reservation`, with the members `agent` and `below`: the bound below
+      which the agent sends its poll numbers, recorded before it sends a number at or
+      above the last bound. The agent starts at or above the highest one of its own
+      identity. With none, it numbers its first poll 1; when the server answers that
+      poll as older, the log was cleared, and the agent records a reservation that
+      leaves no number and stops (§6.2). This is the owner's answer of 21 November 2026
+      on a cleared audit log;
+    - torn entries (§13): an entry counts as written only with its LF. At a start the
+      agent reads and cuts its log before it writes any entry, and cuts the last line of
+      a file when it lacks its LF or is not JSON. After a failed write it cuts the file
+      back to its length before that write, writes nothing more and stops. Any other line
+      it cannot read, an audit file it cannot open, an outbox file it cannot read, a
+      command with an `ended` but neither its file nor its `confirmed`, and a start with
+      no poll number left at or below 2⁶², make it record `started` with an error and
+      stop. The administrator pairs it anew, after moving `audit\` aside when the log
+      cannot be read, and the application revokes the old identity. The readers of the
+      log and of the outbox accept every depth and length their writer writes;
+    - the row of `ended` says that a later `ended` replaces an earlier one, and is
+      written after a refusal for size and at a restart, when the outbox file no longer
+      matches the last one;
+    - `refused` is recorded with the codes `signature` and `form` for commands that cannot
+      be trusted;
+    - a `refused` entry ends its command as `ended` does, and its Refused outcome is kept
+      in the outbox until it is confirmed;
+    - `received.parameters` is always an object;
+    - retention:
+      - a file's age counts from its last entry;
+      - no file is removed while it holds an entry of a command whose outcome is not
+        confirmed, or the highest `reservation` of the agent's identity;
+      - retention runs only right after a verified poll answer of the current run, and
+        only when the agent's clock is within a day of that answer's `time`. An agent
+        that has had no such answer since it started, or whose clock is further off,
+        removes nothing. So a clock moved ahead, by a hop that controls its time service
+        or by a fault, wipes nothing out;
+      - a file is removed when it is older than `auditRetentionDays` plus one day, so that
+        with the day of tolerance it is still older than `auditRetentionDays` by the
+        server's clock;
+      - entries written while the agent's clock was behind count as older by that much,
+        and may be removed early once the clock is right;
+      - so rule 2's "for at least a day", concept §5's "never for less than a day" and
+        the "Retention" bullet of "The audit log" ("never one younger than a day") each
+        add "by the agent's clock when it wrote them". D7 rests on the same.
+  - **An exception to principle 10**, for the [register](exceptions.md): the agent's
+    wait of one second for `100 Continue` (§9) is a constant of the agent, the default of
+    .NET, not a member of `policy.json`. Its only effect is a second added to an outcome
+    sent through a hop that strips `Expect`, and nobody has a reason to change it. Since
+    S6, until permanent. The coordinator enters it under "Approved, not in force yet"
+    once the owner approves.
 - **Out of scope.** COM, the executor, the console.
 
 ### S7 · Several nodes and lost messages

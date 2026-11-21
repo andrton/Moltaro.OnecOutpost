@@ -21,7 +21,8 @@ record of its own in `docs/decisions`, created when the first such decision is.
 The coordinator picks the track for each sprint and the plan records it. When in doubt, full.
 
 Every sprint, on any track, is reviewed by an independent reviewer, and the review
-repeats after the fixes until it finds nothing that blocks; see [Review](#review).
+repeats after the fixes until it finds nothing that blocks or reaches its limit of rounds;
+see [Review](#review).
 
 ## Roles
 
@@ -243,7 +244,7 @@ goes wrong because of it: a concrete failure or a concrete cost. Then its severi
 | --- | --- | --- |
 | **P1** | Wrong result: a command run without a valid signature, twice under one caller key, after its deadline or against the local policy; an outcome given to the caller of another command; an unknown outcome reported as known; a secret leaked; a dead agent reported as connected; a guarantee of the concept or the contract broken; a security problem; the build or a test fails | Yes |
 | **P2** | An accepted decision or an architectural principle is violated; a stated behavior has no test; a concurrency or lifetime hazard; the contract changed without approval | Yes |
-| **P3** | It will cost later: duplication, unclear ownership or naming, missing or misleading public documentation, needless complexity, the quality priorities of the zone ignored | Yes |
+| **P3** | It will cost later: duplication, unclear ownership or naming, missing or misleading public documentation, needless complexity, the quality priorities of the zone ignored | In code, yes; in a document, no ("Rounds") |
 | **P4** | A suggestion or a matter of taste | No; listed for the coordinator |
 
 A finding that names no rule and no failure is P4. A reviewer does not widen the scope:
