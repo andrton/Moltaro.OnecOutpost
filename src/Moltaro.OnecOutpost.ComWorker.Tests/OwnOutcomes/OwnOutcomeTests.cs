@@ -1,6 +1,5 @@
 using System.Text;
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.OwnOutcomes;
 
@@ -21,7 +20,7 @@ public sealed class OwnOutcomeTests
         { "Write", ExecutorLine.Succeeded + "\n", "unknown" },
     };
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Read")]
     [InlineData("Write")]
     public void An_executor_that_does_not_open_gives_failed_base_unreachable_and_exit_code_2(string mode)
@@ -42,7 +41,7 @@ public sealed class OwnOutcomeTests
         Assert.Equal(1, session.OpenAttempts);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Read", "failed")]
     [InlineData("Write", "unknown")]
     public void A_run_that_throws_gives_connection_lost_and_exit_code_3(string mode, string kind)
@@ -62,7 +61,7 @@ public sealed class OwnOutcomeTests
         Assert.Single(session.Executors);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_text_of_the_failure_of_a_run_that_throws_goes_to_the_diagnostics_only()
     {
         FakeSession session = new(() => throw new InvalidOperationException("The fake session ended."));
@@ -78,7 +77,7 @@ public sealed class OwnOutcomeTests
     }
 
     // The session is whole, so the worker goes on: the next command runs in a fresh executor of the same session.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(TextsWithALineBreak))]
     public void A_text_of_run_with_a_line_break_gives_result_type_and_the_worker_goes_on(
         string mode,

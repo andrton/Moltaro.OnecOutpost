@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.SafeMode;
 
@@ -8,7 +7,7 @@ namespace Moltaro.OnecOutpost.ComWorker.Tests.SafeMode;
 [Trait("Requires", "Windows")]
 public sealed class SafeModeTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_read_worker_told_to_run_without_safe_mode_ends_with_exit_code_1_and_writes_nothing()
     {
         FakeSession session = new();
@@ -26,7 +25,7 @@ public sealed class SafeModeTests
         Assert.False(string.IsNullOrWhiteSpace(run.Diagnostics));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_read_worker_opens_each_executor_from_the_executor_of_its_connection_line_in_safe_mode()
     {
         FakeSession session = new();
@@ -43,7 +42,7 @@ public sealed class SafeModeTests
         Assert.All(session.Executors, executor => Assert.True(executor.SafeMode));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public void A_write_worker_opens_each_executor_with_the_safe_mode_of_its_connection_line(bool safeMode)

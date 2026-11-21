@@ -138,8 +138,8 @@ public sealed class OutpostOutcome
     /// <param name="commandId">The identity of the command.</param>
     /// <param name="code">
     /// One of <see cref="OutpostCodes.ScriptError"/>, <see cref="OutpostCodes.ResultType"/>,
-    /// <see cref="OutpostCodes.ResultTooLarge"/>, <see cref="OutpostCodes.RunLimit"/> and
-    /// <see cref="OutpostCodes.Lost"/>.
+    /// <see cref="OutpostCodes.ResultTooLarge"/>, <see cref="OutpostCodes.RunLimit"/>, <see cref="OutpostCodes.Lost"/>,
+    /// <see cref="OutpostCodes.BaseUnreachable"/> and <see cref="OutpostCodes.ConnectionLost"/>.
     /// </param>
     /// <param name="errorText">The text of the error that 1C raised, for <see cref="OutpostCodes.ScriptError"/>.</param>
     /// <param name="messages">The user messages of 1C, copied.</param>
@@ -222,8 +222,8 @@ public sealed class OutpostOutcome
     /// <param name="code">
     /// One of <see cref="OutpostCodes.ResultType"/>, <see cref="OutpostCodes.ResultTooLarge"/>,
     /// <see cref="OutpostCodes.RunLimit"/>, <see cref="OutpostCodes.Revoked"/>,
-    /// <see cref="OutpostCodes.Disconnected"/>, <see cref="OutpostCodes.AgentStopped"/> and
-    /// <see cref="OutpostCodes.TransactionEnded"/>.
+    /// <see cref="OutpostCodes.Disconnected"/>, <see cref="OutpostCodes.AgentStopped"/>,
+    /// <see cref="OutpostCodes.TransactionEnded"/> and <see cref="OutpostCodes.ConnectionLost"/>.
     /// </param>
     /// <returns>The outcome.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="code"/> is <see langword="null"/>.</exception>

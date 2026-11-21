@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Output;
 
@@ -12,7 +11,7 @@ public sealed class StandardOutputTests
 {
     // Every kind of line the worker writes: ready, an outcome of the executor, an outcome of its own after which it goes
     // on, and one after which it ends.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_standard_output_carries_nothing_but_the_lines()
     {
         FakeSession session = new(

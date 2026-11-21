@@ -2,7 +2,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Commands;
 
@@ -43,7 +42,7 @@ public sealed class WriteTests
         { "Result = \"\";\nFor Number = 1 To 2048 Do\n    Result = Result + \"x\";\nEndDo;", "result-too-large" },
     };
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_write_creates_and_posts_a_document_of_the_test_configuration()
     {
         string description = TestBaseScripts.NewDescription();
@@ -71,7 +70,7 @@ public sealed class WriteTests
         Assert.True(record.GetProperty("Receipt").GetBoolean());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_write_whose_script_raises_an_error_rolls_back()
     {
         string parameters = new JsonObject { ["description"] = TestBaseScripts.NewDescription() }.ToJsonString();
@@ -89,7 +88,7 @@ public sealed class WriteTests
         Assert.Equal(0, await CountProductsAsync(parameters));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(EndsThatFailTheCheckBeforeTheCommit))]
     public async Task A_result_of_a_wrong_type_or_too_large_rolls_the_write_back_before_the_commit(string end, string code)
     {
@@ -106,7 +105,7 @@ public sealed class WriteTests
         Assert.Equal(0, await CountProductsAsync(parameters));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("CommitTransaction();")]
     [InlineData("RollbackTransaction();")]
     public async Task A_script_that_ends_the_transaction_itself_gives_unknown_transaction_ended(string script)

@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Outcomes;
 
@@ -20,7 +19,7 @@ public sealed class AgentOutcomeTests
         AssertAllowedExactlyAsTheTableSays(mode, kind, code);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(AgentOutcomesOfTheConnectionTo1C))]
     public void An_agent_may_send_the_outcomes_of_the_connection_to_1C_that_the_table_gives_its_mode(
         string mode,

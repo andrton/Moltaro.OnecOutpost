@@ -51,7 +51,7 @@ internal static class OutpostOutcomeCodes
     // OutpostOutcome use them, so that the fit of a code to a kind lives once. They throw nothing.
     public static bool FitsFailed(string code)
     {
-        return code is ScriptError or ResultType or ResultTooLarge or RunLimit or Lost;
+        return code is ScriptError or ResultType or ResultTooLarge or RunLimit or Lost or BaseUnreachable or ConnectionLost;
     }
 
     public static bool FitsRefused(string code)
@@ -78,7 +78,8 @@ internal static class OutpostOutcomeCodes
             or Revoked
             or Disconnected
             or AgentStopped
-            or TransactionEnded;
+            or TransactionEnded
+            or ConnectionLost;
     }
 
     // Answers the table "The outcomes an agent may send, by mode" of §8: true when an agent may send an outcome of
@@ -90,11 +91,18 @@ internal static class OutpostOutcomeCodes
         {
             OutpostAgentOutcomeKindEnum.Succeeded => code is null,
 
-            // A Write fails only after 1C rolled back, so only these codes can say so.
+            // A Write fails only after 1C rolled back, or when its script never started, so only these codes can say so.
             OutpostAgentOutcomeKindEnum.Failed when mode == OutpostModeEnum.Write =>
-                code is ScriptError or ResultType or ResultTooLarge,
+                code is ScriptError or ResultType or ResultTooLarge or BaseUnreachable,
 
-            OutpostAgentOutcomeKindEnum.Failed => code is ScriptError or ResultType or ResultTooLarge or RunLimit or Lost,
+            OutpostAgentOutcomeKindEnum.Failed => code
+                is ScriptError
+                or ResultType
+                or ResultTooLarge
+                or RunLimit
+                or Lost
+                or BaseUnreachable
+                or ConnectionLost,
 
             OutpostAgentOutcomeKindEnum.Refused => code
                 is NotServed
@@ -110,7 +118,8 @@ internal static class OutpostOutcomeCodes
                 or AgentStopped
                 or TransactionEnded
                 or ResultTooLarge
-                or ResultType,
+                or ResultType
+                or ConnectionLost,
 
             _ => false,
         };

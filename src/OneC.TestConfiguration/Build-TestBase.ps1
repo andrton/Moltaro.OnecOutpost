@@ -7,9 +7,10 @@
 # It reads lab.local.json next to this script, and creates that file with generated passwords when it is missing.
 # It asks for the password of the PostgreSQL user and keeps it nowhere itself; the 1C cluster stores it with the
 # registration of the base, as it does for every base. Then it drops the test base on the cluster, creates it again
-# with its database, loads the configuration of the Configuration folder into it with the Designer, and creates the
-# users through the COM connector. The passwords never reach a command line, a log or the screen. Exit code 0: the
-# base is ready; 1: the script stopped, and says why.
+# with its database, loads the configuration of the Configuration folder into it with the Designer, builds the
+# executor src\Executor\OutpostExecutor.epf from its sources with the Designer, and creates the users through the COM
+# connector. The passwords never reach a command line, a log or the screen. Exit code 0: the base and the executor
+# are ready; 1: the script stopped, and says why.
 #
 # The base is a client-server one because a lab machine gets its licences from its 1C server, which gives none to
 # whoever opens a file base.
@@ -21,6 +22,11 @@ $platformVersion = "8.3.17.1851"
 
 $labPath = Join-Path $PSScriptRoot "lab.local.json"
 $sourcesPath = Join-Path $PSScriptRoot "Configuration"
+
+# The executor, the external data processor that the lab tests open: the root file of its XML sources, and the
+# file the Designer builds from them.
+$executorSourcesPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\Executor\OutpostExecutor.xml"))
+$executorPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\Executor\OutpostExecutor.epf"))
 
 # The name of the test base on the cluster starts with this, and the script drops no base of another name. Dropping
 # a base also deletes the database that its registration names, whatever that name is, so an outpost_ base on the
@@ -409,12 +415,25 @@ try {
     Write-Step "Loading the configuration and updating the database configuration"
     Invoke-Platform $designer ("DESIGNER /S `"" + $testBase.server + "\" + $testBase.database + "`" /LoadConfigFromFiles `"" + $sourcesPath + "`" /UpdateDBCfg /DisableStartupDialogs /DisableStartupMessages")
 
+    # The Designer needs a base to run in, and this one has no users yet, so no password reaches its command line.
+    # The executor of an earlier run is deleted first, so that a Designer that ends with 0 and writes nothing cannot
+    # leave it in place of the one built from the sources.
+    Write-Step ("Building the executor " + $executorPath)
+    if (Test-Path -LiteralPath $executorPath) {
+        Remove-Item -LiteralPath $executorPath
+    }
+    Invoke-Platform $designer ("DESIGNER /S `"" + $testBase.server + "\" + $testBase.database + "`" /LoadExternalDataProcessorOrReportFromFiles `"" + $executorSourcesPath + "`" `"" + $executorPath + "`" /DisableStartupDialogs /DisableStartupMessages")
+    if (-not (Test-Path -LiteralPath $executorPath)) {
+        throw ("1cv8.exe ended with exit code 0 and did not write " + $executorPath + "; its log, if it wrote one, is above.")
+    }
+
     Write-Step "Creating the users"
     New-TestUsers $connector $testBase
 
     Write-Host ""
     Write-Host ("The test base is ready: " + $testBase.server + " / " + $testBase.database)
     Write-Host ("Its users: " + $testBase.administrator.user + ", " + $testBase.read.user + ", " + $testBase.write.user + ". Their passwords are in " + $labPath + ".")
+    Write-Host ("The executor is ready: " + $executorPath)
 }
 catch {
     $message = $_.Exception.GetBaseException().Message

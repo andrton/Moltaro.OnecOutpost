@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.CommandLine;
 
@@ -16,7 +15,7 @@ public sealed class CommandLineTests
         new[] { "test", "read", "write" },
     };
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(CommandLinesOtherThanABaseKeyAndAMode))]
     public async Task A_command_line_other_than_a_base_key_and_a_mode_ends_the_worker_with_exit_code_1(string[] arguments)
     {

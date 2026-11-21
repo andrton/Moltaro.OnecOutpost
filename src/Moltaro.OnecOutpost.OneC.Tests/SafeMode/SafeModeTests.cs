@@ -1,6 +1,5 @@
 using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.SafeMode;
 
@@ -16,7 +15,7 @@ public sealed class SafeModeTests
 
     // The same script reads the file without safe mode, so that the refusal is that of safe mode and nothing else. The
     // file is the test's own, which the account of the test, and so the worker, may read.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Safe_mode_refuses_a_file_operation_that_runs_without_it()
     {
         string line = $"outpost-test {Guid.NewGuid():N}";

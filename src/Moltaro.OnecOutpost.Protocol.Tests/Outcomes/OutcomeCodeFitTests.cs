@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Outcomes;
 
@@ -53,7 +52,7 @@ public sealed class OutcomeCodeFitTests
         Assert.Equal(unknown, OutpostOutcomeCodes.FitsUnknown(code));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(CodeTableOfTheConnectionTo1C))]
     public void A_code_of_the_connection_to_1C_fits_exactly_its_kinds(string code, bool failed, bool refused, bool unknown)
     {

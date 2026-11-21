@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Commands;
 
@@ -9,7 +8,7 @@ namespace Moltaro.OnecOutpost.ComWorker.Tests.Commands;
 [Trait("Requires", "Windows")]
 public sealed class NestingTests
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(64)]
     [InlineData(71)]
     public void Parameters_that_keep_the_line_within_72_levels_reach_the_executor(int levels)
@@ -27,7 +26,7 @@ public sealed class NestingTests
         Assert.Equal(LineText.Nested(levels), executorRun.ParametersJson);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_command_line_deeper_than_72_levels_cannot_be_read_and_ends_the_worker_with_exit_code_1()
     {
         FakeSession session = new();

@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Secrets;
 
@@ -16,7 +15,7 @@ public sealed class PasswordTests
     // Where the failure occurs: the session, the executor or the call of Run.
     public static TheoryData<string> PlacesOfAFailure => ["connect", "open executor", "run"];
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(PlacesOfAFailure))]
     public void The_password_appears_in_no_output_when_the_text_of_a_failure_quotes_it(string place)
     {
@@ -26,7 +25,7 @@ public sealed class PasswordTests
         Assert.DoesNotContain(LineText.Password, run.Diagnostics);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(PlacesOfAFailure))]
     public void The_text_of_a_failure_goes_to_the_diagnostics_with_the_password_replaced_by_a_placeholder(string place)
     {

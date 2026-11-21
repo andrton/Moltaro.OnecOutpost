@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.ScriptContract;
 
@@ -8,7 +7,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.ScriptContract;
 // lives on between commands (concept §3, "The two commands").
 public sealed class ScriptTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task CallerKey_holds_the_caller_key_of_a_write()
     {
         string callerKey = $"caller-key-{Guid.NewGuid():N}";
@@ -20,7 +19,7 @@ public sealed class ScriptTests
         Assert.Equal(callerKey, write.Result.GetString());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task CallerKey_is_Undefined_for_a_command_without_one()
     {
         await using WorkerProcess reader = await LabWorkers.TestBaseReadAsync();
@@ -31,7 +30,7 @@ public sealed class ScriptTests
         Assert.True(read.Result.GetBoolean());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_script_that_declares_a_procedure_is_refused()
     {
         await using WorkerProcess reader = await LabWorkers.TestBaseReadAsync();
@@ -42,7 +41,7 @@ public sealed class ScriptTests
     }
 
     // The number of the session in the base is the same for two commands of one worker, and another worker has another.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_session_of_a_worker_lives_on_between_its_commands()
     {
         const string Script = "Result = InfoBaseSessionNumber();";

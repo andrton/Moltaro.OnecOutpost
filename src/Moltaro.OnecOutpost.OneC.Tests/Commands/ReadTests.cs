@@ -1,7 +1,6 @@
 using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Commands;
 
@@ -30,7 +29,7 @@ public sealed class ReadTests
         """;
 
     // The rows are those a Write of the test created a moment before.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_read_query_returns_rows()
     {
         string parameters = new JsonObject { ["description"] = TestBaseScripts.NewDescription() }.ToJsonString();
@@ -49,7 +48,7 @@ public sealed class ReadTests
         Assert.NotEqual(read.Result[0].GetProperty("Code").GetString(), read.Result[1].GetProperty("Code").GetString());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_read_account_cannot_write()
     {
         string parameters = new JsonObject { ["description"] = TestBaseScripts.NewDescription() }.ToJsonString();

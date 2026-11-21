@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Secrets;
 
@@ -19,7 +18,7 @@ public sealed class FirstLineTests
     ];
 
     // The executor fails its first Run, so that the worker has something to write to its diagnostics.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_first_input_line_appears_in_no_output()
     {
         string connection = LineText.Connection().ToString();
@@ -36,7 +35,7 @@ public sealed class FirstLineTests
         Assert.DoesNotContain(connection, run.Output.Text);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(ConnectionLinesThatCannotBeRead))]
     public void A_first_line_that_cannot_be_read_appears_in_no_output_and_neither_does_its_password(string connection)
     {

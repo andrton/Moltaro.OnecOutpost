@@ -1,6 +1,5 @@
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Connection;
 
@@ -8,7 +7,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Connection;
 // and an executor that does not open gives Failed base-unreachable and exit code 2 (the brief of S9, "The lines").
 public sealed class ConnectionTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_wrong_password_gives_ready_false_and_ends_the_worker_with_exit_code_2_without_the_password_in_its_output()
     {
         LabTestBase testBase = LabFile.Read().TestBase;
@@ -27,7 +26,7 @@ public sealed class ConnectionTests
         Assert.DoesNotContain(wrongPassword, worker.Diagnostics);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_executor_that_does_not_open_gives_failed_base_unreachable_and_ends_the_worker_with_exit_code_2()
     {
         LabTestBase testBase = LabFile.Read().TestBase;

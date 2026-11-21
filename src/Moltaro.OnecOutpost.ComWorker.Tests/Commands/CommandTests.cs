@@ -1,6 +1,5 @@
 using System.Text;
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Commands;
 
@@ -10,7 +9,7 @@ namespace Moltaro.OnecOutpost.ComWorker.Tests.Commands;
 [Trait("Requires", "Windows")]
 public sealed class CommandTests
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Read", "read")]
     [InlineData("Write", "write")]
     public void A_command_gives_the_executor_the_mode_of_the_worker_its_script_and_its_outcome_limit(
@@ -34,7 +33,7 @@ public sealed class CommandTests
 
     // The worker passes the text of the parameters as it received it: its white space, its escapes and the notation of
     // its numbers stay as they were.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_parameters_reach_the_executor_as_the_text_the_worker_received()
     {
         const string Parameters = """{ "b" : [1, 2.50, 1E2, {"c":null}], "a":"é\"\/", "d":"жёлтый 😀" }""";
@@ -50,7 +49,7 @@ public sealed class CommandTests
         Assert.Equal(Parameters, run.ParametersJson);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("\"order-42\"", "order-42")]
     [InlineData("\"\\u0437\\u0430\\u043a\\u0430\\u0437\"", "заказ")]
     [InlineData("null", null)]
@@ -70,7 +69,7 @@ public sealed class CommandTests
         Assert.Equal(callerKeyOfTheExecutor, run.CallerKey);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Each_command_gets_a_fresh_executor_that_is_disposed_once_after_its_run_and_before_the_next_is_opened()
     {
         FakeSession session = new();
@@ -89,7 +88,7 @@ public sealed class CommandTests
 
     // Non-ASCII text, a character outside the Basic Multilingual Plane, escapes that a JSON writer would write otherwise,
     // and white space that it would leave out: a worker that read and wrote the text again would change it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_outcome_is_written_as_the_text_the_executor_returned_byte_for_byte_with_its_LF()
     {
         string first = ExecutorLine.Of(
@@ -109,7 +108,7 @@ public sealed class CommandTests
         Assert.Equal(Encoding.UTF8.GetBytes("{\"ready\":true}\n" + first + "\n" + second + "\n"), run.Output.Bytes);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_outcome_reaches_the_output_in_one_write_with_its_LF()
     {
         string text = ExecutorLine.Of(
@@ -128,7 +127,7 @@ public sealed class CommandTests
 
     // AgentInput sends a line only once the worker answered the line before it, as the agent does, and records a line
     // the worker took earlier.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Read")]
     [InlineData("Write")]
     public void The_worker_takes_the_next_line_only_after_it_wrote_the_answer_to_the_line_before_it(string mode)

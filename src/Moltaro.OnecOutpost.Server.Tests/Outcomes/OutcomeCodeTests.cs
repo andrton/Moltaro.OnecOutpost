@@ -1,5 +1,3 @@
-using Moltaro.OnecOutpost.TestSupport;
-
 namespace Moltaro.OnecOutpost.Server.Tests.Outcomes;
 
 // The factories accept a code only when it is one of OutpostCodes and belongs to the kind of the outcome, by the table
@@ -51,7 +49,7 @@ public sealed class OutcomeCodeTests
         AssertAcceptedOnlyByTheFactoriesOfItsKinds(code, failed, refused, unknown);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(CodeTableOfTheConnectionTo1C))]
     public void A_code_of_the_connection_to_1C_is_accepted_by_the_factories_of_its_kinds_and_refused_by_the_others(
         string code,

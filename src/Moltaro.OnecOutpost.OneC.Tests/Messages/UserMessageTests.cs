@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Messages;
 
@@ -19,7 +18,7 @@ public sealed class UserMessageTests
         Result = 1;
         """;
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task User_messages_arrive_in_their_order_with_their_own_command_only()
     {
         await using WorkerProcess reader = await LabWorkers.TestBaseReadAsync();
@@ -36,7 +35,7 @@ public sealed class UserMessageTests
     }
 
     // 200 messages of 100 characters are about 20 000 bytes, far beyond a limit of 4096.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task User_messages_beyond_the_outcome_limit_are_trimmed_to_fit_it()
     {
         await using WorkerProcess reader = await LabWorkers.TestBaseReadAsync();

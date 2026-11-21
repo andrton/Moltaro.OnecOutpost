@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.ScriptContract;
 
@@ -32,7 +31,7 @@ public sealed class ParametersTests
         Result = Checks;
         """;
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Parameters_maps_JSON_as_the_concept_says()
     {
         await using WorkerProcess reader = await LabWorkers.TestBaseReadAsync();
@@ -45,7 +44,7 @@ public sealed class ParametersTests
         Assert.All(checks, check => Assert.True(check.Value.GetBoolean(), check.Name));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task No_parameters_are_an_empty_Map()
     {
         await using WorkerProcess reader = await LabWorkers.TestBaseReadAsync();

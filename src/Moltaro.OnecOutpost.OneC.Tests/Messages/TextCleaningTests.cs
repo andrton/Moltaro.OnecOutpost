@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Messages;
 
@@ -36,7 +35,7 @@ public sealed class TextCleaningTests
         { "Raise Text;", "failed", "script-error" },
     };
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task U0000_and_a_lone_surrogate_in_the_messages_and_the_error_text_arrive_as_UFFFD_where_they_were()
     {
         await using WorkerProcess reader = await LabWorkers.TestBaseReadAsync();
@@ -52,7 +51,7 @@ public sealed class TextCleaningTests
 
     // The limits 1024 to 1027 move the point of trimming over the four bytes of a pair, so that one of them falls
     // inside a pair whatever the executor counts.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(TextsTrimmedAtAPair))]
     public async Task A_text_trimmed_at_a_character_outside_the_Basic_Multilingual_Plane_keeps_the_pair_whole(
         string statement,

@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.Protocol.Tests.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -104,7 +103,7 @@ public sealed class OutcomeObjectTests
         AssertReadOnlyWhenAnAgentMaySendIt(mode, kind, code);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(AgentOutcomesOfTheConnectionTo1C))]
     public void An_outcome_with_a_code_of_the_connection_to_1C_that_an_agent_may_send_is_read(
         string? mode,

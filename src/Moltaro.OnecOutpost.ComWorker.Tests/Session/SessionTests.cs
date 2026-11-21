@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Session;
 
@@ -8,7 +7,7 @@ namespace Moltaro.OnecOutpost.ComWorker.Tests.Session;
 [Trait("Requires", "Windows")]
 public sealed class SessionTests
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Read")]
     [InlineData("Write")]
     public void A_worker_whose_session_opens_writes_ready_true(string mode)
@@ -21,7 +20,7 @@ public sealed class SessionTests
         Assert.Equal("{\"ready\":true}\n", run.Output.Text);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_connector_gets_the_location_the_user_and_the_password_of_the_connection_line_with_their_escapes_undone()
     {
         const string Location = "File=\"C:\\Bases\\Склад\";";
@@ -38,7 +37,7 @@ public sealed class SessionTests
         Assert.Equal((Location, User, Password), Assert.Single(connector.Connections));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Read")]
     [InlineData("Write")]
     public void A_session_that_does_not_open_gives_ready_false_and_exit_code_2_and_runs_no_command(string mode)
@@ -57,7 +56,7 @@ public sealed class SessionTests
         Assert.Equal(0, session.OpenAttempts);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_text_of_the_failure_of_a_session_that_does_not_open_goes_to_the_diagnostics()
     {
         FakeConnector connector = new(new FakeSession())
@@ -70,7 +69,7 @@ public sealed class SessionTests
         Assert.Contains("The fake refused the session.", run.Diagnostics);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void One_session_serves_every_command_of_the_worker_and_is_disposed_once_when_the_input_ends()
     {
         FakeSession session = new();

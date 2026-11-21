@@ -2,7 +2,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.TypicalBases;
 
@@ -51,7 +50,7 @@ public sealed class RepostingTests
         Document.Write(DocumentWriteMode.Posting);
         """;
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_latest_posted_document_posted_again_by_the_tunnel_has_the_movements_it_had_before()
     {
         IReadOnlyList<LabTypicalBase> typicalBases = LabFile.Read().TypicalBases;

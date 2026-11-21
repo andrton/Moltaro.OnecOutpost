@@ -1,6 +1,5 @@
 using System.Text;
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Input;
 
@@ -9,7 +8,7 @@ namespace Moltaro.OnecOutpost.ComWorker.Tests.Input;
 [Trait("Requires", "Windows")]
 public sealed class EndOfInputTests
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Read")]
     [InlineData("Write")]
     public void The_end_of_the_input_before_the_first_line_ends_the_worker_with_exit_code_0_and_writes_nothing(string mode)
@@ -23,7 +22,7 @@ public sealed class EndOfInputTests
         Assert.Empty(connector.Connections);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_end_of_the_input_after_the_connection_line_ends_the_worker_with_exit_code_0_after_ready()
     {
         FakeSession session = new();
@@ -36,7 +35,7 @@ public sealed class EndOfInputTests
     }
 
     // AgentInput gives the end of the input as soon as the worker asks for more after the command line.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Read")]
     [InlineData("Write")]
     public void The_end_of_the_input_right_after_a_command_ends_the_worker_with_exit_code_0_once_its_outcome_is_written(
@@ -54,7 +53,7 @@ public sealed class EndOfInputTests
         Assert.Equal(Encoding.UTF8.GetBytes("{\"ready\":true}\n" + ExecutorLine.Succeeded + "\n"), run.Output.Bytes);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_connection_line_without_its_LF_at_the_end_of_the_input_is_a_line()
     {
         FakeConnector connector = new(new FakeSession());
@@ -69,7 +68,7 @@ public sealed class EndOfInputTests
         Assert.Single(connector.Connections);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_command_line_without_its_LF_at_the_end_of_the_input_is_a_line()
     {
         FakeSession session = new();

@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.ScriptContract;
 
@@ -18,7 +17,7 @@ public sealed class ResultTests
         { "Value = 1;", "null" },
     };
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_date_in_the_result_is_written_without_an_offset()
     {
         await using WorkerProcess reader = await LabWorkers.TestBaseReadAsync();
@@ -30,7 +29,7 @@ public sealed class ResultTests
     }
 
     // A script that sets no result leaves it Undefined.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(ResultsWrittenAsNull))]
     public async Task Undefined_and_Null_in_the_result_are_written_as_null(string script, string result)
     {
@@ -43,7 +42,7 @@ public sealed class ResultTests
         Assert.True(JsonElement.DeepEquals(expected.RootElement, read.Result), read.ToString());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_reference_in_the_result_of_a_read_fails_with_result_type()
     {
         await using WorkerProcess reader = await LabWorkers.TestBaseReadAsync();

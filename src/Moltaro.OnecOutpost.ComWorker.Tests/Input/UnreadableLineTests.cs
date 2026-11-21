@@ -1,6 +1,5 @@
 using System.Text;
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Input;
 
@@ -54,7 +53,7 @@ public sealed class UnreadableLineTests
         LineText.Command().With("outcomeLimit", "null").ToString(),
     ];
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(ConnectionLinesThatCannotBeRead))]
     public void A_connection_line_that_cannot_be_read_ends_the_worker_with_exit_code_1_and_a_reason_and_writes_nothing(
         string line)
@@ -70,7 +69,7 @@ public sealed class UnreadableLineTests
     }
 
     // The command before the line keeps its outcome; the line and the command after it run nothing.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(CommandLinesThatCannotBeRead))]
     public void A_command_line_that_cannot_be_read_ends_the_worker_with_exit_code_1_and_a_reason_and_is_not_skipped(
         string line)
