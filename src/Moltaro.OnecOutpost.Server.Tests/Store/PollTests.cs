@@ -16,7 +16,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 {
     private const int ClockSkewSeconds = 120;
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task FindAgentAsync_gives_the_row_of_an_agent_and_null_for_an_identity_the_store_does_not_know()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -32,7 +32,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         Assert.Null(await store.FindAgentAsync(Guid.NewGuid(), cancellationToken));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_poll_that_becomes_the_newest_records_its_number_the_node_time_its_version_and_its_bases()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -68,7 +68,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // The lease ends at the earlier of two moments: the recording plus the hold and the grace, and the signed time plus
     // the skew, the hold and the grace (§6.2). A poll on time grants the first; one whose time is behind the node's by
     // more than the skew grants less, by the part of its lag beyond the skew.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0, 0)]
     [InlineData(ClockSkewSeconds + 7, 7)]
     public async Task The_lease_ends_at_the_hold_plus_the_grace_after_the_recording_less_the_part_of_the_lag_beyond_the_skew(
@@ -104,7 +104,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 
     // The older poll comes a minute later and declares another base, with another version: a poll that counted as newer
     // would record its time, its lease and its version, replace the bases and claim the other key.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_older_poll_changes_nothing_and_gets_the_newest_number_with_the_lists_of_the_newest_poll()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -132,7 +132,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 
     // The replay comes a minute after the poll: a store that counted it as newer would record its time and its lease
     // again.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_exact_replay_of_the_newest_poll_changes_nothing_and_gets_the_number_of_that_poll()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -154,7 +154,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         Assert.Equal(before.Lines, (await schema.TakeSnapshotAsync(cancellationToken)).Lines);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_newer_poll_replaces_the_bases_of_its_agent_whole()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -180,7 +180,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 
     // Concept rule 13: the polls of an agent that is not paired take nothing. The poll declares a key that no agent
     // holds, which a poll that was recorded would claim.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(OutpostAgentStateEnum.Pending)]
     [InlineData(OutpostAgentStateEnum.Revoked)]
     public async Task A_poll_of_an_agent_that_is_not_paired_changes_nothing_and_says_revoked(OutpostAgentStateEnum agentState)
@@ -216,7 +216,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     }
 
     // Another agent holds one of the keys, which is claimed for this one.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_state_of_the_newest_poll_has_no_newest_number_and_the_lists_of_the_keys_that_poll_declared()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -238,7 +238,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     }
 
     // The newer poll no longer declares the key of the first, which the agent still holds: it is in neither list.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_state_of_a_poll_that_a_newer_one_replaced_names_the_newest_number_with_the_lists_of_the_newest()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -258,7 +258,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         Assert.Empty(state.Claimed);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_state_of_a_poll_whose_agent_was_revoked_since_says_revoked()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

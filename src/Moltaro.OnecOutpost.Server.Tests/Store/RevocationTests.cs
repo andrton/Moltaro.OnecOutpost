@@ -12,7 +12,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Store;
 [Trait("Requires", "PostgreSQL")]
 public sealed class RevocationTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Revoking_a_paired_agent_gives_true_and_frees_its_keys_for_the_next_agent_that_declares_them()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -38,7 +38,7 @@ public sealed class RevocationTests(PostgreSqlFixture postgres) : IClassFixture<
         Assert.Equal<string>(["accounting"], state.Held);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Revoking_a_revoked_agent_or_an_identity_the_store_does_not_know_gives_false_and_changes_nothing()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -57,7 +57,7 @@ public sealed class RevocationTests(PostgreSqlFixture postgres) : IClassFixture<
     }
 
     // The public contract: revoking a pending agent ends its token, which then pairs nothing.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Revoking_a_pending_agent_ends_its_token()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

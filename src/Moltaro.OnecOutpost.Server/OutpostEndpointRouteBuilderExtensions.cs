@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.Extensions.DependencyInjection;
+using Moltaro.OnecOutpost.Server.Endpoints;
 
 namespace Moltaro.OnecOutpost.Server;
 
@@ -53,13 +56,42 @@ public static class OutpostEndpointRouteBuilderExtensions
         ArgumentNullException.ThrowIfNull(endpoints);
         ServerNames.CheckEndpointPrefix(prefix, nameof(prefix));
 
-        // The endpoints need the options of the server, so they resolve it; without AddOutpostServer there is none.
-        if (endpoints.ServiceProvider.GetService<OutpostServer>() is null)
+        IServiceProvider services = endpoints.ServiceProvider;
+
+        // Without AddOutpostServer there is no server and no handler. Resolving the server also refuses a container
+        // without an ISignals, which the server needs.
+        if (services.GetService<OutpostServer>() is null)
         {
             throw new InvalidOperationException(
                 "MapOutpostAgents needs AddOutpostServer on the services of the application.");
         }
 
-        throw new NotSupportedException();
+        // The library authenticates agents itself, and a poll is held for its hold, so neither the application's
+        // authorization nor its request timeouts apply.
+        RouteGroupBuilder group = endpoints.MapGroup(prefix);
+        group.AllowAnonymous();
+        group.DisableRequestTimeout();
+
+        // Each handler takes the HttpContext alone, so that nothing binds the body before the checks of §9 of
+        // docs/protocol.md.
+        RequestDelegate pair = services.GetRequiredService<PairHandler>().HandleAsync;
+        RequestDelegate poll = services.GetRequiredService<PollHandler>().HandleAsync;
+        RequestDelegate outcome = services.GetRequiredService<OutcomeHandler>().HandleAsync;
+        RequestDelegate unsupportedVersion = AgentAnswers.WriteUnsupportedVersionAsync;
+
+        group.MapPost($"{OtherVersionConstraint.ServedVersion}/pair", pair);
+        group.MapPost($"{OtherVersionConstraint.ServedVersion}/poll", poll);
+        group.MapPost($"{OtherVersionConstraint.ServedVersion}/outcome", outcome);
+
+        // Every other version gets the answer of §9 rather than a routing 404. The constraint never matches the served
+        // version, so a path under it that names no request stays the application's.
+        RoutePattern otherVersion = RoutePatternFactory.Parse(
+            "{version}/{request}",
+            defaults: null,
+            parameterPolicies: new RouteValueDictionary { ["version"] = new OtherVersionConstraint() });
+
+        group.Map(otherVersion, unsupportedVersion).WithMetadata(new HttpMethodMetadata([HttpMethods.Post]));
+
+        return group;
     }
 }

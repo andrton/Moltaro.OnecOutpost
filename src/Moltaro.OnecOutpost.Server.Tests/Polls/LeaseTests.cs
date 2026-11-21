@@ -20,7 +20,7 @@ public sealed class LeaseTests(PostgreSqlFixture postgres) : IClassFixture<Postg
 
     // A poll on time grants its hold plus the lease grace. A poll whose signed time is behind the node's by more than
     // ClockSkew grants less, by the part of its lag beyond ClockSkew.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0, 0)]
     [InlineData(ClockSkewSeconds + 7, 7)]
     public async Task A_poll_keeps_its_agent_connected_for_its_hold_and_the_grace_less_the_part_of_its_lag_beyond_the_skew(
@@ -53,7 +53,7 @@ public sealed class LeaseTests(PostgreSqlFixture postgres) : IClassFixture<Postg
     }
 
     // Behind by one second more than the skew, the hold and the grace, its lease has ended when the poll is recorded.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_agent_whose_clock_is_behind_by_more_than_the_skew_the_hold_and_the_grace_never_shows_as_connected()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

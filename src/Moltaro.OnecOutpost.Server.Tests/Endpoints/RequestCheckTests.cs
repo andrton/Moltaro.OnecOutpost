@@ -47,7 +47,7 @@ public sealed class RequestCheckTests(PostgreSqlFixture postgres) : IClassFixtur
 
     // The request carries none of the headers of v1: the version is checked first, and the form of its answer is one
     // that every later version keeps.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("v2/poll")]
     [InlineData("v2/status")]
     public async Task A_version_other_than_v1_gets_the_unsigned_protocol_version_before_the_body_is_read(string request)
@@ -68,7 +68,29 @@ public sealed class RequestCheckTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.False(answer.BodySent);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    // §9: a path under v1 with any other request name is not part of the protocol, and gets whatever the application
+    // answers; this one maps nothing there, so routing answers 404. The version is compared without regard to case, as
+    // routing compares the paths of v1, so V1 is not taken for a version the server does not speak.
+    [Theory]
+    [InlineData("v1/status", "lower")]
+    [InlineData("V1/status", "upper")]
+    public async Task A_path_under_v1_that_names_no_request_is_left_to_the_application(string request, string caseName)
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        await using LoopbackServer server = await StartAsync($"application_path_{caseName}", cancellationToken);
+
+        RawAnswer answer = await RawExchange.SendAsync(
+            server.Address,
+            request,
+            [],
+            "{}"u8.ToArray(),
+            cancellationToken);
+
+        Assert.Equal(404, answer.Status);
+        Assert.False(answer.BodySent);
+    }
+
+    [Theory]
     [MemberData(nameof(HeaderFaults))]
     public async Task A_required_header_that_is_missing_repeated_or_in_another_form_gets_a_bare_400_before_the_body_is_read(
         string request,
@@ -95,7 +117,7 @@ public sealed class RequestCheckTests(PostgreSqlFixture postgres) : IClassFixtur
     }
 
     // Even identity, which names no coding: §9 refuses a request that has a Content-Encoding at all.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Requests))]
     public async Task A_Content_Encoding_gets_a_bare_400_before_the_body_is_read(string request)
     {
@@ -119,7 +141,7 @@ public sealed class RequestCheckTests(PostgreSqlFixture postgres) : IClassFixtur
 
     // §4: the agent sends an outcome with Expect: 100-continue and its length, but a hop may drop either, so the server
     // requires neither. The body is good, so the answer that comes once it is read is neither a 400 nor a 413.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Expect")]
     [InlineData("Content-Length")]
     public async Task An_outcome_without_Expect_or_without_Content_Length_is_not_answered_with_a_bare_400_or_413(
@@ -154,7 +176,7 @@ public sealed class RequestCheckTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.NotEqual(413, status);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("poll", "unknown", 401)]
     [InlineData("poll", "pending", 401)]
     [InlineData("poll", "revoked", 403)]
@@ -205,7 +227,7 @@ public sealed class RequestCheckTests(PostgreSqlFixture postgres) : IClassFixtur
 
     // The body is white space of exactly the limit, signed: whatever the server answers once it has read it, it is not
     // a refusal for the length.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Requests))]
     public async Task A_body_at_its_limit_is_not_answered_with_a_bare_413(string request)
     {
@@ -225,7 +247,7 @@ public sealed class RequestCheckTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.NotEqual(413, answer.Status);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Requests))]
     public async Task A_body_one_byte_beyond_its_limit_with_a_declared_length_gets_a_bare_413_before_it_is_read(string request)
     {
@@ -249,7 +271,7 @@ public sealed class RequestCheckTests(PostgreSqlFixture postgres) : IClassFixtur
     // The body declares no length, as when a hop drops it, so the server finds it too long only while it reads it. It
     // is a good request padded with white space to one byte beyond the limit, which a server that read it whole would
     // act on. A 413 sent while the client still sends the body may come, or the connection may be reset first.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Requests))]
     public async Task A_chunked_body_one_byte_beyond_its_limit_ends_in_a_413_or_a_reset_and_changes_nothing(string request)
     {

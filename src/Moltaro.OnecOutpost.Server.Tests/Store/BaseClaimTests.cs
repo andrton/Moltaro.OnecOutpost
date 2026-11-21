@@ -13,7 +13,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Store;
 [Trait("Requires", "PostgreSQL")]
 public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_key_belongs_to_the_first_agent_that_declares_it_and_is_claimed_for_another_that_declares_it()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -37,7 +37,7 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // Under the collation of the test database, en_US.utf8, which weighs letters before punctuation, these keys sort
     // otherwise: "a.b" and "ab" before "a-c", and "ba" before "b-c".
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_lists_of_the_state_of_a_poll_are_in_ordinal_order_of_their_keys()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -56,7 +56,7 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.Equal<string>(["b-c", "ba"], state.Claimed);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_key_that_its_holder_no_longer_declares_stays_its_own_and_is_in_neither_of_its_lists()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -77,7 +77,7 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.Equal<string>(["accounting"], otherState.Claimed);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_release_of_a_key_that_no_agent_holds_gives_NotHeld()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -92,7 +92,7 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // The lease of the holder's newest poll ran out long ago: "still declares" means the newest poll, whatever its
     // lease, so that a holder down for maintenance finds its keys its own when it comes back.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_release_while_the_newest_poll_of_the_holder_declares_the_key_gives_StillDeclared_whatever_its_lease()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -109,7 +109,7 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.Equal(holder.Id, await schema.FindHolderAsync("accounting", cancellationToken));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_release_of_a_key_its_holder_no_longer_declares_frees_it_for_the_next_agent_that_declares_it()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -134,7 +134,7 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // The key is freed while the poll of the second agent is held, as a release or a revocation frees it: the answer to
     // that poll reads the key as claimed, and claims nothing itself, until the agent's next poll takes the key.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_declared_key_that_no_agent_holds_is_claimed_in_the_state_of_a_poll_until_the_next_poll_holds_it()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -164,7 +164,7 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
     // connection holds an uncommitted claim of the key, for an agent of its own, until both polls are seen waiting for
     // it, and then rolls it back. Which poll takes the key is not the subject; that one holds it and the other finds it
     // claimed, changing nothing of the claim, is.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Of_two_polls_that_claim_one_key_at_once_one_holds_it_and_the_other_finds_it_claimed()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

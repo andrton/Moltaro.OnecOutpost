@@ -14,7 +14,7 @@ public sealed class AgentListTests(PostgreSqlFixture postgres) : IClassFixture<P
 {
     // Two agents are created at one moment, the one with the greater identity first, and a third later with the least
     // identity, so that neither the order of creation alone nor the order of identities alone gives the list.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_list_gives_every_agent_by_its_creation_and_identity_with_its_name_state_and_times()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -45,7 +45,7 @@ public sealed class AgentListTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // Another agent holds one of the keys. Under the collation of the test database, en_US.utf8, "sales1" would sort
     // before "sales-2".
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_list_gives_the_bases_of_the_newest_poll_by_key_open_for_Read_with_their_Write_and_whether_the_agent_holds_each()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -79,7 +79,7 @@ public sealed class AgentListTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // The lease of a poll on time ends at its recording plus the hold and the grace (§6.2). A timestamptz keeps
     // microseconds, the step of the clock here.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_agent_is_connected_while_its_lease_runs_and_not_from_its_end_on()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -100,7 +100,7 @@ public sealed class AgentListTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // The public contract: an agent that is not Paired is not connected, whatever its lease, so a revoked agent is
     // never shown as connected.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_revoked_agent_is_not_connected_whatever_its_lease_and_holds_none_of_its_bases()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

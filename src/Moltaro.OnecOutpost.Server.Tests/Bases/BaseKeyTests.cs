@@ -12,7 +12,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Bases;
 [Trait("Requires", "PostgreSQL")]
 public sealed class BaseKeyTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_key_is_held_by_the_first_agent_that_declares_it_and_released_only_once_its_holder_no_longer_declares_it()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -60,7 +60,7 @@ public sealed class BaseKeyTests(PostgreSqlFixture postgres) : IClassFixture<Pos
 
     // The public contract: a key freed while a poll that declares it is held is in bases.claimed of the answer to that
     // poll, since no agent holds it at that moment, and the next poll of the agent takes it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_revocation_during_a_held_poll_frees_the_key_which_the_answer_reports_claimed_until_the_next_poll_holds_it()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

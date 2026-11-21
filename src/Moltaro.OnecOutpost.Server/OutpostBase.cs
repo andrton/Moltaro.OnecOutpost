@@ -8,6 +8,8 @@ namespace Moltaro.OnecOutpost.Server;
 /// <param name="WriteOpen">Whether the agent opens Write on the base: its local policy allows writing it.</param>
 /// <param name="Held">
 /// Whether this agent holds the key. <see langword="false"/> for a key that another agent holds: the server refused
-/// that base for this agent, and commands for the key go to the agent that holds it.
+/// that base for this agent, and commands for the key go to the agent that holds it. Also <see langword="false"/> for
+/// a key that no agent holds at the moment of the call, as one that a release or a revocation freed since this agent's
+/// newest poll: the next poll of an agent that declares it claims it.
 /// </param>
 public sealed record OutpostBase(string Key, bool ReadOpen, bool WriteOpen, bool Held);

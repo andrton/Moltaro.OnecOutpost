@@ -18,7 +18,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Pairing;
 public sealed class PairEndpointTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
     // The options of the answer are not the defaults, so that the answer shows the options of the node.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_token_pairs_its_agent_with_a_signed_answer_that_repeats_the_registered_key_and_its_secret_is_gone()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -55,7 +55,7 @@ public sealed class PairEndpointTests(PostgreSqlFixture postgres) : IClassFixtur
     // Each failure against a token that is otherwise good, one at a time: the store holds after the request what it
     // held before it, so the agent of the token is still pending with its token, or, after a second use, paired with
     // the key of the first.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(PairFailureEnum.SecondUse)]
     [InlineData(PairFailureEnum.ExpiredToken)]
     [InlineData(PairFailureEnum.WrongProof)]
@@ -114,7 +114,7 @@ public sealed class PairEndpointTests(PostgreSqlFixture postgres) : IClassFixtur
     // store keeps would be later than the store's expiry, and the token would stop working before it. One tick before
     // ExpiresAt, the node's time reaches the store as the microsecond before it: Npgsql truncates a time to the
     // microsecond of a timestamptz.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_token_pairs_until_the_moment_of_its_ExpiresAt()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -135,7 +135,7 @@ public sealed class PairEndpointTests(PostgreSqlFixture postgres) : IClassFixtur
     // holds the row of the token locked until both pairings are seen waiting for it, and then lets it go unchanged.
     // Which pairing wins is not the subject; that one is paired with a verified answer, and the other gets the bare
     // 403, is.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Of_two_pairings_racing_on_one_token_one_wins_and_the_other_gets_the_bare_403()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

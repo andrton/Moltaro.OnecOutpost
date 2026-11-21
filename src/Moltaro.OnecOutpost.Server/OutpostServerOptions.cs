@@ -67,12 +67,13 @@ public sealed class OutpostServerOptions
     public string SignalKeyPrefix { get; set; } = "outpost";
 
     /// <summary>
-    /// How long a poll of an agent waits for a command before it is answered without one: 1 second to 5 minutes,
-    /// 25 seconds by default.
+    /// How long a poll of an agent waits for a command at most before it is answered without one: 1 second to
+    /// 5 minutes, 25 seconds by default.
     /// </summary>
     /// <remarks>
-    /// Keep it below the idle limit of every proxy and ingress between the agents and the server. Every poll answer
-    /// carries it, so the agents follow a change.
+    /// A poll is held for the smaller of the poll timeout it carries and this option, its hold, so that a raised value
+    /// never makes a poll outlast the wait of its agent. Keep it below the idle limit of every proxy and ingress between
+    /// the agents and the server. Every poll answer carries it, so the agents follow a change.
     /// </remarks>
     public TimeSpan PollTimeout { get; set; } = TimeSpan.FromSeconds(25);
 

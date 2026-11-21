@@ -16,7 +16,7 @@ public sealed class HoldTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 {
     // One tick before the end of the hold, the timer of the hold is still armed and has not fired: a hold that ended
     // earlier would have left no timer due by its end. At its end the poll is answered.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(10, 25)]
     [InlineData(25, 5)]
     public async Task A_poll_is_held_for_the_smaller_of_its_poll_timeout_and_the_option_and_ends_without_commands_at_that_time(
@@ -53,7 +53,7 @@ public sealed class HoldTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 
     // The newer poll has the shorter hold, so that the timer of its hold is the only one due by its end, and it is
     // answered first, as the newest. Nodes share nothing, so only the store tells the replaced poll that it is older.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_held_poll_that_a_newer_one_replaced_is_answered_as_older_when_its_hold_ends()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -84,7 +84,7 @@ public sealed class HoldTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         Assert.Empty(read.Commands);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_poll_held_while_its_agent_is_revoked_ends_in_the_bare_403_when_its_hold_ends()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -108,7 +108,7 @@ public sealed class HoldTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     }
 
     // The clock does not move: the stop of the host ends the hold.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Stopping_the_node_ends_a_held_poll_at_once_with_the_ordinary_answer()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -136,7 +136,7 @@ public sealed class HoldTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 
     // The client goes away during the hold. The node then writes no answer, and changes nothing more than the poll
     // recorded: the lease stays.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_aborted_poll_gets_no_answer_written_and_its_lease_stays_as_recorded()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
