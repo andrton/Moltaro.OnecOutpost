@@ -69,8 +69,9 @@ public sealed class OutpostOutcome
     public string? Code { get; }
 
     /// <summary>
-    /// The text of the error that 1C raised, for <see cref="OutpostOutcomeKindEnum.Failed"/> with
-    /// <see cref="OutpostCodes.ScriptError"/>; <see langword="null"/> for every other kind.
+    /// The error text, for <see cref="OutpostOutcomeKindEnum.Failed"/> with <see cref="OutpostCodes.ScriptError"/>: the
+    /// text of the error that 1C raised, or the executor's own sentence for a transaction that the script of a Write
+    /// left open. <see langword="null"/> for every other kind.
     /// </summary>
     /// <remarks>
     /// The executor may have trimmed it to fit the size limit of the outcome; <see cref="MessagesTrimmed"/> then says
@@ -141,7 +142,10 @@ public sealed class OutpostOutcome
     /// <see cref="OutpostCodes.ResultTooLarge"/>, <see cref="OutpostCodes.RunLimit"/>, <see cref="OutpostCodes.Lost"/>,
     /// <see cref="OutpostCodes.BaseUnreachable"/> and <see cref="OutpostCodes.ConnectionLost"/>.
     /// </param>
-    /// <param name="errorText">The text of the error that 1C raised, for <see cref="OutpostCodes.ScriptError"/>.</param>
+    /// <param name="errorText">
+    /// The error text, for <see cref="OutpostCodes.ScriptError"/>: the text of the error that 1C raised, or the
+    /// executor's own sentence for a transaction that the script of a Write left open.
+    /// </param>
     /// <param name="messages">The user messages of 1C, copied.</param>
     /// <param name="messagesTrimmed">Whether the executor trimmed the messages or the error text.</param>
     /// <returns>The outcome.</returns>

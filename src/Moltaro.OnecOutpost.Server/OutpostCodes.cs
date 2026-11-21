@@ -22,9 +22,13 @@ namespace Moltaro.OnecOutpost.Server;
 public static class OutpostCodes
 {
     /// <summary>
-    /// <see cref="OutpostOutcomeKindEnum.Failed"/>: 1C raised an error, whose text is in
-    /// <see cref="OutpostOutcome.ErrorText"/>. A Write was rolled back.
+    /// <see cref="OutpostOutcomeKindEnum.Failed"/>: 1C raised an error, or the script of a Write began a transaction of
+    /// its own and left it open. A Write was rolled back.
     /// </summary>
+    /// <remarks>
+    /// <see cref="OutpostOutcome.ErrorText"/> holds the text of the error that 1C raised, or, for a transaction the
+    /// script left open, a sentence of the executor's own, since 1C raised nothing then.
+    /// </remarks>
     public const string ScriptError = OutpostOutcomeCodes.ScriptError;
 
     /// <summary>
@@ -134,7 +138,8 @@ public static class OutpostCodes
 
     /// <summary>
     /// <see cref="OutpostOutcomeKindEnum.Unknown"/>: the script ended the transaction of its Write itself, with
-    /// <c>CommitTransaction</c> or <c>RollbackTransaction</c>, so whether it wrote anything cannot be known.
+    /// <c>CommitTransaction</c> or <c>RollbackTransaction</c>, or the commit of the Write raised, so the executor
+    /// cannot tell whether it was written.
     /// </summary>
     public const string TransactionEnded = OutpostOutcomeCodes.TransactionEnded;
 

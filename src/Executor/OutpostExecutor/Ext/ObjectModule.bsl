@@ -8,7 +8,9 @@
 //   or Undefined. OutcomeLimit is a number of bytes.
 // - The script runs with Execute and sees Parameters, read from ParametersJson into a Map,
 //   CallerKey and Result (concept section 3). A Write runs in one transaction, with the checks of
-//   rule 5 before its commit.
+//   rule 5 before its commit. A Write whose script ended the transaction itself, or whose commit
+//   raised, is Unknown transaction-ended; one whose script left a transaction of its own open is
+//   rolled back and fails with script-error and an error text of the executor.
 // - It returns one line of text without a line break:
 //   {"size":<number>,"outcome":<the outcome object of docs/protocol.md section 8>}. size is the
 //   length in bytes of the UTF-8 text of the outcome object alone, as the executor measured it
@@ -132,23 +134,18 @@ Function CommittedLine(Outcome, Messages, OutcomeLimit)
 	Try
 		CommitTransaction();
 	Except
-		CommitError = DetailErrorDescription(ErrorInfo());
-
-		// A transaction that 1C still holds is not committed, and is rolled back. Once 1C has
-		// ended it, the executor cannot tell whether the DBMS committed it.
-		If TransactionActive() Then
-			Return FailedLine("script-error", CommitError, Messages, True, OutcomeLimit);
-		EndIf;
-
+		// A commit that raised gives Unknown, whether 1C still holds the transaction afterwards or
+		// has ended it: the executor cannot tell whether the Write was written. A transaction that
+		// 1C still holds is rolled back, so that the next command of the session does not run in it.
+		RollBackEveryTransaction();
 		Return UnknownLine(OutcomeLimit);
 	EndTry;
 
 	// The script began a transaction of its own inside the Write and did not end it, so the commit
-	// above committed nothing: 1C commits when every transaction begun has ended. The script
-	// changed the transaction of its Write, as one that ended it does.
+	// above committed nothing: 1C commits when every transaction begun has ended. Rolled back,
+	// nothing is written, and the Write fails. 1C raised nothing, so the text is the executor's.
 	If TransactionActive() Then
-		RollBackEveryTransaction();
-		Return UnknownLine(OutcomeLimit);
+		Return FailedLine("script-error", "The script left a transaction open.", Messages, True, OutcomeLimit);
 	EndIf;
 
 	Return LineOf(Outcome);
