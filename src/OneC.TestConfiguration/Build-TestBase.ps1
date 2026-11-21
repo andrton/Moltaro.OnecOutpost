@@ -212,9 +212,15 @@ function Write-PlatformLog {
         return
     }
 
-    # Assumed: 1C writes the log in UTF-8, with a BOM or without one; ReadAllText reads both. A log in the ANSI code
-    # page would show its non-ASCII letters wrongly.
-    $text = [IO.File]::ReadAllText($script:logPath, [Text.Encoding]::UTF8).Trim()
+    # 1C:Enterprise 8.3.17 writes the log in the Cyrillic code page of Windows, without a BOM. A log that starts
+    # with the BOM of UTF-8 is read as UTF-8.
+    $bytes = [IO.File]::ReadAllBytes($script:logPath)
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+        $text = [Text.Encoding]::UTF8.GetString($bytes, 3, $bytes.Length - 3).Trim()
+    }
+    else {
+        $text = [Text.Encoding]::GetEncoding(1251).GetString($bytes).Trim()
+    }
     if ($text) {
         Write-Host "--- log of 1cv8.exe ---"
         Write-Host $text
