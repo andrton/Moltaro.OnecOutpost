@@ -2354,7 +2354,8 @@ the contract of the executor and the COM worker approved.
     raw standard streams. The standard output carries these lines and nothing else;
     `Console.Out` is pointed at the standard error. The standard error carries diagnostics
     for a person. The worker never writes its first input line, and it replaces the password
-    with `<password>` in every text it writes, since 1C or .NET may quote a value it refused.
+    with `<password>` in every text it writes there, since 1C or .NET may quote a value it
+    refused. An outcome line is never changed.
 
     | Direction | Line | When |
     | --- | --- | --- |
@@ -2371,8 +2372,10 @@ the contract of the executor and the COM worker approved.
       `messages` empty and `messagesTrimmed` false:
       - the executor does not open: Failed `base-unreachable`, for a Read and a Write, and
         the worker ends with exit code 2;
-      - the call of `Run` throws, which the executor itself never causes, or returns a
-        text with a line break, which would shift every later outcome: Failed
+      - `Run` returns a text with a line break, which would shift every later outcome:
+        Failed `result-type` for a Read, Unknown `result-type` for a Write, and the worker
+        goes on, since its session is whole;
+      - the call of `Run` throws, which the executor itself never causes: Failed
         `connection-lost` for a Read, Unknown `connection-lost` for a Write, and the worker
         ends with exit code 3. The text of the failure goes to the standard error only.
     - **A line the worker cannot read** — not JSON, a member missing, unknown or of a wrong
