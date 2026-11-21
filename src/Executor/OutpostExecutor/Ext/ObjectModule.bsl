@@ -9,8 +9,9 @@
 // - The script runs with Execute and sees Parameters, read from ParametersJson into a Map,
 //   CallerKey and Result (concept section 3). A Write runs in one transaction, with the checks of
 //   rule 5 before its commit. A Write whose script ended the transaction itself, or whose commit
-//   raised, is Unknown transaction-ended; one whose script left a transaction of its own open is
-//   rolled back and fails with script-error and an error text of the executor.
+//   raised, is Unknown transaction-ended. A Read or a Write whose script left a transaction of its
+//   own open is rolled back and fails with script-error and an error text of the executor, so a
+//   Read leaves no transaction to the next command of its worker.
 // - It returns one line of text without a line break:
 //   {"size":<number>,"outcome":<the outcome object of docs/protocol.md section 8>}. size is the
 //   length in bytes of the UTF-8 text of the outcome object alone, as the executor measured it
@@ -64,23 +65,28 @@ Function Run(Mode, Script, ParametersJson, CallerKey, OutcomeLimit) Export
 	EndIf;
 
 	If ScriptFailed Then
-		Return FailedLine("script-error", ErrorText, Messages, IsWrite, OutcomeLimit);
+		Return FailedLine("script-error", ErrorText, Messages, OutcomeLimit);
 	EndIf;
 
 	ResultJson = ResultJsonOf(Result);
 
 	If ResultJson = Undefined Then
-		Return FailedLine("result-type", Undefined, Messages, IsWrite, OutcomeLimit);
+		Return FailedLine("result-type", Undefined, Messages, OutcomeLimit);
 	EndIf;
 
 	Outcome = OutcomeOf("succeeded", Undefined, ResultJson, Utf8Size(ResultJson), Undefined, Messages, OutcomeLimit);
 
 	If Outcome.Size > OutcomeLimit Then
-		Return FailedLine("result-too-large", Undefined, Messages, IsWrite, OutcomeLimit);
+		Return FailedLine("result-too-large", Undefined, Messages, OutcomeLimit);
 	EndIf;
 
 	If IsWrite Then
 		Return CommittedLine(Outcome, Messages, OutcomeLimit);
+	EndIf;
+
+	// A Read runs outside a transaction, and leaves none to the next command of its worker.
+	If TransactionActive() Then
+		Return LeftOpenLine(Messages, OutcomeLimit);
 	EndIf;
 
 	Return LineOf(Outcome);
@@ -142,23 +148,31 @@ Function CommittedLine(Outcome, Messages, OutcomeLimit)
 	EndTry;
 
 	// The script began a transaction of its own inside the Write and did not end it, so the commit
-	// above committed nothing: 1C commits when every transaction begun has ended. Rolled back,
-	// nothing is written, and the Write fails. 1C raised nothing, so the text is the executor's.
+	// above committed nothing: 1C commits when every transaction begun has ended.
 	If TransactionActive() Then
-		Return FailedLine("script-error", "The script left a transaction open.", Messages, True, OutcomeLimit);
+		Return LeftOpenLine(Messages, OutcomeLimit);
 	EndIf;
 
 	Return LineOf(Outcome);
 
 EndFunction
 
-// The line of an outcome that failed. A Write is rolled back first, so a Write fails only when 1C
-// rolled it back (concept rule 5). Only script-error carries an error text.
-Function FailedLine(Code, ErrorText, Messages, IsWrite, OutcomeLimit)
+// The line of a Read or a Write whose script left a transaction of its own open. FailedLine rolls
+// it back, with the transaction of a Write, so nothing is written and the command fails. 1C raised
+// nothing, so the error text is the executor's.
+Function LeftOpenLine(Messages, OutcomeLimit)
 
-	If IsWrite Then
-		RollBackEveryTransaction();
-	EndIf;
+	Return FailedLine("script-error", "The script left a transaction open.", Messages, OutcomeLimit);
+
+EndFunction
+
+// The line of an outcome that failed. Every transaction is rolled back first: that of a Write, so
+// that a Write fails only when 1C rolled it back (concept rule 5), and any that the script of a
+// Read or a Write left open, so that none is left to the next command of the worker. Only
+// script-error carries an error text.
+Function FailedLine(Code, ErrorText, Messages, OutcomeLimit)
+
+	RollBackEveryTransaction();
 
 	CleanErrorText = Undefined;
 
@@ -178,8 +192,8 @@ Function UnknownLine(OutcomeLimit)
 
 EndFunction
 
-// Rolls back the transaction of the Write, with any that the script began inside it and left
-// open.
+// Rolls back the transaction of a Write, with any that the script of a Read or a Write began and
+// left open.
 Procedure RollBackEveryTransaction()
 
 	While TransactionActive() Do

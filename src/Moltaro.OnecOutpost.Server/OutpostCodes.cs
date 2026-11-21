@@ -22,8 +22,8 @@ namespace Moltaro.OnecOutpost.Server;
 public static class OutpostCodes
 {
     /// <summary>
-    /// <see cref="OutpostOutcomeKindEnum.Failed"/>: 1C raised an error, or the script of a Write began a transaction of
-    /// its own and left it open. A Write was rolled back.
+    /// <see cref="OutpostOutcomeKindEnum.Failed"/>: 1C raised an error, or the script of a Read or a Write began a
+    /// transaction of its own and left it open, which the executor rolled back. A Write was rolled back.
     /// </summary>
     /// <remarks>
     /// <see cref="OutpostOutcome.ErrorText"/> holds the text of the error that 1C raised, or, for a transaction the

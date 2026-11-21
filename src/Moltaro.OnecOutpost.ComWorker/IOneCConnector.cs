@@ -7,6 +7,6 @@ internal interface IOneCConnector
     // Opens a session in the base under the account given. The location is the part of a 1C connection string that
     // names the base, for a cluster or for a file base; the connector adds the user and the password to it, quoted as
     // 1C wants. It throws when no session opens. The text of that failure may quote the password, since 1C or .NET may
-    // quote a value it refused, so Worker never writes it as it is.
+    // quote a value it refused, so Worker writes it only when it does not hold the password.
     IOneCSession Connect(string location, string user, string password);
 }

@@ -18,8 +18,6 @@ internal sealed class Worker
     private const string ConnectionLost = "connection-lost";
     private const string ResultType = "result-type";
 
-    private const string PasswordPlaceholder = "<password>";
-
     // Opens the one session of the worker; ComConnector in the program, a fake in the tests.
     private readonly IOneCConnector _connector;
 
@@ -43,8 +41,8 @@ internal sealed class Worker
     // output carry one JSON object per line in UTF-8, ended with LF, without a BOM; the output carries these lines and
     // nothing else, and an outcome line goes out as the executor returned it, with its LF, in one write. The worker
     // reads a line to a depth of 72 levels, the protocol's limit of a message, so that parameters of 64 levels pass.
-    // The diagnostics are for a person: the first input line is never written there, and the password is replaced
-    // with <password> in every text written there.
+    // The diagnostics are for a person: the first input line is never written there, and a text that is not the
+    // worker's own is written there only when it does not hold the password (Report).
     public int Run(Stream input, Stream output, TextWriter diagnostics)
     {
         LineReader lines = new(input);
@@ -86,7 +84,7 @@ internal sealed class Worker
         catch (Exception failure)
         {
             WriteLine(output, ReadyLine(false));
-            Report(diagnostics, connection, "No session opened: " + failure.Message);
+            Report(diagnostics, connection, "No session opened", failure.Message);
 
             return WorkerExitCodes.NoSession;
         }
@@ -99,21 +97,27 @@ internal sealed class Worker
         }
     }
 
-    // Writes the text to the diagnostics with the password replaced by a placeholder, since 1C or .NET may quote a value
-    // it refused. The connection string quotes a password as 1C wants, with its quotes doubled, so that form is replaced
-    // too. An empty password replaces nothing.
-    private static void Report(TextWriter diagnostics, WorkerConnection connection, string text)
+    // Writes a sentence of the worker to the diagnostics with a failure text that is not its own, the message of 1C or
+    // of .NET, which may quote a value it refused. That text is written only when it holds the password neither as it
+    // is nor with its quotes doubled, as the connection string quotes it; otherwise it is withheld whole, since
+    // replacing the password inside it would give a short one away. The sentence of the worker is never altered, so it
+    // says the same whichever password was withheld. An empty password withholds nothing.
+    private static void Report(TextWriter diagnostics, WorkerConnection connection, string sentence, string failureText)
     {
         string password = connection.Password;
 
-        if (password.Length > 0)
-        {
-            text = text
-                .Replace(password.Replace("\"", "\"\"", StringComparison.Ordinal), PasswordPlaceholder, StringComparison.Ordinal)
-                .Replace(password, PasswordPlaceholder, StringComparison.Ordinal);
-        }
+        bool holdsThePassword = password.Length > 0
+            && (failureText.Contains(password, StringComparison.Ordinal)
+                || failureText.Contains(password.Replace("\"", "\"\"", StringComparison.Ordinal), StringComparison.Ordinal));
 
-        diagnostics.WriteLine(text);
+        if (holdsThePassword)
+        {
+            diagnostics.WriteLine(sentence + ". Its text is withheld, since it holds the password of the account.");
+        }
+        else
+        {
+            diagnostics.WriteLine(sentence + ": " + failureText);
+        }
     }
 
     // The line with its LF in one write, so that a reader sees a line whole or not at all.
@@ -200,7 +204,8 @@ internal sealed class Worker
             }
             catch (FormatException failure)
             {
-                Report(diagnostics, connection, "A command line cannot be read: " + failure.Message);
+                // The reason is the worker's own and quotes nothing of the line.
+                diagnostics.WriteLine("A command line cannot be read: " + failure.Message);
 
                 return WorkerExitCodes.BadInput;
             }
@@ -232,7 +237,7 @@ internal sealed class Worker
         catch (Exception failure)
         {
             // Nothing started, so a Write fails as a Read does.
-            Report(diagnostics, connection, "The executor did not open: " + failure.Message);
+            Report(diagnostics, connection, "The executor did not open", failure.Message);
             WriteLine(output, OwnOutcomeLine(Failed, BaseUnreachable));
 
             return WorkerExitCodes.NoSession;
@@ -250,7 +255,7 @@ internal sealed class Worker
             {
                 // The executor itself never raises, so the session ended while the script ran, and a Write may have
                 // committed.
-                Report(diagnostics, connection, "The session ended while the script ran: " + failure.Message);
+                Report(diagnostics, connection, "The session ended while the script ran", failure.Message);
                 WriteLine(output, OwnOutcomeLine(FailedOrUnknown, ConnectionLost));
 
                 return WorkerExitCodes.SessionLost;
@@ -260,7 +265,7 @@ internal sealed class Worker
             // worker goes on.
             if (text.AsSpan().IndexOfAny('\n', '\r') >= 0)
             {
-                Report(diagnostics, connection, "The executor returned a text with a line break, which one line cannot carry.");
+                diagnostics.WriteLine("The executor returned a text with a line break, which one line cannot carry.");
                 WriteLine(output, OwnOutcomeLine(FailedOrUnknown, ResultType));
 
                 return null;
