@@ -137,4 +137,22 @@ public static class OutpostCodes
     /// <c>CommitTransaction</c> or <c>RollbackTransaction</c>, so whether it wrote anything cannot be known.
     /// </summary>
     public const string TransactionEnded = OutpostOutcomeCodes.TransactionEnded;
+
+    /// <summary>
+    /// <see cref="OutpostOutcomeKindEnum.Failed"/>, for a Read and a Write: the COM worker of the agent has no session
+    /// in the base, or could not open the executor, so the script did not start.
+    /// </summary>
+    /// <remarks>
+    /// Examples are a wrong password, a cluster that does not answer, no free licence, and a COM connector that is not
+    /// registered. <see cref="OutpostOutcome.ErrorText"/> is <see langword="null"/>: the text of 1C goes to the audit
+    /// log of the agent only, since it may name an account or a path.
+    /// </remarks>
+    public const string BaseUnreachable = OutpostOutcomeCodes.BaseUnreachable;
+
+    /// <summary>
+    /// <see cref="OutpostOutcomeKindEnum.Failed"/> for a Read, <see cref="OutpostOutcomeKindEnum.Unknown"/> for a
+    /// Write: the session of the COM worker in the base ended while the script ran, for example because the cluster
+    /// restarted.
+    /// </summary>
+    public const string ConnectionLost = OutpostOutcomeCodes.ConnectionLost;
 }

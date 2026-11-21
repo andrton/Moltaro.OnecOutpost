@@ -41,6 +41,10 @@ internal static class OutpostOutcomeCodes
 
     public const string TransactionEnded = "transaction-ended";
 
+    public const string BaseUnreachable = "base-unreachable";
+
+    public const string ConnectionLost = "connection-lost";
+
     // The three Fits answer the kinds column of the table of OutpostCodes: whether a code is one that an outcome of
     // the kind carries, whoever set it, an agent (§8) or the server. A code that belongs to two kinds fits both, since
     // only the mode of the command, which an outcome does not hold, decides between them. The public factories of

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- A program of the agent archive, never a package. -->
+    <IsPackable>false</IsPackable>
+    <!-- A COM worker runs with the bitness of the COM connector it uses (principle 8), so it is built for both. A build
+         without a runtime identifier, as that of the solution, is the one its tests load. -->
+    <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The worker has no public surface: its tests run Worker in their own process, with a fake of the COM connection. -->
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.ComWorker.Tests" />
+  </ItemGroup>
+
+</Project>
