@@ -824,7 +824,8 @@ The protocol is public contract (concept §6, D15). It is designed in S2, after 
 by the planner, not by the contract author:
 
 1. The planner writes `docs/protocol.md` exactly.
-2. An independent reviewer reviews it until no P1, P2 or P3 finding is left.
+2. An independent reviewer reviews it, within the limit the
+   [development process](process.md#review) sets for a document.
 3. The owner approves it.
 4. The contract author commits it in S2's contract step.
 
@@ -913,14 +914,16 @@ The concept fixes the principles; S2 fixes the bytes.
   - a code of `OutpostCodes`;
   - the protocol.
 
-  A sprint that finds the contract should change stops, and the change goes to the owner.
+  From the first release on, a sprint that finds the contract should change stops, and
+  the change goes to the owner. Before it, the sprint makes the change, lists it for the
+  owner and goes on, as the [development process](process.md#the-plan) says.
 - **Internal contracts after the study.** S2, S3, S4, S5, S6 and S9 build mechanisms.
   - Each begins with the study that the
     [development process](process.md#a-study-comes-before-a-design) requires, answering
     the questions its brief names.
   - The planner then writes into the brief the internal types that its tests address,
-    with what the study taught. An independent reviewer reviews them until no P1, P2 or
-    P3 finding is left, and the coordinator approves them (PQ2), before the contract step.
+    with what the study taught. An independent reviewer reviews them, and the
+    coordinator approves them (PQ2), before the contract step.
   - The study never reopens the public contract.
 - **Studies.** The implementer of the sprint carries out its study, before any code.
   - It reads two to four established systems in their source at pinned commits, with the
@@ -1042,7 +1045,7 @@ Stage 3 — the release
 | Sprint | Result | Track | Status |
 | --- | --- | --- | --- |
 | S1 | The public contract of stage 1, the projects and the test lane | Full | Done |
-| S2 | The protocol, its signatures and the pairing proof | Full | Not started |
+| S2 | The protocol, its signatures and the pairing proof | Full | In progress: `docs/protocol.md` is a draft whose review is closed (ten rounds, stopped by the owner on 21 November 2026); the codec, the signatures and their tests are not written |
 | S3 | The store | Full | Not started |
 | S4 | Pairing and agents on the server | Full | Not started |
 | S5 | Commands on the server | Full | Not started |
@@ -2184,8 +2187,7 @@ Best run before S6, and in any case before the contract of stage 2 is written.
   3. The planner writes each answer into concept §12. An answer that changes a decision,
      such as D3, D12 or D14, or a member of `policy.json`, goes to the owner and is written
      on this branch.
-  4. An independent reviewer reviews the edit of the concept and the test configuration,
-     until no P1, P2 or P3 finding is left.
+  4. An independent reviewer reviews the edit of the concept and the test configuration.
 
   The minimal executor is not committed: S9 writes the executor from its contract. No
   report file is written.
@@ -2393,8 +2395,7 @@ the contract of stage 2 approved.
 ## The contracts of stages 2 and 3
 
 The planner writes these contracts out exactly before stage 2 starts, with L1's answers.
-An independent reviewer reviews them until no P1, P2 or P3 finding is left, and the
-owner approves them. Until then this is what they have to be able to do.
+An independent reviewer reviews them, and the owner approves them. Until then this is what they have to be able to do.
 
 - **The executor**, an external data processor:
   - one exported function that runs a script in a mode with its parameters, caller key and
