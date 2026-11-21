@@ -2301,6 +2301,132 @@ the contract of the executor and the COM worker approved.
     it measured beside it. The agent compares that size with the length of the bytes it
     received; a difference is an outcome it cannot accept: Failed `result-type` for a
     Read, Unknown `result-type` for a Write.
+  - *Internal, after the study* (the planner, 21 November 2026). The worker depends on
+    nothing outside .NET (principle 12), so it reads and writes its lines with
+    `System.Text.Json` and shares no type with the protocol assembly.
+
+    **Places.**
+    - `src/Moltaro.OnecOutpost.ComWorker`: the program, `net10.0`, Windows only, built for
+      `win-x64` and `win-x86`. One folder, one namespace.
+    - `src/Moltaro.OnecOutpost.ComWorker.Tests`: its tests, in the solution, with
+      `Requires=Windows`.
+    - `src/Executor/OutpostExecutor.xml` with `src/Executor/OutpostExecutor/Ext/ObjectModule.bsl`:
+      the sources of the external data processor `OutpostExecutor`.
+      `src/Executor/OutpostExecutor.epf` is built from them on the lab machine and committed
+      after that (X1).
+    - `src/OneC.TestConfiguration/Build-TestBase.ps1` gains one step, after the configuration
+      is loaded and before the users are created: the Designer builds the `.epf` from the
+      sources with `/LoadExternalDataProcessorOrReportFromFiles`. A base has no users then,
+      so no password reaches a command line, and one command builds everything the lab
+      tests need.
+    - `src/Moltaro.OnecOutpost.OneC.Tests`: the lab tests, outside the solution. They start
+      the built worker program and speak to it over its standard streams, with a helper of
+      their own.
+    - `lab.local.json` gains `typicalBases`, an array that may be empty: for each copy its
+      `server`, `database`, the accounts `read` and `write` with `user` and `password`, the
+      `documentType` to post again, and `writeSafeMode`. The tests of a typical base are
+      skipped by no flag: with an empty array they have no cases.
+
+    **The executor.** One exported function, in the English variant, written only with what
+    the compatibility mode 8.2.13 allows:
+
+    ```bsl
+    Function Run(Mode, Script, ParametersJson, CallerKey, OutcomeLimit) Export
+    ```
+
+    - `Mode` is `"read"` or `"write"`. `ParametersJson` is the text of a JSON object.
+      `CallerKey` is a string or `Undefined`. `OutcomeLimit` is a number of bytes.
+    - It returns one line of text without a line break:
+      `{"size":<number>,"outcome":<the outcome object of docs/protocol.md section 8>}`. `size` is the
+      length in bytes of the UTF-8 text of the outcome object alone, as the executor measured
+      it before the commit of a Write.
+    - Safe mode is not its parameter: the worker opens it in safe mode or without.
+    - It never raises: every error of the script is an outcome. How it measures UTF-8 in
+      the mode 8.2.13 is its own matter, and a lab test holds the result.
+
+    **The worker's command line:** `Moltaro.OnecOutpost.ComWorker.exe <base key> <read|write>`.
+    The base key only names the worker in its diagnostics. Anything else ends it with exit
+    code 1.
+
+    **The lines.** One JSON object per line in UTF-8, ended with LF, without a BOM, on the
+    raw standard streams. The standard output carries these lines and nothing else;
+    `Console.Out` is pointed at the standard error. The standard error carries diagnostics
+    for a person, never the password and never the connection line.
+
+    | Direction | Line | When |
+    | --- | --- | --- |
+    | in | `{"location":"Srvr=\"srv:1541\";Ref=\"base\";","user":"...","password":"...","safeMode":true,"executor":"C:\\...\\OutpostExecutor.epf"}` | Once, first. `location` is the part of a 1C connection string that names the base, for a cluster or for a file base; the worker adds the user and the password, quoted as 1C wants. A Read worker given `"safeMode":false` ends with exit code 1 (D12) |
+    | out | `{"ready":true}` | Once, after the session is open |
+    | out | `{"ready":false}` | Instead, when no session opens; the text of the failure goes to the standard error, and the worker ends with exit code 2 |
+    | in | `{"script":"...","parameters":{},"callerKey":null,"outcomeLimit":16777216}` | One per command. The worker passes the text of `parameters` to the executor as it received it. It takes the next line only after it wrote the outcome of this one |
+    | out | `{"size":123,"outcome":{...}}` | One per command: the text the executor returned, encoded as UTF-8 and written with its LF in one write, unchanged |
+
+    - **A fresh executor per command** (concept section 3): the worker opens it with an
+      `UnsafeOperationProtectionDescription` whose warnings are off, calls `Run`, and
+      releases it.
+    - **The outcomes the worker writes itself,** in the same form, with `messages` empty and
+      `messagesTrimmed` false:
+      - the executor does not open: Failed `base-unreachable`, for a Read and a Write, and
+        the worker ends with exit code 2;
+      - the call of `Run` throws, which the executor itself never causes: Failed
+        `connection-lost` for a Read, Unknown `connection-lost` for a Write, and the worker
+        ends with exit code 3. The text of the failure goes to the standard error only.
+    - **A line the worker cannot read** — not JSON, a member missing, unknown or of a wrong
+      type — ends it with exit code 1 and a reason on the standard error. It is not skipped.
+    - **The end of the input** ends the worker with exit code 0, once the command it runs
+      has its outcome written.
+
+    **The types,** in `Moltaro.OnecOutpost.ComWorker`. The loop is synchronous: the worker
+    is one thread that owns one COM session and has nothing else to do while a script runs.
+
+    ```csharp
+    internal interface IOneCConnector
+    {
+        IOneCSession Connect(string location, string user, string password);
+    }
+
+    internal interface IOneCSession : IDisposable
+    {
+        IOneCExecutor OpenExecutor(string path, bool safeMode);
+    }
+
+    internal interface IOneCExecutor : IDisposable
+    {
+        string Run(string mode, string script, string parametersJson, string? callerKey, long outcomeLimit);
+    }
+
+    internal enum WorkerModeEnum { Read, Write }
+
+    internal static class WorkerExitCodes
+    {
+        public const int Ended = 0;
+        public const int BadInput = 1;
+        public const int NoSession = 2;
+        public const int SessionLost = 3;
+    }
+
+    internal sealed class Worker
+    {
+        public Worker(IOneCConnector connector, WorkerModeEnum mode);
+        public int Run(Stream input, Stream output, TextWriter diagnostics);
+    }
+
+    [SupportedOSPlatform("windows")]
+    internal sealed class ComConnector : IOneCConnector
+    {
+        public IOneCSession Connect(string location, string user, string password);
+    }
+    ```
+
+    - `Worker.Run` is the whole behavior of the lines above and returns the exit code.
+      `Program` only reads the command line, points `Console.Out` at the standard error and
+      calls it with `ComConnector` and the raw streams.
+    - `ComConnector`, with the session and the executor it gives, is the only code that
+      touches COM, late-bound through `IDispatch`. Each COM object is released by its owner,
+      once.
+    - The automated tests run `Worker` in the test process with a fake `IOneCConnector` and
+      streams of their own. The shipped program has no test entry point; only the lab tests
+      start it as a process.
 - **Study.** Sources, for example: the worker process model of the Azure Pipelines agent
   (MIT); the job objects of a process-supervision library under a permissive licence.
   Questions: how a child process is tied to its parent's lifetime; how a hung child is
@@ -2313,8 +2439,14 @@ the contract of the executor and the COM worker approved.
   - Automated, with `Requires=Windows`:
     - the worker program against a fake of the COM connection, behind the worker's own
       boundary;
-    - a connector whose version differs from the cluster's, with the error L1 recorded for
-      it, is reported as such.
+    - every line of the internal contract: the session that does not open, the executor
+      that does not open, a `Run` that throws for each mode, a line that cannot be read, a
+      Read worker told to run without safe mode, the end of the input, and that the
+      standard output carries nothing but the lines;
+    - the password and the connection line appear in no output of the worker.
+
+    L1 installed one version of the connector, so it recorded no error of a connector
+    whose version differs from the cluster's; nothing is asserted about one.
   - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine (OD1), against the test base
     unless a line says otherwise:
     - a Read query that returns rows;
