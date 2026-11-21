@@ -4,7 +4,8 @@ The wire protocol between an agent and a server. The [concept](concept.md) fixes
 principles (§3 "Pairing", §4, §6, D1, D4, D5, D15); this document fixes the bytes.
 
 **Status.** Draft of Epic 1, sprint S2, written after the sprint's study. It is public
-contract: the owner approves it before the contract step of S2. The codec of the protocol
+contract, and holds as a draft until the owner approves it with the list "What S2 changed
+in the public contract" of the [epic](work/epic-1-first-release.md). The codec of the protocol
 assembly reads and writes its messages, its signatures and the pairing proof; no endpoint
 serves it yet, and no agent sends it.
 

@@ -25,8 +25,9 @@ oldest platform supported is 8.3.17.1851.
 What exists today is the [concept](docs/concept.md), these rules, the development process,
 the build settings, and the public contract of the first stage in code: the server
 library, the protocol assembly and the agent program. Only the checks that need no
-implementation work: every operation of the server throws `NotSupportedException`, and the
-agent program starts and stops and does nothing else. The server is the one
+implementation work, and the codec of the protocol with its signatures and pairing proof,
+which no endpoint serves yet: every operation of the server throws `NotSupportedException`,
+and the agent program starts and stops and does nothing else. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions

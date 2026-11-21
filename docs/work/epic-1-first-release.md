@@ -1058,7 +1058,7 @@ The release
 | Sprint | Result | Track | Status |
 | --- | --- | --- | --- |
 | S1 | The public contract of stage 1, the projects and the test lane | Full | Done |
-| S2 | The protocol, its signatures and the pairing proof | Full | In progress: `docs/protocol.md` is a draft whose review is closed (ten rounds, stopped by the owner on 21 November 2026); the codec, the signatures and their tests are not written |
+| S2 | The protocol, its signatures and the pairing proof | Full | Done, 21 November 2026: the codec, the signatures and the pairing proof with their tests; the code review closed in two rounds, after the ten rounds of `docs/protocol.md`. What it changed in the public contract is listed in its brief for the owner |
 | S3 | The store | Full | Not started |
 | S4 | Pairing and agents on the server | Full | Not started |
 | S5 | Commands on the server | Full | Not started |
@@ -1709,8 +1709,9 @@ approval of this plan.
     and of `OutcomeSizeLimit` says what each size is;
   - parameters deeper than 64 levels still give `ArgumentException` with `ParamName`
     `Parameters`, and its message now names the 64 levels;
-  - in the concept, the sentence of rule 1 on verified bytes without a `protocol` and an
-    `id`, and the sentence of rule 5 on the size of an outcome;
+  - in the concept, the two sentences of rule 1 on verified bytes without a `protocol` and
+    an `id` and on the order of its checks, and the sentence of rule 5 on the size of an
+    outcome;
   - the readings Q8 and Q9 of the [open questions](open-questions.md), taken as
     recommended.
 
