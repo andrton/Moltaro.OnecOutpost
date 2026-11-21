@@ -34,10 +34,6 @@ An entry is a table:
 
 ## In force
 
-None.
-
-## Approved, not in force yet
-
 ### X1. The built executor in Git
 
 | | |
@@ -47,8 +43,12 @@ None.
 | **Why** | Only the 1C Designer builds an `.epf`, and CI has no 1C. The archive of a release needs the built file, and a reader of the repository can open it without the Designer |
 | **Kept small by** | Only the `.epf` of the executor, built by the owner with the Designer of 1C:Enterprise 8.3.17.1851 from the sources in the same commit, and rebuilt whenever they change. No other build output |
 | **Approved** | The owner, 20 November 2026 |
-| **Since** | Epic 1, S9, with the first commit of the `.epf` |
+| **Since** | Epic 1, S9, 21 November 2026: the `.epf` built on the lab machine from the sources of the same branch, against which the tests that need 1C passed |
 | **Until** | Permanent |
+
+## Approved, not in force yet
+
+None.
 
 ## Ended
 
