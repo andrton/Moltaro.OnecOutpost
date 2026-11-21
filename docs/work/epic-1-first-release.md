@@ -69,7 +69,7 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R2 | The agent's checks, its audit log first and a command run once on its agent (rules 1–3) | Concept §3, D4, D7 | Must | Absent | S2, S6 |
 | R3 | A caller key makes a command run once, and Failed means nothing was written (rules 4, 5) | Concept §3, D8 | Must | Absent | S3, S5, S9 |
 | R4 | Liveness, take deadlines and expiry, numbered polls, a taken command never lost or doubled, revocation, base keys (rules 6, 7, 10, 11, 13, 14) | Concept §3, §4, D5, D10, D17 | Must | Absent | S3, S4, S5, S6, S7 |
-| R5 | Workers and run limits (rules 8, 9) | Concept §3, D11 | Must | Absent | S6, S9 |
+| R5 | Workers and run limits (rules 8, 9) | Concept §3, D11 | Must | Absent | S6, S9b |
 | R6 | The caller decides how long it waits (rule 12) | Concept §3 | Must | Absent | S5 |
 | R7 | Pairing with the agent's key pair, the HMAC under a secret that never travels, and the fingerprint of the server key | Concept §3 Pairing, D4, D5 | Must | Absent | S2, S4, S6, S10 |
 | R8 | The protocol v1, written exactly in `docs/protocol.md`; a command signed over its exact bytes; every agent request signed | Concept §6, D4, D5, D15 | Must | Absent | S2 |
@@ -77,7 +77,7 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R10 | The wake-ups through the `ISignals` the application provides: keys under a prefix, a group of its own for every waiting poll and call, every wait reading the store again when it rejoins | Concept §5, D9 | Must | Absent | S5, S7 |
 | R11 | Several nodes, a stopped node, a lost poll answer, an older or replayed poll, a lost outcome and an outage of the signals behave as the rules say | Concept §4, §11 | Must | Absent | S7 |
 | R12 | The agent as a Windows service under its own virtual account, with the data folder that only it and administrators can use, the local policy, the secrets protected with DPAPI for the machine, and the audit log with its retention | Concept §5, D6, D13 | Must | Absent | S1, S6, S10 |
-| R13 | The COM worker and the executor: the external connection under the account of the mode, a fresh executor per command in safe mode unless D12 turns it off for the Writes of a base, the JSON rules, the user messages, the Write transaction with its checks before the commit, the connector's bitness, the workers ending with the agent, a worker ended at its run limit | Concept §3, §5, D3, D11, D12, D14 | Must | Absent | S9 |
+| R13 | The COM worker and the executor: the external connection under the account of the mode, a fresh executor per command in safe mode unless D12 turns it off for the Writes of a base, the JSON rules, the user messages, the Write transaction with its checks before the commit, the connector's bitness, the workers ending with the agent, a worker ended at its run limit | Concept §3, §5, D3, D11, D12, D14 | Must | Absent | S9, S9b |
 | R14 | The console: install, uninstall, pair, write a secret, check, write a metadata report | Concept §5 | Must | Absent | S10 |
 | R15 | The shell: a server of its own, pairing tokens, Read and Write by hand | Concept §2, §5 | Must | Absent | S11 |
 | R16 | Every timeout and limit that an application or an administrator can observe is an option with a default, validated when it is set; time comes from `TimeProvider` | `AGENTS.md`, principle 10 | Must | Absent | S1–S11 |
@@ -1076,7 +1076,7 @@ The release
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
-| S9 | The executor and the COM worker, run after L1 and before S3 | Full | Not started |
+| S9 | The executor and the COM worker, run after L1 and before S3 | Full | Built, 21 November 2026, and waiting for the lab: the executor's sources, the COM worker with its tests against a fake of the COM connection, and the tests that need 1C; the code review closed in two rounds. The owner has yet to build the `.epf` and commit it (X1) and to run the tests that need 1C on the lab machine; until then the sprint is not done. What it changed in the public contract is listed in its brief for the owner |
 | S9b | The agent runs the COM workers | Full | Not started |
 | S10 | The console | Full | Not started |
 | S11 | The shell | Full | Not started |
@@ -2510,7 +2510,8 @@ the contract of the executor and the COM worker approved.
     `script-error` a script that left a transaction of its own open, with the
     executor's own sentence as `ErrorText` (Q12 of the [open questions](open-questions.md));
   - in the concept, rule 5 says that a Write also fails when its script never started, and
-    names the two cases above;
+    names the two cases above, and §3 says that a transaction a Read's script leaves open is
+    rolled back and the Read fails;
   - in the Acceptance, the line on a connector of another version gave way to the lines of
     the internal contract, since L1 recorded no error for one;
   - the readings Q10, Q11 and Q12 of the open questions, taken as recommended.
