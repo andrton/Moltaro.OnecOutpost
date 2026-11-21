@@ -2281,7 +2281,8 @@ the contract of the executor and the COM worker approved.
 
 - **Goal.** A real base runs scripts. For each command, the COM worker:
   - holds the external connection under the account of its mode;
-  - opens a fresh executor in safe mode;
+  - opens a fresh executor, in safe mode unless the policy turns it off for the Writes of
+    the base (D12);
   - runs the script with `Parameters`, `CallerKey` and `Result`;
   - runs a Write in one transaction, with the checks of rule 5 before the commit;
   - collects the user messages and reports the outcome.
@@ -2303,7 +2304,9 @@ the contract of the executor and the COM worker approved.
     Read, Unknown `result-type` for a Write.
   - *Internal, after the study* (the planner, 21 November 2026). The worker depends on
     nothing outside .NET (principle 12), so it reads and writes its lines with
-    `System.Text.Json` and shares no type with the protocol assembly.
+    `System.Text.Json` and shares no type with the protocol assembly. It reads a line to a
+    depth of 72 levels, the protocol's limit of a message, so that parameters of 64 levels
+    pass.
 
     **Places.**
     - `src/Moltaro.OnecOutpost.ComWorker`: the program, `net10.0`, Windows only, built for
@@ -2322,10 +2325,9 @@ the contract of the executor and the COM worker approved.
     - `src/Moltaro.OnecOutpost.OneC.Tests`: the lab tests, outside the solution. They start
       the built worker program and speak to it over its standard streams, with a helper of
       their own.
-    - `lab.local.json` gains `typicalBases`, an array that may be empty: for each copy its
-      `server`, `database`, the accounts `read` and `write` with `user` and `password`, the
-      `documentType` to post again, and `writeSafeMode`. The tests of a typical base are
-      skipped by no flag: with an empty array they have no cases.
+    - `lab.local.json` gains `typicalBases`, an array of at least one copy: for each its
+      `server`, `database`, `configuration` and `version`, the accounts `read` and `write`
+      with `user` and `password`, the `documentType` to post again, and `writeSafeMode`.
 
     **The executor.** One exported function, in the English variant, written only with what
     the compatibility mode 8.2.13 allows:
@@ -2351,7 +2353,8 @@ the contract of the executor and the COM worker approved.
     **The lines.** One JSON object per line in UTF-8, ended with LF, without a BOM, on the
     raw standard streams. The standard output carries these lines and nothing else;
     `Console.Out` is pointed at the standard error. The standard error carries diagnostics
-    for a person, never the password and never the connection line.
+    for a person. The worker never writes its first input line, and it replaces the password
+    with `<password>` in every text it writes, since 1C or .NET may quote a value it refused.
 
     | Direction | Line | When |
     | --- | --- | --- |
@@ -2364,17 +2367,19 @@ the contract of the executor and the COM worker approved.
     - **A fresh executor per command** (concept section 3): the worker opens it with an
       `UnsafeOperationProtectionDescription` whose warnings are off, calls `Run`, and
       releases it.
-    - **The outcomes the worker writes itself,** in the same form, with `messages` empty and
-      `messagesTrimmed` false:
+    - **The outcomes the worker writes itself,** in the same form, with `errorText` null,
+      `messages` empty and `messagesTrimmed` false:
       - the executor does not open: Failed `base-unreachable`, for a Read and a Write, and
         the worker ends with exit code 2;
-      - the call of `Run` throws, which the executor itself never causes: Failed
+      - the call of `Run` throws, which the executor itself never causes, or returns a
+        text with a line break, which would shift every later outcome: Failed
         `connection-lost` for a Read, Unknown `connection-lost` for a Write, and the worker
         ends with exit code 3. The text of the failure goes to the standard error only.
     - **A line the worker cannot read** — not JSON, a member missing, unknown or of a wrong
       type — ends it with exit code 1 and a reason on the standard error. It is not skipped.
     - **The end of the input** ends the worker with exit code 0, once the command it runs
-      has its outcome written.
+      has its outcome written, and also before the first line. A last line without its LF
+      is a line. A worker that ends with exit code 1 writes nothing to the standard output.
 
     **The types,** in `Moltaro.OnecOutpost.ComWorker`. The loop is synchronous: the worker
     is one thread that owns one COM session and has nothing else to do while a script runs.
@@ -2443,7 +2448,9 @@ the contract of the executor and the COM worker approved.
       that does not open, a `Run` that throws for each mode, a line that cannot be read, a
       Read worker told to run without safe mode, the end of the input, and that the
       standard output carries nothing but the lines;
-    - the password and the connection line appear in no output of the worker.
+    - parameters of 64 levels reach the executor;
+    - the password appears in no output of the worker, also when the failure of the fake
+      quotes it.
 
     L1 installed one version of the connector, so it recorded no error of a connector
     whose version differs from the cluster's; nothing is asserted about one.
@@ -2452,7 +2459,8 @@ the contract of the executor and the COM worker approved.
     - a Read query that returns rows;
     - a Write that creates and posts a document of the test configuration;
     - on each copy of a typical base: the latest posted document of the type that
-      `lab.local.json` names, posted again by the tunnel in safe mode, has the same register
+      `lab.local.json` names, posted again by the tunnel with the safe mode that
+      `writeSafeMode` gives, has the same register
       movements as it had before, which a person's posting made (O1). The owner names a
       type whose posting depends on no sequence and no later document, in a period that
       no closing date of changes covers;
@@ -2498,8 +2506,8 @@ the contract of the executor and the COM worker approved.
 - **To read.** The [concept](../concept.md), rules 3, 8 and 9 and §5; `AGENTS.md`,
   principle 8; the brief of S9.
 - **Acceptance.**
-  - Automated, with `Requires=Windows`, against the worker program with a fake of the COM
-    connection:
+  - Automated, with `Requires=Windows`, against a small test program that stands in for
+    the worker:
     - the job object;
     - ending at the run limit;
     - starting again with a growing delay;
