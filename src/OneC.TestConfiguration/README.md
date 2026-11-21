@@ -58,7 +58,9 @@ add the base to the list of bases of the 1C client.
 ## lab.local.json
 
 It holds the address of the cluster and of its agent, the name of the test base, the PostgreSQL server and user,
-and the user and password of each of the three accounts of the base. The password of PostgreSQL is not in it. Git ignores it
+and the user and password of each of the three accounts of the base. The password of PostgreSQL is not in it. An
+optional `locale`, such as `uk_UA`, names the locale of the base when that of the Windows account is not one whose
+sort order the PostgreSQL of the lab knows. Git ignores it
 (`*.local.json`), and it never leaves the lab machine. The script puts the passwords on no command line, in no
 log and on no screen. The tests read their bases and accounts from this file; the copies of typical bases are
 added to it by the sprint whose tests use them.

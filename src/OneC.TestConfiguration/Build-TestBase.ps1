@@ -248,7 +248,16 @@ function New-TestBase($Working, $TestBase, [string] $DbPassword) {
     $info.dbName = $TestBase.database
     $info.dbUser = $TestBase.dbUser
     $info.dbPassword = $DbPassword
-    $info.Locale = "en_US"
+
+    # The locale has to be one whose sort order the PostgreSQL of the lab knows, which is the locale it was
+    # installed with. Without testBase.locale in lab.local.json it is that of this Windows account, as 1C itself
+    # would take it.
+    $locale = $TestBase.locale
+    if (-not $locale) {
+        $locale = [Globalization.CultureInfo]::CurrentCulture.Name.Replace("-", "_")
+    }
+    Write-Host ("Locale of the base: " + $locale)
+    $info.Locale = $locale
     $info.ScheduledJobsDenied = $true
     $info.LicenseDistributionAllowed = 1
 
