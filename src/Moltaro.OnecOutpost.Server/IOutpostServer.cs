@@ -231,9 +231,10 @@ public interface IOutpostServer
     /// Then the command is created, signed and handed to a poll of the agent, and the call waits for its
     /// outcome. A command that no poll took before its take deadline ends as
     /// <see cref="OutpostOutcomeKindEnum.Expired"/>; nothing is delivered later.
-    /// <see cref="OutpostOutcomeKindEnum.Failed"/> means that 1C rolled the transaction back, and
-    /// <see cref="OutpostOutcomeKindEnum.Unknown"/> that the agent cannot tell whether it committed; the server never
-    /// turns the outcome of a Write into <see cref="OutpostOutcomeKindEnum.Failed"/> after the agent reported it.
+    /// <see cref="OutpostOutcomeKindEnum.Failed"/> means that the Write wrote nothing, because 1C rolled its
+    /// transaction back or its script never started, and <see cref="OutpostOutcomeKindEnum.Unknown"/> that the agent
+    /// cannot tell whether it committed; the server never turns the outcome of a Write into
+    /// <see cref="OutpostOutcomeKindEnum.Failed"/> after the agent reported it.
     /// </para>
     /// <para>
     /// A cancelled call ends with <see cref="OperationCanceledException"/> and leaves the command running. An exception
