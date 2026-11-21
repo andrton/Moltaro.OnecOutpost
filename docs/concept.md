@@ -602,8 +602,10 @@ in the compatibility mode 8.2.13.
   8.3.17.1851. The platform's protection against dangerous actions refuses the call, since
   nobody can answer its warning; the call passes with an
   `UnsafeOperationProtectionDescription` whose warnings are off, which changes nothing in
-  the base, in the account or on the machine. Checked with one account of full rights; the
-  rights a narrow account needs are checked with the test configuration.
+  the base, in the account or on the machine. On the test configuration, an account whose
+  role has the right of external connection and the rights to the data, and nothing else,
+  opens the executor and runs scripts; one without a right to change data is refused the
+  change by 1C.
 - **O3. Licences.** *Answered.* Every session of an external connection takes a client
   licence, here from the pool of the server. So a COM worker costs one licence for as long
   as it holds its session.
