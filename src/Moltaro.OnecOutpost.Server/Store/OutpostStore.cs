@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
+using Moltaro.OnecOutpost.Protocol.Messages;
 using Npgsql;
 
 namespace Moltaro.OnecOutpost.Server.Store;
@@ -176,6 +177,54 @@ internal sealed class OutpostStore
         await transaction.CommitAsync(cancellationToken);
 
         return purged.Single();
+    }
+
+    // The row of the agent, or null when there is none.
+    public Task<AgentRow?> FindAgentAsync(Guid agentId, CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // Records a poll that is newer than the newest recorded, while the agent is Paired, in one short transaction: its
+    // number, the node's time, the end of its lease (§6.2) and the agent version; the declared bases in place of the
+    // agent's rows; and a claim of each declared key that no agent holds (rule 14). Newest is null then. An older poll
+    // changes nothing (rule 10) and gets the recorded number with the lists of the newest poll.
+    public Task<PollState> RecordPollAsync(
+        Guid agentId,
+        OutpostPollRequest poll,
+        TimeSpan hold,
+        TimeSpan leaseGrace,
+        TimeSpan clockSkew,
+        CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // The state of the agent for the answer to its poll of this number, in one statement that changes nothing and takes
+    // no lock. Newest is the recorded number when it is not this one, and null when it is.
+    public Task<PollState> ReadPollStateAsync(Guid agentId, long number, CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // Every agent, by its creation and identity, with the bases of its newest poll by key and whether it holds each, in
+    // one statement. An agent is connected while it is Paired and its lease ends later than the store's now.
+    public Task<IReadOnlyList<OutpostAgent>> ListAgentsAsync(CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // Deletes the agent's token, makes it Revoked and frees its keys, in one short transaction in the order of locks.
+    // True when the call made the agent Revoked. Its bases stay, so the list shows them, none held.
+    public Task<bool> RevokeAgentAsync(Guid agentId, CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // Frees a key whose holder's newest poll no longer declares it, in one short transaction (rule 14).
+    public Task<OutpostReleaseResultEnum> ReleaseBaseAsync(string baseKey, CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
     }
 
     // The table of an entity type, with its schema, as the model names it, delimited for raw SQL.
