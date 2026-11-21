@@ -31,7 +31,9 @@ public static class OutpostMigrations
     /// <remarks>
     /// A schema that has every migration is left as it is, so a second call changes nothing. Calls for one schema at the
     /// same time, on one node or on several, run one after another. When the database of the connection does not exist
-    /// and the role of the connection may create one, the call creates the database first.
+    /// and the role of the connection may create one, the call creates the database first. Calls for one schema wait for
+    /// each other on a session advisory lock, so the connection must keep its session for the whole call: a direct
+    /// connection, or a pooler in session mode, never one that pools by transaction.
     /// </remarks>
     /// <exception cref="ArgumentNullException">
     /// Thrown by the call: <paramref name="connectionString"/> or <paramref name="schema"/> is <see langword="null"/>.
@@ -43,9 +45,13 @@ public static class OutpostMigrations
     /// <exception cref="OperationCanceledException">
     /// Reported by the task: <paramref name="cancellationToken"/> was cancelled.
     /// </exception>
-    /// <exception cref="Npgsql.NpgsqlException">
-    /// Reported by the task: the database failed, for example it refused the connection or the role lacks a right; a
-    /// <see cref="Npgsql.PostgresException"/> when the server reported the error.
+    /// <exception cref="InvalidOperationException">
+    /// Reported by the task: a failure of the database that may pass, such as a refused connection or a session that
+    /// ended, with the <see cref="Npgsql.NpgsqlException"/> as its inner exception; nothing retries it.
+    /// </exception>
+    /// <exception cref="Npgsql.PostgresException">
+    /// Reported by the task: the server refused the work for a reason that does not pass, such as a wrong password or a
+    /// right the role lacks.
     /// </exception>
     public static Task MigrateAsync(string connectionString, string schema, CancellationToken cancellationToken = default)
     {
