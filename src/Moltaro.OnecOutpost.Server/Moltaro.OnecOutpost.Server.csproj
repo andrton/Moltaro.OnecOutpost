@@ -20,6 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The store has no public surface; its tests address it directly. -->
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Server.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- PQ6: the protocol assembly travels inside this package instead of as a dependency, so that nobody can pair
          it with another build of its internals. PrivateAssets keeps it out of the dependencies of the package; the
          target below puts the assembly into lib/ next to the server's own. -->
