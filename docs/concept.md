@@ -583,6 +583,11 @@ in the compatibility mode 8.2.13.
   the external connection with the same movements in all of its 32 registers as when a
   person posted it. Reads work in safe mode.
 
+  The exception of D12 was tried on the same machine. Under an ordinary Windows account,
+  not an administrator, the connection, the executor and the posting without safe mode
+  work as before, and a Write script without safe mode is refused a file that only
+  administrators may read, by Windows. Under an administrator the same script reads it.
+
   Before that, the document could not be written at all, with safe mode and without it.
   The base carried two common modules of its own whose event subscriptions cover its
   documents and registers, and neither was available to an external connection. 1C then
@@ -624,7 +629,11 @@ L1 also found:
   script can use what the mode of its base allows. The executor is written for the lowest
   mode in use, and the test configuration runs in it.
 - **The first connection of a process takes several seconds,** a later one about two, which
-  is why a COM worker keeps its session between commands.
+  is why a COM worker keeps its session between commands. The first connection of a
+  Windows account that never used 1C took twenty seconds.
+- **The language of 1C's own texts follows the Windows account.** The same error text and
+  the same presentation of a date came in another language under another account, so
+  nothing may depend on the wording of an error of 1C.
 - Safe mode refuses a file and a COM object. A script that declares a procedure is
   refused. A Write whose script raises an error rolls back. A script that commits the
   transaction itself is recognized.
