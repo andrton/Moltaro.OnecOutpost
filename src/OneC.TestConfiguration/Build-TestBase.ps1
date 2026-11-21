@@ -405,6 +405,12 @@ try {
 
     $dbPassword = Read-Password ("Password of the PostgreSQL user " + $testBase.dbUser + " on " + $testBase.dbServer)
 
+    # The previous base is dropped before the password is first used, so an empty one, such as a stray Enter, is
+    # refused here. A wrong non-empty password is not caught until the base is created again.
+    if (-not $dbPassword) {
+        throw "The password of the PostgreSQL user is empty. Nothing was dropped."
+    }
+
     Write-Step ("Creating the base " + $testBase.database + " on " + $testBase.server)
     $connector = New-Object -ComObject V83.COMConnector
     $working = Connect-WorkingProcess $connector $testBase

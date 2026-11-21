@@ -46,7 +46,8 @@ A run rebuilds the base from scratch:
    machine, the base `outpost_test` and generated passwords, and goes on.
 2. It finds `1cv8.exe` of 8.3.17.1851 under `Program Files\1cv8` or `Program Files (x86)\1cv8`.
 3. It asks for the password of the PostgreSQL user, without echoing it. The script keeps it nowhere; the 1C
-   cluster stores it with the registration of the base, as it does for every base.
+   cluster stores it with the registration of the base, as it does for every base. It stops on an empty password
+   before it touches the cluster; a wrong one is not known until step 4 creates the base, after the drop.
 4. It drops the base of an earlier run with its database, and creates the base and its database again, through
    the administration of the cluster. Its one guard is the name of the base on the cluster, which has to start
    with `outpost_`; dropping a base also deletes the database that its registration names, whatever that name is,
