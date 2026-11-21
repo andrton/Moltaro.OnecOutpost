@@ -716,11 +716,20 @@ public sealed record OutpostMigrationScript(string Name, string Sql);
 ```
 
 - `MigrateAsync` applies the EF Core migrations of the store that the schema lacks. It
-  creates the schema when it does not exist.
+  creates the schema when it does not exist, and the database when it does not exist and
+  the role of the connection may create one. Calls for one schema, on one node or on
+  several, wait for each other on a session advisory lock, so the connection keeps its
+  session for the whole call: a direct connection or a pooler in session mode, not one
+  that pools by transaction. A failure of the database that may pass, such as a refused
+  connection, is reported as `InvalidOperationException` with the `NpgsqlException`
+  inside; one that does not pass, such as a connection string without a password, as
+  `NpgsqlException`, and a refusal by the server, such as a wrong password, as the
+  `PostgresException` that derives from it.
 - `GetScripts` returns one SQL script per migration, in order, for an application that
   applies migrations itself. Applying them in order to an empty schema gives the same
   tables, and the same record of applied migrations, as `MigrateAsync` does. `Name` is the
-  identifier of the EF Core migration.
+  identifier of the EF Core migration. Each script carries its own transaction, so a tool
+  does not wrap it in another.
 - `schema` follows the rule of names.
 
 ### The files of the agent
@@ -1141,8 +1150,10 @@ The release
   signatures over exact bytes, the agent's signed requests and the pairing proof. It is
   reviewed alone, as the zone of `AGENTS.md` with the strictest priorities.
 - **S3, the store, apart from the server.** Every guarantee of the server is one
-  conditional change in the store. They are tested against PostgreSQL without HTTP, so a
-  failure points at one place.
+  conditional change in the store, tested against PostgreSQL without HTTP, so a failure
+  points at one place. S3 builds the store, its migrations and the changes of pairing
+  tokens; S4 and S5 add the changes their own behavior needs, each tested the same way
+  before its HTTP.
 - **S4, pairing, apart from S5, commands.** Pairing, authentication, leases and base keys
   are needed by commands but not the other way round. Splitting them keeps each review to
   one mechanism.
@@ -1169,7 +1180,7 @@ The release
 | --- | --- | --- | --- |
 | S1 | The public contract of stage 1, the projects and the test lane | Full | Done |
 | S2 | The protocol, its signatures and the pairing proof | Full | Done, 21 November 2026: the codec, the signatures and the pairing proof with their tests; the code review closed in two rounds, after the ten rounds of `docs/protocol.md`. What it changed in the public contract is listed in its brief for the owner |
-| S3 | The store | Full | Not started |
+| S3 | The store | Full | Done, 21 November 2026: the store on PostgreSQL in the schema the application chooses, its first migration, `OutpostMigrations` with `MigrateAsync` and `GetScripts`, and the pairing tokens with their pending agents: created, found, redeemed once and purged, which no endpoint uses yet. The internal contract was reviewed in two rounds; the code review took three, and its last finding, a word of the XML documentation of `MigrateAsync`, was fixed on the owner's decision without a fourth round. What it changed in the public contract is listed in its brief for the owner |
 | S4 | Pairing and agents on the server | Full | Not started |
 | S5 | Commands on the server | Full | Not started |
 | S6 | The agent | Full | Not started |
@@ -1831,42 +1842,118 @@ approval of this plan.
 
 **Track:** full · **Branch:** `epic-1/sprint-03-store` · **Needs:** S2.
 
-- **Goal.** The library's store on PostgreSQL holds pairing tokens, agents, their bases,
-  polls, commands and outcomes. It makes every change that a rule needs as one conditional
-  change, safe across nodes. `OutpostMigrations` works.
+- **Goal.** The library's store exists on PostgreSQL in a schema the application chooses,
+  `OutpostMigrations` works, and the store keeps pairing tokens with their pending agents
+  and redeems each once.
+- **Cut to what it builds** (the planner, 21 November 2026, by the owner's rule that a
+  design document covers what its sprint builds). The plan had S3 design every operation
+  of the store ahead of the sprints that call them. Now S3 builds the store itself and the
+  operations of pairing tokens, which prove its way of making one conditional change. The
+  operations of polls, leases and base keys are in the brief of S4, and those of commands
+  and outcomes in the brief of S5; each of those sprints writes them with its tests
+  against PostgreSQL, as here, before its HTTP. The study of S3 covered all of them, and
+  what it found is carried into those briefs.
 - **Contract.**
   - *Public, from S1, now working:* `OutpostMigrations`.
-  - *Internal:* the EF Core context, its entities and the store's operations, in the
-    server's assembly, written into this brief after the study. They take the time from
-    the server's `TimeProvider` (PQ3). They have to be able to:
-    - create a token with its pending agent;
-    - redeem a token once, before its expiry, registering the agent's key and deleting the
-      token's secret in the same change;
-    - record a poll:
-      - its number, treating one that is not greater than the newest as older and
-        changing nothing else for it (rule 10);
-      - the lease (rule 6);
-      - the declared bases with their claims (rule 14);
-      - the list of received commands, handing out again those missing from it (rule 11);
-    - take the oldest commands for the modes with free workers (rules 7, 8, 10, 13): only
-      for the newest poll, only for an agent that is not revoked, and only before their
-      take deadline;
-    - expire a command that no poll took, and a handed-out command on the evidence of the
-      agent's time, which also turns a server-set Unknown or `lost` into Expired (rules 7
-      and 11);
-    - end a taken command whose agent has been away longer than its run limit: Unknown
-      with `disconnected` for a Write, Failed with `lost` for a Read (rule 11);
-    - accept the first outcome of a command from the agent it was handed to, with the
-      replacements of rule 11, and confirm an outcome for a command it does not know;
-    - create a command, or find the one that its base and caller key name, in one change
-      (rule 4): the script is compared exactly, the parameters as JSON values;
-    - end the commands of a revoked agent (rule 13);
-    - release a base key (rule 14);
-    - remove ended commands after their retention, and expired tokens with their pending
-      agents.
+  - *Internal, after the study.* In the server's assembly, folder and namespace
+    `Moltaro.OnecOutpost.Server.Store`; its migrations in
+    `Moltaro.OnecOutpost.Server.Store.Migrations`.
 
-    Every change is one statement or one short transaction under ReadCommitted, and
-    holds no lock while it waits for anything.
+    ```csharp
+    internal sealed class StoreContext : DbContext
+    {
+        public StoreContext(DbContextOptions<StoreContext> options, string schema);
+        public string Schema { get; }
+        public DbSet<AgentRow> Agents { get; }
+        public DbSet<PairingTokenRow> PairingTokens { get; }
+    }
+
+    internal static class StoreContextFactory
+    {
+        public static StoreContext Create(string? connectionString, string schema);
+    }
+
+    internal sealed class AgentRow
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; }
+        public OutpostAgentStateEnum State { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset? PairedAt { get; set; }
+        public byte[]? PublicKey { get; set; }
+    }
+
+    internal sealed class PairingTokenRow
+    {
+        public Guid AgentId { get; set; }
+        public byte[] Secret { get; set; }
+        public DateTimeOffset ExpiresAt { get; set; }
+    }
+
+    internal sealed class OutpostStore
+    {
+        public OutpostStore(string connectionString, string schema, TimeProvider timeProvider);
+        public Task CreatePairingTokenAsync(Guid agentId, string agentName, byte[] secret, DateTimeOffset expiresAt, CancellationToken cancellationToken);
+        public Task<byte[]?> FindPairingSecretAsync(Guid agentId, CancellationToken cancellationToken);
+        public Task<bool> RedeemPairingTokenAsync(Guid agentId, byte[] publicKey, CancellationToken cancellationToken);
+        public Task<int> PurgePairingTokensAsync(CancellationToken cancellationToken);
+    }
+    ```
+
+    - **The schema is chosen at run time.** `StoreContextFactory.Create` is the one place
+      that builds the options, with no connection string for `GetScripts`: Npgsql, the
+      default schema of the model, the history table of the migrations in that schema, a model cache key that includes the schema, and
+      the library's own `IMigrationsAssembly` with an explicit list of migrations, each
+      created with the schema, and a snapshot that takes the schema too. The check of
+      pending model changes stays on. No retries.
+    - **`OutpostMigrations.MigrateAsync`** migrates through that context.
+      **`GetScripts`** gives, for each migration, the script of the migrator from the one
+      before it, the first from nothing; it opens no connection. The name of a script is
+      the identifier of its migration.
+    - **A token is the identity of its agent.** `CreatePairingTokenAsync` writes the agent
+      as Pending, with its name and the node's time, and the token with its secret and
+      expiry, in one short transaction.
+    - **`FindPairingSecretAsync`** gives the secret of a token that has not expired by the
+      store's `TimeProvider` and whose agent is Pending, and `null` otherwise. S4 checks
+      the proof of a pairing with it before it redeems.
+    - **`RedeemPairingTokenAsync`** is one statement: it deletes the token when it has not
+      expired, and in the same statement makes its agent, while Pending, Paired with the
+      key and the time. It gives `true` to the one call that made the agent Paired. The
+      secret is gone with the token (concept, "Pairing").
+    - **`PurgePairingTokensAsync`** deletes, in one statement, the tokens that expired and
+      their agents that are still Pending, and gives the number of tokens. Tokens are few,
+      so it takes no batches.
+    - Each operation opens a context of its own, runs under ReadCommitted and holds no
+      lock while it waits for anything. What EF Core cannot say, such as `RETURNING` in a
+      statement that changes two tables, is raw SQL with the table names taken from the
+      model.
+    - **The model.** Tables `agents` and `pairing_tokens`, columns in snake case, each
+      named in the model, with no package for it. The key
+      of `pairing_tokens` is `agent_id`, a foreign key to `agents` that deletes the token
+      with its agent. Every time is a `timestamptz` that the store writes in UTC from its
+      `TimeProvider`, never from the clock of the database (PQ3).
+    - **The contract step** puts the types and the model into code.
+      `StoreContextFactory.Create`, `OutpostMigrations` and the four operations of
+      `OutpostStore` throw `NotSupportedException`: the options, the migrations assembly,
+      the snapshot and the first migration are the implementer's.
+    - The store uses `OutpostAgentStateEnum` of the root namespace, and `OutpostMigrations`
+      of the root uses the store: the root is the public contract, the store depends on
+      its types, and only the entry points of the root call down.
+    - **Effort:** the test author and the implementer on `xhigh`, the store being a strict
+      zone.
+- **What S3 changed in the public contract, as a draft for the owner** (the coordinator,
+  21 November 2026, after the code review). Each holds until the owner overturns it; the
+  section on [`OutpostMigrations`](#outpostmigrations-and-outpostmigrationscript) and the
+  XML documentation say so:
+  - `MigrateAsync` also creates the database when it does not exist and the role may
+    create one, as EF Core does;
+  - calls of `MigrateAsync` for one schema wait for each other on a session advisory lock,
+    because four or more nodes migrating a new schema at once failed without it; the
+    connection keeps its session for the whole call;
+  - `MigrateAsync` reports a failure of the database that may pass as
+    `InvalidOperationException` with the `NpgsqlException` inside, and one that does not
+    as `NpgsqlException`, a refusal by the server being its `PostgresException`;
+  - each script of `GetScripts` carries its own transaction.
 - **Study.** Sources, for example: the PostgreSQL transport of Rebus (MIT); the durable
   inbox and outbox of Wolverine (MIT); the ADO.NET job store of Quartz.NET (Apache-2.0);
   for migrations with a schema chosen at run time, EF Core (MIT) and Npgsql (PostgreSQL
@@ -1882,26 +1969,33 @@ approval of this plan.
   5. How removal after retention runs on every node without harm.
   6. How EF Core migrations take a schema chosen at run time, and how one SQL script per
      migration is produced for that schema.
-- **To read.** The [concept](../concept.md), §3 "Rules" and §5 (20 November 2026);
-  `AGENTS.md`, principles 5–7, 10 and 11; this plan, "The public contract" and PQ3.
+- **To read.** The [concept](../concept.md), §3 "Pairing" and §5; `docs/protocol.md`, §6.1
+  `pair`; `AGENTS.md`, principles 6, 9 and 10; this plan, "The public contract" and PQ3.
 - **Acceptance.**
-  - A test against PostgreSQL for every operation above. Each case of a rule has its own
-    test, named for the rule.
-  - The exact replay of the newest poll changes nothing.
-  - Races, each driven to a known order, for example by holding the first transaction open
-    until the second is observed waiting. In each one side wins and the other changes
-    nothing:
-    - two takes of one command;
-    - a take against an expiry;
-    - two outcomes of one command;
-    - two claims of one base key;
-    - two redemptions of one token;
-    - two first calls with one base and one caller key: one command is created, and the
-      other call finds it;
-    - two repeats racing to create a new command after the first ended as Expired or
-      Refused: one command is created.
+  - Migrations, against PostgreSQL:
+    - the model has no pending changes against its snapshot;
+    - two `MigrateAsync` running at once into one new schema both complete, and the schema
+      is what one gives;
+    - two schemas in one database each get their own tables, and a context of one never
+      reads the other's;
+    - `GetScripts` works with no database, and the name of each script is the identifier
+      of its migration.
+  - Pairing tokens, against PostgreSQL, with the fake clock:
+    - a created token has a Pending agent and its secret is found;
+    - the secret is found until its expiry and not from it on;
+    - a redemption makes the agent Paired with its key and time and leaves no token, so a
+      second one gives `false`;
+    - a redemption from the expiry on gives `false` and leaves the agent Pending;
+    - a redemption of an identity the store does not know gives `false`, and its secret
+      is not found;
+    - the purge removes an expired token with its Pending agent, gives their number, and
+      leaves a token that has not expired and an agent that is Paired.
+  - One race, driven to a known order: another connection holds the row of a token locked
+    until two redemptions are both observed waiting for it; then one gives `true`, the
+    other `false`, and the agent has the key of the one that won.
   - The skipped tests of the migrations from S1 pass unskipped.
-  - The documents step: `README.md` says the store exists.
+  - The documents step: `README.md` says that the migrations work and that the store keeps
+    pairing tokens, which no endpoint uses yet.
 - **Out of scope.** HTTP, the signals, the agent.
 
 ### S4 · Pairing and agents on the server
@@ -1924,6 +2018,23 @@ approval of this plan.
   - *Still refusing:* `ReadAsync`, `WriteAsync` and the `outcome` request.
   - *Internal:* the handlers of the endpoints and the holding of a poll, written into this
     brief after the study.
+  - *The store, moved here from S3* (the planner, 21 November 2026): the operations of
+    polls, leases and base keys, added to `OutpostStore` with a migration, and tested
+    against PostgreSQL before the endpoints use them. They have to be able to:
+    - record a poll: its number, treating one that is not greater than the newest as
+      older and changing nothing else for it (rule 10); the lease (rule 6); the declared
+      bases with their claims (rule 14);
+    - list agents with their bases;
+    - revoke an agent;
+    - release a base key (rule 14).
+
+    Every change is one statement or one short transaction under ReadCommitted, holds no
+    lock while it waits for anything, and takes its time from the server's `TimeProvider`
+    (PQ3). From the study of S3: the row of the agent is the one lock that orders its polls, taken
+    by the conditional `UPDATE … WHERE newest poll < the new number … RETURNING`. To settle
+    when this contract is written: what a poll stores beside its number, the agent's time
+    and the lease; and whether "still declares" in a release means the newest poll or a
+    live lease.
 - **Study.** Sources, for example: the message long poll of the GitHub Actions runner
   service (MIT); the long polling transport of ASP.NET Core SignalR (MIT). Questions:
   1. How a long poll is held and ended: its timeout, a client that went away,
@@ -1966,6 +2077,10 @@ approval of this plan.
       connected;
     - base keys follow rule 14, release included, and the poll answer reports them;
     - the purge removes an unused token and its pending agent.
+  - Against PostgreSQL, without HTTP: a test for each operation of the store above, each
+    case of a rule named for the rule; the exact replay of the newest poll changes
+    nothing; and one race driven to a known order, two claims of one base key, in which
+    one side wins and the other changes nothing.
   - The documents step: `README.md` says that agents can pair and poll.
 - **Out of scope.** Commands; the signals, which commands need first.
 
@@ -1992,6 +2107,49 @@ approval of this plan.
     - each waits with `WaitAsync(null, …)`, and its deadline comes from the server's
       `TimeProvider`;
     - after a rejoin it reads the store again.
+  - *The store, moved here from S3* (the planner, 21 November 2026): the operations of
+    commands and outcomes, added to `OutpostStore` with a migration, and tested against
+    PostgreSQL before the calls and the endpoints use them. They have to be able to:
+    - create a command, or find the one that its base and caller key name, in one change
+      (rule 4): the script is compared exactly, the parameters as JSON values;
+    - record the list of received commands of the newest poll, and of no older one (rule
+      10), handing out again those missing from it (rule 11);
+    - take the oldest commands for the modes with free workers (rules 7, 8, 10, 13): only
+      for the newest poll, only for an agent that is not revoked, and only before their
+      take deadline;
+    - expire a command that no poll took, and a handed-out command on the evidence of the
+      agent's time, which also turns a server-set Unknown or `lost` into Expired (rules 7
+      and 11);
+    - end a taken command whose agent has been away longer than its run limit: Unknown
+      with `disconnected` for a Write, Failed with `lost` for a Read (rule 11);
+    - accept the first outcome of a command from the agent it was handed to, with the
+      replacements of rule 11, and confirm an outcome for a command it does not know;
+    - end the commands of a revoked agent (rule 13);
+    - remove ended commands after their retention.
+
+    Every change is one statement or one short transaction under ReadCommitted, holds no
+    lock while it waits for anything, and takes its time from the server's `TimeProvider`
+    (PQ3). From the study of S3, to start from:
+    - the take is one statement: a CTE that updates the row of the agent only while the
+      poll is its newest and it is not revoked, and commands picked per base and mode,
+      oldest first by an identity column, with `FOR UPDATE SKIP LOCKED`; the other changes
+      of one command are `UPDATE … WHERE state = … RETURNING`, the state being the version;
+    - create-or-find is a partial unique index on the base and the caller key over the
+      commands that hold their key, and `INSERT … ON CONFLICT … DO UPDATE … RETURNING`
+      with an identity the server generates, which tells a created command from a found
+      one; a call for an agent that is not connected reads by the key before it answers
+      Unavailable;
+    - the parameters are kept as the exact text that was signed and compared as `jsonb`
+      only there, which needs a database in UTF-8;
+    - oldest first is the order of insertion, not of commit;
+    - removal runs on every node in bounded batches with `SKIP LOCKED`.
+
+    To settle when this contract is written: the states of a hand-out and whether a
+    command once listed and then left out is handed out again; what is stored with a
+    command for its expiry on the agent's time; whether a command is signed once and its
+    bytes kept; whether a command the server itself refuses is stored; and that duplicate
+    names inside the parameters are refused at the call, since `jsonb` would compare
+    another value than the one signed — a draft of the public contract.
 - **Study.** Sources, for example: the message acknowledgement of the GitHub Actions
   runner service client (MIT); the polling queue of Halibut (Apache-2.0). Questions:
   1. How a message handed to a poll whose answer was lost is found and handed out again.
@@ -2039,6 +2197,18 @@ approval of this plan.
     - the newest poll is woken while an older poll of the same agent still waits, and the
       older one takes nothing and is answered as older when it wakes or its hold ends;
     - a wait reads the store again after its subscription rejoins a restarted Signals host.
+  - Against PostgreSQL, without HTTP: a test for each operation of the store above, each
+    case of a rule named for the rule, and these races, each driven to a known order, in
+    which one side wins and the other changes nothing. A statement with `SKIP LOCKED`
+    never waits, so such a race holds the first change open and shows that the second
+    changed nothing:
+    - two takes of one command;
+    - a take against an expiry;
+    - two outcomes of one command;
+    - two first calls with one base and one caller key: one command is created, and the
+      other call finds it;
+    - two repeats racing to create a new command after the first ended as Expired or
+      Refused: one command is created.
   - The documents step: `README.md` says that commands work against an agent that speaks
     the protocol.
 - **Out of scope.** The agent program; several server nodes.

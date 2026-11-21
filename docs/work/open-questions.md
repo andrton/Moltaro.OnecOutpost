@@ -95,6 +95,15 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Taken** | 21 November 2026, the coordinator, as the planner recommends, with no new code: a commit that raises is Unknown `transaction-ended`, whose meaning widens to "the script ended the transaction of its Write itself, or the commit raised"; a transaction left open is Failed `script-error`, with a fixed English sentence of the executor as its `errorText`, since 1C raised nothing. After round 1 of the code review the same holds for a Read: the executor rolls back every transaction a script left open, so none outlives its command in the session of the worker. The executor does so, and lab tests state it. On the lab, 21 November 2026, a nested rollback on 8.3.17 left the transaction active and its commit did not raise, so the one way of provoking a commit that raises that was tried does not work there: the planner decided that the executor keeps Unknown `transaction-ended` for it, which principle 5 requires, and that the case has no lab test. Round 3 of the code review then found, and the lab confirmed, that a Write whose script begins and rolls back a nested transaction was reported Succeeded although 1C had silently rolled back all it wrote. The owner decided to fix it: before the commit of a Write the executor runs the query `SELECT 1`, and when it raises, rolls back and gives Failed `script-error` with its own sentence. Two lab tests state it |
 | **Decides** | The owner: the meaning of a code and of `errorText` is public contract. Listed with the drafts of S9 |
 
+### Q13. A schema whose name begins with `pg_`
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S3, the code review, round 1 |
+| **Question** | The rule of schemas of S1 accepts a name that begins with `pg_`, which PostgreSQL reserves for its own schemas. Now that `MigrateAsync` works, such a schema passes the check of the call and then fails in its task with the error 42939 of PostgreSQL. Should the rule of schemas refuse the prefix, so that the call throws `ArgumentException` itself? |
+| **Until answered** | The rule stays as it is, and `MigrateAsync` reports the error of PostgreSQL through its task. `AddOutpostServer` accepts such a schema |
+| **Decides** | The owner: the rule of names is public contract |
+
 ## Answered
 
 ### Q1. Values of `policy.json` that its table does not mention

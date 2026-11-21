@@ -20,9 +20,12 @@ through the executor, an external data processor in `src/Executor`, in safe mode
 without it. No agent starts it yet. Its tests run against a fake of the COM connection,
 and its 45 tests against a real 1C, in `src/Moltaro.OnecOutpost.OneC.Tests`, passed on the
 lab machine with 1C:Enterprise 8.3.17.1851, against the repository's test base and a copy
-of a typical base. Everything else throws
-`NotSupportedException`: pairing, Read and Write, the endpoints of the agents and the
-migrations of the store. Nothing below works yet.
+of a typical base. The migrations of the store work: `OutpostMigrations` creates the
+store's tables on PostgreSQL in the schema the application chooses, or gives them as one
+SQL script per migration. The store keeps pairing tokens with their pending agents and
+redeems each once, which no endpoint uses yet. Everything else throws
+`NotSupportedException`: pairing, Read and Write, and the endpoints of the agents. Nothing
+below works yet.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from
