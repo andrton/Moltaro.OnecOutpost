@@ -101,7 +101,7 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | --- | --- |
 | **Found** | 21 November 2026, Epic 1 S3, the code review, round 1 |
 | **Question** | The rule of schemas of S1 accepts a name that begins with `pg_`, which PostgreSQL reserves for its own schemas. Now that `MigrateAsync` works, such a schema passes the check of the call and then fails in its task with the error 42939 of PostgreSQL. Should the rule of schemas refuse the prefix, so that the call throws `ArgumentException` itself? |
-| **Until answered** | The rule stays as it is, and `MigrateAsync` reports the error of PostgreSQL through its task. `AddOutpostServer` accepts such a schema |
+| **Until answered** | The rule stays as it is, and `MigrateAsync` reports the error of PostgreSQL through its task. `AddOutpostServer` accepts such a schema. It blocks no sprint: the planner carried it to the closing of the epic (21 November 2026), since either answer is a small change of one check |
 | **Decides** | The owner: the rule of names is public contract |
 
 ## Answered
