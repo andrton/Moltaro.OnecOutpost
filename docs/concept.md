@@ -637,6 +637,10 @@ L1 also found:
 - **The language of 1C's own texts follows the Windows account.** The same error text and
   the same presentation of a date came in another language under another account, so
   nothing may depend on the wording of an error of 1C.
+- **The lab runs on PostgreSQL.** The library does not see the DBMS of a base, so what L1
+  found about rules holds on any of them. What it measured does not: the time of a
+  posting and the behavior of locks under load belong to that DBMS and that machine, and
+  are measured again before a default is trusted on another.
 - Safe mode refuses a file and a COM object. A script that declares a procedure is
   refused. A Write whose script raises an error rolls back. A script that commits the
   transaction itself is recognized.

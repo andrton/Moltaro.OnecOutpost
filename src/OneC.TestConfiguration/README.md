@@ -4,8 +4,8 @@ The tests that need 1C run on the lab machine against a base built from this fol
 `AGENTS.md`, "Tests And Samples", says. Nothing here runs in CI. The base is a client-server one because the lab's
 1C server gives a licence to nobody who opens a file base.
 
-**Status:** neither the sources nor the script have run against a real 1C yet. The first run on the lab machine is
-their first test.
+**Status:** the script built the base from these sources on the lab machine on 21 November 2026, on
+1C:Enterprise 8.3.17.1851 with PostgreSQL.
 
 ## What is here
 
@@ -59,8 +59,9 @@ add the base to the list of bases of the 1C client.
 
 It holds the address of the cluster and of its agent, the name of the test base, the PostgreSQL server and user,
 and the user and password of each of the three accounts of the base. The password of PostgreSQL is not in it. An
-optional `locale`, such as `uk_UA`, names the locale of the base when that of the Windows account is not one whose
-sort order the PostgreSQL of the lab knows. Git ignores it
+optional `locale`, such as `ru_RU`, names the locale of the base when that of the Windows account is not the one
+the PostgreSQL of the lab was installed with: 1C then refuses to create the base, since the database does not
+support the sort order. A PostgreSQL on another port is written into `dbServer` as `localhost port=5433`. Git ignores it
 (`*.local.json`), and it never leaves the lab machine. The script puts the passwords on no command line, in no
 log and on no screen. The tests read their bases and accounts from this file; the copies of typical bases are
 added to it by the sprint whose tests use them.
