@@ -2504,7 +2504,11 @@ the contract of the executor and the COM worker approved.
   job object that ends them with the agent. It ends a worker at its run limit, and starts
   it again with a growing delay, up to `retryDelayMax`.
 - **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says. The planner
-  writes the internal types into this brief when the sprint is prepared.
+  writes the internal types into this brief when the sprint is prepared. To settle
+  then: the worker writes some outcomes itself in the form of the executor's line
+  (`base-unreachable`, `connection-lost`, `result-type` for a line break), so the agent
+  cannot hold every line of a worker to `IsExecutorOutcome`; and the name of the test
+  program that stands in for the worker.
 - **Study.** The study of S9 answers its questions; none of its own.
 - **To read.** The [concept](../concept.md), rules 3, 8 and 9 and §5; `AGENTS.md`,
   principle 8; the brief of S9.
