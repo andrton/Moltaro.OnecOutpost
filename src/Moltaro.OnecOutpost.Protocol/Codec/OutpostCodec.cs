@@ -844,6 +844,8 @@ internal static class OutpostCodec
 
         string script = ReadString(command, "script");
 
+        // CheckText has refused U+0000 and lone surrogates in every string, so what is left of the rule of scripts is
+        // IsScript.
         if (!OutpostNames.IsScript(script))
         {
             throw Form("The script breaks the rule of scripts.");

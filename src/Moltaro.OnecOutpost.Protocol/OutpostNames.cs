@@ -65,7 +65,7 @@ internal static class OutpostNames
                 paramName);
         }
 
-        if (!IsScript(value))
+        if (!IsScript(value) || value.Contains('\0'))
         {
             throw new ArgumentException(
                 "A script has at least one character that is not white space, and no U+0000.",
@@ -79,11 +79,12 @@ internal static class OutpostNames
         return value.Length is > 0 and <= CallerKeyMaxLength && !value.AsSpan().ContainsAnyExceptInRange('!', '~');
     }
 
-    // True for a text with at least one character that is not white space, and without U+0000 or a lone surrogate.
-    // The codec reads the script of a command by it.
+    // True for a text with at least one character that is not white space. The rest of the rule of scripts, no U+0000
+    // and no lone surrogate, is checked once by each caller: by CheckScript, and in the codec by CheckText of §2, which
+    // refuses both in every string of a command before the codec reads its script by this.
     public static bool IsScript(string value)
     {
-        return !string.IsNullOrWhiteSpace(value) && !value.Contains('\0') && !HasLoneSurrogate(value);
+        return !string.IsNullOrWhiteSpace(value);
     }
 
     // True when the text holds a lone surrogate: a UTF-16 code unit from U+D800 to U+DFFF without its pair, which no

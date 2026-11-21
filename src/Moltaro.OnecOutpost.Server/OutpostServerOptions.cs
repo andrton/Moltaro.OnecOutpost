@@ -116,7 +116,8 @@ public sealed class OutpostServerOptions
     /// parameters, <c>{}</c> when there are none, both as the command carries them: JSON without white space in UTF-8,
     /// every escape counted as it is written. A character outside ASCII is written as it is, not escaped: <c>é</c>
     /// counts 2 bytes, and a character outside the Basic Multilingual Plane 4. A quote, a backslash, and a control
-    /// character that has a short escape, such as a line feed, count 2 bytes, and any other control character 6.
+    /// character that has a short escape, such as a line feed, count 2 bytes, and any other character from U+0001 to
+    /// U+001F 6.
     /// </para>
     /// <para>
     /// A command up to the limit is accepted; a larger one is the caller's mistake and gives

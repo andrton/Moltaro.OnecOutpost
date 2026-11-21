@@ -93,6 +93,25 @@ public sealed class OutcomeRequestTests : IDisposable
         Assert.Equal(MessageText.Utf8(Outcome), request.Outcome.ToArray());
     }
 
+    // Every message is read with a maximum depth of 72 (§2). The 64 levels of a result are a member rule of §8, which
+    // this reader leaves to ReadOutcome, so the limit of a message is shown on it: the body is level 1, the outcome
+    // object level 2, and its result the levels below.
+    [Fact]
+    public void A_body_that_nests_72_levels_is_read()
+    {
+        byte[] body = WithResultOfLevels(70);
+
+        Assert.Equal(Sample.Command, Read(body).Command);
+    }
+
+    [Fact]
+    public void A_body_that_nests_73_levels_is_refused_with_form()
+    {
+        byte[] body = WithResultOfLevels(71);
+
+        ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(body));
+    }
+
     [Theory]
     [InlineData("\"9C1E2F3A-4B5C-4D6E-8F70-A1B2C3D4E5F6\"")]
     [InlineData("\"{9c1e2f3a-4b5c-4d6e-8f70-a1b2c3d4e5f6}\"")]
@@ -115,6 +134,15 @@ public sealed class OutcomeRequestTests : IDisposable
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(withoutCommand));
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(withoutOutcome));
         ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(withAnother));
+    }
+
+    // The body of an `outcome` whose result nests the given levels.
+    private static byte[] WithResultOfLevels(int levels)
+    {
+        string outcome =
+            $$"""{"kind":"succeeded","code":null,"result":{{MessageText.Nested(levels)}},"errorText":null,"messages":[],"messagesTrimmed":false}""";
+
+        return BodySample.OutcomeRequest.With("outcome", outcome).ToBytes();
     }
 
     private OutpostOutcomeRequest Read(byte[] body)

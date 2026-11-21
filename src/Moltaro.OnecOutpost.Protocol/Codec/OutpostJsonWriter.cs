@@ -139,7 +139,7 @@ internal sealed class OutpostJsonWriter
     // A time of §2: UTC, as yyyy-MM-ddTHH:mm:ss.fffZ. The format truncates anything finer than a millisecond.
     public void Time(DateTimeOffset time)
     {
-        String(time.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture));
+        String(time.UtcDateTime.ToString(OutpostJsonReader.TimeFormat, CultureInfo.InvariantCulture));
     }
 
     // A duration of §2: whole milliseconds, truncated.

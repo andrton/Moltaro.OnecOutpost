@@ -3,10 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Commands;
 
-// The size of a command is that of its script in UTF-8 plus that of its parameters written as JSON in UTF-8, with the
-// characters outside ASCII as they are, not escaped. A command without parameters carries the empty object, so the 2
-// bytes of {} count for it (protocol §7). A command up to CommandSizeLimit passes; a larger one is refused. The rule
-// is stated in full through ReadAsync; WriteAsync shows that it applies it.
+// The size of a command is the length of the text of its script between its quotes plus that of the text of its
+// parameters, both in UTF-8 as the command carries them: every escape counted as it is written, the characters
+// outside ASCII as they are, not escaped, and the 2 bytes of {} for a command without parameters (protocol §7). A
+// command up to CommandSizeLimit passes; a larger one is refused. The rule is stated in full through ReadAsync;
+// WriteAsync shows that it applies it.
 public sealed class CommandSizeTests : IAsyncDisposable
 {
     private const int Limit = 4 * 1024;
