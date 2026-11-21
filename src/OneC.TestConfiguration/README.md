@@ -36,15 +36,22 @@ The script runs in Windows PowerShell 5.1. It needs the COM connector of the bit
 64-bit Windows PowerShell loads only a 64-bit connector, the 32-bit one only a 32-bit connector. It checks this
 first and says how to register the connector when it is missing; it never registers it itself.
 
+It uses the first cluster of the 1C server agent that `lab.local.json` names, and creates the base with PostgreSQL
+as its DBMS. It signs in to that cluster with an empty administrator name, so the cluster must have no cluster
+administrators.
+
 A run rebuilds the base from scratch:
 
 1. It reads `lab.local.json`. When the file is missing, it creates it for a cluster and a PostgreSQL on the same
    machine, the base `outpost_test` and generated passwords, and goes on.
 2. It finds `1cv8.exe` of 8.3.17.1851 under `Program Files\1cv8` or `Program Files (x86)\1cv8`.
-3. It asks for the password of the PostgreSQL user, without echoing it, and keeps it nowhere.
+3. It asks for the password of the PostgreSQL user, without echoing it. The script keeps it nowhere; the 1C
+   cluster stores it with the registration of the base, as it does for every base.
 4. It drops the base of an earlier run with its database, and creates the base and its database again, through
-   the administration of the cluster. It accepts only a base name that starts with `outpost_`, and a base of that
-   name which it did not build refuses the administrator of `lab.local.json`, so it drops nobody else's base.
+   the administration of the cluster. Its one guard is the name of the base on the cluster, which has to start
+   with `outpost_`; dropping a base also deletes the database that its registration names, whatever that name is,
+   so an `outpost_` base on the cluster is taken to be the script's own. When PostgreSQL still has a database of
+   the base's name after the drop, the script creates the base on that database as it is, not on a new one.
 5. It loads the configuration with the Designer and updates the database configuration. It prints the Designer's
    log after each run: the Designer can drop a property it does not accept, say so in the log and still succeed.
 6. It creates the users `outpost-admin`, `outpost-read` and `outpost-write` through the COM connector, each with
@@ -61,7 +68,7 @@ It holds the address of the cluster and of its agent, the name of the test base,
 and the user and password of each of the three accounts of the base. The password of PostgreSQL is not in it. An
 optional `locale`, such as `ru_RU`, names the locale of the base when that of the Windows account is not the one
 the PostgreSQL of the lab was installed with: 1C then refuses to create the base, since the database does not
-support the sort order. A PostgreSQL on another port is written into `dbServer` as `localhost port=5433`. Git ignores it
-(`*.local.json`), and it never leaves the lab machine. The script puts the passwords on no command line, in no
-log and on no screen. The tests read their bases and accounts from this file; the copies of typical bases are
-added to it by the sprint whose tests use them.
+support the sort order. A PostgreSQL on another port is written into `dbServer` as `localhost port=5433`. Git
+ignores `lab.local.json` (`*.local.json`), and it never leaves the lab machine. The script puts the passwords on
+no command line, in no log and on no screen. The tests read their bases and accounts from this file; the copies of
+typical bases are added to it by the sprint whose tests use them.

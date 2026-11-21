@@ -5,10 +5,11 @@
 #   powershell -ExecutionPolicy Bypass -File src\OneC.TestConfiguration\Build-TestBase.ps1
 #
 # It reads lab.local.json next to this script, and creates that file with generated passwords when it is missing.
-# It asks for the password of the PostgreSQL user and keeps it nowhere. Then it drops the test base on the cluster,
-# creates it again with its database, loads the configuration of the Configuration folder into it with the
-# Designer, and creates the users through the COM connector. The passwords never reach a command line, a log or
-# the screen. Exit code 0: the base is ready; 1: the script stopped, and says why.
+# It asks for the password of the PostgreSQL user and keeps it nowhere itself; the 1C cluster stores it with the
+# registration of the base, as it does for every base. Then it drops the test base on the cluster, creates it again
+# with its database, loads the configuration of the Configuration folder into it with the Designer, and creates the
+# users through the COM connector. The passwords never reach a command line, a log or the screen. Exit code 0: the
+# base is ready; 1: the script stopped, and says why.
 #
 # The base is a client-server one because a lab machine gets its licences from its 1C server, which gives none to
 # whoever opens a file base.
@@ -21,8 +22,9 @@ $platformVersion = "8.3.17.1851"
 $labPath = Join-Path $PSScriptRoot "lab.local.json"
 $sourcesPath = Join-Path $PSScriptRoot "Configuration"
 
-# The name of the test base and of its database starts with this. The script drops no base of another name, so a
-# wrong name in lab.local.json cannot point it at somebody's base.
+# The name of the test base on the cluster starts with this, and the script drops no base of another name. Dropping
+# a base also deletes the database that its registration names, whatever that name is, so an outpost_ base on the
+# cluster is taken to be this script's own.
 $namePrefix = "outpost_"
 
 # The /Out log of the Designer. Each run of 1cv8.exe overwrites it; the script deletes it when it ends.
@@ -224,8 +226,8 @@ function Connect-WorkingProcess($Connector, $TestBase) {
     return , $working
 }
 
-# Drops the test base of an earlier run with its database. Its name was checked when lab.local.json was read, and
-# a base of that name that this script did not build refuses the administrator of lab.local.json.
+# Drops the test base of an earlier run with the database that its registration names. Its name was checked when
+# lab.local.json was read.
 function Remove-TestBase($Working, $TestBase) {
     $existing = @($Working.GetInfoBases()) | Where-Object { $_.Name -eq $TestBase.database } | Select-Object -First 1
     if ($null -eq $existing) {
@@ -384,7 +386,7 @@ try {
     Write-Step ("Reading " + $labPath)
     if (-not (Test-Path -LiteralPath $labPath)) {
         New-LabFile $labPath
-        Write-Host "It was missing, so the script created it with the default base path and generated passwords."
+        Write-Host "It was missing, so the script created it with the defaults for a cluster and a PostgreSQL on this machine, and generated passwords."
     }
     $testBase = Read-LabFile $labPath
 
