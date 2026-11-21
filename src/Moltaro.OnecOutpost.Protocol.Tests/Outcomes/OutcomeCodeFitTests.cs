@@ -36,9 +36,25 @@ public sealed class OutcomeCodeFitTests
         { "", false, false, false },
     };
 
+    // The codes of a failure of the connection to 1C, which the COM worker reports (S9): the same columns.
+    public static TheoryData<string, bool, bool, bool> CodeTableOfTheConnectionTo1C => new()
+    {
+        { "base-unreachable", true, false, false },
+        { "connection-lost", true, false, true },
+    };
+
     [Theory]
     [MemberData(nameof(CodeTable))]
     public void A_code_fits_exactly_its_kinds(string code, bool failed, bool refused, bool unknown)
+    {
+        Assert.Equal(failed, OutpostOutcomeCodes.FitsFailed(code));
+        Assert.Equal(refused, OutpostOutcomeCodes.FitsRefused(code));
+        Assert.Equal(unknown, OutpostOutcomeCodes.FitsUnknown(code));
+    }
+
+    [Theory]
+    [MemberData(nameof(CodeTableOfTheConnectionTo1C))]
+    public void A_code_of_the_connection_to_1C_fits_exactly_its_kinds(string code, bool failed, bool refused, bool unknown)
     {
         Assert.Equal(failed, OutpostOutcomeCodes.FitsFailed(code));
         Assert.Equal(refused, OutpostOutcomeCodes.FitsRefused(code));
@@ -66,5 +82,7 @@ public sealed class OutcomeCodeFitTests
         Assert.Equal("disconnected", OutpostOutcomeCodes.Disconnected);
         Assert.Equal("agent-stopped", OutpostOutcomeCodes.AgentStopped);
         Assert.Equal("transaction-ended", OutpostOutcomeCodes.TransactionEnded);
+        Assert.Equal("base-unreachable", OutpostOutcomeCodes.BaseUnreachable);
+        Assert.Equal("connection-lost", OutpostOutcomeCodes.ConnectionLost);
     }
 }

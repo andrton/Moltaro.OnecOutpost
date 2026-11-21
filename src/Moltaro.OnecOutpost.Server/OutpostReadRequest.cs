@@ -18,7 +18,8 @@ namespace Moltaro.OnecOutpost.Server;
 /// </para>
 /// <para>
 /// The 1C session of a worker lives on between commands, so what a script changes in the session can be seen by the
-/// next command of that worker.
+/// next command of that worker. A transaction that the script of a Read leaves open is not left to it: the executor
+/// rolls it back, and the Read fails with <see cref="OutpostCodes.ScriptError"/>.
 /// </para>
 /// </remarks>
 public sealed class OutpostReadRequest

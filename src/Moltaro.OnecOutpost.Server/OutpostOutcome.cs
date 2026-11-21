@@ -69,8 +69,10 @@ public sealed class OutpostOutcome
     public string? Code { get; }
 
     /// <summary>
-    /// The text of the error that 1C raised, for <see cref="OutpostOutcomeKindEnum.Failed"/> with
-    /// <see cref="OutpostCodes.ScriptError"/>; <see langword="null"/> for every other kind.
+    /// The error text, for <see cref="OutpostOutcomeKindEnum.Failed"/> with <see cref="OutpostCodes.ScriptError"/>: the
+    /// text of the error that 1C raised, or the executor's own sentence when 1C raised nothing in the script: for a
+    /// transaction that the script of a Read or a Write left open, and for a Write whose base refused the query the
+    /// executor runs before the commit. <see langword="null"/> for every other kind.
     /// </summary>
     /// <remarks>
     /// The executor may have trimmed it to fit the size limit of the outcome; <see cref="MessagesTrimmed"/> then says
@@ -138,10 +140,13 @@ public sealed class OutpostOutcome
     /// <param name="commandId">The identity of the command.</param>
     /// <param name="code">
     /// One of <see cref="OutpostCodes.ScriptError"/>, <see cref="OutpostCodes.ResultType"/>,
-    /// <see cref="OutpostCodes.ResultTooLarge"/>, <see cref="OutpostCodes.RunLimit"/> and
-    /// <see cref="OutpostCodes.Lost"/>.
+    /// <see cref="OutpostCodes.ResultTooLarge"/>, <see cref="OutpostCodes.RunLimit"/>, <see cref="OutpostCodes.Lost"/>,
+    /// <see cref="OutpostCodes.BaseUnreachable"/> and <see cref="OutpostCodes.ConnectionLost"/>.
     /// </param>
-    /// <param name="errorText">The text of the error that 1C raised, for <see cref="OutpostCodes.ScriptError"/>.</param>
+    /// <param name="errorText">
+    /// The error text, for <see cref="OutpostCodes.ScriptError"/>: the text of the error that 1C raised, or the
+    /// executor's own sentence when 1C raised nothing in the script, as <see cref="ErrorText"/> says.
+    /// </param>
     /// <param name="messages">The user messages of 1C, copied.</param>
     /// <param name="messagesTrimmed">Whether the executor trimmed the messages or the error text.</param>
     /// <returns>The outcome.</returns>
@@ -222,8 +227,8 @@ public sealed class OutpostOutcome
     /// <param name="code">
     /// One of <see cref="OutpostCodes.ResultType"/>, <see cref="OutpostCodes.ResultTooLarge"/>,
     /// <see cref="OutpostCodes.RunLimit"/>, <see cref="OutpostCodes.Revoked"/>,
-    /// <see cref="OutpostCodes.Disconnected"/>, <see cref="OutpostCodes.AgentStopped"/> and
-    /// <see cref="OutpostCodes.TransactionEnded"/>.
+    /// <see cref="OutpostCodes.Disconnected"/>, <see cref="OutpostCodes.AgentStopped"/>,
+    /// <see cref="OutpostCodes.TransactionEnded"/> and <see cref="OutpostCodes.ConnectionLost"/>.
     /// </param>
     /// <returns>The outcome.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="code"/> is <see langword="null"/>.</exception>

@@ -28,6 +28,10 @@ jobs:
           global-json-file: src/global.json
       - run: dotnet build --configuration Release
       - run: dotnet format --verify-no-changes
+      # The tests that need 1C are outside the solution and run only on the lab machine; CI keeps them compiling and in
+      # their form.
+      - run: dotnet build Moltaro.OnecOutpost.OneC.Tests --configuration Release
+      - run: dotnet format Moltaro.OnecOutpost.OneC.Tests/Moltaro.OnecOutpost.OneC.Tests.csproj --verify-no-changes
       # Every test but those that need Windows. Those that need PostgreSQL start it in Docker.
       - run: dotnet test --configuration Release --no-build --filter-not-trait "Requires=Windows"
 
@@ -42,5 +46,6 @@ jobs:
         with:
           global-json-file: src/global.json
       - run: dotnet build --configuration Release
+      - run: dotnet build Moltaro.OnecOutpost.OneC.Tests --configuration Release
       # Every test but those that need PostgreSQL: the Windows runners have no Linux containers.
       - run: dotnet test --configuration Release --no-build --filter-not-trait "Requires=PostgreSQL"

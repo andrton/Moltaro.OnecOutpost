@@ -23,7 +23,7 @@ public enum OutpostOutcomeKindEnum
 
     /// <summary>
     /// The command failed, with a code of <see cref="OutpostCodes"/>, the error text of 1C when 1C raised it, and the
-    /// user messages. A Write fails only when 1C rolled back its transaction, so nothing was written.
+    /// user messages. A failed Write wrote nothing: 1C rolled its transaction back, or its script never started.
     /// </summary>
     Failed,
 

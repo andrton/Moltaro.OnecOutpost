@@ -28,6 +28,8 @@ the administrator of the back office keeps the last word over what the agent may
 - the COM worker and the executor, the console and the shell;
 - the protocol v1 in `docs/protocol.md`;
 - the tests, the latency measurement and the explanations;
+- the user guides: how to install an agent, how to write scripts and how to embed the
+  server ([The user guides](#the-user-guides));
 - the answers to open items O1–O8, from the lab check L1.
 
 **Left out**, as concept §9 says:
@@ -69,7 +71,7 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R2 | The agent's checks, its audit log first and a command run once on its agent (rules 1–3) | Concept §3, D4, D7 | Must | Absent | S2, S6 |
 | R3 | A caller key makes a command run once, and Failed means nothing was written (rules 4, 5) | Concept §3, D8 | Must | Absent | S3, S5, S9 |
 | R4 | Liveness, take deadlines and expiry, numbered polls, a taken command never lost or doubled, revocation, base keys (rules 6, 7, 10, 11, 13, 14) | Concept §3, §4, D5, D10, D17 | Must | Absent | S3, S4, S5, S6, S7 |
-| R5 | Workers and run limits (rules 8, 9) | Concept §3, D11 | Must | Absent | S6, S9 |
+| R5 | Workers and run limits (rules 8, 9) | Concept §3, D11 | Must | Absent | S6, S9b |
 | R6 | The caller decides how long it waits (rule 12) | Concept §3 | Must | Absent | S5 |
 | R7 | Pairing with the agent's key pair, the HMAC under a secret that never travels, and the fingerprint of the server key | Concept §3 Pairing, D4, D5 | Must | Absent | S2, S4, S6, S10 |
 | R8 | The protocol v1, written exactly in `docs/protocol.md`; a command signed over its exact bytes; every agent request signed | Concept §6, D4, D5, D15 | Must | Absent | S2 |
@@ -77,7 +79,7 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R10 | The wake-ups through the `ISignals` the application provides: keys under a prefix, a group of its own for every waiting poll and call, every wait reading the store again when it rejoins | Concept §5, D9 | Must | Absent | S5, S7 |
 | R11 | Several nodes, a stopped node, a lost poll answer, an older or replayed poll, a lost outcome and an outage of the signals behave as the rules say | Concept §4, §11 | Must | Absent | S7 |
 | R12 | The agent as a Windows service under its own virtual account, with the data folder that only it and administrators can use, the local policy, the secrets protected with DPAPI for the machine, and the audit log with its retention | Concept §5, D6, D13 | Must | Absent | S1, S6, S10 |
-| R13 | The COM worker and the executor: the external connection under the account of the mode, a fresh executor per command in safe mode, the JSON rules, the user messages, the Write transaction with its checks before the commit, the connector's bitness, the workers ending with the agent, a worker ended at its run limit | Concept §3, §5, D3, D11, D12, D14 | Must | Absent | S9 |
+| R13 | The COM worker and the executor: the external connection under the account of the mode, a fresh executor per command in safe mode unless D12 turns it off for the Writes of a base, the JSON rules, the user messages, the Write transaction with its checks before the commit, the connector's bitness, the workers ending with the agent, a worker ended at its run limit | Concept §3, §5, D3, D11, D12, D14 | Must | Absent | S9, S9b |
 | R14 | The console: install, uninstall, pair, write a secret, check, write a metadata report | Concept §5 | Must | Absent | S10 |
 | R15 | The shell: a server of its own, pairing tokens, Read and Write by hand | Concept §2, §5 | Must | Absent | S11 |
 | R16 | Every timeout and limit that an application or an administrator can observe is an option with a default, validated when it is set; time comes from `TimeProvider` | `AGENTS.md`, principle 10 | Must | Absent | S1–S11 |
@@ -88,6 +90,7 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R21 | The packages of PQ6, published from a version tag through nuget.org Trusted Publishing; the archive of the agent on GitHub Releases with its SHA-256 checksum | Concept D15, D16; PQ4 | Release | The workflows of the packages exist; no package | S1, S12 |
 | R22 | `README.md`, the concept, `docs/protocol.md` and the explanations say what exists after every sprint | `AGENTS.md`, "Documentation" | Release | Holds: nothing exists and they say so | S1–S12 |
 | R23 | The public contract of stage 1 in code, every public member with its XML documentation | `AGENTS.md`, "The Contract Comes First" | Must | Absent | S1 |
+| R24 | The user guides G1 "Installing and running an agent", G2 "Writing scripts" and G3 "Embedding the server", in `docs/guides`, linked from `README.md` and from the release page, each checked as [The user guides](#the-user-guides) says | The owner, 21 November 2026 | Release | Absent | S9b, S10, S11, S12 |
 
 ## Acceptance
 
@@ -114,7 +117,10 @@ The epic is done when all of the following hold.
    build, and every scenario of the manual acceptance of S9, S10 and S11 passed there.
 7. The three explanations exist in both forms, agree with each other and with what was
    delivered, and their status lines say "built".
-8. Everything [The first release](#the-first-release) lists holds, so that the owner can
+8. The three user guides exist, `README.md` and the release page lead to them, every
+   script and every command they show ran as [The user guides](#the-user-guides) says, and
+   a person who did not write them installed an agent from the archive by G1 alone.
+9. Everything [The first release](#the-first-release) lists holds, so that the owner can
    tag the release.
 
 ### Measured results
@@ -198,6 +204,99 @@ point. It rewrites it to the rules of this repository: the code style, the bound
 tests and the documentation. Nothing of a customer or another product comes with it
 (D16). The collector's experience with real databases is kept; its code is not copied as
 it is.
+
+## The user guides
+
+The owner's requirement of 21 November 2026: a person who downloads the agent has to
+learn from the repository how to install it and how to use it, not only what the library
+guarantees. The concept says why and what; the guides say how. They are product
+documentation, in English, in `docs/guides`, as Markdown that GitHub renders, and
+`README.md` leads to each of them in its first screen.
+
+**Rules for all three.**
+- **A guide is written for its reader, who knows nothing of this repository.** It starts
+  with what the reader needs before the first step, goes step by step, shows for each
+  step the command to paste and what a success looks like, and ends with what to do when
+  it fails: each error the reader can meet, in the words the program prints, with its
+  cause and its remedy.
+- **Nothing in a guide is untried.** Every command of the console and the shell that a
+  guide shows is run by a test of that program, and every script by a test of
+  `Moltaro.OnecOutpost.OneC.Tests` against the test base. The source of a script is the
+  code block of the guide's Markdown: the test reads it from there, and no copy of it is
+  kept elsewhere, so that a guide cannot drift from what works. C# shown in a guide is
+  the code of a sample.
+- **A guide says what the library does not do** where the reader would expect it, in one
+  sentence with the reason, instead of leaving it to be found out.
+- **A guide names no customer, base or configuration of anybody.** Its examples use the
+  repository's own test configuration.
+- A guide is written by one agent with no other role in its sprint, after the
+  implementation and before the independent review, and reviewed with the sprint, like an
+  explanation. Its status line says what of it works today.
+
+**G1. Installing and running an agent** (`docs/guides/agent.md`), for the administrator
+of the back office. Written in S10, when the console exists.
+- What the machine needs: Windows, the 1C platform of the cluster's version, a route to
+  the server over HTTPS, through a proxy or not.
+- The COM connector: that installing 1C does not register it, how `check` finds it, and
+  `connector register`.
+- The two 1C accounts: which rights the read account and the write account need, that
+  both need the right of external connection, and that the read account gets no right to
+  change data.
+- Unpacking the archive and checking its checksum; `install`; where the data folder is and
+  who may read it.
+- `policy.json`, member by member, with a whole example for a client-server base and one
+  for a file base.
+- `secret`, `pair`, and what the application's side gives the administrator for it.
+- `check`, line by line: what each line means and what to do when it fails.
+- Safe mode: what it protects, when the Writes of a base need it off (`safeMode`), and
+  what the separate Windows account of its workers then protects.
+- A configuration with modules of its own: the message of `check` about a common module
+  that is not available to an external connection, and the one flag to ask the
+  developer of that configuration for.
+- Licences: each worker holds one client licence; how many workers to configure.
+- The audit log: where it is, how to read an entry, how long it is kept.
+- Updating and uninstalling. What happens when the machine is cloned.
+
+**G2. Writing scripts** (`docs/guides/scripts.md`), for the developer of the application
+that calls Read and Write. Written in S9b, when a command first reaches 1C, from what S9
+and L1 established.
+- The contract of a script: `Parameters`, `CallerKey`, `Result`; how JSON becomes 1C
+  values and back; a date; `Undefined` and `Null`.
+- What a script may not do and why: declare a procedure, return a reference, end its
+  transaction, reach files in safe mode, use a function that the compatibility mode of
+  the base lacks.
+- Read and Write: the account, the transaction, what Failed, Refused and Unknown mean for
+  the caller, and what to do after an Unknown Write with the caller key.
+- Sizes and limits: the limit of an outcome, reading a large list in pages, the run
+  limit.
+- User messages and the error text, and that the wording of 1C depends on the machine.
+- **Recipes,** each a whole script with its parameters and its result:
+  - the catalogs, documents and registers of a base, from `Metadata`;
+  - the attributes and tabular sections of one object, with their types;
+  - a page of the items of a catalog, with code and description;
+  - a search by description, and the children of an item of a hierarchical catalog;
+  - one item by its unique identifier, and how to carry a reference as that identifier;
+  - a query with parameters;
+  - creating and posting a document, made idempotent with `CallerKey`;
+  - finding out what an Unknown Write did.
+
+**G3. Embedding the server** (`docs/guides/server.md`), for the developer of the
+application. Its first part, trying the tunnel by hand with the shell, is written in S11;
+the rest in S12, from the sample.
+- A first session with the shell: its options, a token, pairing an agent, a Read and a
+  Write by hand.
+- The package, `AddOutpostServer` and `MapOutpostAgents`, the options one by one with
+  their defaults and what each one costs or protects.
+- What the application provides: PostgreSQL and the migrations, both ways of applying
+  them; Moltaro.Signals; the signing key and where to keep it; who may call Read and
+  Write.
+- Pairing from the application: creating a token, giving it to the administrator,
+  listing agents, revoking one, releasing a base key.
+- Calling Read and Write: the requests, the outcome and its kinds, the codes one by one
+  with what the caller should do for each, cancelling a wait, repeating with the caller
+  key.
+- Several nodes and the ingress: what a poll and an outcome need from it.
+- What to watch in production, and what the library does not report.
 
 ## The public contract
 
@@ -464,7 +563,9 @@ public sealed class OutpostOutcome
   `JsonElement` of the kind `Null`, never a missing value.
 - `Code` is one of [`OutpostCodes`](#outpostcodes) for Failed, Refused and Unknown, and
   `null` otherwise.
-- `ErrorText` is the text of the error that 1C raised, for Failed with `script-error`.
+- `ErrorText` is the text of the error that 1C raised, for Failed with `script-error`, or
+  the executor's own sentence for a transaction the script left open, or for a Write whose
+  base refused a query before the commit *(S9)*.
 - `Messages` holds the user messages of 1C for Succeeded and Failed, and is empty
   otherwise.
 - `MessagesTrimmed` says that the executor trimmed the messages or the error text to fit
@@ -495,12 +596,14 @@ public static class OutpostCodes
     public const string Disconnected = "disconnected";
     public const string AgentStopped = "agent-stopped";
     public const string TransactionEnded = "transaction-ended";
+    public const string BaseUnreachable = "base-unreachable";
+    public const string ConnectionLost = "connection-lost";
 }
 ```
 
 | Code | Kinds | Meaning |
 | --- | --- | --- |
-| `script-error` | Failed | 1C raised an error; `ErrorText` holds its text. A Write rolled back |
+| `script-error` | Failed | 1C raised an error; `ErrorText` holds its text. *(S9)* Also a script that left a transaction of its own open, which the executor rolled back, and a Write whose base refused a query before the commit, as it does after a nested rollback; `ErrorText` is then the executor's own sentence. A Write rolled back |
 | `result-type` | Failed, Unknown | The result holds a value that cannot be written as JSON (rule 5). *(S2)* Also a result deeper than 64 levels, and an outcome of the executor that the agent cannot accept: Failed for a Read, and for a Write that 1C rolled back; Unknown for a Write whose outcome the agent could not accept (`docs/protocol.md` §8) |
 | `result-too-large` | Failed, Unknown | The outcome is larger than its limit (rule 5). Unknown for a Write whose outcome was refused for its size, by the server or by something on the path; S5 and S6 state it |
 | `run-limit` | Failed (Read), Unknown (Write) | The script exceeded its run limit (rule 9) |
@@ -517,7 +620,9 @@ public static class OutpostCodes
 | `revoked` | Refused, Unknown | Refused: no poll had taken the command when its agent was revoked. Unknown: a Write that a poll had taken (rule 13) |
 | `disconnected` | Unknown | A Write whose agent stayed away longer than its run limit (rule 11) |
 | `agent-stopped` | Unknown | A Write whose agent or worker stopped while it ran (rule 3) |
-| `transaction-ended` | Unknown | The script ended the transaction of its Write itself (rule 5) |
+| `transaction-ended` | Unknown | The script ended the transaction of its Write itself (rule 5). *(S9)* Also a commit of the executor that raised, so it cannot tell whether the Write was written |
+| `base-unreachable` | Failed | *(S9)* For a Read and a Write: the COM worker has no session in the base, or could not open the executor, so the script did not start. `ErrorText` is `null` |
+| `connection-lost` | Failed (Read), Unknown (Write) | *(S9)* The session of the COM worker ended while the script ran |
 
 - Every Refused, like Expired, means that nothing ran. A command that ended as Refused or
   Expired frees its caller key (rule 4); a refusal with `caller-key-conflict` created no
@@ -525,15 +630,12 @@ public static class OutpostCodes
 - There is no code for a signature that does not verify. The agent cannot trust the
   identity of such a command, so it only records it in the audit log and reports nothing.
   The server ends the command by rules 7 and 11 (concept rule 1).
-- A failure of the connection to 1C gets two codes in S9, a draft of the contract for the
-  owner (the planner, 21 November 2026, after L1):
-  - `base-unreachable`, Failed, for a Read and a Write: the COM worker has no session in
-    the base, or could not open the executor, so the script did not start. Examples are a
-    wrong password, a cluster that does not answer, no free licence, a COM connector that
-    is not registered. `ErrorText` is `null`: the text of 1C goes to the audit log only,
-    since it may name an account or a path;
-  - `connection-lost`, Failed for a Read and Unknown for a Write: the session ended while
-    the script ran, for example because the cluster restarted.
+- A failure of the connection to 1C got two codes in S9, `base-unreachable` and
+  `connection-lost`, a draft of the contract for the owner (the planner, 21 November 2026,
+  after L1). Examples of `base-unreachable` are a wrong password, a cluster that does not
+  answer, no free licence, a COM connector that is not registered; its `ErrorText` is
+  `null`, since the text of 1C may name an account or a path and goes to the audit log
+  only. An example of `connection-lost` is a cluster that restarted while the script ran.
 
 #### `OutpostPairingToken`
 
@@ -1074,7 +1176,7 @@ The release
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
-| S9 | The executor and the COM worker, run after L1 and before S3 | Full | Not started |
+| S9 | The executor and the COM worker, run after L1 and before S3 | Full | Done, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. The code review took three rounds, and its last finding, confirmed on the lab, was fixed by a query of the executor before the commit of a Write, reviewed once more. On the lab, 1C:Enterprise 8.3.17.1851, the first run gave 43 of 44 tests that need 1C passed; the failed one, `A_write_whose_commit_raises_gives_unknown_transaction_ended`, was removed, since 8.3.17 gave no way to provoke the case. The second run, with the `.epf` rebuilt after the fix, gave 45 of 45 passed, on the test base and one copy of a typical base, which ran with one account for both modes. No manual scenario, since every line of the Acceptance has a test. What it changed in the public contract is listed in its brief for the owner |
 | S9b | The agent runs the COM workers | Full | Not started |
 | S10 | The console | Full | Not started |
 | S11 | The shell | Full | Not started |
@@ -2281,7 +2383,8 @@ the contract of the executor and the COM worker approved.
 
 - **Goal.** A real base runs scripts. For each command, the COM worker:
   - holds the external connection under the account of its mode;
-  - opens a fresh executor in safe mode;
+  - opens a fresh executor, in safe mode unless the policy turns it off for the Writes of
+    the base (D12);
   - runs the script with `Parameters`, `CallerKey` and `Result`;
   - runs a Write in one transaction, with the checks of rule 5 before the commit;
   - collects the user messages and reports the outcome.
@@ -2301,6 +2404,160 @@ the contract of the executor and the COM worker approved.
     it measured beside it. The agent compares that size with the length of the bytes it
     received; a difference is an outcome it cannot accept: Failed `result-type` for a
     Read, Unknown `result-type` for a Write.
+  - *Internal, after the study* (the planner, 21 November 2026). The worker depends on
+    nothing outside .NET (principle 12), so it reads and writes its lines with
+    `System.Text.Json` and shares no type with the protocol assembly. It reads a line to a
+    depth of 72 levels, the protocol's limit of a message, so that parameters of 64 levels
+    pass.
+
+    **Places.**
+    - `src/Moltaro.OnecOutpost.ComWorker`: the program, `net10.0`, Windows only, built for
+      `win-x64` and `win-x86`. One folder, one namespace.
+    - `src/Moltaro.OnecOutpost.ComWorker.Tests`: its tests, in the solution, with
+      `Requires=Windows`.
+    - `src/Executor/OutpostExecutor.xml` with `src/Executor/OutpostExecutor/Ext/ObjectModule.bsl`:
+      the sources of the external data processor `OutpostExecutor`.
+      `src/Executor/OutpostExecutor.epf` is built from them on the lab machine and committed
+      after that (X1).
+    - `src/OneC.TestConfiguration/Build-TestBase.ps1` gains one step, after the configuration
+      is loaded and before the users are created: the Designer builds the `.epf` from the
+      sources with `/LoadExternalDataProcessorOrReportFromFiles`. A base has no users then,
+      so no password reaches a command line, and one command builds everything the lab
+      tests need.
+    - `src/Moltaro.OnecOutpost.OneC.Tests`: the lab tests, outside the solution. They start
+      the built worker program and speak to it over its standard streams, with a helper of
+      their own.
+    - `lab.local.json` gains `typicalBases`, an array of at least one copy: for each its
+      `server`, `database`, `configuration` and `version`, the accounts `read` and `write`
+      with `user` and `password`, the `documentType` to post again, and `writeSafeMode`.
+
+    **The executor.** One exported function, in the English variant, written only with what
+    the compatibility mode 8.2.13 allows:
+
+    ```bsl
+    Function Run(Mode, Script, ParametersJson, CallerKey, OutcomeLimit) Export
+    ```
+
+    - `Mode` is `"read"` or `"write"`. `ParametersJson` is the text of a JSON object.
+      `CallerKey` is a string or `Undefined`. `OutcomeLimit` is a number of bytes.
+    - It returns one line of text without a line break:
+      `{"size":<number>,"outcome":<the outcome object of docs/protocol.md section 8>}`. `size` is the
+      length in bytes of the UTF-8 text of the outcome object alone, as the executor measured
+      it before the commit of a Write.
+    - Safe mode is not its parameter: the worker opens it in safe mode or without.
+    - It never raises: every error of the script is an outcome. How it measures UTF-8 in
+      the mode 8.2.13 is its own matter, and a lab test holds the result.
+    - After the script of a Read or a Write it rolls back every transaction the script
+      left open, and the outcome is Failed `script-error` with the executor's own sentence
+      (Q12), unless the script raised, or its result fails the type or size check, which
+      keep their code and text. So a Read leaves no transaction to the next command of its
+      worker.
+    - **Before it commits a Write it asks the base a question that needs no table,** the
+      query `SELECT 1`. In the compatibility mode 8.2.13 a nested `BeginTransaction` and
+      `RollbackTransaction`, in the script or in the code of the configuration it calls,
+      rolls the whole transaction back and leaves it active, and its commit does not
+      raise; only the next access to the base does (the lab, 21 November 2026). When the
+      query raises, the executor rolls back and the outcome is Failed `script-error` with
+      its own sentence: nothing was written. It judges by the raise, never by the wording
+      of 1C. A lab test writes an item, begins and rolls back a nested transaction, and
+      finds Failed and no item; another does the same without the nested pair and finds
+      Succeeded and the item.
+
+    **The worker's command line:** `Moltaro.OnecOutpost.ComWorker.exe <base key> <read|write>`.
+    The base key only names the worker in its diagnostics. Anything else ends it with exit
+    code 1.
+
+    **The lines.** One JSON object per line in UTF-8, ended with LF, without a BOM, on the
+    raw standard streams. The standard output carries these lines and nothing else;
+    `Console.Out` is pointed at the standard error. The standard error carries diagnostics
+    for a person. The worker never writes its first input line. A text that is not its own,
+    such as the failure message of 1C or of .NET, it writes there only when the text holds
+    the password neither as it is nor with its quotes doubled; otherwise it writes its own
+    sentence that the text was withheld. Replacing the password inside such a text would
+    give a short one away. Two limits stay: that a text was withheld says the password is
+    part of it, which over many failures can narrow a password of one or two characters,
+    and a password that 1C quotes cut or in another case is not seen. An outcome line is
+    never changed.
+
+    | Direction | Line | When |
+    | --- | --- | --- |
+    | in | `{"location":"Srvr=\"srv:1541\";Ref=\"base\";","user":"...","password":"...","safeMode":true,"executor":"C:\\...\\OutpostExecutor.epf"}` | Once, first. `location` is the part of a 1C connection string that names the base, for a cluster or for a file base; the worker adds the user and the password, quoted as 1C wants. A Read worker given `"safeMode":false` ends with exit code 1 (D12) |
+    | out | `{"ready":true}` | Once, after the session is open |
+    | out | `{"ready":false}` | Instead, when no session opens; the text of the failure goes to the standard error, and the worker ends with exit code 2 |
+    | in | `{"script":"...","parameters":{},"callerKey":null,"outcomeLimit":16777216}` | One per command. The worker passes the text of `parameters` to the executor as it received it. It takes the next line only after it wrote the outcome of this one |
+    | out | `{"size":123,"outcome":{...}}` | One per command: the text the executor returned, encoded as UTF-8 and written with its LF in one write, unchanged |
+
+    - **A fresh executor per command** (concept section 3): the worker opens it with an
+      `UnsafeOperationProtectionDescription` whose warnings are off, calls `Run`, and
+      releases it.
+    - **The outcomes the worker writes itself,** in the same form, with `errorText` null,
+      `messages` empty and `messagesTrimmed` false:
+      - the executor does not open: Failed `base-unreachable`, for a Read and a Write, and
+        the worker ends with exit code 2;
+      - `Run` returns a text with a line break, which would shift every later outcome:
+        Failed `result-type` for a Read, Unknown `result-type` for a Write, and the worker
+        goes on, since its session is whole;
+      - the call of `Run` throws, which the executor itself never causes: Failed
+        `connection-lost` for a Read, Unknown `connection-lost` for a Write, and the worker
+        ends with exit code 3. The text of the failure goes to the standard error only.
+    - **A line the worker cannot read** — not JSON, a member missing, unknown or of a wrong
+      type — ends it with exit code 1 and a reason on the standard error. It is not skipped.
+    - **The end of the input** ends the worker with exit code 0, once the command it runs
+      has its outcome written, and also before the first line. A last line without its LF
+      is a line. A worker that ends with exit code 1 writes nothing to the standard output
+      for the line that ended it.
+
+    **The types,** in `Moltaro.OnecOutpost.ComWorker`. The loop is synchronous: the worker
+    is one thread that owns one COM session and has nothing else to do while a script runs.
+
+    ```csharp
+    internal interface IOneCConnector
+    {
+        IOneCSession Connect(string location, string user, string password);
+    }
+
+    internal interface IOneCSession : IDisposable
+    {
+        IOneCExecutor OpenExecutor(string path, bool safeMode);
+    }
+
+    internal interface IOneCExecutor : IDisposable
+    {
+        string Run(string mode, string script, string parametersJson, string? callerKey, long outcomeLimit);
+    }
+
+    internal enum WorkerModeEnum { Read, Write }
+
+    internal static class WorkerExitCodes
+    {
+        public const int Ended = 0;
+        public const int BadInput = 1;
+        public const int NoSession = 2;
+        public const int SessionLost = 3;
+    }
+
+    internal sealed class Worker
+    {
+        public Worker(IOneCConnector connector, WorkerModeEnum mode);
+        public int Run(Stream input, Stream output, TextWriter diagnostics);
+    }
+
+    [SupportedOSPlatform("windows")]
+    internal sealed class ComConnector : IOneCConnector
+    {
+        public IOneCSession Connect(string location, string user, string password);
+    }
+    ```
+
+    - `Worker.Run` is the whole behavior of the lines above and returns the exit code.
+      `Program` only reads the command line, points `Console.Out` at the standard error and
+      calls it with `ComConnector` and the raw streams.
+    - `ComConnector`, with the session and the executor it gives, is the only code that
+      touches COM, late-bound through `IDispatch`. Each COM object is released by its owner,
+      once.
+    - The automated tests run `Worker` in the test process with a fake `IOneCConnector` and
+      streams of their own. The shipped program has no test entry point; only the lab tests
+      start it as a process.
 - **Study.** Sources, for example: the worker process model of the Azure Pipelines agent
   (MIT); the job objects of a process-supervision library under a permissive licence.
   Questions: how a child process is tied to its parent's lifetime; how a hung child is
@@ -2313,14 +2570,23 @@ the contract of the executor and the COM worker approved.
   - Automated, with `Requires=Windows`:
     - the worker program against a fake of the COM connection, behind the worker's own
       boundary;
-    - a connector whose version differs from the cluster's, with the error L1 recorded for
-      it, is reported as such.
+    - every line of the internal contract: the session that does not open, the executor
+      that does not open, a `Run` that throws for each mode, a line that cannot be read, a
+      Read worker told to run without safe mode, the end of the input, and that the
+      standard output carries nothing but the lines;
+    - parameters of 64 levels reach the executor;
+    - the password appears in no output of the worker: a failure of the fake that quotes
+      it, also a short one and one with its quotes doubled, is withheld.
+
+    L1 installed one version of the connector, so it recorded no error of a connector
+    whose version differs from the cluster's; nothing is asserted about one.
   - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine (OD1), against the test base
     unless a line says otherwise:
     - a Read query that returns rows;
     - a Write that creates and posts a document of the test configuration;
     - on each copy of a typical base: the latest posted document of the type that
-      `lab.local.json` names, posted again by the tunnel in safe mode, has the same register
+      `lab.local.json` names, posted again through the worker with the safe mode that
+      `writeSafeMode` gives, has the same register
       movements as it had before, which a person's posting made (O1). The owner names a
       type whose posting depends on no sequence and no later document, in a period that
       no closing date of changes covers;
@@ -2331,7 +2597,9 @@ the contract of the executor and the COM worker approved.
     - a Write whose script raises an error rolls back;
     - a result of a wrong type, and one too large, roll back before the commit;
     - a script that calls `CommitTransaction` or `RollbackTransaction` gives Unknown
-      `transaction-ended`;
+      `transaction-ended`. A commit of the executor that raises gives it too, but has no lab
+      test: the one way of provoking it that was tried does not make the commit raise on
+      8.3.17 (the lab, 21 November 2026);
     - the script contract:
       - `Parameters` maps JSON as concept §3 says: an object to a `Map`, an array to an
         `Array`, `null` to `Undefined`, no parameters to an empty `Map`, and a string that
@@ -2350,6 +2618,29 @@ the contract of the executor and the COM worker approved.
     8.3.17.1851, are committed in `src/Executor`.
   - The documents step: `README.md` says that the COM worker runs scripts in 1C and that
     no agent starts it yet.
+- **What S9 changed in the public contract, as a draft for the owner** (the coordinator,
+  21 November 2026). Each holds until the owner overturns it:
+  - two codes, `OutpostCodes.BaseUnreachable` and `OutpostCodes.ConnectionLost`, which an
+    agent may send as §8 of `docs/protocol.md` lists them, and which
+    `OutpostOutcome.Failed` and `OutpostOutcome.Unknown` accept;
+  - `transaction-ended` also covers a commit of the executor that raised, and
+    `script-error` a script that left a transaction of its own open, and a Write whose
+    base refused a query before the commit, with the executor's own sentence as
+    `ErrorText` (Q12 of the [open questions](open-questions.md));
+  - in the concept, rule 5 says that a Write also fails when its script never started, and
+    names the two cases above, §3 says that a transaction a Read's script leaves open is
+    rolled back and the Read fails, and §12 says that a nested rollback is silent in the mode
+    8.2.13 and that the executor detects it with a query before the commit;
+  - in the Acceptance, the line on a connector of another version gave way to the lines of
+    the internal contract, since L1 recorded no error for one;
+  - the readings Q10, Q11 and Q12 of the open questions, taken as recommended, with Q12's
+    answer from the lab: a commit that raises keeps Unknown `transaction-ended` and has no
+    lab test.
+- **Small changes made while S9 was open** (process, "Small changes during a sprint"):
+  - `docs/work/process.md`, "The model and the effort of each role": the owner's rule of
+    21 November 2026, after a run spent its weekly limit in the middle of this sprint;
+  - the user guides in this plan and in the Layout of `AGENTS.md`: the owner's instruction
+    of 21 November 2026. S9 owes no guide.
 - **Out of scope.** The agent's supervision of its workers, the console, the shell.
 
 ### S9b · The agent runs the COM workers
@@ -2361,13 +2652,17 @@ the contract of the executor and the COM worker approved.
   job object that ends them with the agent. It ends a worker at its run limit, and starts
   it again with a growing delay, up to `retryDelayMax`.
 - **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says. The planner
-  writes the internal types into this brief when the sprint is prepared.
+  writes the internal types into this brief when the sprint is prepared. To settle
+  then: the worker writes some outcomes itself in the form of the executor's line
+  (`base-unreachable`, `connection-lost`, `result-type` for a line break), so the agent
+  cannot hold every line of a worker to `IsExecutorOutcome`; and the name of the test
+  program that stands in for the worker.
 - **Study.** The study of S9 answers its questions; none of its own.
 - **To read.** The [concept](../concept.md), rules 3, 8 and 9 and §5; `AGENTS.md`,
   principle 8; the brief of S9.
 - **Acceptance.**
-  - Automated, with `Requires=Windows`, against the worker program with a fake of the COM
-    connection:
+  - Automated, with `Requires=Windows`, against a small test program that stands in for
+    the worker:
     - the job object;
     - ending at the run limit;
     - starting again with a growing delay;
@@ -2377,7 +2672,10 @@ the contract of the executor and the COM worker approved.
     - stopping the agent during a Write gives Unknown.
   - Manual, on the lab machine: a Read and a Write sent from a server on another machine
     reach the test base through the agent and return their outcomes.
-  - The documents step: `README.md` says the agent works with 1C.
+  - **Guide G2**, "Writing scripts", as [The user guides](#the-user-guides) lists it. A test
+    of `Moltaro.OnecOutpost.OneC.Tests` reads each of its scripts from the guide's
+    Markdown and runs it against the test base.
+  - The documents step: `README.md` says the agent works with 1C, and leads to G2.
 - **Out of scope.** The console, the shell.
 
 ### S10 · The console
@@ -2416,7 +2714,12 @@ the contract of the executor and the COM worker approved.
     server's part against a stub; `metadata` writes a report of each.
   - Manual, on the lab machine: the owner runs every command in a terminal and accepts
     how it looks.
-  - The documents step: `README.md` says how an agent is installed and paired.
+  - **Guide G1**, "Installing and running an agent", as
+    [The user guides](#the-user-guides) lists it. Manual, on the lab machine: the owner
+    installs, pairs and checks an agent from the built archive by the guide alone, and
+    every place where the guide was not enough is corrected in it.
+  - The documents step: `README.md` says in a few lines how an agent is installed and
+    paired, and leads to G1.
 - **Out of scope.** The shell.
 
 ### S11 · The shell
@@ -2442,7 +2745,9 @@ the contract of the executor and the COM worker approved.
     looks. The shell has no test that needs 1C: it would need PostgreSQL and 1C on one
     machine, and the automated session with the fake worker and S9's tests cover the
     rest.
-  - The documents step: `README.md` shows a session.
+  - **Guide G3**, its first part: a first session with the shell, as
+    [The user guides](#the-user-guides) lists it.
+  - The documents step: `README.md` shows a session, and leads to G3.
 - **Out of scope.** The release.
 
 ### S12 · Documents, packages and the archive
@@ -2469,6 +2774,11 @@ the contract of the executor and the COM worker approved.
     - has `contents: write`, so that it can create the release.
   - **Explanation E3**, "How the library is built", a still figure of the parts and their
     dependencies.
+  - **Guide G3**, "Embedding the server", completed as
+    [The user guides](#the-user-guides) lists it, with the C# of the sample.
+  - The three guides read once more against the final build: every command, script and
+    message in them is what the build prints. `README.md` leads to each in its first
+    screen, and the text of the GitHub release leads to G1.
   - The final figures of [Measured results](#measured-results) in `README.md`.
   - The documents step over the whole product documentation, as the process says for the
     last sprint of an epic.

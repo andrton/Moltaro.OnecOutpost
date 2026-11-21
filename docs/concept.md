@@ -107,6 +107,7 @@ A command travels like this:
 - **Read** runs the script under the read account of the base, outside a transaction. It
   is read-only only through the rights of that account. The administrator gives the read
   account no right to change data, and the console's check lists every such right it has.
+  A transaction that its script leaves open is rolled back, and the Read fails.
 - **Write** runs the script under the write account of the base, inside one 1C
   transaction. Either everything the script did is committed, or nothing, with the one
   exception that rule 5 names.
@@ -193,7 +194,7 @@ machine, as section 11 says.
      again and a repeat creates a new command.
    - An outcome is kept for its retention, 7 days by default. After that the key is free.
 5. **Failed means nothing was written.** A Write fails only when 1C rolled back its
-   transaction.
+   transaction, or when its script never started.
    - The executor checks the type of the result and the size of the whole outcome before
      it commits. The size of an outcome is the length of the UTF-8 text of its outcome
      object as it travels, with the result, the user messages and the error text, every
@@ -208,7 +209,8 @@ machine, as section 11 says.
    - The server never turns the outcome of a Write into Failed after the agent reported it.
    - A script that ends the executor's transaction itself, with `CommitTransaction` or
      `RollbackTransaction`, voids this rule for its Write. The executor reports Unknown
-     when it finds no active transaction after such a script.
+     when it finds no active transaction after such a script, and when its own commit
+     raises. A script that leaves a transaction of its own open is rolled back and fails.
 6. **An agent that is not connected is an error at once.** An agent counts as connected
    while the lease of its newest poll in the store has not run out. The lease is the poll
    timeout plus a grace, 10 seconds by default.
@@ -602,8 +604,10 @@ in the compatibility mode 8.2.13.
   8.3.17.1851. The platform's protection against dangerous actions refuses the call, since
   nobody can answer its warning; the call passes with an
   `UnsafeOperationProtectionDescription` whose warnings are off, which changes nothing in
-  the base, in the account or on the machine. Checked with one account of full rights; the
-  rights a narrow account needs are checked with the test configuration.
+  the base, in the account or on the machine. On the test configuration, an account whose
+  role has the right of external connection and the rights to the data, and nothing else,
+  opens the executor and runs scripts; one without a right to change data is refused the
+  change by 1C.
 - **O3. Licences.** *Answered.* Every session of an external connection takes a client
   licence, here from the pool of the server. So a COM worker costs one licence for as long
   as it holds its session.
@@ -644,3 +648,8 @@ L1 also found:
 - Safe mode refuses a file and a COM object. A script that declares a procedure is
   refused. A Write whose script raises an error rolls back. A script that commits the
   transaction itself is recognized.
+- **A nested rollback is silent in the compatibility mode 8.2.13** (S9, on the lab). After
+  a script's `BeginTransaction` and `RollbackTransaction` inside a Write, the transaction
+  still looks active and its commit does not raise, yet nothing the Write did is kept;
+  any query raises from then on. So before the commit of a Write the executor runs a
+  query, and a query that raises fails the Write as nothing written.

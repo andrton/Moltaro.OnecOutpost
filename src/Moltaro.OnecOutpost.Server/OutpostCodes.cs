@@ -22,9 +22,15 @@ namespace Moltaro.OnecOutpost.Server;
 public static class OutpostCodes
 {
     /// <summary>
-    /// <see cref="OutpostOutcomeKindEnum.Failed"/>: 1C raised an error, whose text is in
-    /// <see cref="OutpostOutcome.ErrorText"/>. A Write was rolled back.
+    /// <see cref="OutpostOutcomeKindEnum.Failed"/>: 1C raised an error; or the script of a Read or a Write began a
+    /// transaction of its own and left it open, which the executor rolled back; or the base refused the query that the
+    /// executor runs before the commit of a Write, as it does after a nested transaction was rolled back. A Write was
+    /// rolled back.
     /// </summary>
+    /// <remarks>
+    /// <see cref="OutpostOutcome.ErrorText"/> holds the text of the error that 1C raised, or, in the other two cases, a
+    /// sentence of the executor's own, since 1C raised nothing in the script then.
+    /// </remarks>
     public const string ScriptError = OutpostOutcomeCodes.ScriptError;
 
     /// <summary>
@@ -134,7 +140,26 @@ public static class OutpostCodes
 
     /// <summary>
     /// <see cref="OutpostOutcomeKindEnum.Unknown"/>: the script ended the transaction of its Write itself, with
-    /// <c>CommitTransaction</c> or <c>RollbackTransaction</c>, so whether it wrote anything cannot be known.
+    /// <c>CommitTransaction</c> or <c>RollbackTransaction</c>, or the commit of the Write raised, so the executor
+    /// cannot tell whether it was written.
     /// </summary>
     public const string TransactionEnded = OutpostOutcomeCodes.TransactionEnded;
+
+    /// <summary>
+    /// <see cref="OutpostOutcomeKindEnum.Failed"/>, for a Read and a Write: the COM worker of the agent has no session
+    /// in the base, or could not open the executor, so the script did not start.
+    /// </summary>
+    /// <remarks>
+    /// Examples are a wrong password, a cluster that does not answer, no free licence, and a COM connector that is not
+    /// registered. <see cref="OutpostOutcome.ErrorText"/> is <see langword="null"/>: the text of 1C goes to the audit
+    /// log of the agent only, since it may name an account or a path.
+    /// </remarks>
+    public const string BaseUnreachable = OutpostOutcomeCodes.BaseUnreachable;
+
+    /// <summary>
+    /// <see cref="OutpostOutcomeKindEnum.Failed"/> for a Read, <see cref="OutpostOutcomeKindEnum.Unknown"/> for a
+    /// Write: the session of the COM worker in the base ended while the script ran, for example because the cluster
+    /// restarted.
+    /// </summary>
+    public const string ConnectionLost = OutpostOutcomeCodes.ConnectionLost;
 }

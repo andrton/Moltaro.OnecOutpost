@@ -39,6 +39,22 @@ One agent holds one role in a sprint. The separation is the point: nobody checks
 | **Independent reviewer** | Reviews the result against the brief, with no part in producing it | Fix what it finds |
 | **Refactorer** | In the refactoring sprint, looks at the whole code base — libraries, tests, samples — not at the changes of one sprint, finds the technical debt and removes it: duplication, unclear names, logic in the wrong place, needless complexity, dead code | Change behavior, the public contract or what a test asserts; build for a future need; decide what needs the owner |
 
+**The model and the effort of each role** (the owner, 21 November 2026, after a run that
+spent its weekly limit in the middle of a sprint). Every agent of a sprint runs on Opus
+5.5. Whoever starts an agent or a session sets its model and its effort explicitly and
+checks them afterwards: a value that is left out is inherited from whoever starts it,
+which is rarely the one wanted.
+
+| Role | Effort |
+| --- | --- |
+| Independent reviewer, of code and of a document | `xhigh`, always |
+| Test author and implementer of a sprint whose zone is first or second in the table of `AGENTS.md`, "Quality Priorities": command checks, pairing, the local policy, the audit log, secrets, the protocol, the transport, the store | `xhigh` |
+| Coordinator; contract author; the study; fixes after a review; documents and explanations; every role of the light track; test author and implementer of any other zone | `high` |
+
+The planner names the effort of the test author and of the implementer in the brief of
+each sprint, with its track. When reviews start to take more rounds or to find more P1
+findings, the coordinator says so in its report, and the planner raises the effort.
+
 ## The plan
 
 The planner delivers an epic document in the form described in [README.md](README.md),
