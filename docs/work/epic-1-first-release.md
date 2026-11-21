@@ -221,8 +221,9 @@ documentation, in English, in `docs/guides`, as Markdown that GitHub renders, an
   cause and its remedy.
 - **Nothing in a guide is untried.** Every command of the console and the shell that a
   guide shows is run by a test of that program, and every script by a test of
-  `Moltaro.OnecOutpost.OneC.Tests` against the test base, which reads the script from the
-  guide's own file, so that a guide cannot drift from what works. C# shown in a guide is
+  `Moltaro.OnecOutpost.OneC.Tests` against the test base. The source of a script is the
+  code block of the guide's Markdown: the test reads it from there, and no copy of it is
+  kept elsewhere, so that a guide cannot drift from what works. C# shown in a guide is
   the code of a sample.
 - **A guide says what the library does not do** where the reader would expect it, in one
   sentence with the reason, instead of leaving it to be found out.
@@ -2658,9 +2659,9 @@ the contract of the executor and the COM worker approved.
     - stopping the agent during a Write gives Unknown.
   - Manual, on the lab machine: a Read and a Write sent from a server on another machine
     reach the test base through the agent and return their outcomes.
-  - **Guide G2**, "Writing scripts", as [The user guides](#the-user-guides) lists it. Each
-    of its scripts is in a file of its own that the guide shows and that a test of
-    `Moltaro.OnecOutpost.OneC.Tests` runs against the test base.
+  - **Guide G2**, "Writing scripts", as [The user guides](#the-user-guides) lists it. A test
+    of `Moltaro.OnecOutpost.OneC.Tests` reads each of its scripts from the guide's
+    Markdown and runs it against the test base.
   - The documents step: `README.md` says the agent works with 1C, and leads to G2.
 - **Out of scope.** The console, the shell.
 
