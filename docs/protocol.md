@@ -223,8 +223,14 @@ on its machine; the application revokes it and creates a new token.
       (rule 2);
     - when it starts, it takes the highest `below` of the reservations of its identity in
       its audit log, whatever the files and times they are in. Its first number is at or
-      above that bound, so the first poll records a new reservation. An agent with no
-      reservation of its identity, as after pairing, records one before its first poll.
+      above that bound, so the first poll records a new reservation;
+    - **a log that was cleared is found at the first poll.** An agent with no reservation
+      of its identity, as after pairing, numbers its first poll 1, after it has recorded
+      the reservation for that number. A server that answers that poll as older has
+      recorded polls of this identity that the log does not hold: the log was cleared,
+      and with it the commands it had received. The agent then records a reservation that
+      leaves no number, `below` 2⁶² + 1, and stops, so that it runs nothing until it is
+      paired anew. A new pairing's first poll is the newest, and runs as any other.
 
     Reservations only grow, so the highest is also the last. Every number sent after a
     restart is therefore above every number sent before it, even when the agent's clock was
@@ -236,9 +242,9 @@ on its machine; the application revokes it and creates a new token.
     rest, and a server that holds the signing key could take all of it, through `newest`.
     When the next number would pass 2⁶², the agent records its reservation as for any
     number at or above its bound, and stops; that reservation, above 2⁶², is the record of
-    this first stop. At every later start it leaves no number, so the agent records
-    `started` with an error and stops, until it is paired anew, which gives it a new
-    identity.
+    this first stop. At every later start it leaves no number, as the reservation recorded
+    for a cleared log does, so the agent records `started` with an error that names both
+    causes, and stops, until it is paired anew, which gives it a new identity.
 - **`time`** is the agent's time (concept rule 7).
 - **`pollTimeoutMs`** is the poll timeout the agent last learnt, from `agent.json` or from the
   last answer, in the range of the option `PollTimeout` (`MinPollTimeout` to
@@ -673,11 +679,16 @@ nobody signed, or make an outcome claim more than happened. What it can do:
 
 **What the reservation rests on.** It lives as long as the audit log of the agent's
 identity.
-- An audit log that was cleared, cut short, or restored from an older data folder or a
-  snapshot of the machine brings back lower reservations, or none, and with them the
-  replay above. Such an agent is paired anew, as a clone is (concept "What protects
-  what"): the application revokes the old identity, which holds its base keys until then
-  (rule 14), and creates a token for a new one.
+- An audit log that was cleared is found at the first poll and stops the agent (§6.2):
+  otherwise a Write it had received, gone from the log and from the next poll's list,
+  could be handed out again, or end as Expired and free its caller key, and run twice.
+- A log of which only some files were removed, or one restored from an older data folder
+  or a snapshot of the machine, still holds a reservation, so nothing finds it. It brings
+  back lower reservations and can forget received commands, with the replay above and a
+  Write that runs twice. Nobody removes audit files by hand; retention does. Such an agent
+  is paired anew, as a clone is (concept "What protects what"): the application revokes
+  the old identity, which holds its base keys until then (rule 14), and creates a token
+  for a new one.
 - The agent alone writes its audit log. It holds the file `audit\lock` open without
   sharing for its whole run, so that a second copy of the program, started by hand, exits
   with an error. It writes one entry at a time, and each entry is on the disk before the

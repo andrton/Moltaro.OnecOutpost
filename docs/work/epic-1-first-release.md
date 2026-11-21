@@ -1620,7 +1620,10 @@ approval of this plan.
       - a new entry `reservation`, with the members `agent` and `below`: the bound below
         which the agent sends its poll numbers, recorded before it sends a number at or
         above the last bound. The agent starts at or above the highest one of its own
-        identity, and records its first one before its first poll (§6.2);
+        identity. With none, it numbers its first poll 1; when the server answers that
+        poll as older, the log was cleared, and the agent records a reservation that
+        leaves no number and stops (§6.2). This is the owner's answer of 21 November 2026
+        on a cleared audit log;
       - torn entries (§13): an entry counts as written only with its LF. At a start the
         agent reads and cuts its log before it writes any entry, and cuts the last line of
         a file when it lacks its LF or is not JSON. After a failed write it cuts the file
@@ -1684,6 +1687,9 @@ approval of this plan.
       - rule 10 adds the reservation of §6.2: the agent reserves its poll numbers in its
         audit log and, after a restart, numbers above the highest reservation, so that a
         poll captured while its clock was moved ahead can never become the newest again.
+        An agent with no reservation numbers its first poll 1, and an answer that it is
+        older stops the agent, since its log was cleared; this is the one older answer
+        after which the agent does not continue above `newest`.
         The correctness item of `AGENTS.md` on a Write that runs twice adds the condition:
         also after a restart with the agent's clock set back, while the audit log is kept;
       - rule 7 drops "an agent whose clock jumps back voids this rule". A command reaches
@@ -1708,8 +1714,9 @@ approval of this plan.
         that a hop that also controls the agent's time service is stopped from running a
         Write twice by the reservation of rule 10, which lives as long as the audit log,
         that a compromised application that also controls the agent's time service can
-        make retention remove the confirmed history, that removing the newest audit files
-        brings lower reservations back,
+        make retention remove the confirmed history, that a cleared audit log stops the
+        agent at its first poll, that removing only some audit files brings lower
+        reservations back and can forget a received Write, which may then run twice,
         and that a compromised application can fill the disk of the agent machine through
         the audit log, with scripts and parameters of up to `CommandSizeLimit` each. They
         are kept for `auditRetentionDays` and a day, and for as long as the server's signed
@@ -2037,6 +2044,12 @@ as [Order](#order-and-why-these-splits) says.
       followed by setting it back and a restart: every poll after the last restart is
       above every poll sent before, whatever the names and times of the audit files;
     - a reservation of another identity does not count;
+    - a cleared log, end to end against the server: an agent with no reservation of its
+      identity numbers its first poll 1. After a new pairing that poll is the newest and
+      takes commands. After a Write was received, the log cleared and the agent started
+      again, that poll is answered as older; the agent stops without running anything, the
+      Write is not handed out again, and every later start records `started` with an
+      error;
     - with its reservation and the clock set behind the server's newest number, the first
       poll is answered as older, and the next one takes commands;
     - an answer to an older poll whose `newest` is 2⁶² stops the agent after it records the
