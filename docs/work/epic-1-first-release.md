@@ -716,11 +716,18 @@ public sealed record OutpostMigrationScript(string Name, string Sql);
 ```
 
 - `MigrateAsync` applies the EF Core migrations of the store that the schema lacks. It
-  creates the schema when it does not exist.
+  creates the schema when it does not exist, and the database when it does not exist and
+  the role of the connection may create one. Calls for one schema, on one node or on
+  several, wait for each other on a session advisory lock, so the connection keeps its
+  session for the whole call: a direct connection or a pooler in session mode, not one
+  that pools by transaction. A failure of the database that may pass, such as a refused
+  connection, is reported as `InvalidOperationException` with the `NpgsqlException`
+  inside; one that does not pass, such as a wrong password, as `PostgresException`.
 - `GetScripts` returns one SQL script per migration, in order, for an application that
   applies migrations itself. Applying them in order to an empty schema gives the same
   tables, and the same record of applied migrations, as `MigrateAsync` does. `Name` is the
-  identifier of the EF Core migration.
+  identifier of the EF Core migration. Each script carries its own transaction, so a tool
+  does not wrap it in another.
 - `schema` follows the rule of names.
 
 ### The files of the agent
@@ -1892,8 +1899,8 @@ approval of this plan.
     ```
 
     - **The schema is chosen at run time.** `StoreContextFactory.Create` is the one place
-      that builds the options, with no connection string for `GetScripts`: Npgsql, the default schema of the model, the history table
-      of the migrations in that schema, a model cache key that includes the schema, and
+      that builds the options, with no connection string for `GetScripts`: Npgsql, the
+      default schema of the model, the history table of the migrations in that schema, a model cache key that includes the schema, and
       the library's own `IMigrationsAssembly` with an explicit list of migrations, each
       created with the schema, and a snapshot that takes the schema too. The check of
       pending model changes stays on. No retries.
@@ -1905,13 +1912,12 @@ approval of this plan.
       as Pending, with its name and the node's time, and the token with its secret and
       expiry, in one short transaction.
     - **`FindPairingSecretAsync`** gives the secret of a token that has not expired by the
-      store's `TimeProvider` and whose agent is Pending, and `null` otherwise. S4 checks the proof of a pairing with
-      it before it redeems.
+      store's `TimeProvider` and whose agent is Pending, and `null` otherwise. S4 checks
+      the proof of a pairing with it before it redeems.
     - **`RedeemPairingTokenAsync`** is one statement: it deletes the token when it has not
       expired, and in the same statement makes its agent, while Pending, Paired with the
-      key and the time.
-      It gives `true` to the one call that made the agent Paired. The secret is gone with the
-      token (concept, "Pairing").
+      key and the time. It gives `true` to the one call that made the agent Paired. The
+      secret is gone with the token (concept, "Pairing").
     - **`PurgePairingTokensAsync`** deletes, in one statement, the tokens that expired and
       their agents that are still Pending, and gives the number of tokens. Tokens are few,
       so it takes no batches.
@@ -1933,6 +1939,19 @@ approval of this plan.
       its types, and only the entry points of the root call down.
     - **Effort:** the test author and the implementer on `xhigh`, the store being a strict
       zone.
+- **What S3 changed in the public contract, as a draft for the owner** (the coordinator,
+  21 November 2026, after the code review). Each holds until the owner overturns it; the
+  section on [`OutpostMigrations`](#outpostmigrations-and-outpostmigrationscript) and the
+  XML documentation say so:
+  - `MigrateAsync` also creates the database when it does not exist and the role may
+    create one, as EF Core does;
+  - calls of `MigrateAsync` for one schema wait for each other on a session advisory lock,
+    because four or more nodes migrating a new schema at once failed without it; the
+    connection keeps its session for the whole call;
+  - `MigrateAsync` reports a failure of the database that may pass as
+    `InvalidOperationException` with the `NpgsqlException` inside, and one that does not
+    as `PostgresException`;
+  - each script of `GetScripts` carries its own transaction.
 - **Study.** Sources, for example: the PostgreSQL transport of Rebus (MIT); the durable
   inbox and outbox of Wolverine (MIT); the ADO.NET job store of Quartz.NET (Apache-2.0);
   for migrations with a schema chosen at run time, EF Core (MIT) and Npgsql (PostgreSQL
