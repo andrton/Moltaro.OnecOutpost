@@ -43,7 +43,7 @@ in code, tests, samples or documents.
 | Path | Contents |
 | --- | --- |
 | `src` | The solution, every project and the build settings. Run `dotnet` from here |
-| `src/OneC.TestConfiguration` | Planned: the XML sources of the repository's own 1C test configuration, with a script that builds a file base from them through the Designer's command line on the lab machine, and the git-ignored `lab.local.json` of the lab. No built configuration or base is committed |
+| `src/OneC.TestConfiguration` | The XML sources of the repository's own 1C test configuration, with a script that builds a base from them on the 1C cluster of the lab machine, through the Designer's command line, and the git-ignored `lab.local.json` of the lab. No built configuration or base is committed |
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | Planned: the wire protocol, written with the sprint that introduces it |
 | `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
@@ -331,9 +331,11 @@ Console programs:
   a public repository. A test there needs Windows and 1C, never PostgreSQL or a server's
   store. Every other test replaces 1C with a fake: the COM worker behind its boundary, or,
   in the tests of the worker program itself, the COM connection.
-- The 1C tests run against two kinds of base: a file base built on the lab machine from
-  the repository's own test configuration, and at least one copy of a real typical
-  database on the lab's 1C cluster, which is a client-server base. A typical
+- The 1C tests run against two kinds of base, both on the lab's 1C cluster: a base built
+  there from the repository's own test configuration, and at least one copy of a real
+  typical database. Both are client-server bases, since the lab's 1C server gives a
+  licence to nobody who opens a file base (the owner, 21 November 2026). The library
+  serves a file base as well; no test on the lab reaches one. A typical
   configuration, a customer's database and its data never enter the repository:
   - a test takes the bases, the accounts and the objects of a typical configuration it
     uses, such as a document type, from `src/OneC.TestConfiguration/lab.local.json`, which
