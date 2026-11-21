@@ -648,3 +648,8 @@ L1 also found:
 - Safe mode refuses a file and a COM object. A script that declares a procedure is
   refused. A Write whose script raises an error rolls back. A script that commits the
   transaction itself is recognized.
+- **A nested rollback is silent in the compatibility mode 8.2.13** (S9, on the lab). After
+  a script's `BeginTransaction` and `RollbackTransaction` inside a Write, the transaction
+  still looks active and its commit does not raise, yet nothing the Write did is kept;
+  any query raises from then on. So before the commit of a Write the executor runs a
+  query, and a query that raises fails the Write as nothing written.
