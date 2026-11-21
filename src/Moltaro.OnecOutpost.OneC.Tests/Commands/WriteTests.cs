@@ -8,8 +8,37 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Commands;
 // A Write runs its script under the write account of the base, inside one 1C transaction: either everything the script
 // did is committed, or nothing (concept §3, "The two commands"). The executor checks the type of the result and the
 // size of the outcome before the commit, and a script that ends the transaction itself gets Unknown (concept rule 5).
+// So does a Write whose commit raises, since the executor cannot tell whether it was written. A script that leaves a
+// transaction of its own open fails, since the executor rolls everything back.
 public sealed class WriteTests
 {
+    // Writes a product, begins a transaction inside the Write, writes another product and leaves that transaction open.
+    private const string LeaveATransactionOpen =
+        TestBaseScripts.CreateProduct + "\nBeginTransaction();\n" + TestBaseScripts.CreateProduct;
+
+    // Rolls back a transaction begun inside the Write: 1C has one transaction with a count of the transactions begun,
+    // so the whole Write can no longer be committed.
+    private const string RollBackANestedTransaction = "BeginTransaction();\nRollbackTransaction();";
+
+    // In a Read, outside any transaction of the executor: whether a transaction whose nested transaction was rolled
+    // back is still active and refuses its commit. Every transaction the script began is rolled back before it ends.
+    private const string CommitAfterANestedRollback = """
+        BeginTransaction();
+        BeginTransaction();
+        RollbackTransaction();
+        StillActive = TransactionActive();
+        CommitRaised = False;
+        Try
+            CommitTransaction();
+        Except
+            CommitRaised = True;
+        EndTry;
+        While TransactionActive() Do
+            RollbackTransaction();
+        EndDo;
+        Result = New Structure("StillActive, CommitRaised", StillActive, CommitRaised);
+        """;
+
     private const string CreateAndPostAGoodsReceipt = """
         Product = Catalogs.Products.CreateItem();
         Product.Description = Parameters["description"];
@@ -115,6 +144,49 @@ public sealed class WriteTests
         OutcomeLine write = await writer.RunAsync(script);
 
         write.AssertIs("unknown", "transaction-ended");
+    }
+
+    // The probe in a Read shows first that on this platform the transaction stays active after a nested rollback and
+    // its commit raises, so that the Write reaches a commit that raises and not a transaction the script ended.
+    [Fact]
+    public async Task A_write_whose_commit_raises_gives_unknown_transaction_ended()
+    {
+        await using (WorkerProcess reader = await LabWorkers.TestBaseReadAsync())
+        {
+            OutcomeLine probe = await reader.RunAsync(CommitAfterANestedRollback);
+
+            probe.AssertIs("succeeded", null);
+
+            bool stillActive = probe.Result.GetProperty("StillActive").GetBoolean();
+            bool commitRaised = probe.Result.GetProperty("CommitRaised").GetBoolean();
+            Assert.True(
+                stillActive && commitRaised,
+                $"A nested rollback does not leave a transaction whose commit raises on this platform: {probe}");
+        }
+
+        await using WorkerProcess writer = await LabWorkers.TestBaseWriteAsync();
+
+        OutcomeLine write = await writer.RunAsync(RollBackANestedTransaction);
+
+        write.AssertIs("unknown", "transaction-ended");
+    }
+
+    // 1C raised nothing, so the error text is a sentence of the executor, whose wording is the executor's.
+    [Fact]
+    public async Task A_write_whose_script_leaves_a_transaction_open_fails_with_script_error_and_rolls_back()
+    {
+        string parameters = new JsonObject { ["description"] = TestBaseScripts.NewDescription() }.ToJsonString();
+
+        OutcomeLine write;
+
+        await using (WorkerProcess writer = await LabWorkers.TestBaseWriteAsync())
+        {
+            write = await writer.RunAsync(LeaveATransactionOpen, parameters);
+        }
+
+        write.AssertIs("failed", "script-error");
+        Assert.False(string.IsNullOrWhiteSpace(write.ErrorText), write.ToString());
+        Assert.Equal(0, await CountProductsAsync(parameters));
     }
 
     private static async Task<int> CountProductsAsync(string parameters)
