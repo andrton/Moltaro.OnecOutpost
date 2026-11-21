@@ -22,12 +22,14 @@ namespace Moltaro.OnecOutpost.Server;
 public static class OutpostCodes
 {
     /// <summary>
-    /// <see cref="OutpostOutcomeKindEnum.Failed"/>: 1C raised an error, or the script of a Read or a Write began a
-    /// transaction of its own and left it open, which the executor rolled back. A Write was rolled back.
+    /// <see cref="OutpostOutcomeKindEnum.Failed"/>: 1C raised an error; or the script of a Read or a Write began a
+    /// transaction of its own and left it open, which the executor rolled back; or the base refused the query that the
+    /// executor runs before the commit of a Write, as it does after a nested transaction was rolled back. A Write was
+    /// rolled back.
     /// </summary>
     /// <remarks>
-    /// <see cref="OutpostOutcome.ErrorText"/> holds the text of the error that 1C raised, or, for a transaction the
-    /// script left open, a sentence of the executor's own, since 1C raised nothing then.
+    /// <see cref="OutpostOutcome.ErrorText"/> holds the text of the error that 1C raised, or, in the other two cases, a
+    /// sentence of the executor's own, since 1C raised nothing in the script then.
     /// </remarks>
     public const string ScriptError = OutpostOutcomeCodes.ScriptError;
 

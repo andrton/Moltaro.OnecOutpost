@@ -11,7 +11,10 @@
 //   rule 5 before its commit. A Write whose script ended the transaction itself, or whose commit
 //   raised, is Unknown transaction-ended. A Read or a Write whose script left a transaction of its
 //   own open is rolled back and fails with script-error and an error text of the executor, so a
-//   Read leaves no transaction to the next command of its worker.
+//   Read leaves no transaction to the next command of its worker. Before the commit of a Write the
+//   executor runs the query SELECT 1, since in the compatibility mode 8.2.13 a nested rollback
+//   rolls the Write back without a raise; when the query raises, the Write is rolled back and fails
+//   with script-error and an error text of the executor.
 // - It returns one line of text without a line break:
 //   {"size":<number>,"outcome":<the outcome object of docs/protocol.md section 8>}. size is the
 //   length in bytes of the UTF-8 text of the outcome object alone, as the executor measured it
@@ -136,6 +139,20 @@ EndFunction
 // Commits the transaction of the Write and returns the line of its outcome, which the checks of
 // rule 5 have passed.
 Function CommittedLine(Outcome, Messages, OutcomeLimit)
+
+	// In the compatibility mode 8.2.13 a nested BeginTransaction and RollbackTransaction, in the
+	// script or in the code of the configuration it calls, rolls the whole transaction back and
+	// leaves it active. Its commit then does not raise; only the next access to the base does
+	// (concept section 12). So the executor asks the base a question that needs no table, and judges
+	// by the raise alone, never by the text of 1C. A transaction the script left open is seen only
+	// after the commit below, so a script that also left one open fails here, with this sentence.
+	Try
+		Query = New Query("SELECT 1");
+		Query.Execute();
+	Except
+		ErrorText = "The base refused a query before the commit, as it does after a nested transaction was rolled back, so nothing was written.";
+		Return FailedLine("script-error", ErrorText, Messages, OutcomeLimit);
+	EndTry;
 
 	Try
 		CommitTransaction();
