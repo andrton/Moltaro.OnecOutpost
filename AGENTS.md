@@ -65,7 +65,7 @@ every other project is not.
 | `Moltaro.OnecOutpost.ComWorker` | The only process that touches COM: it opens the external connection to one database and runs scripts in it. Built for x64 and x86 |
 | `Moltaro.OnecOutpost.Console` | The console of the agent machine: install, pair, check, collect metadata |
 | `Moltaro.OnecOutpost.Shell` | A console that runs a server of its own and sends Read and Write by hand, to try the tunnel without an application |
-| `src/Executor` | The 1C external data processor that runs a script inside 1C: its XML sources and, once the owner has built it on the lab machine, the `.epf`. Only the 1C Designer builds it |
+| `src/Executor` | The 1C external data processor that runs a script inside 1C: its XML sources and the `.epf` that the owner built from them on the lab machine. Only the 1C Designer builds it |
 | `Moltaro.OnecOutpost.Samples` | The samples of use: an ASP.NET Core application that embeds the server. Each runs to the end with `dotnet run` |
 | `Moltaro.OnecOutpost.Measurements` | Planned: the program that measures the latency target of the concept, run by hand, never in CI or in the tests |
 | `src/*.Tests` | Tests, one project per library or program |

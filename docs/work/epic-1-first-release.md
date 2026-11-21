@@ -1174,7 +1174,7 @@ The release
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
-| S9 | The executor and the COM worker, run after L1 and before S3 | Full | Built, 21 November 2026, and waiting for the lab: the executor's sources, the COM worker with its tests against a fake of the COM connection, and the tests that need 1C; the code review closed in two rounds. The owner has yet to build the `.epf` and commit it (X1) and to run the tests that need 1C on the lab machine; until then the sprint is not done. What it changed in the public contract is listed in its brief for the owner |
+| S9 | The executor and the COM worker, run after L1 and before S3 | Full | Held, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. On the lab 44 tests that need 1C ran: 43 passed, and `A_write_whose_commit_raises_gives_unknown_transaction_ended` failed at its probe and was removed, since 8.3.17 gave no way to provoke the case; no manual scenario, since every line of the Acceptance has a test. The typical base ran with one account for both modes. Round 3 of the code review, the last, found a P1 that a lab check confirmed: a Write whose script rolls back a nested transaction is reported Succeeded although 1C rolled back all it wrote. The sprint waits for the planner's answer to it. What it changed in the public contract is listed in its brief for the owner |
 | S9b | The agent runs the COM workers | Full | Not started |
 | S10 | The console | Full | Not started |
 | S11 | The shell | Full | Not started |
@@ -2586,8 +2586,8 @@ the contract of the executor and the COM worker approved.
     - a result of a wrong type, and one too large, roll back before the commit;
     - a script that calls `CommitTransaction` or `RollbackTransaction` gives Unknown
       `transaction-ended`. A commit of the executor that raises gives it too, but has no lab
-      test: nothing a script can do on 8.3.17 makes the commit raise on demand (the lab, 21
-      November 2026);
+      test: the one way of provoking it that was tried does not make the commit raise on
+      8.3.17 (the lab, 21 November 2026);
     - the script contract:
       - `Parameters` maps JSON as concept §3 says: an object to a `Map`, an array to an
         `Array`, `null` to `Undefined`, no parameters to an empty `Map`, and a string that
@@ -2622,6 +2622,11 @@ the contract of the executor and the COM worker approved.
   - the readings Q10, Q11 and Q12 of the open questions, taken as recommended, with Q12's
     answer from the lab: a commit that raises keeps Unknown `transaction-ended` and has no
     lab test.
+- **Small changes made while S9 was open** (process, "Small changes during a sprint"):
+  - `docs/work/process.md`, "The model and the effort of each role": the owner's rule of
+    21 November 2026, after a run spent its weekly limit in the middle of this sprint;
+  - the user guides in this plan and in the Layout of `AGENTS.md`: the owner's instruction
+    of 21 November 2026. S9 owes no guide.
 - **Out of scope.** The agent's supervision of its workers, the console, the shell.
 
 ### S9b · The agent runs the COM workers
