@@ -525,8 +525,15 @@ public static class OutpostCodes
 - There is no code for a signature that does not verify. The agent cannot trust the
   identity of such a command, so it only records it in the audit log and reports nothing.
   The server ends the command by rules 7 and 11 (concept rule 1).
-- A failure of the connection to 1C during a command, such as a restarted cluster or a
-  missing licence, gets its codes in stage 2, through the owner, after L1.
+- A failure of the connection to 1C gets two codes in S9, a draft of the contract for the
+  owner (the planner, 21 November 2026, after L1):
+  - `base-unreachable`, Failed, for a Read and a Write: the COM worker has no session in
+    the base, or could not open the executor, so the script did not start. Examples are a
+    wrong password, a cluster that does not answer, no free licence, a COM connector that
+    is not registered. `ErrorText` is `null`: the text of 1C goes to the audit log only,
+    since it may name an account or a path;
+  - `connection-lost`, Failed for a Read and Unknown for a Write: the session ended while
+    the script ran, for example because the cluster restarted.
 
 #### `OutpostPairingToken`
 
@@ -2538,8 +2545,9 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     be installed;
   - its SHA-256 checksum is on the release page;
   - it runs on the Windows versions that .NET 10 supports.
-- **Outcome codes of stage 2:** the codes for a connection to 1C that fails or breaks
-  during a command, after L1.
+- **Outcome codes of stage 2:** `base-unreachable` and `connection-lost`, as the last
+  bullet under [`OutpostCodes`](#outpostcodes) gives them. S9 adds them to `OutpostCodes`,
+  to `OutpostOutcomeCodes` and to the table of §8 of `docs/protocol.md`.
 
 ## The first release
 
