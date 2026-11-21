@@ -1,3 +1,5 @@
+using Moltaro.OnecOutpost.TestSupport;
+
 namespace Moltaro.OnecOutpost.Server.Tests.Outcomes;
 
 // The factories accept a code only when it is one of OutpostCodes and belongs to the kind of the outcome, by the table
@@ -31,6 +33,13 @@ public sealed class OutcomeCodeTests
         { "transaction-ended", false, false, true },
     };
 
+    // The codes of a failure of the connection to 1C, which the COM worker reports (S9): the same columns.
+    public static TheoryData<string, bool, bool, bool> CodeTableOfTheConnectionTo1C => new()
+    {
+        { "base-unreachable", true, false, false },
+        { "connection-lost", true, false, true },
+    };
+
     [Theory]
     [MemberData(nameof(CodeTable))]
     public void A_code_is_accepted_by_the_factories_of_its_kinds_and_refused_by_the_others(
@@ -39,9 +48,18 @@ public sealed class OutcomeCodeTests
         bool refused,
         bool unknown)
     {
-        AssertAcceptedOnlyIf(failed, code, () => OutpostOutcome.Failed(CommandId, code, null, [], messagesTrimmed: false));
-        AssertAcceptedOnlyIf(refused, code, () => OutpostOutcome.Refused(CommandId, code));
-        AssertAcceptedOnlyIf(unknown, code, () => OutpostOutcome.Unknown(CommandId, code));
+        AssertAcceptedOnlyByTheFactoriesOfItsKinds(code, failed, refused, unknown);
+    }
+
+    [Theory(Skip = SkipReason.NotImplemented)]
+    [MemberData(nameof(CodeTableOfTheConnectionTo1C))]
+    public void A_code_of_the_connection_to_1C_is_accepted_by_the_factories_of_its_kinds_and_refused_by_the_others(
+        string code,
+        bool failed,
+        bool refused,
+        bool unknown)
+    {
+        AssertAcceptedOnlyByTheFactoriesOfItsKinds(code, failed, refused, unknown);
     }
 
     [Fact]
@@ -58,6 +76,13 @@ public sealed class OutcomeCodeTests
         Assert.Throws<ArgumentNullException>(() => OutpostOutcome.Failed(CommandId, null!, null, [], messagesTrimmed: false));
         Assert.Throws<ArgumentNullException>(() => OutpostOutcome.Refused(CommandId, null!));
         Assert.Throws<ArgumentNullException>(() => OutpostOutcome.Unknown(CommandId, null!));
+    }
+
+    private static void AssertAcceptedOnlyByTheFactoriesOfItsKinds(string code, bool failed, bool refused, bool unknown)
+    {
+        AssertAcceptedOnlyIf(failed, code, () => OutpostOutcome.Failed(CommandId, code, null, [], messagesTrimmed: false));
+        AssertAcceptedOnlyIf(refused, code, () => OutpostOutcome.Refused(CommandId, code));
+        AssertAcceptedOnlyIf(unknown, code, () => OutpostOutcome.Unknown(CommandId, code));
     }
 
     private static void AssertAcceptedOnlyIf(bool accepted, string code, Func<OutpostOutcome> create)

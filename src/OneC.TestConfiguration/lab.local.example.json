@@ -8,5 +8,17 @@
     "administrator": { "user": "outpost-admin", "password": "<password>" },
     "read": { "user": "outpost-read", "password": "<password>" },
     "write": { "user": "outpost-write", "password": "<password>" }
-  }
+  },
+  "typicalBases": [
+    {
+      "server": "localhost:1541",
+      "database": "<name of the copy on the cluster>",
+      "configuration": "<name of the typical configuration>",
+      "version": "<version of the configuration>",
+      "read": { "user": "<user>", "password": "<password>" },
+      "write": { "user": "<user>", "password": "<password>" },
+      "documentType": "<name of a document type of the configuration>",
+      "writeSafeMode": false
+    }
+  ]
 }

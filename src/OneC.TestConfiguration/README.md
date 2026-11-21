@@ -70,5 +70,8 @@ optional `locale`, such as `ru_RU`, names the locale of the base when that of th
 the PostgreSQL of the lab was installed with: 1C then refuses to create the base, since the database does not
 support the sort order. A PostgreSQL on another port is written into `dbServer` as `localhost port=5433`. Git
 ignores `lab.local.json` (`*.local.json`), and it never leaves the lab machine. The script puts the passwords on
-no command line, in no log and on no screen. The tests read their bases and accounts from this file; the copies of
-typical bases are added to it by the sprint whose tests use them.
+no command line, in no log and on no screen. The tests read their bases and accounts from this file. The owner adds
+the copies of typical bases to it by hand, under `typicalBases`: for each its cluster `server` and `database`, its
+`configuration` and `version`, the accounts `read` and `write`, the `documentType` whose latest posted document a test
+posts again, and `writeSafeMode`, the safe mode of its Writes. The script uses only `testBase` and leaves
+`typicalBases` as it is.

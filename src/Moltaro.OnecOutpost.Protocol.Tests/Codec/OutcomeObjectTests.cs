@@ -3,6 +3,7 @@ using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.Protocol.Tests.Outcomes;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 
@@ -13,27 +14,14 @@ namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 public sealed class OutcomeObjectTests
 {
     // Every combination of a mode, a kind and a code, and the same combinations for a command that the server does
-    // not know, whose mode is null.
-    public static TheoryData<string?, string, string?> Combinations
-    {
-        get
-        {
-            TheoryData<string?, string, string?> combinations = [];
+    // not know, whose mode is null; but the outcomes with a code of the connection to 1C that an agent may send, which
+    // the codec accepts only from S9 on.
+    public static TheoryData<string?, string, string?> Combinations =>
+        CombinationsWhere((mode, kind, code) => !OutcomeTable.IsAgentOutcomeOfTheConnectionTo1C(mode, kind, code));
 
-            foreach (string? mode in new[] { "read", "write", null })
-            {
-                foreach (string kind in OutcomeTable.Kinds)
-                {
-                    foreach (string? code in OutcomeTable.Codes)
-                    {
-                        combinations.Add(mode, kind, code);
-                    }
-                }
-            }
-
-            return combinations;
-        }
-    }
+    // Those outcomes with a code of the connection to 1C.
+    public static TheoryData<string?, string, string?> AgentOutcomesOfTheConnectionTo1C =>
+        CombinationsWhere(OutcomeTable.IsAgentOutcomeOfTheConnectionTo1C);
 
     // A mode, and an outcome of a kind and a code that the mode allows, with a member that the kind does not carry.
     public static TheoryData<string, string> OutcomesThatBreakTheRulesOfTheirMembers => new()
@@ -113,28 +101,17 @@ public sealed class OutcomeObjectTests
         string kind,
         string? code)
     {
-        bool allowed = mode is null
-            ? OutcomeTable.AgentMaySend("read", kind, code) || OutcomeTable.AgentMaySend("write", kind, code)
-            : OutcomeTable.AgentMaySend(mode, kind, code);
+        AssertReadOnlyWhenAnAgentMaySendIt(mode, kind, code);
+    }
 
-        // The other members are those that the kind carries, so that only the kind and the code are at fault.
-        string outcome = Outcome(
-            kind,
-            code,
-            result: kind == "succeeded" ? "{\"rows\":3}" : "null",
-            errorText: kind == "failed" && code == "script-error" ? "\"An error of 1C\"" : "null");
-
-        if (allowed)
-        {
-            OutpostOutcomeMessage read = Read(mode, outcome);
-
-            Assert.Equal(OutcomeTable.Kind(kind), read.Kind);
-            Assert.Equal(code, read.Code);
-        }
-        else
-        {
-            ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(mode, outcome));
-        }
+    [Theory(Skip = SkipReason.NotImplemented)]
+    [MemberData(nameof(AgentOutcomesOfTheConnectionTo1C))]
+    public void An_outcome_with_a_code_of_the_connection_to_1C_that_an_agent_may_send_is_read(
+        string? mode,
+        string kind,
+        string? code)
+    {
+        AssertReadOnlyWhenAnAgentMaySendIt(mode, kind, code);
     }
 
     [Fact]
@@ -302,5 +279,54 @@ public sealed class OutcomeObjectTests
         OutpostModeEnum? modeOfTheCommand = mode is null ? null : OutcomeTable.Mode(mode);
 
         return OutpostCodec.ReadOutcome(modeOfTheCommand, MessageText.Utf8(outcome));
+    }
+
+    private static void AssertReadOnlyWhenAnAgentMaySendIt(string? mode, string kind, string? code)
+    {
+        bool allowed = mode is null
+            ? OutcomeTable.AgentMaySend("read", kind, code) || OutcomeTable.AgentMaySend("write", kind, code)
+            : OutcomeTable.AgentMaySend(mode, kind, code);
+
+        // The other members are those that the kind carries, so that only the kind and the code are at fault.
+        string outcome = Outcome(
+            kind,
+            code,
+            result: kind == "succeeded" ? "{\"rows\":3}" : "null",
+            errorText: kind == "failed" && code == "script-error" ? "\"An error of 1C\"" : "null");
+
+        if (allowed)
+        {
+            OutpostOutcomeMessage read = Read(mode, outcome);
+
+            Assert.Equal(OutcomeTable.Kind(kind), read.Kind);
+            Assert.Equal(code, read.Code);
+        }
+        else
+        {
+            ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(mode, outcome));
+        }
+    }
+
+    // Every combination of a mode, a kind and a code that the filter includes, with the mode null for a command that
+    // the server does not know.
+    private static TheoryData<string?, string, string?> CombinationsWhere(Func<string?, string, string?, bool> include)
+    {
+        TheoryData<string?, string, string?> combinations = [];
+
+        foreach (string? mode in new[] { "read", "write", null })
+        {
+            foreach (string kind in OutcomeTable.Kinds)
+            {
+                foreach (string? code in OutcomeTable.Codes)
+                {
+                    if (include(mode, kind, code))
+                    {
+                        combinations.Add(mode, kind, code);
+                    }
+                }
+            }
+        }
+
+        return combinations;
     }
 }
