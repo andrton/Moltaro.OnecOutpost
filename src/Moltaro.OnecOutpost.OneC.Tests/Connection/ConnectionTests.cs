@@ -4,9 +4,20 @@ using Moltaro.OnecOutpost.OneC.Tests.Workers;
 namespace Moltaro.OnecOutpost.OneC.Tests.Connection;
 
 // The connection of ComConnector to a real base: a session that does not open gives {"ready":false} and exit code 2,
-// and an executor that does not open gives Failed base-unreachable and exit code 2 (the brief of S9, "The lines").
+// and an executor that does not open gives Failed base-unreachable and exit code 2. The agent ends a worker by closing
+// its input; the worker then releases its session and ends with exit code 0 (the brief of S9, "The lines").
 public sealed class ConnectionTests
 {
+    [Fact]
+    public async Task A_worker_whose_input_is_closed_after_a_command_ends_with_exit_code_0()
+    {
+        await using WorkerProcess reader = await LabWorkers.TestBaseReadAsync();
+
+        (await reader.RunAsync("Result = 1;")).AssertIs("succeeded", null);
+
+        Assert.Equal(0, await reader.EndAsync());
+    }
+
     [Fact]
     public async Task A_wrong_password_gives_ready_false_and_ends_the_worker_with_exit_code_2_without_the_password_in_its_output()
     {

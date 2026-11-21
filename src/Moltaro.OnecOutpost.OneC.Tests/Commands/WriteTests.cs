@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
+using Moltaro.OnecOutpost.OneC.Tests.ScriptContract;
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Commands;
@@ -64,10 +65,14 @@ public sealed class WriteTests
         Result = New Structure("Posted, Records", Receipt.Posted, Records);
         """;
 
-    // The end of a script that wrote a product, and the code its Write fails with.
+    // The end of a script that wrote a product, and the code its Write fails with: a reference, U+0000, a lone
+    // surrogate, a nesting of 65 levels, and a result beyond the limit of 1024 bytes.
     public static TheoryData<string, string> EndsThatFailTheCheckBeforeTheCommit => new()
     {
         { "Result = Product.Ref;", "result-type" },
+        { ResultStatements.HoldingU0000, "result-type" },
+        { ResultStatements.HoldingALoneSurrogate, "result-type" },
+        { ResultStatements.NestedArrays(65), "result-type" },
         { "Result = \"\";\nFor Number = 1 To 2048 Do\n    Result = Result + \"x\";\nEndDo;", "result-too-large" },
     };
 

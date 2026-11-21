@@ -25,9 +25,11 @@ internal sealed class OutcomeLine
 
     public required bool MessagesTrimmed { get; init; }
 
+    // The line is read to the depth of 72 levels of a message (§2 of docs/protocol.md), as the agent reads it, since a
+    // result of 64 levels lies two levels inside it.
     public static OutcomeLine Read(byte[] line)
     {
-        using JsonDocument document = JsonDocument.Parse(line);
+        using JsonDocument document = JsonDocument.Parse(line, new JsonDocumentOptions { MaxDepth = 72 });
         JsonElement root = document.RootElement;
         JsonElement outcome = root.GetProperty("outcome");
 

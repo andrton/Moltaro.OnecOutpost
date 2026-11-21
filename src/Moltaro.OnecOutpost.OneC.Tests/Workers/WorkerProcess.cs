@@ -9,8 +9,8 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Workers;
 // The worker program started as a process and spoken to over its raw standard streams, as the agent will: the
 // connection line first and {"ready":...} back, then one command line at a time, each answered by one outcome line,
 // read as bytes up to its LF. The lines go out as JSON in UTF-8 without a BOM, ended with LF. The standard error is
-// collected for the message of a failed assertion; the worker writes no password there. Disposing ends the process if
-// it still runs.
+// collected for the message of a failed assertion; the worker writes no password there. Disposing closes the input of a
+// worker that still runs, as the agent ends one, and kills it only if it does not end.
 internal sealed class WorkerProcess : IAsyncDisposable
 {
     // The outcome limit of a command when a test gives none: the default of the server, 16 MiB (concept rule 5).
@@ -186,15 +186,27 @@ internal sealed class WorkerProcess : IAsyncDisposable
         return _process.ExitCode;
     }
 
+    // Ends the worker as the agent does, by closing its input, so that it releases its session in 1C and ends. It is
+    // killed only when it does not end within the deadline, as one whose script still runs.
     public async ValueTask DisposeAsync()
     {
-        if (!_process.HasExited)
+        try
         {
-            _process.Kill(entireProcessTree: true);
-            await _process.WaitForExitAsync();
+            if (!_process.HasExited)
+            {
+                await EndAsync();
+            }
         }
-
-        _process.Dispose();
+        catch (OperationCanceledException)
+        {
+            // The deadline passed; the worker is killed below.
+        }
+        finally
+        {
+            EndProcess();
+            await _process.WaitForExitAsync();
+            _process.Dispose();
+        }
     }
 
     private static CancellationTokenSource StartDeadline()
