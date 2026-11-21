@@ -2487,7 +2487,9 @@ the contract of the executor and the COM worker approved.
     - a Write whose script raises an error rolls back;
     - a result of a wrong type, and one too large, roll back before the commit;
     - a script that calls `CommitTransaction` or `RollbackTransaction` gives Unknown
-      `transaction-ended`;
+      `transaction-ended`. A commit of the executor that raises gives it too, but has no lab
+      test: nothing a script can do on 8.3.17 makes the commit raise on demand (the lab, 21
+      November 2026);
     - the script contract:
       - `Parameters` maps JSON as concept §3 says: an object to a `Map`, an array to an
         `Array`, `null` to `Undefined`, no parameters to an empty `Map`, and a string that
@@ -2519,7 +2521,9 @@ the contract of the executor and the COM worker approved.
     rolled back and the Read fails;
   - in the Acceptance, the line on a connector of another version gave way to the lines of
     the internal contract, since L1 recorded no error for one;
-  - the readings Q10, Q11 and Q12 of the open questions, taken as recommended.
+  - the readings Q10, Q11 and Q12 of the open questions, taken as recommended, with Q12's
+    answer from the lab: a commit that raises keeps Unknown `transaction-ended` and has no
+    lab test.
 - **Out of scope.** The agent's supervision of its workers, the console, the shell.
 
 ### S9b · The agent runs the COM workers
