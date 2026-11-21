@@ -18,7 +18,7 @@ answers, and the pairing proof, with their tests; no endpoint serves it yet. The
 runs scripts in 1C: it holds an external connection to one base and runs each command
 through the executor, an external data processor in `src/Executor`, in safe mode or
 without it. No agent starts it yet. Its tests run against a fake of the COM connection,
-and its 43 tests against a real 1C, in `src/Moltaro.OnecOutpost.OneC.Tests`, passed on the
+and its 45 tests against a real 1C, in `src/Moltaro.OnecOutpost.OneC.Tests`, passed on the
 lab machine with 1C:Enterprise 8.3.17.1851, against the repository's test base and a copy
 of a typical base. Everything else throws
 `NotSupportedException`: pairing, Read and Write, the endpoints of the agents and the
