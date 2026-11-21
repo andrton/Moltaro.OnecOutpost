@@ -49,9 +49,10 @@ public static class OutpostMigrations
     /// Reported by the task: a failure of the database that may pass, such as a refused connection or a session that
     /// ended, with the <see cref="Npgsql.NpgsqlException"/> as its inner exception; nothing retries it.
     /// </exception>
-    /// <exception cref="Npgsql.PostgresException">
-    /// Reported by the task: the server refused the work for a reason that does not pass, such as a wrong password or a
-    /// right the role lacks.
+    /// <exception cref="Npgsql.NpgsqlException">
+    /// Reported by the task: a failure of the database that does not pass, such as a connection string without a
+    /// password. When the server refused the work, such as for a wrong password or a right the role lacks, it is the
+    /// <see cref="Npgsql.PostgresException"/> that derives from it.
     /// </exception>
     public static Task MigrateAsync(string connectionString, string schema, CancellationToken cancellationToken = default)
     {

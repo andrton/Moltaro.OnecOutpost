@@ -722,7 +722,9 @@ public sealed record OutpostMigrationScript(string Name, string Sql);
   session for the whole call: a direct connection or a pooler in session mode, not one
   that pools by transaction. A failure of the database that may pass, such as a refused
   connection, is reported as `InvalidOperationException` with the `NpgsqlException`
-  inside; one that does not pass, such as a wrong password, as `PostgresException`.
+  inside; one that does not pass, such as a connection string without a password, as
+  `NpgsqlException`, and a refusal by the server, such as a wrong password, as the
+  `PostgresException` that derives from it.
 - `GetScripts` returns one SQL script per migration, in order, for an application that
   applies migrations itself. Applying them in order to an empty schema gives the same
   tables, and the same record of applied migrations, as `MigrateAsync` does. `Name` is the
@@ -1178,7 +1180,7 @@ The release
 | --- | --- | --- | --- |
 | S1 | The public contract of stage 1, the projects and the test lane | Full | Done |
 | S2 | The protocol, its signatures and the pairing proof | Full | Done, 21 November 2026: the codec, the signatures and the pairing proof with their tests; the code review closed in two rounds, after the ten rounds of `docs/protocol.md`. What it changed in the public contract is listed in its brief for the owner |
-| S3 | The store | Full | Not started |
+| S3 | The store | Full | Done, 21 November 2026: the store on PostgreSQL in the schema the application chooses, its first migration, `OutpostMigrations` with `MigrateAsync` and `GetScripts`, and the pairing tokens with their pending agents: created, found, redeemed once and purged, which no endpoint uses yet. The internal contract was reviewed in two rounds; the code review took three, and its last finding, a word of the XML documentation of `MigrateAsync`, was fixed on the owner's decision without a fourth round. What it changed in the public contract is listed in its brief for the owner |
 | S4 | Pairing and agents on the server | Full | Not started |
 | S5 | Commands on the server | Full | Not started |
 | S6 | The agent | Full | Not started |
@@ -1950,7 +1952,7 @@ approval of this plan.
     connection keeps its session for the whole call;
   - `MigrateAsync` reports a failure of the database that may pass as
     `InvalidOperationException` with the `NpgsqlException` inside, and one that does not
-    as `PostgresException`;
+    as `NpgsqlException`, a refusal by the server being its `PostgresException`;
   - each script of `GetScripts` carries its own transaction.
 - **Study.** Sources, for example: the PostgreSQL transport of Rebus (MIT); the durable
   inbox and outbox of Wolverine (MIT); the ADO.NET job store of Quartz.NET (Apache-2.0);
