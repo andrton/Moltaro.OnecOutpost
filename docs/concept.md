@@ -4,8 +4,9 @@ This document is the authority for what the library guarantees: its semantics, i
 protocol principles, its decisions and its non-goals. It describes the design;
 [README.md](../README.md) says what of it is built.
 
-**Status.** The owner agrees to this concept by merging it into `main`. The open items of
-section 12 are checked on a lab machine and may still reopen decisions D3, D12 and D14.
+**Status.** The owner agrees to this concept by merging it into `main`. The lab check of
+section 12 changed decision D12 on 21 November 2026: the administrator may turn safe mode
+off for the Writes of a base.
 
 ## 1. Where it comes from
 
@@ -37,6 +38,12 @@ offers the whole query language and everything the configuration does outside it
 posting, register movements, event subscriptions, its common modules. What it does not run
 is the logic of forms, such as filling a field when a user picks a value. A program fills
 those fields itself.
+
+One condition comes with it. The code of an external connection runs in the process of the
+COM connector, so a common module takes part only when the configuration makes it available
+to an external connection. A typical configuration does that for its own modules. A module
+that somebody added without it stops every write that reaches one of its handlers, until
+the developer of that configuration sets the one flag of the module (section 12, O1).
 
 What is missing is a safe way to use that connection from outside the network. The
 observation behind this project is that a caller does not need an API for 1C. It needs a
@@ -129,12 +136,17 @@ The script's contract is the same for both:
 - **The script runs in the 1C safe mode.** Safe mode forbids files, the network, COM,
   external components and starting programs, and privileged mode has no effect in it. The
   script can still do everything the account's rights allow with the data.
+  - A Read always runs in safe mode.
+  - A Write runs in safe mode unless the local policy turns it off for the base. Safe mode
+    also binds the code of the configuration that a script calls, and a typical
+    configuration does not post a document in it (section 12, O1). Only the administrator
+    of the agent machine can turn it off; the server cannot.
+  - The COM workers of a base whose Writes run without safe mode run under a Windows
+    account of their own, which can read neither the agent's secrets nor its audit log.
   - In an external connection, the script and the configuration code it calls run in the
-    COM worker on the agent machine, as far as is known; open item O6 checks this for
-    client-server bases.
+    COM worker on the agent machine, for a client-server base as well (section 12, O6).
   - Safe mode is what keeps a script away from the files of that machine, the agent's key
-    and the local policy included.
-  - Open item O1 checks that typical posting gives the same result in safe mode.
+    and the local policy included. Where it is off, the account of the COM workers does.
 
 ### Rules
 
@@ -319,8 +331,8 @@ that is later work.
 | A captured command is sent again, also after the caller was told it expired | The take deadline, the audit log, and an expiry of a handed-out command that the agent's own signed time decides (rules 1, 3, 7) |
 | Someone poses as an agent, replays its requests or forges an outcome | The agent's signature on every request, the poll numbers (rule 10), and the rule that only the first outcome counts, and only from the agent the command was handed to (rule 11) |
 | Two agents claim the same base, by mistake or on purpose | The first claim binds the key (rule 14) |
-| The application, or whoever controls it, is compromised | It can run scripts only on the bases and in the modes the local policy opens, under the 1C accounts the administrator chose, in safe mode, and every command is in the local audit log |
-| A script tries to reach the operating system | Safe mode (open items O1, O6) |
+| The application, or whoever controls it, is compromised | It can run scripts only on the bases and in the modes the local policy opens, under the 1C accounts the administrator chose, in safe mode unless the administrator turned it off for the Writes of a base, and every command is in the local audit log |
+| A script tries to reach the operating system | Safe mode. For the Writes of a base where the administrator turned it off, the script can do on the agent machine what the Windows account of that base's COM workers can, and that account can read neither the agent's secrets nor its audit log |
 | The server's database leaks | It holds no agent secret and no signing key, which stays in the application's secret storage. It does hold the secrets of pairing tokens not used yet, until they are used, or until the purge after their expiry: whoever reads one in time can pair an agent of their own. It also holds the scripts, parameters and results of commands until their retention |
 | A file of the agent machine leaks | The agent's private key and the 1C passwords are encrypted with DPAPI for that machine, so a copy is useless elsewhere |
 | The whole agent machine is cloned | Nothing: the clone carries the agent's identity and secrets. Two running copies of one agent void rules 3 and 11. A clone must not run the agent until it is paired anew with a token of its own |
@@ -500,7 +512,7 @@ contract is their command line, the local policy and the audit log.
 | D9 | The store is PostgreSQL through the library's own EF Core context. Nodes share nothing in memory and are woken through `ISignals` of Moltaro.Signals, which the application provides | Any node serves any request, and an application with its own signals keeps one mechanism |
 | D10 | An agent that is not connected gives Unavailable at once. A command waits for a poll for at most its take deadline, then expires. A command that was handed out expires only when the agent's own signed time shows it can no longer accept it. Nothing is delivered later | A caller knows at once, and a command reported as expired never runs |
 | D11 | COM runs only in worker processes, per base and mode, with the connector's bitness, and they end with the agent | A failure of COM ends at most the commands of one base, and no orphan session outlives the agent |
-| D12 | Scripts run in safe mode | A script can work with data but cannot reach the operating system of the machine it runs on |
+| D12 | Scripts run in safe mode. The administrator of the agent machine may turn it off for the Writes of a base; its COM workers then run under a Windows account of their own (the owner, 21 November 2026, after O1) | A script can work with data but cannot reach the operating system of the machine it runs on. A typical configuration does not post a document in safe mode, so without the exception a Write would be of no use there |
 | D13 | The agent's private key and the 1C passwords are encrypted with DPAPI for the machine, in the agent's data folder, to which only administrators, SYSTEM and the agent's account have rights. The signing key of the server stays in the application's secret storage. The only secret in the store is that of an unused pairing token, deleted when it is used or removed by the purge after it expires | No secret travels, none lives long in the store, and a copied file is useless |
 | D14 | The oldest supported platform is 1C:Enterprise 8.3.17.1851, and the executor is built with its Designer. The COM connector has the version of the cluster | The oldest version in use by the first adopters, and a connector of another version does not connect |
 | D15 | Versions stay 0.x until a first production adopter runs on the library. Every request carries the protocol version | Changes stay cheap until someone depends on them, and agents are updated later than servers |
@@ -552,40 +564,83 @@ licences checked at that time:
 - The store is tested against a real PostgreSQL.
 - What only 1C can show, such as the executor, the COM worker, the script contract and the
   open items below, is tested on a lab machine with 1C:Enterprise 8.3.17.1851, never in
-  CI: against a file base built from the repository's own test configuration, and against
-  copies of real typical databases. What no test can make is accepted by hand there.
+  CI: against a base built from the repository's own test configuration, and against
+  copies of real typical databases. Both are client-server bases: the lab's 1C server
+  gives a licence to nobody who opens a file base, so a file base, which the library
+  serves through the same external connection, is not tried there. What no test can make
+  is accepted by hand there.
 - Latency. On a loopback stand without 1C, a command reaches a waiting poll and its
   outcome reaches the waiting caller each within 100 milliseconds at the 95th percentile.
   No hop waits for a fixed interval.
 
 ## 12. Open items
 
-These are checked on the lab machine before the sprint that depends on them is planned in
-detail:
+The check L1 ran on 21 November 2026 on a lab machine with 1C:Enterprise 8.3.17.1851,
+against a copy of a typical client-server base, a configuration on the ordinary application
+in the compatibility mode 8.2.13.
 
-- **O1. Posting in safe mode.** Does a typical document post in safe mode, with the same
-  register movements as when a person posts it? Common modules of typical configurations
-  switch to privileged mode, which has no effect in safe mode, so the rights of the account
-  apply where they did not before. If the movements differ, decision D12 goes back to the
-  owner. Weakening it then requires COM workers under an account of their own, which
-  cannot read the agent's secrets or its audit log; they become part of the sprint that
-  weakens it.
-- **O2. Opening the executor.** Can an external connection open the executor with
-  `ExternalDataProcessors.Create`, in safe mode, under both accounts on 8.3.17.1851? The
-  check covers:
-  - which rights that needs, the right of external connection included;
-  - whether the account's protection against dangerous actions interferes;
-  - whether the file is read on the agent machine.
-- **O3. Licences.** Does a session of an external connection take a client licence, and
-  how many workers does a typical licence set allow?
-- **O4. JSON.** Do `ReadJSON` into a `Map` and `WriteJSON` in safe mode behave as section 3
-  says, `null` and `Undefined` included?
-- **O5. Long Writes.** A Write holds the managed locks of its transaction until it ends. What
-  run limits are reasonable for typical postings, for Read and for Write?
-- **O6. Where scripts run.** For a client-server base, does the code of an external
-  connection run in the COM worker or on the cluster? The answer decides what safe mode
-  protects.
-- **O7. User messages.** Can the executor collect and clear the user messages of one
-  command in an external connection?
-- **O8. One connector per bitness.** Is only one version of the COM connector registered
-  per bitness on a machine?
+- **O1. Posting in safe mode.** *Answered: it does not post, and the owner changed
+  decision D12.* In safe mode the write of a typical document fails: a handler of the typical
+  configuration itself, its versioning of objects, opens a file when a document is
+  written, and safe mode refuses that. Without safe mode the same document posts through
+  the external connection with the same movements in all of its 32 registers as when a
+  person posted it. Reads work in safe mode.
+
+  The exception of D12 was tried on the same machine. Under an ordinary Windows account,
+  not an administrator, the connection, the executor and the posting without safe mode
+  work as before, and a Write script without safe mode is refused a file that only
+  administrators may read, by Windows. Under an administrator the same script reads it.
+
+  Before that, the document could not be written at all, with safe mode and without it.
+  The base carried two common modules of its own whose event subscriptions cover its
+  documents and registers, and neither was available to an external connection. 1C then
+  calls the handler on the server and refuses to pass the document to it. Every
+  subscription of the typical configuration itself is available. Setting the one flag on
+  the two modules was enough.
+- **O2. Opening the executor.** *Answered.* An external connection opens the executor from
+  a file on the agent machine with `ExternalDataProcessors.Create`, in safe mode, on
+  8.3.17.1851. The platform's protection against dangerous actions refuses the call, since
+  nobody can answer its warning; the call passes with an
+  `UnsafeOperationProtectionDescription` whose warnings are off, which changes nothing in
+  the base, in the account or on the machine. Checked with one account of full rights; the
+  rights a narrow account needs are checked with the test configuration.
+- **O3. Licences.** *Answered.* Every session of an external connection takes a client
+  licence, here from the pool of the server. So a COM worker costs one licence for as long
+  as it holds its session.
+- **O4. JSON.** *Answered.* `ReadJSON` and `WriteJSON` behave as section 3 says, with one
+  exception: `WriteJSON` refuses `Null`, alone or inside a value. The executor replaces
+  `Null` with `Undefined` before it writes. A `Map` with a key that is not a string and a
+  reference are refused, as section 3 expects.
+- **O5. Long Writes.** *Answered in part.* Posting one typical document again took under
+  four seconds, one measurement on an idle lab base. A Write holds the managed locks of its
+  transaction until it ends, so the run limits of the plan stand until a loaded base says
+  otherwise.
+- **O6. Where scripts run.** *Answered.* For a client-server base too, the script runs in
+  the process of the COM connector on the agent machine. So safe mode is what keeps a
+  script away from that machine, and the code of the configuration takes part only where
+  it is available to an external connection (section 1).
+- **O7. User messages.** *Answered.* The executor collects the user messages of one
+  command, in their order, and clears them before the next.
+- **O8. One connector per bitness.** *Answered in part.* Installing 1C does not register
+  the COM connector: it has to be registered before the first connection. One version was
+  installed, so two versions of one bitness were not tried.
+
+L1 also found:
+
+- **The compatibility mode limits the language.** In the compatibility mode 8.2.13 a
+  function that the platform has, such as `StrSplit`, is not defined, while JSON works. A
+  script can use what the mode of its base allows. The executor is written for the lowest
+  mode in use, and the test configuration runs in it.
+- **The first connection of a process takes several seconds,** a later one about two, which
+  is why a COM worker keeps its session between commands. The first connection of a
+  Windows account that never used 1C took twenty seconds.
+- **The language of 1C's own texts follows the Windows account.** The same error text and
+  the same presentation of a date came in another language under another account, so
+  nothing may depend on the wording of an error of 1C.
+- **The lab runs on PostgreSQL.** The library does not see the DBMS of a base, so what L1
+  found about rules holds on any of them. What it measured does not: the time of a
+  posting and the behavior of locks under load belong to that DBMS and that machine, and
+  are measured again before a default is trusted on another.
+- Safe mode refuses a file and a COM object. A script that declares a procedure is
+  refused. A Write whose script raises an error rolls back. A script that commits the
+  transaction itself is recognized.

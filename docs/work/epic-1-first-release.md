@@ -525,8 +525,15 @@ public static class OutpostCodes
 - There is no code for a signature that does not verify. The agent cannot trust the
   identity of such a command, so it only records it in the audit log and reports nothing.
   The server ends the command by rules 7 and 11 (concept rule 1).
-- A failure of the connection to 1C during a command, such as a restarted cluster or a
-  missing licence, gets its codes in stage 2, through the owner, after L1.
+- A failure of the connection to 1C gets two codes in S9, a draft of the contract for the
+  owner (the planner, 21 November 2026, after L1):
+  - `base-unreachable`, Failed, for a Read and a Write: the COM worker has no session in
+    the base, or could not open the executor, so the script did not start. Examples are a
+    wrong password, a cluster that does not answer, no free licence, a COM connector that
+    is not registered. `ErrorText` is `null`: the text of 1C goes to the audit log only,
+    since it may name an account or a path;
+  - `connection-lost`, Failed for a Read and Unknown for a Write: the session ended while
+    the script ran, for example because the cluster restarted.
 
 #### `OutpostPairingToken`
 
@@ -654,7 +661,7 @@ folder.
       "server": "srv-1c:1541",
       "database": "accounting",
       "read": { "account": "outpost-read", "workers": 1, "runLimit": "00:10:00" },
-      "write": { "account": "outpost-write", "workers": 1, "runLimit": "00:10:00" }
+      "write": { "account": "outpost-write", "workers": 1, "runLimit": "00:10:00", "safeMode": false }
     },
     {
       "key": "warehouse-file",
@@ -678,6 +685,7 @@ folder.
 | `write` | Present only when the base may be written |
 | `account` | The 1C account of the mode; its password is a secret that the console writes |
 | `workers` | 1 to 8; 1 when absent |
+| `safeMode` | In `write` only: whether the Writes of the base run in the 1C safe mode; `true` when absent. With `false`, the COM workers of the base run under a Windows account of their own (D12). In `read` it is an unknown member: a Read always runs in safe mode |
 | `runLimit` | A .NET `TimeSpan` in its constant form `[d.]hh:mm:ss`, from 1 second to 1 day (`1.00:00:00`); 10 minutes when absent |
 
 - **An invalid file serves nothing.** An unknown member, a member given twice, a wrong
@@ -1065,7 +1073,7 @@ The release
 | S6 | The agent | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
-| L1 | The lab check of open items O1–O8 | Light | Not started |
+| L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Not started |
 | S9b | The agent runs the COM workers | Full | Not started |
 | S10 | The console | Full | Not started |
@@ -1579,8 +1587,10 @@ approval of this plan.
     the parameters and of `AgentPolicyReader` follow it, each with its tests.
   - The owner's answer of 20 November 2026 on tests with 1C: both kinds. Tests that need
     1C live in `Moltaro.OnecOutpost.OneC.Tests`, outside the solution, and run on the lab
-    machine, never in CI, against a file base built from the repository's own test
-    configuration and against copies of real typical databases. `AGENTS.md`, "Tests And
+    machine, never in CI, against a base built from the repository's own test
+    configuration and against copies of real typical databases. On 21 November 2026 the
+    owner made that base a client-server one on the lab's cluster: the lab has no licence
+    for a file base. The library still serves both kinds. `AGENTS.md`, "Tests And
     Samples", "Layout" and "Working Rules", concept §3 "Rules" and §11, `process.md`,
     OD1, the epic's Acceptance, the test lane, "The lab machine", L1, S9, S10, S11, R17
     and R18 say so.
@@ -2077,6 +2087,9 @@ as [Order](#order-and-why-these-splits) says.
 - **Carried over from S2** (the planner, 21 November 2026): the changes of the public
   contract that came with `docs/protocol.md` and that this sprint builds. They hold as a
   draft; `AgentPolicy`, `AgentPolicyReader`, the audit log and their tests follow them.
+  - **`safeMode` of `write`** (the owner's change of D12, 21 November 2026), as the table
+    of `policy.json` gives it; the agent records in the `started` entry of the audit log
+    which bases write without safe mode.
   - **`policy.json`:**
     - at most 256 bases;
     - a new member `requestTimeout`: the agent's wait for an answer to `pair` or `outcome`,
@@ -2239,8 +2252,9 @@ Runs right after S2, before S9 and before the contract of stage 2 is written.
   report file is written.
 - **The 1C test lane.** L1 also sets it up, as `AGENTS.md`, "Tests And Samples", says:
   - `src/OneC.TestConfiguration`: the XML sources of a minimal test configuration, and the
-    script that builds a file base from them through the Designer's command line on the
-    lab machine. No built configuration or base is committed. The configuration has:
+    script that builds a base from them on the lab's 1C cluster, through the Designer's
+    command line. No built configuration or base is committed. The configuration has:
+    - the compatibility mode 8.2.13, the lowest in use (L1);
     - a catalog, a document that posts to an accumulation register, and a common module;
     - two roles, both with the right of external connection and whatever else O2 finds
       that opening the executor needs: one that reads every object and changes none, and
@@ -2257,7 +2271,7 @@ Runs right after S2, before S9 and before the contract of stage 2 is written.
 - **To read.** The [concept](../concept.md), §3 "The two commands" and §12; this plan,
   "The files of the agent".
 - **Done when** O1–O8 are answered in the concept, the test configuration builds into a
-  file base on the lab machine, and the change, with `src/OneC.TestConfiguration`, is
+  base on the lab's cluster, and the change, with `src/OneC.TestConfiguration`, is
   merged.
 
 ### S9 · The executor and the COM worker
@@ -2470,7 +2484,10 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     outcome limit, and returns the outcome as JSON;
   - safe mode;
   - the transaction of a Write and the checks of rule 5 before its commit;
-  - the user messages, trimmed with a marker.
+  - the user messages, trimmed with a marker;
+  - after L1: it uses only the language that the compatibility mode 8.2.13 allows, and it
+    replaces `Null` with `Undefined` before it writes a result, since `WriteJSON` refuses
+    `Null`.
 - **The COM worker**, a program:
   - its command line names the base and the mode;
   - it receives the connection, with its password, from the agent over its standard input,
@@ -2478,7 +2495,15 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   - it exchanges one JSON message per line with the agent over standard input and output:
     a command in, an outcome out. The outcome's JSON from the executor is forwarded as it
     is, so that its size is what the executor measured;
-  - it ends when the agent closes its input.
+  - it ends when the agent closes its input;
+  - after L1: it opens the executor with an `UnsafeOperationProtectionDescription` whose
+    warnings are off, since nobody can answer the platform's warning in an external
+    connection;
+  - after D12 changed: the agent tells it whether its mode runs in safe mode, and it opens
+    the executor so. A worker of a base whose Writes run without safe mode runs under a
+    Windows account of its own, which can read neither the agent's secrets nor its audit
+    log. S9 builds the worker's side, S9b the account and how the agent starts a worker
+    under it, and the console's `install` prepares the account.
 - **The console**, a program that references the agent, the protocol, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says, with
   these commands and their exit codes:
@@ -2486,11 +2511,18 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   - `pair <server address> <token>`;
   - `secret <base key> <read|write>`, which asks for the password without echoing it;
   - `check`, which reports, each as passed or failed with its reason:
-    - the COM connector and its version;
+    - the COM connector and its version: whether one is registered for each bitness, and
+      where a `comcntr.dll` that is not registered lies (the owner, 21 November 2026, after
+      L1: the console finds, diagnoses and registers the connector);
     - the connection to each base under each account;
+    - for each base, the event subscriptions whose common module is not available to an
+      external connection, named with their modules, since a write that reaches one of
+      them fails (concept §1 and §12, O1);
     - the rights to change data that each read account has;
     - the server;
     - the clock skew;
+  - `connector register`, after L1, which registers the COM connector of the installed
+    platform for its bitness, and says so when it lacks the rights of an administrator;
   - `metadata <base key> <file>`.
 - **The shell**, a program that references the server, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says:
@@ -2515,8 +2547,9 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     be installed;
   - its SHA-256 checksum is on the release page;
   - it runs on the Windows versions that .NET 10 supports.
-- **Outcome codes of stage 2:** the codes for a connection to 1C that fails or breaks
-  during a command, after L1.
+- **Outcome codes of stage 2:** `base-unreachable` and `connection-lost`, as the last
+  bullet under [`OutpostCodes`](#outpostcodes) gives them. S9 adds them to `OutpostCodes`,
+  to `OutpostOutcomeCodes` and to the table of §8 of `docs/protocol.md`.
 
 ## The first release
 
