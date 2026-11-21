@@ -10,7 +10,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Migrations;
 [Trait("Requires", "PostgreSQL")]
 public sealed class MigrationTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task MigrateAsync_creates_a_schema_that_does_not_exist_with_the_tables_of_the_store()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -27,7 +27,7 @@ public sealed class MigrationTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.NotEmpty(migrated.Tables);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_second_MigrateAsync_changes_nothing()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -43,7 +43,7 @@ public sealed class MigrationTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.Equal(first.Lines, second.Lines);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_scripts_applied_in_order_to_an_empty_schema_give_the_tables_and_the_record_that_MigrateAsync_gives()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -71,9 +71,25 @@ public sealed class MigrationTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.Equal(migrated.Lines, scripted.Lines);
     }
 
+    // A token cancelled before the call gives a cancelled task, and the call changes nothing (the public contract,
+    // "Rules for every member").
+    [Fact]
+    public async Task MigrateAsync_with_a_cancelled_token_gives_a_cancelled_task_and_creates_no_schema()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string connectionString = await postgres.GetConnectionStringAsync(cancellationToken);
+        const string Schema = "migration_cancelled";
+
+        Task migration = OutpostMigrations.MigrateAsync(connectionString, Schema, new CancellationToken(canceled: true));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => migration);
+        Assert.True(migration.IsCanceled);
+        Assert.False(await SchemaSnapshot.ExistsAsync(connectionString, Schema, cancellationToken));
+    }
+
     // The snapshot takes the schema, as the model does. A schema other than outpost, the default of the options, shows a
     // snapshot made for one schema only.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_model_has_no_pending_changes_against_its_snapshot()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -86,7 +102,7 @@ public sealed class MigrationTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // Driven to the order in which both migrations create the schema together: another connection creates it and holds
     // it uncommitted until both are seen waiting to create it, then rolls back, which leaves the schema new to both.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Two_MigrateAsync_running_at_once_into_one_new_schema_both_complete_and_give_the_schema_that_one_gives()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -118,7 +134,7 @@ public sealed class MigrationTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // The record of applied migrations is in the schema as well: kept anywhere else, the second schema would find the
     // migrations of the first applied and get no tables.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Two_schemas_in_one_database_each_get_their_own_tables()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -141,7 +157,7 @@ public sealed class MigrationTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // A model built for one schema and reused for another would show here: the context of the other schema would read
     // the row written in the first, or a context would work in a schema that this test did not migrate.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_context_of_one_schema_never_reads_the_rows_of_another()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

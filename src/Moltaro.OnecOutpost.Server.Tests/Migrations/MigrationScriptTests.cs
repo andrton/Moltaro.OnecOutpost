@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Moltaro.OnecOutpost.Server.Store;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Migrations;
 
@@ -10,7 +9,7 @@ public sealed class MigrationScriptTests
 {
     private const string Schema = "scripts_without_database";
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void GetScripts_works_without_a_database()
     {
         IReadOnlyList<OutpostMigrationScript> scripts = OutpostMigrations.GetScripts(Schema);
@@ -20,7 +19,7 @@ public sealed class MigrationScriptTests
     }
 
     // A script records the identifier of its migration as applied, so its SQL holds its name.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_name_of_each_script_is_the_identifier_of_its_migration()
     {
         using StoreContext context = StoreContextFactory.Create(null, Schema);

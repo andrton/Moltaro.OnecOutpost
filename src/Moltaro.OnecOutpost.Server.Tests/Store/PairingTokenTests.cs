@@ -19,7 +19,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
 
     private static readonly TimeSpan OneMicrosecond = TimeSpan.FromMicroseconds(1);
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_created_token_has_a_pending_agent_and_its_secret_is_found()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -40,7 +40,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Equal(secret, await store.FindPairingSecretAsync(agentId, cancellationToken));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_secret_is_found_until_the_expiry()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -57,7 +57,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Equal(secret, await store.FindPairingSecretAsync(agentId, cancellationToken));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_secret_is_not_found_from_the_expiry_on()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -73,7 +73,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Null(await store.FindPairingSecretAsync(agentId, cancellationToken));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_redemption_makes_the_agent_paired_with_its_key_and_time_and_leaves_no_token()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -98,7 +98,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Null(await schema.FindTokenAsync(agentId, cancellationToken));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_second_redemption_gives_false_and_leaves_the_key_and_time_of_the_first()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -124,7 +124,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
     }
 
     // The token stays for the purge, which removes it with its agent.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_redemption_from_the_expiry_on_gives_false_and_leaves_the_agent_pending_with_its_token()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -146,7 +146,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
     }
 
     // The store holds the token of another agent, which a redemption that ignored the identity would take.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_redemption_of_an_identity_the_store_does_not_know_gives_false()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -166,7 +166,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
     }
 
     // The store holds the token of another agent, whose secret a lookup that ignored the identity would give.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_secret_of_an_identity_the_store_does_not_know_is_not_found()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -181,7 +181,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
     }
 
     // The later token expires at the very time of the purge, and so has expired: a token is expired from its expiry on.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_purge_removes_each_expired_token_with_its_pending_agent_and_gives_their_number()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -207,7 +207,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
 
     // The token expires one microsecond after the purge. Its secret, found afterwards, shows the token and its pending
     // agent as they were.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_purge_leaves_a_token_that_has_not_expired()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -227,7 +227,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
     }
 
     // The purge runs long after the expiry that the agent's token had before its redemption.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_purge_leaves_an_agent_that_is_paired()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -252,7 +252,7 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
     // The one race of the sprint, driven to a known order: another connection holds the token's row locked until both
     // redemptions are seen waiting for it, and then lets it go unchanged. Which of the two takes the row first is not
     // the subject; that exactly one of them pairs the agent, with its own key, is.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Of_two_redemptions_waiting_for_one_token_only_one_gives_true_and_the_agent_has_its_key()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

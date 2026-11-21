@@ -1,3 +1,8 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Moltaro.OnecOutpost.Server.Store;
+
 namespace Moltaro.OnecOutpost.Server;
 
 /// <summary>
@@ -36,7 +41,7 @@ public static class OutpostMigrations
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
         ServerNames.CheckSchema(schema, nameof(schema));
 
-        throw new NotSupportedException();
+        return MigrateSchemaAsync(connectionString, schema, cancellationToken);
     }
 
     /// <summary>
@@ -56,6 +61,28 @@ public static class OutpostMigrations
     {
         ServerNames.CheckSchema(schema, nameof(schema));
 
-        throw new NotSupportedException();
+        using StoreContext context = StoreContextFactory.Create(null, schema);
+        IMigrator migrator = context.GetService<IMigrator>();
+
+        List<OutpostMigrationScript> scripts = [];
+        string? previous = null;
+
+        // Each script runs from the migration before it, so it holds its own migration only; the first, from nothing,
+        // also creates the schema and the record of applied migrations, as MigrateAsync does.
+        foreach (string migration in context.Database.GetMigrations())
+        {
+            scripts.Add(new OutpostMigrationScript(migration, migrator.GenerateScript(previous, migration)));
+            previous = migration;
+        }
+
+        return scripts;
+    }
+
+    // Apart from MigrateAsync, so that its argument checks throw from the call itself, not from the task.
+    private static async Task MigrateSchemaAsync(string connectionString, string schema, CancellationToken cancellationToken)
+    {
+        await using StoreContext context = StoreContextFactory.Create(connectionString, schema);
+
+        await context.Database.MigrateAsync(cancellationToken);
     }
 }
