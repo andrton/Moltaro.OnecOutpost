@@ -564,7 +564,8 @@ public sealed class OutpostOutcome
 - `Code` is one of [`OutpostCodes`](#outpostcodes) for Failed, Refused and Unknown, and
   `null` otherwise.
 - `ErrorText` is the text of the error that 1C raised, for Failed with `script-error`, or
-  the executor's own sentence for a transaction the script left open *(S9)*.
+  the executor's own sentence for a transaction the script left open, or for a Write whose
+  base refused a query before the commit *(S9)*.
 - `Messages` holds the user messages of 1C for Succeeded and Failed, and is empty
   otherwise.
 - `MessagesTrimmed` says that the executor trimmed the messages or the error text to fit
@@ -602,7 +603,7 @@ public static class OutpostCodes
 
 | Code | Kinds | Meaning |
 | --- | --- | --- |
-| `script-error` | Failed | 1C raised an error; `ErrorText` holds its text. *(S9)* Also a script that left a transaction of its own open, which the executor rolled back; `ErrorText` is then the executor's own sentence. A Write rolled back |
+| `script-error` | Failed | 1C raised an error; `ErrorText` holds its text. *(S9)* Also a script that left a transaction of its own open, which the executor rolled back, and a Write whose base refused a query before the commit, as it does after a nested rollback; `ErrorText` is then the executor's own sentence. A Write rolled back |
 | `result-type` | Failed, Unknown | The result holds a value that cannot be written as JSON (rule 5). *(S2)* Also a result deeper than 64 levels, and an outcome of the executor that the agent cannot accept: Failed for a Read, and for a Write that 1C rolled back; Unknown for a Write whose outcome the agent could not accept (`docs/protocol.md` §8) |
 | `result-too-large` | Failed, Unknown | The outcome is larger than its limit (rule 5). Unknown for a Write whose outcome was refused for its size, by the server or by something on the path; S5 and S6 state it |
 | `run-limit` | Failed (Read), Unknown (Write) | The script exceeded its run limit (rule 9) |
@@ -1175,7 +1176,7 @@ The release
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
-| S9 | The executor and the COM worker, run after L1 and before S3 | Full | Held, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. On the lab 44 tests that need 1C ran: 43 passed, and `A_write_whose_commit_raises_gives_unknown_transaction_ended` failed at its probe and was removed, since 8.3.17 gave no way to provoke the case; no manual scenario, since every line of the Acceptance has a test. The typical base ran with one account for both modes. Round 3 of the code review, the last, found a P1 that a lab check confirmed: a Write whose script rolls back a nested transaction is reported Succeeded although 1C rolled back all it wrote. The sprint waits for the planner's answer to it. What it changed in the public contract is listed in its brief for the owner |
+| S9 | The executor and the COM worker, run after L1 and before S3 | Full | Held, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. On the lab 44 tests that need 1C ran: 43 passed, and `A_write_whose_commit_raises_gives_unknown_transaction_ended` failed at its probe and was removed, since 8.3.17 gave no way to provoke the case; no manual scenario, since every line of the Acceptance has a test. The typical base ran with one account for both modes. Round 3 of the code review, the last, found a P1 that a lab check confirmed: a Write whose script rolls back a nested transaction was reported Succeeded although 1C rolled back all it wrote. The owner decided to fix it: the executor now runs a query before the commit of a Write, two lab tests state it, and its review found no defect in the sources. The `.epf` committed in `902c63c` was built before the fix, so the owner rebuilds it and runs the 45 tests that need 1C again before the sprint closes. What it changed in the public contract is listed in its brief for the owner |
 | S9b | The agent runs the COM workers | Full | Not started |
 | S10 | The console | Full | Not started |
 | S11 | The shell | Full | Not started |
@@ -2623,8 +2624,9 @@ the contract of the executor and the COM worker approved.
     agent may send as §8 of `docs/protocol.md` lists them, and which
     `OutpostOutcome.Failed` and `OutpostOutcome.Unknown` accept;
   - `transaction-ended` also covers a commit of the executor that raised, and
-    `script-error` a script that left a transaction of its own open, with the
-    executor's own sentence as `ErrorText` (Q12 of the [open questions](open-questions.md));
+    `script-error` a script that left a transaction of its own open, and a Write whose
+    base refused a query before the commit, with the executor's own sentence as
+    `ErrorText` (Q12 of the [open questions](open-questions.md));
   - in the concept, rule 5 says that a Write also fails when its script never started, and
     names the two cases above, and §3 says that a transaction a Read's script leaves open is
     rolled back and the Read fails;

@@ -444,7 +444,7 @@ largest `CommandSizeLimit`, 16 MiB, therefore fits a poll answer (§10).
 | `kind` | `succeeded`, `failed`, `refused` or `unknown`. Only the server sets Expired and Unavailable |
 | `code` | `null` for `succeeded`; otherwise a code the table below allows for the kind and the mode |
 | `result` | For `succeeded`, any JSON value, `null` included, of at most 64 levels. `null` for every other kind |
-| `errorText` | The text of the error 1C raised, for `failed` with `script-error`, or the executor's own sentence when the script left a transaction of its own open; `null` otherwise |
+| `errorText` | The text of the error 1C raised, for `failed` with `script-error`, or the executor's own sentence when the script left a transaction of its own open or, in a Write, when the base refused a query before the commit; `null` otherwise |
 | `messages` | The user messages of 1C, an array of strings, for `succeeded` and `failed`; empty for `refused` and `unknown` |
 | `messagesTrimmed` | `true` when the executor trimmed the messages or the error text to fit the limit; `false` for `refused` and `unknown` |
 
