@@ -1861,7 +1861,7 @@ approval of this plan.
 
     internal static class StoreContextFactory
     {
-        public static StoreContext Create(string connectionString, string schema);
+        public static StoreContext Create(string? connectionString, string schema);
     }
 
     internal sealed class AgentRow
@@ -1892,7 +1892,7 @@ approval of this plan.
     ```
 
     - **The schema is chosen at run time.** `StoreContextFactory.Create` is the one place
-      that builds the options: Npgsql, the default schema of the model, the history table
+      that builds the options, with no connection string for `GetScripts`: Npgsql, the default schema of the model, the history table
       of the migrations in that schema, a model cache key that includes the schema, and
       the library's own `IMigrationsAssembly` with an explicit list of migrations, each
       created with the schema, and a snapshot that takes the schema too. The check of
@@ -1903,12 +1903,13 @@ approval of this plan.
       the identifier of its migration.
     - **A token is the identity of its agent.** `CreatePairingTokenAsync` writes the agent
       as Pending, with its name and the node's time, and the token with its secret and
-      expiry, in one statement.
+      expiry, in one short transaction.
     - **`FindPairingSecretAsync`** gives the secret of a token that has not expired by the
-      store's `TimeProvider`, and `null` otherwise. S4 checks the proof of a pairing with
+      store's `TimeProvider` and whose agent is Pending, and `null` otherwise. S4 checks the proof of a pairing with
       it before it redeems.
     - **`RedeemPairingTokenAsync`** is one statement: it deletes the token when it has not
-      expired, and in the same statement makes its agent Paired with the key and the time.
+      expired, and in the same statement makes its agent, while Pending, Paired with the
+      key and the time.
       It gives `true` to the one call that deleted the token. The secret is gone with the
       token (concept, "Pairing").
     - **`PurgePairingTokensAsync`** deletes, in one statement, the tokens that expired and
@@ -1918,9 +1919,19 @@ approval of this plan.
       lock while it waits for anything. What EF Core cannot say, such as `RETURNING` in a
       statement that changes two tables, is raw SQL with the table names taken from the
       model.
-    - The contract step puts these types into code. The operations of `OutpostStore`
-      throw `NotSupportedException`; the context, its factory and the first migration are
-      whole, since a contract that cannot build a schema states nothing.
+    - **The model.** Tables `agents` and `pairing_tokens`, columns in snake case. The key
+      of `pairing_tokens` is `agent_id`, a foreign key to `agents` that deletes the token
+      with its agent. Every time is a `timestamptz` that the store writes in UTC from its
+      `TimeProvider`, never from the clock of the database (PQ3).
+    - **The contract step** puts the types and the model into code.
+      `StoreContextFactory.Create`, `OutpostMigrations` and the four operations of
+      `OutpostStore` throw `NotSupportedException`: the options, the migrations assembly,
+      the snapshot and the first migration are the implementer's.
+    - The store uses `OutpostAgentStateEnum` of the root namespace, and `OutpostMigrations`
+      of the root uses the store: the root is the public contract, the store depends on
+      its types, and only the entry points of the root call down.
+    - **Effort:** the test author and the implementer on `xhigh`, the store being a strict
+      zone.
 - **Study.** Sources, for example: the PostgreSQL transport of Rebus (MIT); the durable
   inbox and outbox of Wolverine (MIT); the ADO.NET job store of Quartz.NET (Apache-2.0);
   for migrations with a schema chosen at run time, EF Core (MIT) and Npgsql (PostgreSQL
@@ -1936,24 +1947,27 @@ approval of this plan.
   5. How removal after retention runs on every node without harm.
   6. How EF Core migrations take a schema chosen at run time, and how one SQL script per
      migration is produced for that schema.
-- **To read.** The [concept](../concept.md), §3 "Rules" and §5 (20 November 2026);
-  `AGENTS.md`, principles 5–7, 10 and 11; this plan, "The public contract" and PQ3.
+- **To read.** The [concept](../concept.md), §3 "Pairing" and §5; `docs/protocol.md`, §6.1
+  `pair`; `AGENTS.md`, principles 6, 9 and 10; this plan, "The public contract" and PQ3.
 - **Acceptance.**
   - Migrations, against PostgreSQL:
     - the model has no pending changes against its snapshot;
     - two `MigrateAsync` running at once into one new schema both complete, and the schema
       is what one gives;
     - two schemas in one database each get their own tables, and a context of one never
-      reads the other's.
+      reads the other's;
+    - `GetScripts` works with no database, and the name of each script is the identifier
+      of its migration.
   - Pairing tokens, against PostgreSQL, with the fake clock:
     - a created token has a Pending agent and its secret is found;
     - the secret is found until its expiry and not from it on;
     - a redemption makes the agent Paired with its key and time and leaves no token, so a
       second one gives `false`;
     - a redemption from the expiry on gives `false` and leaves the agent Pending;
-    - a redemption of an identity the store does not know gives `false`;
-    - the purge removes an expired token with its Pending agent, and leaves a token that
-      has not expired and an agent that is Paired.
+    - a redemption of an identity the store does not know gives `false`, and its secret
+      is not found;
+    - the purge removes an expired token with its Pending agent, gives their number, and
+      leaves a token that has not expired and an agent that is Paired.
   - One race, driven to a known order: another connection holds the row of a token locked
     until two redemptions are both observed waiting for it; then one gives `true`, the
     other `false`, and the agent has the key of the one that won.
@@ -1992,7 +2006,9 @@ approval of this plan.
     - revoke an agent;
     - release a base key (rule 14).
 
-    From the study of S3: the row of the agent is the one lock that orders its polls, taken
+    Every change is one statement or one short transaction under ReadCommitted, holds no
+    lock while it waits for anything, and takes its time from the server's `TimeProvider`
+    (PQ3). From the study of S3: the row of the agent is the one lock that orders its polls, taken
     by the conditional `UPDATE … WHERE newest poll < the new number … RETURNING`. To settle
     when this contract is written: what a poll stores beside its number, the agent's time
     and the lease; and whether "still declares" in a release means the newest poll or a
@@ -2074,8 +2090,8 @@ approval of this plan.
     PostgreSQL before the calls and the endpoints use them. They have to be able to:
     - create a command, or find the one that its base and caller key name, in one change
       (rule 4): the script is compared exactly, the parameters as JSON values;
-    - record the list of received commands of a poll, handing out again those missing
-      from it (rule 11);
+    - record the list of received commands of the newest poll, and of no older one (rule
+      10), handing out again those missing from it (rule 11);
     - take the oldest commands for the modes with free workers (rules 7, 8, 10, 13): only
       for the newest poll, only for an agent that is not revoked, and only before their
       take deadline;
@@ -2089,8 +2105,9 @@ approval of this plan.
     - end the commands of a revoked agent (rule 13);
     - remove ended commands after their retention.
 
-    Every change is one statement or one short transaction under ReadCommitted, and holds
-    no lock while it waits for anything. From the study of S3, to start from:
+    Every change is one statement or one short transaction under ReadCommitted, holds no
+    lock while it waits for anything, and takes its time from the server's `TimeProvider`
+    (PQ3). From the study of S3, to start from:
     - the take is one statement: a CTE that updates the row of the agent only while the
       poll is its newest and it is not revoked, and commands picked per base and mode,
       oldest first by an identity column, with `FOR UPDATE SKIP LOCKED`; the other changes
