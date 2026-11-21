@@ -654,7 +654,7 @@ folder.
       "server": "srv-1c:1541",
       "database": "accounting",
       "read": { "account": "outpost-read", "workers": 1, "runLimit": "00:10:00" },
-      "write": { "account": "outpost-write", "workers": 1, "runLimit": "00:10:00" }
+      "write": { "account": "outpost-write", "workers": 1, "runLimit": "00:10:00", "safeMode": false }
     },
     {
       "key": "warehouse-file",
@@ -678,6 +678,7 @@ folder.
 | `write` | Present only when the base may be written |
 | `account` | The 1C account of the mode; its password is a secret that the console writes |
 | `workers` | 1 to 8; 1 when absent |
+| `safeMode` | In `write` only: whether the Writes of the base run in the 1C safe mode; `true` when absent. With `false`, the COM workers of the base run under a Windows account of their own (D12). In `read` it is an unknown member: a Read always runs in safe mode |
 | `runLimit` | A .NET `TimeSpan` in its constant form `[d.]hh:mm:ss`, from 1 second to 1 day (`1.00:00:00`); 10 minutes when absent |
 
 - **An invalid file serves nothing.** An unknown member, a member given twice, a wrong
@@ -2077,6 +2078,9 @@ as [Order](#order-and-why-these-splits) says.
 - **Carried over from S2** (the planner, 21 November 2026): the changes of the public
   contract that came with `docs/protocol.md` and that this sprint builds. They hold as a
   draft; `AgentPolicy`, `AgentPolicyReader`, the audit log and their tests follow them.
+  - **`safeMode` of `write`** (the owner's change of D12, 21 November 2026), as the table
+    of `policy.json` gives it; the agent records in the `started` entry of the audit log
+    which bases write without safe mode.
   - **`policy.json`:**
     - at most 256 bases;
     - a new member `requestTimeout`: the agent's wait for an answer to `pair` or `outcome`,
@@ -2485,7 +2489,12 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   - it ends when the agent closes its input;
   - after L1: it opens the executor with an `UnsafeOperationProtectionDescription` whose
     warnings are off, since nobody can answer the platform's warning in an external
-    connection.
+    connection;
+  - after D12 changed: the agent tells it whether its mode runs in safe mode, and it opens
+    the executor so. A worker of a base whose Writes run without safe mode runs under a
+    Windows account of its own, which can read neither the agent's secrets nor its audit
+    log. S9 builds the worker's side, S9b the account and how the agent starts a worker
+    under it, and the console's `install` prepares the account.
 - **The console**, a program that references the agent, the protocol, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says, with
   these commands and their exit codes:

@@ -5,8 +5,8 @@ protocol principles, its decisions and its non-goals. It describes the design;
 [README.md](../README.md) says what of it is built.
 
 **Status.** The owner agrees to this concept by merging it into `main`. The lab check of
-section 12 reopened decision D12: a typical document does not post in safe mode (O1). The
-owner decides it before the executor is built.
+section 12 changed decision D12 on 21 November 2026: the administrator may turn safe mode
+off for the Writes of a base.
 
 ## 1. Where it comes from
 
@@ -136,11 +136,17 @@ The script's contract is the same for both:
 - **The script runs in the 1C safe mode.** Safe mode forbids files, the network, COM,
   external components and starting programs, and privileged mode has no effect in it. The
   script can still do everything the account's rights allow with the data.
+  - A Read always runs in safe mode.
+  - A Write runs in safe mode unless the local policy turns it off for the base. Safe mode
+    also binds the code of the configuration that a script calls, and a typical
+    configuration does not post a document in it (section 12, O1). Only the administrator
+    of the agent machine can turn it off; the server cannot.
+  - The COM workers of a base whose Writes run without safe mode run under a Windows
+    account of their own, which can read neither the agent's secrets nor its audit log.
   - In an external connection, the script and the configuration code it calls run in the
     COM worker on the agent machine, for a client-server base as well (section 12, O6).
   - Safe mode is what keeps a script away from the files of that machine, the agent's key
-    and the local policy included.
-  - Open item O1 checks that typical posting gives the same result in safe mode.
+    and the local policy included. Where it is off, the account of the COM workers does.
 
 ### Rules
 
@@ -325,8 +331,8 @@ that is later work.
 | A captured command is sent again, also after the caller was told it expired | The take deadline, the audit log, and an expiry of a handed-out command that the agent's own signed time decides (rules 1, 3, 7) |
 | Someone poses as an agent, replays its requests or forges an outcome | The agent's signature on every request, the poll numbers (rule 10), and the rule that only the first outcome counts, and only from the agent the command was handed to (rule 11) |
 | Two agents claim the same base, by mistake or on purpose | The first claim binds the key (rule 14) |
-| The application, or whoever controls it, is compromised | It can run scripts only on the bases and in the modes the local policy opens, under the 1C accounts the administrator chose, in safe mode, and every command is in the local audit log |
-| A script tries to reach the operating system | Safe mode (open items O1, O6) |
+| The application, or whoever controls it, is compromised | It can run scripts only on the bases and in the modes the local policy opens, under the 1C accounts the administrator chose, in safe mode unless the administrator turned it off for the Writes of a base, and every command is in the local audit log |
+| A script tries to reach the operating system | Safe mode. For the Writes of a base where the administrator turned it off, the script can do on the agent machine what the Windows account of that base's COM workers can, and that account can read neither the agent's secrets nor its audit log |
 | The server's database leaks | It holds no agent secret and no signing key, which stays in the application's secret storage. It does hold the secrets of pairing tokens not used yet, until they are used, or until the purge after their expiry: whoever reads one in time can pair an agent of their own. It also holds the scripts, parameters and results of commands until their retention |
 | A file of the agent machine leaks | The agent's private key and the 1C passwords are encrypted with DPAPI for that machine, so a copy is useless elsewhere |
 | The whole agent machine is cloned | Nothing: the clone carries the agent's identity and secrets. Two running copies of one agent void rules 3 and 11. A clone must not run the agent until it is paired anew with a token of its own |
@@ -506,7 +512,7 @@ contract is their command line, the local policy and the audit log.
 | D9 | The store is PostgreSQL through the library's own EF Core context. Nodes share nothing in memory and are woken through `ISignals` of Moltaro.Signals, which the application provides | Any node serves any request, and an application with its own signals keeps one mechanism |
 | D10 | An agent that is not connected gives Unavailable at once. A command waits for a poll for at most its take deadline, then expires. A command that was handed out expires only when the agent's own signed time shows it can no longer accept it. Nothing is delivered later | A caller knows at once, and a command reported as expired never runs |
 | D11 | COM runs only in worker processes, per base and mode, with the connector's bitness, and they end with the agent | A failure of COM ends at most the commands of one base, and no orphan session outlives the agent |
-| D12 | Scripts run in safe mode | A script can work with data but cannot reach the operating system of the machine it runs on |
+| D12 | Scripts run in safe mode. The administrator of the agent machine may turn it off for the Writes of a base; its COM workers then run under a Windows account of their own (the owner, 21 November 2026, after O1) | A script can work with data but cannot reach the operating system of the machine it runs on. A typical configuration does not post a document in safe mode, so without the exception a Write would be of no use there |
 | D13 | The agent's private key and the 1C passwords are encrypted with DPAPI for the machine, in the agent's data folder, to which only administrators, SYSTEM and the agent's account have rights. The signing key of the server stays in the application's secret storage. The only secret in the store is that of an unused pairing token, deleted when it is used or removed by the purge after it expires | No secret travels, none lives long in the store, and a copied file is useless |
 | D14 | The oldest supported platform is 1C:Enterprise 8.3.17.1851, and the executor is built with its Designer. The COM connector has the version of the cluster | The oldest version in use by the first adopters, and a connector of another version does not connect |
 | D15 | Versions stay 0.x until a first production adopter runs on the library. Every request carries the protocol version | Changes stay cheap until someone depends on them, and agents are updated later than servers |
@@ -570,14 +576,12 @@ The check L1 ran on 21 November 2026 on a lab machine with 1C:Enterprise 8.3.17.
 against a copy of a typical client-server base, a configuration on the ordinary application
 in the compatibility mode 8.2.13.
 
-- **O1. Posting in safe mode.** *Answered: it does not post, and decision D12 is with
-  the owner.* In safe mode the write of a typical document fails: a handler of the typical
+- **O1. Posting in safe mode.** *Answered: it does not post, and the owner changed
+  decision D12.* In safe mode the write of a typical document fails: a handler of the typical
   configuration itself, its versioning of objects, opens a file when a document is
   written, and safe mode refuses that. Without safe mode the same document posts through
   the external connection with the same movements in all of its 32 registers as when a
-  person posted it. Reads work in safe mode. Weakening D12 for a Write requires COM workers
-  under an account of their own, which cannot read the agent's secrets or its audit log;
-  they become part of the sprint that weakens it.
+  person posted it. Reads work in safe mode.
 
   Before that, the document could not be written at all, with safe mode and without it.
   The base carried two common modules of its own whose event subscriptions cover its
