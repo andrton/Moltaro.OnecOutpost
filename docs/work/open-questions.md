@@ -50,6 +50,24 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The owner: `policy.json` is public contract |
 | **Proposed** | 20 November 2026, the planner, in S2's list of changes of the public contract that come with `docs/protocol.md`: a URL with a user or a password in `proxy` is refused. The owner's approval of that list answers this entry |
 
+### Q8. Which code a verified command gets for a fault the brief does not place
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S2, the tests and the implementation steps |
+| **Question** | §7 of `docs/protocol.md` gives `form` without an identity to verified bytes that yield no `protocol` and no `id`, and `malformed` with the identity to a verified command of this version that breaks §7. It does not place every fault. Which code does each of these get: an `id` in another form than the 36 lowercase characters; a `protocol` or an `id` given twice; bytes that are not JSON, or nest beyond the 72 levels of a message; a fault of §2 in a command whose `protocol` and `id` can be read, such as a duplicated member, U+0000 or parameters deeper than 64 levels; and `protocol` 0? |
+| **Taken** | 21 November 2026, the coordinator, as the recommended reading: an `id` in another form, a `protocol` or an `id` given twice, and bytes that are not JSON within 72 levels yield no identity, so they get `form` without one. A fault of §2 in a command whose `protocol` 1 and `id` were read gets `malformed` with its identity. `protocol` 0 is another version and gets `protocol-version`. The codec and its tests do so |
+| **Decides** | The owner: the codes of a refusal are public contract. A cheap change of the codec if overturned; nothing is sent or stored yet |
+
+### Q9. Rules of §6 and §8 that the readers apply more strictly than the text says
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S2, the implementation step |
+| **Question** | Three rules are read strictly where the text of `docs/protocol.md` allows another reading. Does each hold? (a) For `failed` with `script-error`, `errorText` is a string and never `null` (§8 says "the text of the error 1C raised", and `null` otherwise). (b) The keys in `bases.held` and `bases.claimed` of a poll answer follow the rule of base keys (§6.2). (c) A signed refusal is checked only for its code against its status, not against the kind of the request (§9) |
+| **Taken** | 21 November 2026, the coordinator, as the recommended reading: (a) and (b) yes, so a reader refuses such a message with `form`; (c) as the brief's contract of `ReadRefusal` states it. The codec does so |
+| **Decides** | The planner, for (b) and (c), which follow from rules that stand; the owner for (a), a rule of the outcome object. To be answered before S6, whose agent writes and reads these messages |
+
 ## Answered
 
 ### Q1. Values of `policy.json` that its table does not mention

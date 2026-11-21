@@ -155,7 +155,10 @@ machine, as section 11 says.
    Anything else is refused with a code, among them `expired` and `clock-skew`, and
    recorded in the audit log. A command whose signature does not verify is only recorded:
    nothing in it can be trusted, its identity included, so the agent reports nothing for
-   it, and the server ends it by rules 7 and 11.
+   it, and the server ends it by rules 7 and 11. Verified bytes that yield no `protocol`
+   and no `id` are only recorded too, with `form`, since they name no command that a
+   refusal could answer. The checks run in the order that §7 of the
+   [protocol](protocol.md) gives.
 2. **The audit log comes first.** The agent records each command in the audit log:
    - when it receives it: time, identity, base, mode, caller key, script and parameters;
    - when it ends: its outcome and duration;
@@ -180,8 +183,10 @@ machine, as section 11 says.
 5. **Failed means nothing was written.** A Write fails only when 1C rolled back its
    transaction.
    - The executor checks the type of the result and the size of the whole outcome before
-     it commits. The size covers the result, the user messages and the error text,
-     counted in UTF-8 as they travel, with characters outside ASCII not escaped. Before
+     it commits. The size of an outcome is the length of the UTF-8 text of its outcome
+     object as it travels, with the result, the user messages and the error text, every
+     escape counted as it is written and characters outside ASCII not escaped (§8 of the
+     [protocol](protocol.md)). Before
      the check, the executor trims the messages and the text to fit and marks that it did.
      An outcome that still fails either check rolls the Write back and fails it with
      `result-type` or `result-too-large`. The size limit, 16 MiB by default, travels in the

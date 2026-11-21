@@ -488,6 +488,7 @@ public static class OutpostCodes
     public const string NotServed = "not-served";
     public const string NotAddressed = "not-addressed";
     public const string ProtocolVersion = "protocol-version";
+    public const string Malformed = "malformed";
     public const string Expired = "expired";
     public const string ClockSkew = "clock-skew";
     public const string Revoked = "revoked";
@@ -500,7 +501,7 @@ public static class OutpostCodes
 | Code | Kinds | Meaning |
 | --- | --- | --- |
 | `script-error` | Failed | 1C raised an error; `ErrorText` holds its text. A Write rolled back |
-| `result-type` | Failed | The result holds a value that cannot be written as JSON (rule 5) |
+| `result-type` | Failed, Unknown | The result holds a value that cannot be written as JSON (rule 5). *(S2)* Also a result deeper than 64 levels, and an outcome of the executor that the agent cannot accept: Failed for a Read, and for a Write that 1C rolled back; Unknown for a Write whose outcome the agent could not accept (`docs/protocol.md` §8) |
 | `result-too-large` | Failed, Unknown | The outcome is larger than its limit (rule 5). Unknown for a Write whose outcome was refused for its size, by the server or by something on the path; S5 and S6 state it |
 | `run-limit` | Failed (Read), Unknown (Write) | The script exceeded its run limit (rule 9) |
 | `lost` | Failed | A Read whose agent or worker stopped, whose agent stayed away, or whose agent was revoked (rules 3, 11, 13) |
@@ -510,6 +511,7 @@ public static class OutpostCodes
 | `not-served` | Refused | The agent's local policy does not serve the base or the mode (rule 1) |
 | `not-addressed` | Refused | The command names another agent (rule 1) |
 | `protocol-version` | Refused | The agent does not support the protocol version of the command (rule 1) |
+| `malformed` | Refused | *(S2)* A verified command of this protocol version breaks §7 of `docs/protocol.md` (rule 1) |
 | `expired` | Refused | By the agent's clock, the take deadline passed longer than the skew ago (rule 1) |
 | `clock-skew` | Refused | By the agent's clock, the command was issued further ahead than the skew (rule 1) |
 | `revoked` | Refused, Unknown | Refused: no poll had taken the command when its agent was revoked. Unknown: a Write that a poll had taken (rule 13) |
@@ -1693,6 +1695,24 @@ approval of this plan.
       constants of `OutpostProtocol`, which the options check, `AgentPolicyReader` and the
       codec all use;
     - the depth check of S1 moves into `OutpostCodec.ValueDepth`.
+- **What S2 changed in the public contract, as a draft for the owner** (the coordinator,
+  21 November 2026). Each holds until the owner overturns it:
+  - a new Refused code, `OutpostCodes.Malformed`, for a verified command of this version
+    that breaks §7;
+  - `result-type` is also an Unknown code, for a Write whose outcome the agent could not
+    accept, and also covers a result deeper than 64 levels. `OutpostOutcome.Unknown`
+    accepts it. The XML documentation of `OutpostCodes.ResultType`, `OutpostOutcome.Refused`
+    and `OutpostOutcome.Unknown` says so;
+  - the size of a command counts `{}` when there are no parameters, and every escape as
+    the writer of §2 writes it. A script of exactly `CommandSizeLimit` without parameters
+    is now 2 bytes over the limit and refused. The XML documentation of `CommandSizeLimit`
+    and of `OutcomeSizeLimit` says what each size is;
+  - parameters deeper than 64 levels still give `ArgumentException` with `ParamName`
+    `Parameters`, and its message now names the 64 levels;
+  - in the concept, the sentence of rule 1 on verified bytes without a `protocol` and an
+    `id`, and the sentence of rule 5 on the size of an outcome;
+  - the readings Q8 and Q9 of the [open questions](open-questions.md), taken as
+    recommended.
 
 ### S3 · The store
 
