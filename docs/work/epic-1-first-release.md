@@ -1910,7 +1910,7 @@ approval of this plan.
     - **`RedeemPairingTokenAsync`** is one statement: it deletes the token when it has not
       expired, and in the same statement makes its agent, while Pending, Paired with the
       key and the time.
-      It gives `true` to the one call that deleted the token. The secret is gone with the
+      It gives `true` to the one call that made the agent Paired. The secret is gone with the
       token (concept, "Pairing").
     - **`PurgePairingTokensAsync`** deletes, in one statement, the tokens that expired and
       their agents that are still Pending, and gives the number of tokens. Tokens are few,
@@ -1919,7 +1919,8 @@ approval of this plan.
       lock while it waits for anything. What EF Core cannot say, such as `RETURNING` in a
       statement that changes two tables, is raw SQL with the table names taken from the
       model.
-    - **The model.** Tables `agents` and `pairing_tokens`, columns in snake case. The key
+    - **The model.** Tables `agents` and `pairing_tokens`, columns in snake case, each
+      named in the model, with no package for it. The key
       of `pairing_tokens` is `agent_id`, a foreign key to `agents` that deletes the token
       with its agent. Every time is a `timestamptz` that the store writes in UTC from its
       `TimeProvider`, never from the clock of the database (PQ3).
