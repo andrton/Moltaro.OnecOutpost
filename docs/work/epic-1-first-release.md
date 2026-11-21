@@ -28,6 +28,8 @@ the administrator of the back office keeps the last word over what the agent may
 - the COM worker and the executor, the console and the shell;
 - the protocol v1 in `docs/protocol.md`;
 - the tests, the latency measurement and the explanations;
+- the user guides: how to install an agent, how to write scripts and how to embed the
+  server ([The user guides](#the-user-guides));
 - the answers to open items O1–O8, from the lab check L1.
 
 **Left out**, as concept §9 says:
@@ -88,6 +90,7 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R21 | The packages of PQ6, published from a version tag through nuget.org Trusted Publishing; the archive of the agent on GitHub Releases with its SHA-256 checksum | Concept D15, D16; PQ4 | Release | The workflows of the packages exist; no package | S1, S12 |
 | R22 | `README.md`, the concept, `docs/protocol.md` and the explanations say what exists after every sprint | `AGENTS.md`, "Documentation" | Release | Holds: nothing exists and they say so | S1–S12 |
 | R23 | The public contract of stage 1 in code, every public member with its XML documentation | `AGENTS.md`, "The Contract Comes First" | Must | Absent | S1 |
+| R24 | The user guides G1 "Installing and running an agent", G2 "Writing scripts" and G3 "Embedding the server", in `docs/guides`, linked from `README.md` and from the release page, each checked as [The user guides](#the-user-guides) says | The owner, 21 November 2026 | Release | Absent | S9b, S10, S11, S12 |
 
 ## Acceptance
 
@@ -114,7 +117,10 @@ The epic is done when all of the following hold.
    build, and every scenario of the manual acceptance of S9, S10 and S11 passed there.
 7. The three explanations exist in both forms, agree with each other and with what was
    delivered, and their status lines say "built".
-8. Everything [The first release](#the-first-release) lists holds, so that the owner can
+8. The three user guides exist, `README.md` and the release page lead to them, every
+   script and every command they show ran as [The user guides](#the-user-guides) says, and
+   a person who did not write them installed an agent from the archive by G1 alone.
+9. Everything [The first release](#the-first-release) lists holds, so that the owner can
    tag the release.
 
 ### Measured results
@@ -198,6 +204,98 @@ point. It rewrites it to the rules of this repository: the code style, the bound
 tests and the documentation. Nothing of a customer or another product comes with it
 (D16). The collector's experience with real databases is kept; its code is not copied as
 it is.
+
+## The user guides
+
+The owner's requirement of 21 November 2026: a person who downloads the agent has to
+learn from the repository how to install it and how to use it, not only what the library
+guarantees. The concept says why and what; the guides say how. They are product
+documentation, in English, in `docs/guides`, as Markdown that GitHub renders, and
+`README.md` leads to each of them in its first screen.
+
+**Rules for all three.**
+- **A guide is written for its reader, who knows nothing of this repository.** It starts
+  with what the reader needs before the first step, goes step by step, shows for each
+  step the command to paste and what a success looks like, and ends with what to do when
+  it fails: each error the reader can meet, in the words the program prints, with its
+  cause and its remedy.
+- **Nothing in a guide is untried.** Every command of the console and the shell that a
+  guide shows is run by a test of that program, and every script by a test of
+  `Moltaro.OnecOutpost.OneC.Tests` against the test base, which reads the script from the
+  guide's own file, so that a guide cannot drift from what works. C# shown in a guide is
+  the code of a sample.
+- **A guide says what the library does not do** where the reader would expect it, in one
+  sentence with the reason, instead of leaving it to be found out.
+- **A guide names no customer, base or configuration of anybody.** Its examples use the
+  repository's own test configuration.
+- A guide is written by one agent with no other role in its sprint, after the
+  implementation and before the independent review, and reviewed with the sprint, like an
+  explanation. Its status line says what of it works today.
+
+**G1. Installing and running an agent** (`docs/guides/agent.md`), for the administrator
+of the back office. Written in S10, when the console exists.
+- What the machine needs: Windows, the 1C platform of the cluster's version, a route to
+  the server over HTTPS, through a proxy or not.
+- The COM connector: that installing 1C does not register it, how `check` finds it, and
+  `connector register`.
+- The two 1C accounts: which rights the read account and the write account need, that
+  both need the right of external connection, and that the read account gets no right to
+  change data.
+- Unpacking the archive and checking its checksum; `install`; where the data folder is and
+  who may read it.
+- `policy.json`, member by member, with a whole example for a client-server base and one
+  for a file base.
+- `secret`, `pair`, and what the application's side gives the administrator for it.
+- `check`, line by line: what each line means and what to do when it fails.
+- Safe mode: what it protects, when the Writes of a base need it off (`safeMode`), and
+  what the separate Windows account of its workers then protects.
+- A configuration with modules of its own: the message of `check` about a common module
+  that is not available to an external connection, and the one flag to ask the
+  developer of that configuration for.
+- Licences: each worker holds one client licence; how many workers to configure.
+- The audit log: where it is, how to read an entry, how long it is kept.
+- Updating and uninstalling. What happens when the machine is cloned.
+
+**G2. Writing scripts** (`docs/guides/scripts.md`), for the developer of the application
+that calls Read and Write. Written in S9b, when a command first reaches 1C, from what S9
+and L1 established.
+- The contract of a script: `Parameters`, `CallerKey`, `Result`; how JSON becomes 1C
+  values and back; a date; `Undefined` and `Null`.
+- What a script may not do and why: declare a procedure, return a reference, end its
+  transaction, reach files in safe mode, use a function that the compatibility mode of
+  the base lacks.
+- Read and Write: the account, the transaction, what Failed, Refused and Unknown mean for
+  the caller, and what to do after an Unknown Write with the caller key.
+- Sizes and limits: the limit of an outcome, reading a large list in pages, the run
+  limit.
+- User messages and the error text, and that the wording of 1C depends on the machine.
+- **Recipes,** each a whole script with its parameters and its result:
+  - the catalogs, documents and registers of a base, from `Metadata`;
+  - the attributes and tabular sections of one object, with their types;
+  - a page of the items of a catalog, with code and description;
+  - a search by description, and the children of an item of a hierarchical catalog;
+  - one item by its unique identifier, and how to carry a reference as that identifier;
+  - a query with parameters;
+  - creating and posting a document, made idempotent with `CallerKey`;
+  - finding out what an Unknown Write did.
+
+**G3. Embedding the server** (`docs/guides/server.md`), for the developer of the
+application. Its first part, trying the tunnel by hand with the shell, is written in S11;
+the rest in S12, from the sample.
+- A first session with the shell: its options, a token, pairing an agent, a Read and a
+  Write by hand.
+- The package, `AddOutpostServer` and `MapOutpostAgents`, the options one by one with
+  their defaults and what each one costs or protects.
+- What the application provides: PostgreSQL and the migrations, both ways of applying
+  them; Moltaro.Signals; the signing key and where to keep it; who may call Read and
+  Write.
+- Pairing from the application: creating a token, giving it to the administrator,
+  listing agents, revoking one, releasing a base key.
+- Calling Read and Write: the requests, the outcome and its kinds, the codes one by one
+  with what the caller should do for each, cancelling a wait, repeating with the caller
+  key.
+- Several nodes and the ingress: what a poll and an outcome need from it.
+- What to watch in production, and what the library does not report.
 
 ## The public contract
 
@@ -2555,7 +2653,10 @@ the contract of the executor and the COM worker approved.
     - stopping the agent during a Write gives Unknown.
   - Manual, on the lab machine: a Read and a Write sent from a server on another machine
     reach the test base through the agent and return their outcomes.
-  - The documents step: `README.md` says the agent works with 1C.
+  - **Guide G2**, "Writing scripts", as [The user guides](#the-user-guides) lists it. Each
+    of its scripts is in a file of its own that the guide shows and that a test of
+    `Moltaro.OnecOutpost.OneC.Tests` runs against the test base.
+  - The documents step: `README.md` says the agent works with 1C, and leads to G2.
 - **Out of scope.** The console, the shell.
 
 ### S10 · The console
@@ -2594,7 +2695,12 @@ the contract of the executor and the COM worker approved.
     server's part against a stub; `metadata` writes a report of each.
   - Manual, on the lab machine: the owner runs every command in a terminal and accepts
     how it looks.
-  - The documents step: `README.md` says how an agent is installed and paired.
+  - **Guide G1**, "Installing and running an agent", as
+    [The user guides](#the-user-guides) lists it. Manual, on the lab machine: the owner
+    installs, pairs and checks an agent from the built archive by the guide alone, and
+    every place where the guide was not enough is corrected in it.
+  - The documents step: `README.md` says in a few lines how an agent is installed and
+    paired, and leads to G1.
 - **Out of scope.** The shell.
 
 ### S11 · The shell
@@ -2620,7 +2726,9 @@ the contract of the executor and the COM worker approved.
     looks. The shell has no test that needs 1C: it would need PostgreSQL and 1C on one
     machine, and the automated session with the fake worker and S9's tests cover the
     rest.
-  - The documents step: `README.md` shows a session.
+  - **Guide G3**, its first part: a first session with the shell, as
+    [The user guides](#the-user-guides) lists it.
+  - The documents step: `README.md` shows a session, and leads to G3.
 - **Out of scope.** The release.
 
 ### S12 · Documents, packages and the archive
@@ -2647,6 +2755,11 @@ the contract of the executor and the COM worker approved.
     - has `contents: write`, so that it can create the release.
   - **Explanation E3**, "How the library is built", a still figure of the parts and their
     dependencies.
+  - **Guide G3**, "Embedding the server", completed as
+    [The user guides](#the-user-guides) lists it, with the C# of the sample.
+  - The three guides read once more against the final build: every command, script and
+    message in them is what the build prints. `README.md` leads to each in its first
+    screen, and the text of the GitHub release leads to G1.
   - The final figures of [Measured results](#measured-results) in `README.md`.
   - The documents step over the whole product documentation, as the process says for the
     last sprint of an epic.
