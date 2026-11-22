@@ -15,7 +15,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Calls;
 [Trait("Requires", "PostgreSQL")]
 public sealed class CancellationTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_cancelled_call_leaves_its_command_running_and_a_repeat_with_its_caller_key_returns_the_outcome()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -46,7 +46,7 @@ public sealed class CancellationTests(PostgreSqlFixture postgres) : IClassFixtur
     }
 
     // The agent is connected and its poll is held, so a call that went on would create a command.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task A_call_whose_token_is_cancelled_already_gives_a_cancelled_task_and_creates_no_command(string mode)

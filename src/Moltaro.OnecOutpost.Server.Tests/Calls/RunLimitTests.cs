@@ -18,7 +18,7 @@ public sealed class RunLimitTests(PostgreSqlFixture postgres) : IClassFixture<Po
     // The call waits PollTimeout at most at a time, so the clock moves to a microsecond before the command is due,
     // where the call passes it and waits again until it is due, and then to the moment it is due. A microsecond is the
     // step of the store's times.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", OutpostOutcomeKindEnum.Failed, OutpostCodes.Lost)]
     [InlineData("write", OutpostOutcomeKindEnum.Unknown, OutpostCodes.Disconnected)]
     public async Task A_taken_command_whose_agent_stays_away_longer_than_its_run_limit_ends_as_rule_3_says(
@@ -56,7 +56,7 @@ public sealed class RunLimitTests(PostgreSqlFixture postgres) : IClassFixture<Po
     }
 
     // The agent comes back with the outcome it recorded. A caller sees it by repeating the command with its caller key.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", OutpostOutcomeKindEnum.Failed)]
     [InlineData("write", OutpostOutcomeKindEnum.Unknown)]
     public async Task The_outcome_of_the_agent_replaces_the_outcome_that_the_server_set_after_the_run_limit(
@@ -91,7 +91,7 @@ public sealed class RunLimitTests(PostgreSqlFixture postgres) : IClassFixture<Po
     // The answer that handed the Write out was lost. The agent comes back after the run limit, far past the take
     // deadline plus the skew by its own clock, and its poll does not list the command: the command never reached it,
     // so it never ran. Expired frees the caller key, and a repeat creates a new command, which that poll takes.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_poll_that_proves_a_write_never_reached_its_agent_turns_the_Unknown_that_the_server_set_into_Expired()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

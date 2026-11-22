@@ -49,7 +49,7 @@ public sealed class PurgeTests(PostgreSqlFixture postgres) : IClassFixture<Postg
     // Concept rule 4: an outcome is kept for its retention, and after it the key is free. The Write ends at the start,
     // so the round after one retention removes it, and a repeat with its caller key creates a new command, which the
     // agent's next poll takes.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_purge_removes_a_command_whose_outcome_outlived_its_retention_and_frees_its_caller_key()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

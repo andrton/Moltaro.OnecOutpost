@@ -160,7 +160,8 @@ public interface IOutpostServer
     /// <item><description>
     /// The base: a key that no agent holds is <see cref="OutpostOutcomeKindEnum.Refused"/> with
     /// <see cref="OutpostCodes.UnknownBase"/>, and a mode that the holding agent does not open is
-    /// <see cref="OutpostOutcomeKindEnum.Refused"/> with <see cref="OutpostCodes.ModeClosed"/>.
+    /// <see cref="OutpostOutcomeKindEnum.Refused"/> with <see cref="OutpostCodes.ModeClosed"/>. The modes are those of
+    /// the newest poll of that agent, so a key that this poll no longer declares opens neither.
     /// </description></item>
     /// <item><description>
     /// The agent: one that is not connected gives <see cref="OutpostOutcomeKindEnum.Unavailable"/> at once, and no
@@ -221,7 +222,8 @@ public interface IOutpostServer
     /// <item><description>
     /// The base: a key that no agent holds is <see cref="OutpostOutcomeKindEnum.Refused"/> with
     /// <see cref="OutpostCodes.UnknownBase"/>, and a mode that the holding agent does not open is
-    /// <see cref="OutpostOutcomeKindEnum.Refused"/> with <see cref="OutpostCodes.ModeClosed"/>.
+    /// <see cref="OutpostOutcomeKindEnum.Refused"/> with <see cref="OutpostCodes.ModeClosed"/>. The modes are those of
+    /// the newest poll of that agent, so a key that this poll no longer declares opens neither.
     /// </description></item>
     /// <item><description>
     /// The agent: one that is not connected gives <see cref="OutpostOutcomeKindEnum.Unavailable"/> at once, and no

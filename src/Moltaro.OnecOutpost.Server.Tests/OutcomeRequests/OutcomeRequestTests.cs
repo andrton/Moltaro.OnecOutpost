@@ -22,7 +22,7 @@ public sealed class OutcomeRequestTests(PostgreSqlFixture postgres) : IClassFixt
     private const string CallerKey = "invoice-17";
 
     // Another paired agent sends an outcome for the command first, then the agent it was handed to sends two.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Only_the_first_outcome_of_a_command_from_the_agent_it_was_handed_to_is_kept_and_every_one_is_confirmed()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -63,7 +63,7 @@ public sealed class OutcomeRequestTests(PostgreSqlFixture postgres) : IClassFixt
 
     // For a command the server does not know, either mode will do (§6.3): an outcome only a Write may have, one only a
     // Read may have, and the one that the console's check sends (§12).
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("write-only")]
     [InlineData("read-only")]
     [InlineData("console")]
@@ -93,7 +93,7 @@ public sealed class OutcomeRequestTests(PostgreSqlFixture postgres) : IClassFixt
 
     // §8: an outcome that only the other mode allows, and then one that the mode of the command allows, which the call
     // returns.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task An_outcome_that_the_mode_of_its_command_does_not_allow_gets_the_signed_form_refusal_and_changes_nothing(
@@ -134,7 +134,7 @@ public sealed class OutcomeRequestTests(PostgreSqlFixture postgres) : IClassFixt
 
     // The agent signed one outcome, and another body arrives with that signature: the refusal answers the body that
     // came.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_whose_body_changed_after_it_was_signed_gets_the_signed_signature_refusal_and_changes_nothing()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -162,7 +162,7 @@ public sealed class OutcomeRequestTests(PostgreSqlFixture postgres) : IClassFixt
     // The outcome object gives `kind` twice, which §2 refuses, and is larger than the outcome size limit, which is the
     // least the option allows; the body is within its own limit. The body is checked first, whatever the size of the
     // outcome (§6.3).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_whose_body_breaks_the_rules_of_its_message_gets_the_signed_form_refusal_whatever_its_size()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

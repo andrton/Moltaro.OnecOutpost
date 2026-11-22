@@ -8,9 +8,8 @@ internal static class ArgumentChecks
     // passed the checks of its arguments, so such a test needs no store and no agent.
     public static CancellationToken Cancelled { get; } = new(canceled: true);
 
-    // Asserts that the call does not refuse its arguments. What it does after the checks is not the subject: until the
-    // member is implemented it throws NotSupportedException, and once it is, a call with a cancelled token ends as
-    // cancelled.
+    // Asserts that the call does not refuse its arguments. What it does after the checks is not the subject: a call
+    // with a cancelled token ends as cancelled.
     public static void AssertPassed(Action call)
     {
         Exception? exception = Record.Exception(call);

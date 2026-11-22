@@ -15,7 +15,7 @@ public sealed class RevocationTests(PostgreSqlFixture postgres) : IClassFixture<
     // A Read and a Write are taken by two polls, and a third poll, with no free worker, leaves a second Write waiting.
     // Each poll after the first has a shorter hold than the waits of the calls before it, so that the timer of its hold
     // tells that it is recorded, and lists the commands the agent received.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Revoking_an_agent_ends_its_commands_and_every_waiting_call_returns_the_code_of_its_command()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

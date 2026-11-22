@@ -20,7 +20,7 @@ public sealed class CommandExpiryTests(PostgreSqlFixture postgres) : IClassFixtu
 
     // The agent's lease runs for the lease grace after the end of the hold, longer than the take timeout, and no poll
     // is held meanwhile. The wait of the call is due at the take deadline.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task A_command_that_no_poll_takes_before_its_take_deadline_ends_as_Expired(string mode)
@@ -49,7 +49,7 @@ public sealed class CommandExpiryTests(PostgreSqlFixture postgres) : IClassFixtu
     // deadline plus the skew, and the call passes the command at 50 seconds and leaves it as it is. Then the agent
     // polls with its own clock behind the node's: at the take deadline plus the skew the command stays, and a
     // millisecond later the poll makes it Expired, which wakes the call.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_handed_out_command_expires_only_when_a_poll_whose_signed_time_is_past_its_deadline_plus_its_skew_leaves_it_out()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

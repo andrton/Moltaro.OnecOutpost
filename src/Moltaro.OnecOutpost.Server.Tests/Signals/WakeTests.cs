@@ -16,7 +16,7 @@ public sealed class WakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 {
     // A prefix of two segments, not the default, watched by members of the test's own groups: the agent's key is set
     // when a call creates a command for it, and the command's key when its outcome is kept.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_keys_of_the_signals_are_the_prefix_of_the_options_and_the_identity_of_the_agent_or_the_command()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -49,7 +49,7 @@ public sealed class WakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 
     // The second is a repeat with the caller key of the first. Each arms the timer of its wait once it waits, which
     // tells that both wait before the outcome comes.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Two_calls_waiting_on_one_command_both_return_when_its_outcome_is_kept()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -78,7 +78,7 @@ public sealed class WakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // Two polls of one agent are held: the older for the option's poll timeout, the newer, which replaced it, for a
     // shorter one, so that the timer of its hold tells that it is recorded. The call wakes both: the newest takes the
     // command, and the older takes nothing and is answered as older (rule 10, §6.2 of docs/protocol.md).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_newest_poll_takes_a_new_command_while_an_older_poll_of_its_agent_wakes_and_is_answered_as_older()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -109,7 +109,7 @@ public sealed class WakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // A draft of the public contract (S5 brief): a held poll whose agent was revoked gets the bare 403 of §9 also when
     // it wakes. A revocation sets no agent's key, so the test sets it, as a node that created a command for the agent
     // just before the revocation would. The set finds the poll's member, its only one.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_held_poll_whose_agent_was_revoked_gets_the_bare_403_when_it_wakes()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

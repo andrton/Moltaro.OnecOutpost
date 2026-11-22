@@ -23,7 +23,7 @@ public sealed class OutcomeSizeTests(PostgreSqlFixture postgres) : IClassFixture
 
     // The agent then replaces its outcome with Unknown `result-too-large` (rule 11), which the server keeps and the
     // Write returns: the server never makes a Write Failed after the agent reported it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_beyond_the_limit_of_its_command_gets_the_signed_413_and_its_Write_ends_as_the_Unknown_the_agent_sends_then()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -61,7 +61,7 @@ public sealed class OutcomeSizeTests(PostgreSqlFixture postgres) : IClassFixture
     // The command was made by a node whose OutcomeSizeLimit was lower than this node's, so the limit it carries is not
     // the option: the outcome is measured against the limit of its command. It is taken, as a poll of the agent would
     // have handed it out.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0)]
     [InlineData(1)]
     public async Task An_outcome_is_measured_against_the_limit_that_its_command_carries(int beyond)
@@ -102,7 +102,7 @@ public sealed class OutcomeSizeTests(PostgreSqlFixture postgres) : IClassFixture
         }
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0)]
     [InlineData(1)]
     public async Task An_outcome_for_a_command_that_the_server_does_not_know_is_measured_against_OutcomeSizeLimit(int beyond)

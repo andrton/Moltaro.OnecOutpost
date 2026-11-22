@@ -5,8 +5,8 @@ using Moltaro.OnecOutpost.Protocol.Signing;
 namespace Moltaro.OnecOutpost.Server.Signing;
 
 // The server's signing key, made once by AddOutpostServer from the PEM that the options validated. It keeps the private
-// key as PKCS#8 bytes, which never leave the server (principle 9), and signs the answers to the agents (§3 of
-// docs/protocol.md); S5 adds the signing of commands.
+// key as PKCS#8 bytes, which never leave the server (principle 9), and signs the answers to the agents and the commands
+// (§3 of docs/protocol.md).
 //
 // .NET does not document an ECDsa as safe for concurrent use, so each signature imports the key into an ECDsa of its
 // own and disposes it. Nothing here changes after the constructor, so no lock is needed.
@@ -42,5 +42,15 @@ internal sealed class ServerSigningKey
         key.ImportPkcs8PrivateKey(_pkcs8, out _);
 
         return OutpostSignatures.SignAnswer(key, kind, agent, status, requestBody, answerBody);
+    }
+
+    // Signs the exact bytes of a command over its signing input of §3. A call signs its command once, and the store
+    // keeps the bytes and the signature, which every poll that hands the command out sends as they are.
+    public byte[] SignCommand(ReadOnlySpan<byte> commandBytes)
+    {
+        using ECDsa key = ECDsa.Create();
+        key.ImportPkcs8PrivateKey(_pkcs8, out _);
+
+        return OutpostSignatures.SignCommand(key, commandBytes);
     }
 }

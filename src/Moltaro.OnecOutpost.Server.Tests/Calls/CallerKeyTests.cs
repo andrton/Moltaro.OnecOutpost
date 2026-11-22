@@ -20,7 +20,7 @@ public sealed class CallerKeyTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     private const string Result = """{"rows":3}""";
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task A_repeat_with_the_caller_key_returns_the_outcome_of_the_first_command_and_creates_no_other(string mode)
@@ -47,7 +47,7 @@ public sealed class CallerKeyTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // The first is a Write that still runs. The repeat is a Read with its script and parameters; a Write whose script
     // differs only by a space at its end, since the script is compared exactly; and a Write with other parameters.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", TestCalls.Script, TestCalls.Parameters)]
     [InlineData("write", TestCalls.Script + " ", TestCalls.Parameters)]
     [InlineData("write", TestCalls.Script, """{"n":2}""")]
@@ -87,7 +87,7 @@ public sealed class CallerKeyTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // The repeat gives the members in another order, a number in another notation and in a nested object. It comes
     // while the first still runs, waits for its outcome and returns it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_repeat_whose_parameters_are_the_same_JSON_values_in_another_order_and_notation_returns_the_outcome_of_the_first()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -124,7 +124,7 @@ public sealed class CallerKeyTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // The agent's lease runs for the lease grace after the end of the hold, longer than the take timeout, so the first
     // command expires while the agent is connected and no poll is held. The next poll takes the repeat.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_repeat_after_the_first_command_expired_creates_a_new_command()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -154,7 +154,7 @@ public sealed class CallerKeyTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.Equal(2, (await server.Schema.ListCommandsAsync(cancellationToken)).Count);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_repeat_after_the_agent_refused_the_first_command_creates_a_new_command()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -191,7 +191,7 @@ public sealed class CallerKeyTests(PostgreSqlFixture postgres) : IClassFixture<P
     // The first command waits for a poll with a free worker when its agent is revoked, which ends it as Refused
     // `revoked` (rule 13) and frees the base key. The next agent that declares the base takes the repeat. Its poll has
     // a shorter hold than the poll of the revoked agent, which is still held.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_repeat_after_a_revocation_refused_the_first_command_creates_a_new_command_for_the_next_holder_of_the_base()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -226,7 +226,7 @@ public sealed class CallerKeyTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // Both calls start before either is answered, so that both find no command for the key. The store creates one
     // command and the other call follows it; the poll, with one free worker, hands out that one.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Two_concurrent_first_calls_with_one_caller_key_create_one_command_and_both_return_its_outcome()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

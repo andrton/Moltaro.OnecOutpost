@@ -28,7 +28,7 @@ public sealed class CallRoundTripTests(PostgreSqlFixture postgres) : IClassFixtu
 
     private static readonly TimeSpan ClockSkew = TimeSpan.FromSeconds(90);
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_read_reaches_the_held_poll_of_its_agent_as_a_signed_command_and_returns_the_outcome_that_the_agent_sends()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -63,7 +63,7 @@ public sealed class CallRoundTripTests(PostgreSqlFixture postgres) : IClassFixtu
         Assert.Null(outcome.ErrorText);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_write_reaches_the_held_poll_of_its_agent_as_a_signed_command_and_returns_the_outcome_that_the_agent_sends()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

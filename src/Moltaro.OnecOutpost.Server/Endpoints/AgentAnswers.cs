@@ -57,6 +57,7 @@ internal static class AgentAnswers
         {
             OutpostProtocolCodes.Form => StatusCodes.Status400BadRequest,
             OutpostProtocolCodes.Signature => StatusCodes.Status401Unauthorized,
+            OutpostProtocolCodes.ResultTooLarge => StatusCodes.Status413PayloadTooLarge,
             _ => throw new ArgumentOutOfRangeException(nameof(code), code, "The code is not one of a signed refusal."),
         };
 

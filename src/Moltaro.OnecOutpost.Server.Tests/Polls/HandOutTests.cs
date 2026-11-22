@@ -41,7 +41,7 @@ public sealed class HandOutTests(PostgreSqlFixture postgres) : IClassFixture<Pos
     // Three Reads and two Writes, told apart by their scripts. The answer to the second poll is lost, so the agent
     // lists none of its commands, and the third poll takes the same ones again; the fourth lists them, and takes the
     // rest.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_poll_takes_at_most_free_commands_per_mode_oldest_first_and_a_command_handed_out_again_counts_against_free()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -83,7 +83,7 @@ public sealed class HandOutTests(PostgreSqlFixture postgres) : IClassFixture<Pos
     // with all three exactly 64 MiB, or one byte more. At the limit the answer holds all three; one byte beyond, it
     // holds the two oldest, and the next poll, which lists them, takes the third. Its sizes are computed as §6.2 and §7
     // write them, so the test asserts first that the answer at the limit is exactly the limit.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0)]
     [InlineData(1)]
     public async Task An_answer_is_filled_with_the_oldest_commands_up_to_its_limit_of_64_MiB_and_never_beyond(int beyond)

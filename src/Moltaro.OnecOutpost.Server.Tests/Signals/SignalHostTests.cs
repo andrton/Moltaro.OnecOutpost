@@ -15,7 +15,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Signals;
 public sealed class SignalHostTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
     // The outcome comes while the host is down, so its set is lost; the clock does not move.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_waiting_call_reads_the_store_again_when_its_subscription_rejoins_a_restarted_host()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -45,7 +45,7 @@ public sealed class SignalHostTests(PostgreSqlFixture postgres) : IClassFixture<
     // The call creates its command while the host is down, so the set of the agent's key is lost; the clock does not
     // move. The call sets the key before it waits, and its wait arms a timer next to that of the hold, which tells that
     // the set was made. Once the host is back, the held poll takes the command, and the outcome reaches the call.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_held_poll_reads_the_store_again_when_its_subscription_rejoins_a_restarted_host()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -76,7 +76,7 @@ public sealed class SignalHostTests(PostgreSqlFixture postgres) : IClassFixture<
 
     // The host stays down, so nothing wakes the call: its wait ends PollTimeout after it started, at the timer that it
     // armed when it began to wait, and its pass finds the outcome. The command is due long after that.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_call_whose_set_was_lost_returns_its_outcome_once_its_wait_reaches_PollTimeout()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
