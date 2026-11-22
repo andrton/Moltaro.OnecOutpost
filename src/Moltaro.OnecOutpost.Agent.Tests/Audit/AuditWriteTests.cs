@@ -27,7 +27,7 @@ public sealed class AuditWriteTests
     public static TheoryData<string> Writers => [.. WriterNames];
 
     // Each writer adds one entry to the file of the day; ended and policy are stated further in their own tests.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Each_writer_appends_one_entry_by_the_writer_of_section_2_with_the_time_of_the_clock()
     {
         Guid write = Guid.NewGuid();
@@ -104,7 +104,7 @@ public sealed class AuditWriteTests
 
     // policy.valid is true exactly when error is null; connection.state is connected or lost, with the reason of §9;
     // ended.outcome is succeeded, failed or unknown; started carries the error that stops the start.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_members_of_started_policy_connection_and_ended_follow_their_table()
     {
         Guid command = Guid.NewGuid();
@@ -158,7 +158,7 @@ public sealed class AuditWriteTests
 
     // The acceptance of S6: no entry is written before the one before it is on the disk. In memory, an append that has
     // returned is on the disk.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Each_entry_is_appended_whole_before_its_writer_returns()
     {
         using AuditLog log = AuditLog.Open(_data.Audit, _clock);
@@ -181,7 +181,7 @@ public sealed class AuditWriteTests
         }
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_entry_goes_to_the_file_of_the_UTC_day_of_its_time()
     {
         FakeClock clock = new(new DateTimeOffset(2026, 11, 22, 23, 59, 59, 999, TimeSpan.Zero));
@@ -197,7 +197,7 @@ public sealed class AuditWriteTests
 
     // §13: a write that fails, on a full disk for example, is cut back to the length the file had before it; the
     // next start finds the log as it was.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_failed_write_cuts_the_file_back_sets_the_fault_and_stops_the_agent()
     {
         string before = AuditLines.Connection(TestTimes.Start);
@@ -214,7 +214,7 @@ public sealed class AuditWriteTests
         Assert.NotNull(log.Fault);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Writers))]
     public void After_a_failed_write_no_writer_writes_and_each_stops_the_agent(string writer)
     {
@@ -231,7 +231,7 @@ public sealed class AuditWriteTests
     }
 
     // A log that cannot be trusted still records why the agent stops, in started; nothing else.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Writers))]
     public void With_a_fault_from_reading_only_started_writes_and_every_other_writer_stops_the_agent(string writer)
     {
@@ -250,7 +250,7 @@ public sealed class AuditWriteTests
     }
 
     // An exception of the cut back is not reported: the torn entry is safe to find at the next start, which cuts it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_failed_cut_back_is_not_reported_and_the_next_open_cuts_the_torn_entry()
     {
         string before = AuditLines.Connection(TestTimes.Start);
@@ -276,7 +276,7 @@ public sealed class AuditWriteTests
 
     // §13 as S6 drafts it: after a failed write the next start finds the log as it was, or with that entry whole when
     // cutting it back failed too.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_entry_whose_write_failed_after_it_was_whole_is_found_at_the_next_open_when_its_cut_back_failed()
     {
         Guid command = Guid.NewGuid();
@@ -299,7 +299,7 @@ public sealed class AuditWriteTests
     }
 
     // What the log gives for the received list, for the restart and for the poll numbers follows each write.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Each_write_updates_what_Find_Unconfirmed_and_HighestReservation_give()
     {
         Guid command = Guid.NewGuid();

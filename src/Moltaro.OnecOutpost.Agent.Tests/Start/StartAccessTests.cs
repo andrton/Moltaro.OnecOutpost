@@ -32,7 +32,7 @@ public sealed class StartAccessTests
         _folder.Data.Root.Seed("notes.txt", "the administrator's notes");
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_start_checks_the_folder_its_two_folders_and_every_file_it_reads()
     {
         _folder.Start(_clock).Log.Dispose();
@@ -52,7 +52,7 @@ public sealed class StartAccessTests
         Assert.Superset(expected, new HashSet<string>(_folder.Access.Asked));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
     [InlineData("audit")]
     [InlineData("outcomes")]
@@ -74,7 +74,7 @@ public sealed class StartAccessTests
         Assert.Contains(@"BUILTIN\Users", error, StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_access_list_that_cannot_be_read_stops_the_start()
     {
         _folder.Access.MakeUnreadable("secrets.dat");
@@ -84,7 +84,7 @@ public sealed class StartAccessTests
 
     // The acceptance of S6: a torn last line, then a start that stops on an access list that admits someone else, then
     // a start with the access lists fixed: the last start runs normally.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void After_a_torn_line_and_a_start_stopped_by_an_access_list_a_start_with_the_lists_fixed_runs_normally()
     {
         string kept = Connection(TestTimes.Start.AddHours(-1));

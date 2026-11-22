@@ -14,7 +14,7 @@ public sealed class RestartNumberTests
 {
     private readonly PairedFolder _folder = PairedFolder.Create();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void After_a_restart_with_the_clock_set_behind_the_last_number_every_poll_is_above_every_poll_sent_before()
     {
         List<long> sent = Run(TestTimes.Start, 3);
@@ -26,7 +26,7 @@ public sealed class RestartNumberTests
 
     // Whatever the names and the times of the audit files: the clock puts the entries of each period in the files of
     // its days, ten days ahead, then three, then today.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void After_two_periods_with_the_clock_ahead_by_less_each_time_every_poll_after_the_last_restart_is_above_every_poll_sent_before()
     {
         List<long> tenDaysAhead = Run(TestTimes.Start.AddDays(10), 3);
@@ -41,7 +41,7 @@ public sealed class RestartNumberTests
     }
 
     // A reservation is recorded and on the disk before a poll at or above the last bound, and at every start.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_first_poll_of_every_start_records_a_reservation_before_its_number_is_given()
     {
         foreach (DateTimeOffset start in new[] { TestTimes.Start, TestTimes.Start.AddDays(3), TestTimes.Start.AddHours(-1) })
@@ -62,7 +62,7 @@ public sealed class RestartNumberTests
 
     // The acceptance of S6: after the numbers ran out through the newest of an answer, every later start records started
     // with an error.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void After_an_answer_whose_newest_is_the_greatest_number_every_later_start_records_started_with_an_error()
     {
         AgentRun run = _folder.Start(new FakeClock(TestTimes.Start));

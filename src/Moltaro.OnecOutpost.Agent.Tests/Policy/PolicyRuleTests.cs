@@ -3,7 +3,6 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Protocol;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Policy;
 
@@ -165,7 +164,7 @@ public sealed class PolicyRuleTests
 
     // Carried over from S2: requestTimeout is in the form of runLimit, from 10 seconds to 1 hour, and safeMode of write
     // is true or false.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("", "requestTimeout", "\"00:00:10\"")]
     [InlineData("", "requestTimeout", "\"01:00:00\"")]
     [InlineData("bases[0].write", "safeMode", "true")]
@@ -181,7 +180,7 @@ public sealed class PolicyRuleTests
         AgentPolicyReader.Read(policy.ToJsonString());
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("", "requestTimeout", "\"00:00:09\"")]
     [InlineData("", "requestTimeout", "\"01:00:01\"")]
     [InlineData("", "requestTimeout", "\"5 minutes\"")]
@@ -226,7 +225,7 @@ public sealed class PolicyRuleTests
         Assert.Equal(OutpostProtocol.MaxBases, policy.Bases.Count);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_policy_of_257_bases_makes_the_policy_invalid_at_bases()
     {
         AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
@@ -237,7 +236,7 @@ public sealed class PolicyRuleTests
 
     // Q7: the agent offers the proxy the computer's credentials and never any written in the file. A user or a
     // password in the URL is refused, and neither is repeated, since either may be a secret (principle 9).
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("http://svc@proxy.example.com:3128")]
     [InlineData("http://svc:S3cret@proxy.example.com:3128")]
     [InlineData("http://:S3cret@proxy.example.com:3128")]
@@ -255,7 +254,7 @@ public sealed class PolicyRuleTests
     }
 
     // The example host of the proxy is not a .local name.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_error_of_a_proxy_that_is_not_an_http_URL_names_the_example_proxy_example_com()
     {
         JsonObject policy = ValidPolicy();

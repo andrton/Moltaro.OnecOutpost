@@ -23,7 +23,7 @@ public sealed class AgentStartTests
     private readonly FakeClock _clock = new(TestTimes.Start);
 
     // A restart: the Write received before it has no outcome, and becomes Unknown agent-stopped (rule 3).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_start_that_passes_records_started_and_a_valid_policy_then_recovers_and_returns_the_run()
     {
         Guid write = Guid.NewGuid();
@@ -67,7 +67,7 @@ public sealed class AgentStartTests
 
     // The acceptance of S6a: a second copy of the agent gets IOException from the lock and records nothing; that the
     // program then exits with an error is S6b's. Disposing the log of the run releases the lock.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_second_start_while_the_first_runs_fails_with_IOException_and_records_nothing()
     {
         AgentRun first = _folder.Start(_clock);
@@ -83,7 +83,7 @@ public sealed class AgentStartTests
 
     // The acceptance of S6: any line that the log cannot read, and an audit file that it cannot open, stop the agent
     // with started and an error.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("a line that cannot be read")]
     [InlineData("a file that cannot be opened")]
     public void A_log_that_cannot_be_read_stops_the_start_with_started_and_an_error(string fault)
@@ -106,7 +106,7 @@ public sealed class AgentStartTests
 
     // The acceptance of S6: a last line without its LF, and a last line that is not JSON, are cut at a start, and the
     // agent then starts normally twice in a row. The torn line is in the file of the day that started goes to.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("{\"time\":\"2026-11-22T09:00:00.000Z\",\"entry\":\"conn")]
     [InlineData("{\"time\":\"2026-11-22T09:00:00.000Z\",\"entry\":\"conn\n")]
     public void A_torn_last_line_is_cut_and_the_agent_then_starts_normally_twice_in_a_row(string tornLine)
@@ -127,7 +127,7 @@ public sealed class AgentStartTests
     }
 
     // An absent agent.json says that the agent is not paired. No reason quotes what the file holds.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("agent.json", "absent")]
     [InlineData("agent.json", "unreadable")]
     [InlineData("agent.json", "malformed")]
@@ -174,7 +174,7 @@ public sealed class AgentStartTests
     // The acceptance of S6: an outbox file that cannot be read, and an ended with neither its file nor its confirmed,
     // stop the agent with started and an error; so do a file that no entry names, a name the outbox does not know, and
     // poll numbers used up.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("an outbox file that cannot be read")]
     [InlineData("an ended with neither its file nor its confirmed")]
     [InlineData("an outbox file of a command that no entry names")]
@@ -216,7 +216,7 @@ public sealed class AgentStartTests
     }
 
     // The order of the steps: the access lists come before agent.json, and agent.json before policy.json.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_first_step_that_fails_decides()
     {
         _folder.Access.Admit("", @"PC-1\intruder");

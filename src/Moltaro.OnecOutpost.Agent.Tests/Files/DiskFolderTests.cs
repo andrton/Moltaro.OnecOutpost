@@ -1,7 +1,6 @@
 using System.Runtime.Versioning;
 using System.Text;
 using Moltaro.OnecOutpost.Agent.Files;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Files;
 
@@ -20,7 +19,7 @@ public sealed class DiskFolderTests : IDisposable
         _temporary.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Names_lists_the_files_of_the_folder_and_no_subfolder()
     {
         File.WriteAllText(_temporary.PathOf("2026-11-22.jsonl"), "");
@@ -32,7 +31,7 @@ public sealed class DiskFolderTests : IDisposable
         Assert.Equal(["2026-11-22.jsonl", "lock"], folder.Names().Order(StringComparer.Ordinal));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Append_creates_a_file_that_is_absent_and_adds_the_bytes_at_its_end()
     {
         DiskFolder folder = new(_temporary.Path);
@@ -43,7 +42,7 @@ public sealed class DiskFolderTests : IDisposable
         Assert.Equal("first\nsecond\n", File.ReadAllText(_temporary.PathOf("2026-11-22.jsonl")));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void OpenRead_reads_a_file_from_its_start_while_another_program_holds_it_open_for_writing()
     {
         string path = _temporary.PathOf("2026-11-22.jsonl");
@@ -59,7 +58,7 @@ public sealed class DiskFolderTests : IDisposable
         Assert.Equal("first\nsecond\n", reader.ReadToEnd());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Cut_sets_the_length_of_a_file()
     {
         string path = _temporary.PathOf("2026-11-22.jsonl");
@@ -72,7 +71,7 @@ public sealed class DiskFolderTests : IDisposable
     }
 
     // The temporary file is renamed over the file, so none is left.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Replace_puts_the_bytes_in_place_of_the_file_and_leaves_no_temporary_file()
     {
         string path = _temporary.PathOf("outcome.json");
@@ -88,7 +87,7 @@ public sealed class DiskFolderTests : IDisposable
     }
 
     // A stop may leave {name}.tmp behind; the next Replace of the name writes it anew.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Replace_writes_over_a_temporary_file_that_a_stop_left()
     {
         File.WriteAllText(_temporary.PathOf("outcome.json.tmp"), "torn outcome that is longer");
@@ -100,7 +99,7 @@ public sealed class DiskFolderTests : IDisposable
         Assert.Equal(["outcome.json"], folder.Names());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Delete_removes_a_file_and_accepts_one_that_is_absent()
     {
         File.WriteAllText(_temporary.PathOf("outcome.json"), "outcome");
@@ -113,7 +112,7 @@ public sealed class DiskFolderTests : IDisposable
     }
 
     // A second copy of the agent finds the lock held (§13 of docs/protocol.md).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Lock_creates_the_file_and_holds_it_without_sharing_until_it_is_disposed()
     {
         DiskFolder folder = new(_temporary.Path);
@@ -130,7 +129,7 @@ public sealed class DiskFolderTests : IDisposable
     }
 
     // A missing audit\ records nothing: the lock that a start takes first fails.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Each_operation_in_a_folder_that_does_not_exist_fails_with_IOException()
     {
         DiskFolder folder = new(_temporary.PathOf("absent"));
@@ -140,7 +139,7 @@ public sealed class DiskFolderTests : IDisposable
         Assert.ThrowsAny<IOException>(() => folder.Append("2026-11-22.jsonl", "entry\n"u8));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void OpenRead_and_Cut_of_a_file_that_is_absent_fail_with_IOException()
     {
         DiskFolder folder = new(_temporary.Path);
@@ -151,7 +150,7 @@ public sealed class DiskFolderTests : IDisposable
 
     // Windows reports a file that may not be changed with UnauthorizedAccessException, or with a Win32 error from the
     // rename, which the folder turns into an IOException.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("append")]
     [InlineData("cut")]
     [InlineData("replace")]
@@ -177,7 +176,7 @@ public sealed class DiskFolderTests : IDisposable
 
     // The limitation of the brief: a program that holds an audit file open without sharing writing fails the next
     // write of the agent, and the agent stops.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_write_to_a_file_that_another_program_holds_without_sharing_writing_fails_with_IOException()
     {
         string path = _temporary.PathOf("2026-11-22.jsonl");

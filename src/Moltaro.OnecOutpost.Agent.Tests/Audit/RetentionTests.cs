@@ -23,7 +23,7 @@ public sealed class RetentionTests
     private readonly FakeClock _clock = new(Now);
 
     // With one day of retention, a file goes once its last entry is more than two days old: before 2026-11-20 at noon.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Files_older_than_the_retention_plus_a_day_by_their_last_entry_and_files_with_no_entry_are_removed_in_the_order_of_their_names()
     {
         _data.Audit.Seed("2026-11-21.jsonl", Connection(new DateTimeOffset(2026, 11, 21, 0, 0, 0, TimeSpan.Zero)));
@@ -48,7 +48,7 @@ public sealed class RetentionTests
     }
 
     // A file's age counts from its last entry, and a file exactly as old as the limit is not older than it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_whose_last_entry_is_exactly_the_retention_plus_a_day_old_is_kept_whatever_its_earlier_entries()
     {
         _data.Audit.Seed(
@@ -65,7 +65,7 @@ public sealed class RetentionTests
 
     // The log is the journal of rules 3, 10 and 11: a command not confirmed is still listed in every poll, and the
     // highest reservation bounds every poll after a restart. A command whose entries are all removed is forgotten.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_with_an_entry_of_an_unconfirmed_command_and_the_file_of_the_highest_reservation_are_kept_past_the_retention()
     {
         Guid unconfirmed = Guid.NewGuid();
@@ -112,7 +112,7 @@ public sealed class RetentionTests
     }
 
     // A day either way is the tolerance of the agent's clock against the server's.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(86_400_001, false)]
     [InlineData(-86_400_001, false)]
     [InlineData(86_400_000, true)]
@@ -132,7 +132,7 @@ public sealed class RetentionTests
         Assert.Equal(expected, _data.LinesSince(count));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_that_cannot_be_deleted_stays_until_a_later_call_and_nothing_is_recorded()
     {
         _data.Audit.Seed("2026-11-01.jsonl", Connection(new DateTimeOffset(2026, 11, 1, 9, 0, 0, TimeSpan.Zero)));

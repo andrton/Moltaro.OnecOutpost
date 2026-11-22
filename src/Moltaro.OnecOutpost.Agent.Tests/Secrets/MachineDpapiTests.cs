@@ -2,7 +2,6 @@ using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Secrets;
 
@@ -19,7 +18,7 @@ public sealed class MachineDpapiTests
 
     private static readonly Guid Provider = Guid.Parse("df9d8cd0-1501-11d1-8c7a-00c04fc297eb");
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Unprotect_gives_back_what_Protect_was_given_and_the_blob_holds_no_plaintext()
     {
         byte[] data = "the S3cret of the agent"u8.ToArray();
@@ -31,7 +30,7 @@ public sealed class MachineDpapiTests
         Assert.Equal(data, protection.Unprotect(blob));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Protect_makes_a_blob_of_DPAPI_for_the_machine()
     {
         byte[] blob = new MachineDpapi().Protect("the S3cret of the agent"u8.ToArray());
@@ -39,7 +38,7 @@ public sealed class MachineDpapiTests
         AssertBlobOfTheMachine(blob);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_secrets_file_written_through_DPAPI_is_a_blob_for_the_machine_and_reads_back()
     {
         using ECDsa agent = ECDsa.Create(ECCurve.NamedCurves.nistP256);
@@ -58,7 +57,7 @@ public sealed class MachineDpapiTests
         Assert.Equal("S3cret-password", read.Passwords[("accounting", OutpostModeEnum.Read)]);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Unprotect_of_bytes_that_DPAPI_did_not_make_fails_with_CryptographicException()
     {
         byte[] notABlob = RandomNumberGenerator.GetBytes(230);
@@ -66,7 +65,7 @@ public sealed class MachineDpapiTests
         Assert.ThrowsAny<CryptographicException>(() => new MachineDpapi().Unprotect(notABlob));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Unprotect_of_a_blob_that_was_changed_fails_with_CryptographicException()
     {
         MachineDpapi protection = new();

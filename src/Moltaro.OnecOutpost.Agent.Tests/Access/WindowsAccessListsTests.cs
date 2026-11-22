@@ -1,7 +1,6 @@
 using System.Runtime.Versioning;
 using System.Security.Principal;
 using Moltaro.OnecOutpost.Agent.Access;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Access;
 
@@ -33,7 +32,7 @@ public sealed class WindowsAccessListsTests : IDisposable
         _temporary.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_data_folder_as_the_install_sets_it_admits_nobody_else()
     {
         WindowsAccessLists access = new(_data);
@@ -45,7 +44,7 @@ public sealed class WindowsAccessListsTests : IDisposable
     }
 
     // A local user could plant a policy, a pinned key or an outcome in a file that admits him.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_whose_access_list_admits_anybody_else_names_that_account()
     {
         AccessListEdits.Allow(Path.Combine(_data, "policy.json"), AccessListEdits.Everyone);
@@ -55,7 +54,7 @@ public sealed class WindowsAccessListsTests : IDisposable
         Assert.Empty(access.Others(""));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_folder_whose_access_list_admits_anybody_else_names_that_account()
     {
         AccessListEdits.Allow(Path.Combine(_data, "audit"), AccessListEdits.Everyone);
@@ -65,7 +64,7 @@ public sealed class WindowsAccessListsTests : IDisposable
     }
 
     // An account that Windows cannot name, such as one of a domain that no longer exists, is named by its SID.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_account_that_Windows_cannot_translate_is_named_by_its_SID()
     {
         SecurityIdentifier unknown = new("S-1-5-21-1-2-3-1001");
@@ -76,7 +75,7 @@ public sealed class WindowsAccessListsTests : IDisposable
     }
 
     // A deny entry gives no right.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_deny_entry_admits_nobody()
     {
         AccessListEdits.Deny(Path.Combine(_data, "policy.json"), AccessListEdits.Everyone);
@@ -87,7 +86,7 @@ public sealed class WindowsAccessListsTests : IDisposable
 
     // An entry that applies only to what is created inside the folder does not apply to the folder itself; a file
     // created afterwards inherits it, and then it applies to that file.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_entry_that_applies_only_inside_a_folder_admits_nobody_to_the_folder_itself()
     {
         string outcomes = Path.Combine(_data, "outcomes");
@@ -100,7 +99,7 @@ public sealed class WindowsAccessListsTests : IDisposable
         Assert.Equal([AccessListEdits.NameOf(AccessListEdits.Everyone)], access.Others(@"outcomes\planted.json"));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_list_of_an_entry_that_does_not_exist_cannot_be_read_and_fails_with_IOException()
     {
         WindowsAccessLists access = new(_data);

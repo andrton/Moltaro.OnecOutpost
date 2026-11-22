@@ -23,7 +23,7 @@ public sealed class StartPolicyTests
 
     // Its outbox waits on the disk for a start with a valid policy: the received Write before the start gets no
     // outcome yet.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_invalid_policy_serves_nothing_and_is_recorded_as_started_with_an_error_then_policy_not_valid()
     {
         const string Invalid = """{ "bases": [ { "key": "accounting", "server": "", "database": "accounting", "read": { "account": "outpost-read" } } ] }""";
@@ -42,7 +42,7 @@ public sealed class StartPolicyTests
         Assert.False(_folder.Data.Outcomes.Has($"{write}.json"));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("absent")]
     [InlineData("unreadable")]
     public void A_policy_that_cannot_be_read_stops_the_start_and_is_recorded_as_not_valid(string fault)
@@ -63,7 +63,7 @@ public sealed class StartPolicyTests
         Assert.False(string.IsNullOrWhiteSpace(entries[1].GetProperty("error").GetString()));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_policy_that_starts_with_a_byte_order_mark_is_read()
     {
         _folder.Data.Root.Seed("policy.json", [.. ByteOrderMark, .. Encoding.UTF8.GetBytes(PairedFolder.Policy)]);
@@ -72,7 +72,7 @@ public sealed class StartPolicyTests
     }
 
     // The comment starts at the third character of the first line, counted without the mark.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_byte_order_mark_is_not_counted_in_the_columns_of_an_error()
     {
         _folder.Data.Root.Seed("policy.json", [.. ByteOrderMark, .. """{ /* the bases */ "bases": [] }"""u8]);
@@ -86,7 +86,7 @@ public sealed class StartPolicyTests
 
     // Decoded leniently, the byte 0xFF in the folder of the base would become U+FFFD and the file a valid policy. The
     // fault is the file as a whole, so the error names no member.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Bytes_that_are_not_UTF8_make_the_policy_invalid_with_an_empty_path()
     {
         byte[] policy =
@@ -107,7 +107,7 @@ public sealed class StartPolicyTests
 
     // The console's secret writes the passwords after pair; a start without one would only fail later, in every
     // command of that mode.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_mode_that_the_policy_serves_without_its_password_stops_the_start_naming_the_base_and_the_mode()
     {
         _folder.SeedSecrets(("accounting", "read", "read-pw"), ("warehouse", "read", ""));
@@ -119,7 +119,7 @@ public sealed class StartPolicyTests
     }
 
     // The owner's change of D12: started records which bases write without safe mode, in the order of the policy.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Started_lists_the_bases_that_write_without_safe_mode_in_the_order_of_the_policy()
     {
         _folder.Data.Root.Seed(

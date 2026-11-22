@@ -21,7 +21,7 @@ public sealed class AuditFindTests
 
     private readonly FakeClock _clock = new(TestTimes.Start);
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Find_gives_the_facts_of_a_command_that_any_entry_names_and_null_for_any_other()
     {
         Guid write = Guid.NewGuid();
@@ -55,7 +55,7 @@ public sealed class AuditFindTests
 
     // A second ended replaces the first, as after a refusal for size. With the clock set back, it can stand in a file
     // named before its received; the order of the names still decides, and the start reconciles the outbox file.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_last_ended_in_the_order_of_file_names_and_lines_gives_the_kind_the_code_and_the_duration()
     {
         Guid inOneFile = Guid.NewGuid();
@@ -79,7 +79,31 @@ public sealed class AuditFindTests
             log.Find(acrossFiles));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    // The same order holds for an entry the log writes: after the clock was set back, a second ended goes to a file
+    // named before that of the first, and Find gives what a restart reads.
+    [Fact]
+    public void An_ended_written_to_a_file_named_before_that_of_the_last_ended_does_not_replace_it()
+    {
+        Guid command = Guid.NewGuid();
+        DateTimeOffset ahead = Day22.AddDays(3);
+        _data.Audit.Seed(
+            "2026-11-25.jsonl",
+            Received(ahead, command, OutpostModeEnum.Write) + Ended(ahead, command, "succeeded", null, 1234));
+        AuditCommand expected = new(command, OutpostModeEnum.Write, true, OutpostAgentOutcomeKindEnum.Succeeded, null, 1234, false);
+
+        using (AuditLog log = AuditLog.Open(_data.Audit, _clock))
+        {
+            log.Ended(command, OutpostAgentOutcomeKindEnum.Unknown, "result-too-large", 1234);
+
+            Assert.Equal(expected, log.Find(command));
+        }
+
+        using AuditLog reopened = AuditLog.Open(_data.Audit, _clock);
+
+        Assert.Equal(expected, reopened.Find(command));
+    }
+
+    [Fact]
     public void Received_and_confirmed_count_whatever_the_file_they_are_in()
     {
         Guid command = Guid.NewGuid();
@@ -98,7 +122,7 @@ public sealed class AuditFindTests
 
     // The received list of a poll holds every command received whose outcome the server has not confirmed, refused ones
     // included (§6.2).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Unconfirmed_gives_every_command_that_an_entry_names_and_no_confirmed_does()
     {
         Guid running = Guid.NewGuid();
@@ -125,7 +149,7 @@ public sealed class AuditFindTests
     }
 
     // Reservations only grow, so the highest is also the last, in whichever file the clock put it (§6.2).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_highest_reservation_is_the_greatest_bound_of_the_identity_and_null_when_there_is_none()
     {
         Guid other = Guid.NewGuid();

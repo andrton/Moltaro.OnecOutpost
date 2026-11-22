@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.Agent.Policy;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Policy;
 
@@ -130,7 +129,7 @@ public sealed class PolicyValuesTests
     }
 
     // safeMode of write is kept as given, false or true, while a Read always runs in safe mode.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_request_timeout_and_safe_mode_turned_off_or_on_are_kept()
     {
         const string Json = """

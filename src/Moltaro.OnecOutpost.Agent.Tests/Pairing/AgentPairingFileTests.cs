@@ -2,7 +2,6 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using Moltaro.OnecOutpost.Agent.Pairing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Pairing;
 
@@ -24,7 +23,7 @@ public sealed class AgentPairingFileTests
         _serverKey = server.ExportSubjectPublicKeyInfo();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_settings_are_written_in_the_form_of_the_file_by_the_writer_of_section_2()
     {
         AgentPairingSettings settings = new(
@@ -40,7 +39,7 @@ public sealed class AgentPairingFileTests
         Assert.Equal(expected, Encoding.UTF8.GetString(AgentPairingFile.Write(settings)));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("https://outpost.example.com/agents", 25_000, 10_000)]
     [InlineData("http://127.0.0.1:5000/agents", 1_000, 1_000)]
     [InlineData("https://outpost.example.com/agents", 300_000, 300_000)]
@@ -63,7 +62,7 @@ public sealed class AgentPairingFileTests
     }
 
     // A reader of §2 accepts insignificant white space and any order of the members.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_with_white_space_and_its_members_in_another_order_is_read()
     {
         string file = $$"""
@@ -87,7 +86,7 @@ public sealed class AgentPairingFileTests
 
     // Each case changes one member of a valid file, or the file as a whole; S3cret stands where a value of the file is,
     // which the error must not quote. KEY is the server key in base64url.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("S3cret is not JSON")]
     [InlineData("""["S3cret"]""")]
     [InlineData("""{"server":"https://S3cret.example.com/","agent":"AGENT","serverKey":"KEY","pollTimeoutMs":25000}""")]

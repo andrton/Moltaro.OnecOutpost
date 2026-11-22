@@ -4,7 +4,6 @@ using System.Text;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Secrets;
 
@@ -26,7 +25,7 @@ public sealed class SecretsFileTests
     }
 
     // An empty password is a password, and a password may hold any text.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_secrets_read_back_as_they_were_written()
     {
         AgentSecrets secrets = new(_key, new Dictionary<(string Base, OutpostModeEnum Mode), string>
@@ -44,7 +43,7 @@ public sealed class SecretsFileTests
             read.Passwords.OrderBy(entry => entry.Key.ToString(), StringComparer.Ordinal));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_protection_is_given_the_secrets_in_the_form_of_the_file_written_by_the_writer_of_section_2()
     {
         AgentSecrets secrets = new(_key, new Dictionary<(string Base, OutpostModeEnum Mode), string>
@@ -60,7 +59,7 @@ public sealed class SecretsFileTests
         Assert.Equal(expected, Encoding.UTF8.GetString(plain));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_file_holds_no_plaintext_of_a_password_or_the_key()
     {
         AgentSecrets secrets = new(_key, new Dictionary<(string Base, OutpostModeEnum Mode), string>
@@ -76,7 +75,7 @@ public sealed class SecretsFileTests
     }
 
     // Such as a file copied from another machine: the exception of the protection passes.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_that_the_protection_refuses_to_unprotect_fails_with_its_CryptographicException()
     {
         AgentSecrets secrets = new(_key, new Dictionary<(string Base, OutpostModeEnum Mode), string>
@@ -92,7 +91,7 @@ public sealed class SecretsFileTests
 
     // Each content breaks the form and holds S3cret where a secret would be, which the error must not quote. The key
     // of the content is written in the place of KEY.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("S3cret is not JSON")]
     [InlineData("""["KEY","S3cret"]""")]
     [InlineData("""{"passwords":[{"base":"accounting","mode":"read","password":"S3cret"}]}""")]
@@ -115,7 +114,7 @@ public sealed class SecretsFileTests
     }
 
     // A base and a mode name one 1C account, so one password each.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_base_and_a_mode_given_twice_fail_with_FormatException_quoting_nothing()
     {
         string plain =

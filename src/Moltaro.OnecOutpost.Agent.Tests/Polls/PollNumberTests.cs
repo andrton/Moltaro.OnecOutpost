@@ -29,14 +29,14 @@ public sealed class PollNumberTests
 
     private readonly FakeClock _clock = new(TestTimes.Start);
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_reservation_is_a_day_of_ticks()
     {
         Assert.Equal(TimeSpan.TicksPerDay, PollNumbers.ReservationSpan);
     }
 
     // A log with no reservation of the identity, as after pairing: the first poll is 1, recorded before it is given.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_run_without_a_reservation_of_its_identity_counts_its_polls_from_1_after_one_reservation()
     {
         using AuditLog log = AuditLog.Open(_data.Audit, _clock);
@@ -52,7 +52,7 @@ public sealed class PollNumberTests
     }
 
     // The acceptance of S6: a reservation of another identity, from an earlier pairing, does not count.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_reservation_of_another_identity_does_not_count()
     {
         _data.Audit.Seed(FileOf(Before), Reservation(Before, Guid.NewGuid(), 1L << 61));
@@ -62,7 +62,7 @@ public sealed class PollNumberTests
         Assert.Equal(1, numbers.Next());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_ordinary_answer_ends_counting_and_the_next_number_comes_from_the_clock_after_its_reservation()
     {
         using AuditLog log = AuditLog.Open(_data.Audit, _clock);
@@ -77,7 +77,7 @@ public sealed class PollNumberTests
 
     // One poll is open at a time and the last number given was a counted one, so a server that answers it as older has
     // recorded polls that the log does not hold: the log was cleared, and with it the commands it had received.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_to_an_older_poll_while_counting_records_a_reservation_that_leaves_no_number_and_stops_the_agent()
     {
         using (AuditLog log = AuditLog.Open(_data.Audit, _clock))
@@ -96,7 +96,7 @@ public sealed class PollNumberTests
     }
 
     // Every start reserves anew, at or above the highest bound of its identity, whatever the clock says.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(10)]
     [InlineData(-10)]
     public void The_first_number_of_a_run_is_at_least_the_highest_reservation_and_is_reserved_before_it_is_given(int daysAhead)
@@ -114,7 +114,7 @@ public sealed class PollNumberTests
         Assert.Equal([first + Span], ReservationsSince(0));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_reservation_is_recorded_before_a_number_at_the_last_bound_and_not_before_one_below_it()
     {
         _data.Audit.Seed(FileOf(Before), Reservation(Before, Agent, 1000));
@@ -134,7 +134,7 @@ public sealed class PollNumberTests
 
     // Rule 10: after an answer to an older poll, the agent continues above the newest number that it names, so that a
     // clock set back stalls nothing.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_number_is_above_the_last_number_and_above_the_newest_of_an_answer_to_an_older_poll()
     {
         _data.Audit.Seed(FileOf(Before), Reservation(Before, Agent, 1000));
@@ -157,7 +157,7 @@ public sealed class PollNumberTests
 
     // The acceptance of S6: an answer to an older poll whose newest is 2^62 stops the agent after it records the
     // reservation of the next number, and every later start stops too.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_whose_newest_is_the_greatest_number_stops_the_agent_after_the_reservation_of_the_next_number()
     {
         _data.Audit.Seed(FileOf(Before), Reservation(Before, Agent, 1000));
@@ -179,7 +179,7 @@ public sealed class PollNumberTests
         Assert.Throws<AgentStopException>(() => new PollNumbers(reopened, Agent, _clock));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_highest_reservation_above_the_greatest_number_stops_the_agent_before_any_poll()
     {
         _data.Audit.Seed(FileOf(Before), Reservation(Before, Agent, Greatest + 1));

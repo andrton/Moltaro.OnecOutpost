@@ -35,7 +35,7 @@ public sealed class CommandOrderTests : IDisposable
     }
 
     // The acceptance of S6: received, then the outbox file, then ended, then confirmed.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_command_is_recorded_received_then_its_outbox_file_then_ended_then_confirmed_and_its_file_goes_last()
     {
         Guid command = Guid.NewGuid();
@@ -59,7 +59,7 @@ public sealed class CommandOrderTests : IDisposable
     }
 
     // The executor's object keeps its own form: the agent forwards its bytes (§8 of docs/protocol.md).
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", "succeeded", "succeeded", null)]
     [InlineData("read", "script-error", "failed", "script-error")]
     [InlineData("write", "transaction-ended", "unknown", "transaction-ended")]
@@ -88,7 +88,7 @@ public sealed class CommandOrderTests : IDisposable
 
     // The loop checks the executor's object by §8 before it ends a command, so bytes that ReadOutcome refuses for the
     // mode are a defect of the agent, whose exception passes: here an Unknown for a Read.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void End_of_an_outcome_that_the_mode_does_not_allow_is_a_defect_whose_exception_passes()
     {
         Guid command = Guid.NewGuid();
@@ -100,7 +100,7 @@ public sealed class CommandOrderTests : IDisposable
 
     // A Refused outcome is wholly given by its code and identity, so the entry comes first and a start can finish the
     // file (the coordinator's decision under PQ2).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Refuse_records_refused_then_the_file_of_its_Refused_outcome()
     {
         Guid command = Guid.NewGuid();
@@ -122,7 +122,7 @@ public sealed class CommandOrderTests : IDisposable
 
     // Rule 1: a command whose signature does not verify, or whose verified bytes name no command, has no identity that a
     // refusal could answer, so nothing is reported for it.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("signature")]
     [InlineData("form")]
     public void A_refusal_without_an_identity_records_only_its_entry(string code)
@@ -136,7 +136,7 @@ public sealed class CommandOrderTests : IDisposable
 
     // Rule 11: an outcome refused for its size is replaced with Unknown result-too-large for a Write and Failed
     // result-too-large for a Read, recorded by a second ended with the duration of the first.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("write", "succeeded", "unknown")]
     [InlineData("read", "script-error", "failed")]
     public void ReplaceForSize_writes_the_file_of_result_too_large_then_a_second_ended_with_the_duration_of_the_first(

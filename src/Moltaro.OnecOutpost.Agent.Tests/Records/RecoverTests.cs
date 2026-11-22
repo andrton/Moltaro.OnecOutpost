@@ -26,7 +26,7 @@ public sealed class RecoverTests
 
     private readonly FakeClock _clock = new(TestTimes.Start);
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_file_of_a_confirmed_command_is_removed()
     {
         Guid command = Guid.NewGuid();
@@ -41,7 +41,7 @@ public sealed class RecoverTests
     }
 
     // A stop between the replacement of a file for its size and its second ended.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_whose_kind_and_code_differ_from_the_last_ended_gets_an_ended_that_matches_it_with_the_duration_of_that_ended()
     {
         Guid command = Guid.NewGuid();
@@ -57,7 +57,7 @@ public sealed class RecoverTests
     }
 
     // The acceptance of S6: an outbox file without its ended is recorded. A stop between the file and its ended.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_outbox_file_without_its_ended_gets_an_ended_that_matches_it_with_no_duration()
     {
         Guid command = Guid.NewGuid();
@@ -72,7 +72,7 @@ public sealed class RecoverTests
     }
 
     // A stop between a refused and its file: the Refused outcome is wholly given by its code and identity.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_refused_command_without_its_file_gets_its_file_again_from_its_code()
     {
         Guid command = Guid.NewGuid();
@@ -86,7 +86,7 @@ public sealed class RecoverTests
 
     // Rule 3, the acceptance of S6: a received command without an outcome is Unknown agent-stopped for a Write and
     // Failed lost for a Read; its file comes before its ended.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("write", "unknown", "agent-stopped")]
     [InlineData("read", "failed", "lost")]
     public void A_received_command_without_an_outcome_gets_the_file_of_its_mode_then_its_ended_with_no_duration(
@@ -104,7 +104,7 @@ public sealed class RecoverTests
         AssertEnded(AppendedSince(_data, count).Single(), command, outcomeWord, code, null);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void What_already_matches_its_last_entry_is_left_as_it_is()
     {
         Guid sent = Guid.NewGuid();
@@ -127,7 +127,7 @@ public sealed class RecoverTests
 
     // Afterwards every outbox file belongs to a command that is not confirmed and matches its last entry, so the next
     // start finds nothing more to write.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void After_a_recover_every_outbox_file_matches_its_unconfirmed_command_and_the_next_start_writes_nothing()
     {
         Guid confirmed = Guid.NewGuid();
@@ -171,7 +171,7 @@ public sealed class RecoverTests
     }
 
     // §13: a stop in the middle leaves what the next start finishes. Here the ended after the file fails to be written.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_stop_in_the_middle_of_a_recover_leaves_what_the_next_start_finishes()
     {
         Guid command = Guid.NewGuid();

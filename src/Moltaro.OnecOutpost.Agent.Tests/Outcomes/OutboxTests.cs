@@ -1,7 +1,6 @@
 using Moltaro.OnecOutpost.Agent.Outcomes;
 using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Outcomes;
 
@@ -14,7 +13,7 @@ public sealed class OutboxTests
     private readonly MemoryDataFolder _data = new();
 
     // The acceptance of S6a: a torn temporary file is removed at a start.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Opening_removes_every_temporary_file_and_lists_the_outcome_files()
     {
         Guid kept = Guid.NewGuid();
@@ -32,7 +31,7 @@ public sealed class OutboxTests
     }
 
     // Only the agent writes outcomes\, and only files of its form: anything else was planted or is not understood.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("notes.txt")]
     [InlineData("9C1E2F3A-4B5C-4D6E-8F70-A1B2C3D4E5F6.json")]
     [InlineData("9c1e2f3a-4b5c-4d6e-8f70-a1b2c3d4e5f6.json.bak")]
@@ -46,7 +45,7 @@ public sealed class OutboxTests
         Assert.Contains($"outcomes\\{name}", exception.Message, StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Put_writes_the_file_of_the_command_with_Replace_Read_gives_its_bytes_and_Remove_deletes_it()
     {
         Guid command = Guid.NewGuid();
@@ -68,7 +67,7 @@ public sealed class OutboxTests
     }
 
     // A replacement for size writes the file again in place of the first.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Put_replaces_the_file_that_a_command_already_has()
     {
         Guid command = Guid.NewGuid();
@@ -82,7 +81,7 @@ public sealed class OutboxTests
         Assert.Equal([command], outbox.Commands);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_that_cannot_be_read_stops_the_agent()
     {
         Guid command = Guid.NewGuid();
@@ -93,7 +92,7 @@ public sealed class OutboxTests
         Assert.Throws<AgentStopException>(() => outbox.Read(command));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_write_that_fails_stops_the_agent_and_the_next_opening_removes_its_torn_temporary_file()
     {
         Guid command = Guid.NewGuid();
@@ -110,7 +109,7 @@ public sealed class OutboxTests
         Assert.Empty(reopened.Commands);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_replace_that_fails_stops_the_agent()
     {
         Guid command = Guid.NewGuid();
@@ -120,7 +119,7 @@ public sealed class OutboxTests
         Assert.Throws<AgentStopException>(() => outbox.Put(command, TestOutcomes.Succeeded()));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_removal_that_fails_stops_the_agent()
     {
         Guid command = Guid.NewGuid();
@@ -131,7 +130,7 @@ public sealed class OutboxTests
         Assert.Throws<AgentStopException>(() => outbox.Remove(command));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_temporary_file_that_cannot_be_removed_stops_the_agent_at_its_opening()
     {
         _data.Outcomes.Seed("left-by-a-stop.tmp", "");

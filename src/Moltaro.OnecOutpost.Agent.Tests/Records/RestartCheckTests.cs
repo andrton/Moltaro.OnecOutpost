@@ -21,7 +21,7 @@ public sealed class RestartCheckTests
     private readonly FakeClock _clock = new(TestTimes.Start);
 
     // Each case leaves the command X in a state from which no start can go on.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("a file of a command that no entry names", true)]
     [InlineData("a file of a Read that ReadOutcome refuses for a Read", true)]
     [InlineData("a file that is not an outcome object", true)]
@@ -93,7 +93,7 @@ public sealed class RestartCheckTests
     }
 
     // Only an ended names the command, as after a retention that removed its received: the file is read for either mode.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_of_a_command_with_no_mode_is_accepted_when_either_mode_allows_it()
     {
         Guid command = Guid.NewGuid();
@@ -108,7 +108,7 @@ public sealed class RestartCheckTests
 
     // What Recover finishes: a confirmed command with its file, a file that differs from its last ended, a refused
     // without its file and a received with no outcome at all.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Opening_writes_nothing_for_what_a_restart_left_that_the_start_finishes()
     {
         Guid confirmed = Guid.NewGuid();
