@@ -5,12 +5,12 @@ using Moltaro.OnecOutpost.Protocol;
 
 namespace Moltaro.OnecOutpost.Agent.Transport;
 
-// The agent's requests and the answers to them in HTTP (§1, §4, §9 and §10 of docs/protocol.md), for the connection and
-// for pairing. A request is a POST over HTTP/1.1 only to {prefix}/v1/{request} of the server's address, with the exact
-// bytes that the agent signed, Content-Type application/json, Outpost-Agent, Outpost-Signature, Accept-Encoding
-// identity, and on outcome Expect: 100-continue; no Content-Encoding and no credentials. An answer is read within its
-// limit and its wait, and nothing of it is trusted here: the readers of the codec verify it.
-internal static class AgentHttp
+// The agent's requests to its server, for the connection and for pairing: each is sent once, and its answer is read
+// within its limit and its wait (§1, §4, §9 and §10 of docs/protocol.md). A request is a POST over HTTP/1.1 only to
+// {prefix}/v1/{request} of the server's address, with the exact bytes that the agent signed, Content-Type
+// application/json, Outpost-Agent, Outpost-Signature, Accept-Encoding identity, and on outcome Expect: 100-continue; no
+// Content-Encoding and no credentials. Nothing of an answer is trusted here: the readers of the codec verify it.
+internal static class ServerRequests
 {
     // Decompression is off in the handler, so this is the one coding the agent asks for (§2).
     private const string Identity = "identity";
@@ -34,7 +34,7 @@ internal static class AgentHttp
 
     // The request of the kind to the address, carrying the body as it was signed and the signature of the agent's key
     // over it, under the identity given: the agent's, or in pair the one that the token names.
-    public static HttpRequestMessage Request(
+    public static HttpRequestMessage Create(
         Uri address,
         OutpostRequestKindEnum kind,
         Guid agent,

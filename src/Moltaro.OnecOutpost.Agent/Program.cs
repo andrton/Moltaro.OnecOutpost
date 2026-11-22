@@ -1,4 +1,4 @@
-using System.Reflection;
+using System.Diagnostics;
 using System.Runtime.Versioning;
 using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Files;
@@ -65,10 +65,11 @@ internal static class Program
             Version());
     }
 
-    // The version of the build, as the polls carry it: the informational version that the build gives the assembly,
-    // read once at the start.
+    // The version of the build, as the polls carry it: the product version of the program's file, which the build takes
+    // from the informational version of the assembly, read once at the start. The service controller starts the
+    // program's own executable, so that is the file of the process.
     private static string Version()
     {
-        return typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
+        return FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion!;
     }
 }

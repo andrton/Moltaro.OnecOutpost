@@ -35,8 +35,8 @@ internal static class AgentPairing
 
         // The handler is the caller's: the console disposes it.
         using HttpMessageInvoker invoker = new(handler, disposeHandler: false);
-        using HttpRequestMessage request = AgentHttp.Request(
-            AgentHttp.PathOf(server, OutpostRequestKindEnum.Pair),
+        using HttpRequestMessage request = ServerRequests.Create(
+            ServerRequests.PathOf(server, OutpostRequestKindEnum.Pair),
             OutpostRequestKindEnum.Pair,
             token.Agent,
             body,
@@ -44,7 +44,7 @@ internal static class AgentPairing
         using CancellationTokenSource timeout = new(requestTimeout, clock);
         using CancellationTokenSource wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
 
-        (HttpResponseMessage? response, int? status) = await AgentHttp.SendAsync(invoker, request, wait.Token, cancellationToken);
+        (HttpResponseMessage? response, int? status) = await ServerRequests.SendAsync(invoker, request, wait.Token, cancellationToken);
 
         if (response is null)
         {
@@ -56,7 +56,7 @@ internal static class AgentPairing
 
         using (response)
         {
-            answer = await AgentHttp.ReadAsync(response, OutpostProtocol.AnswerLimit, wait.Token, cancellationToken);
+            answer = await ServerRequests.ReadAsync(response, OutpostProtocol.AnswerLimit, wait.Token, cancellationToken);
         }
 
         // The agent knows no key that could verify a 403 before the pairing, so every 403 is bare, whatever its body.
@@ -67,8 +67,8 @@ internal static class AgentPairing
 
         if (answer.Body is not byte[] read)
         {
-            // The status came, and no complete body within the limit and the wait.
-            return Ended(answer.Status, AgentPairingFailureEnum.Unreachable);
+            // The status came, and no complete body within the limit and the wait: an answer all the same (§9).
+            return Ended(answer.Status, AgentPairingFailureEnum.Answer);
         }
 
         if (answer.Status == (int)HttpStatusCode.BadRequest && OutpostCodec.IsUnsupportedVersion(read))

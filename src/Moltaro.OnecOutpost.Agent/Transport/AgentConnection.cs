@@ -41,8 +41,8 @@ internal sealed class AgentConnection : IDisposable
         HttpMessageHandler handler,
         TimeProvider clock)
     {
-        _poll = AgentHttp.PathOf(server, OutpostRequestKindEnum.Poll);
-        _outcome = AgentHttp.PathOf(server, OutpostRequestKindEnum.Outcome);
+        _poll = ServerRequests.PathOf(server, OutpostRequestKindEnum.Poll);
+        _outcome = ServerRequests.PathOf(server, OutpostRequestKindEnum.Outcome);
         _agent = agent;
         _agentKey = agentKey;
         _serverKey = serverKey;
@@ -63,7 +63,7 @@ internal sealed class AgentConnection : IDisposable
         byte[] body = OutpostCodec.Write(poll);
         byte[] signature = OutpostSignatures.SignRequest(_agentKey, OutpostRequestKindEnum.Poll, _agent, body);
 
-        using HttpRequestMessage request = AgentHttp.Request(_poll, OutpostRequestKindEnum.Poll, _agent, body, signature);
+        using HttpRequestMessage request = ServerRequests.Create(_poll, OutpostRequestKindEnum.Poll, _agent, body, signature);
 
         HttpResponseMessage? response;
         int? status;
@@ -72,7 +72,7 @@ internal sealed class AgentConnection : IDisposable
         using (CancellationTokenSource timeout = new(poll.PollTimeout + leaseGrace, _clock))
         using (CancellationTokenSource wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token))
         {
-            (response, status) = await AgentHttp.SendAsync(_invoker, request, wait.Token, cancellationToken);
+            (response, status) = await ServerRequests.SendAsync(_invoker, request, wait.Token, cancellationToken);
         }
 
         if (response is null)
@@ -84,7 +84,7 @@ internal sealed class AgentConnection : IDisposable
         using (CancellationTokenSource timeout = new(requestTimeout, _clock))
         using (CancellationTokenSource wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token))
         {
-            ServerAnswer answer = await AgentHttp.ReadAsync(response, OutpostProtocol.PollAnswerLimit, wait.Token, cancellationToken);
+            ServerAnswer answer = await ServerRequests.ReadAsync(response, OutpostProtocol.PollAnswerLimit, wait.Token, cancellationToken);
 
             return Judge(poll, body, answer);
         }
@@ -102,11 +102,11 @@ internal sealed class AgentConnection : IDisposable
         byte[] body = OutpostCodec.Write(new OutpostOutcomeRequest(command, outcome));
         byte[] signature = OutpostSignatures.SignRequest(_agentKey, OutpostRequestKindEnum.Outcome, _agent, body);
 
-        using HttpRequestMessage request = AgentHttp.Request(_outcome, OutpostRequestKindEnum.Outcome, _agent, body, signature);
+        using HttpRequestMessage request = ServerRequests.Create(_outcome, OutpostRequestKindEnum.Outcome, _agent, body, signature);
         using CancellationTokenSource timeout = new(requestTimeout, _clock);
         using CancellationTokenSource wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
 
-        (HttpResponseMessage? response, _) = await AgentHttp.SendAsync(_invoker, request, wait.Token, cancellationToken);
+        (HttpResponseMessage? response, _) = await ServerRequests.SendAsync(_invoker, request, wait.Token, cancellationToken);
 
         if (response is null)
         {
@@ -115,7 +115,7 @@ internal sealed class AgentConnection : IDisposable
 
         using (response)
         {
-            ServerAnswer answer = await AgentHttp.ReadAsync(response, OutpostProtocol.AnswerLimit, wait.Token, cancellationToken);
+            ServerAnswer answer = await ServerRequests.ReadAsync(response, OutpostProtocol.AnswerLimit, wait.Token, cancellationToken);
 
             return Judge(command, body, answer);
         }

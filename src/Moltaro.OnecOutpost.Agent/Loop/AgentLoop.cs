@@ -351,7 +351,7 @@ internal sealed class AgentLoop
                 // Rule 2: the received is on the disk before the run starts, and a command that cannot be recorded does
                 // not run, since the failed write stops the agent first.
                 _run.Log.Received(check.Command!);
-                _runs.Add(RunAsync(check.Command!));
+                _runs.Add(RunCommandAsync(check.Command!));
 
                 break;
 
@@ -363,7 +363,7 @@ internal sealed class AgentLoop
 
     // WorkerPool.RunAsync is called before the first await, on the loop's task, so that the command holds its worker
     // before the next poll declares free.
-    private async Task<Action> RunAsync(OutpostCommandMessage command)
+    private async Task<Action> RunCommandAsync(OutpostCommandMessage command)
     {
         WorkerRun run = await _workers.RunAsync(command, _stop);
 

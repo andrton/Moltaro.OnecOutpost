@@ -182,7 +182,7 @@ public sealed class AgentPairingTests : IDisposable
 
     // The brief, "AgentPairing.PairAsync": the status when one came, Unreachable without one, and Answer for anything
     // else. A 200 whose body is beyond 64 KiB, or does not come within requestTimeout, is an answer whose status came.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("beyond-64-KiB")]
     [InlineData("late")]
     public async Task A_pairing_answer_whose_status_came_and_whose_body_did_not_ends_with_that_status_and_Answer(string body)

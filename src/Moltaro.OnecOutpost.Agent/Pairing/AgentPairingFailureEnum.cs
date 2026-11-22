@@ -4,7 +4,7 @@ namespace Moltaro.OnecOutpost.Agent.Pairing;
 // own words.
 internal enum AgentPairingFailureEnum
 {
-    // No status came: no answer, or no complete body, within the wait, or an error of the connection.
+    // No status came: no answer within the wait, or an error of the connection.
     Unreachable,
 
     // A bare 403: the server answers so to any failure of pairing, and so can anything on the path.
