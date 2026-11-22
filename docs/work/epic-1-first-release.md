@@ -3378,8 +3378,10 @@ documents step.
     - **`IWorkerProcess`** reports failures as results, by no exception but
       `OperationCanceledException`: `OpenAsync` gives `ready`; `RunAsync` the executor's
       `size` with the exact bytes of its `outcome`, or null when the process ended or broke
-      its line first; `Kill` ends the process, completes a pending `RunAsync` with null,
-      may run beside it, and is idempotent.
+      its line first; `Kill` ends the process, completes a pending `OpenAsync` with false
+      and a pending `RunAsync` with null, may run beside either and beside another `Kill`,
+      from any thread, and is idempotent (the coordinator, 22 November 2026, from S6b's
+      code review, round 1).
     - **`WorkerPool`** (S6b; rules 8, 9):
       - `Open` starts the opens of the `workers` of every mode and returns at once. Each
         races `Task.Delay(runLimit, clock)`: the mode's run limit is its deadline
