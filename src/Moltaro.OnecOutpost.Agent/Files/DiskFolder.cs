@@ -10,8 +10,8 @@ namespace Moltaro.OnecOutpost.Agent.Files;
 [SupportedOSPlatform("windows")]
 internal sealed partial class DiskFolder : IAgentFolder
 {
-    // The flags of MoveFileExW: the new name replaces a file of that name, and the call returns only when the rename is
-    // on the disk, so that an ended written after it never names an outcome file that a loss of power took back.
+    // The flags of MoveFileExW: the new name replaces a file of that name, and the rename is written through. A
+    // same-volume rename rests on this and on the journal of NTFS, as the class comment says.
     private const uint MoveFileReplaceExisting = 0x1;
 
     private const uint MoveFileWriteThrough = 0x8;

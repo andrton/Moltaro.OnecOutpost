@@ -58,14 +58,18 @@ internal sealed class PollNumbers
     {
         long number = _counting ? _last + 1 : FromClock();
 
+        // No number above 2⁶² is given, whatever the bound, which a reservation near 2⁶² puts above it. Such a number is
+        // recorded as one at or above the bound, the record of this first stop (§6.2), and stops the agent.
+        bool passesGreatest = number > OutpostProtocol.MaxPollNumber;
+
         // The reservation is on the disk before the number is given, so that a number sent after a restart is above
         // every number sent before it, however the clock was moved meanwhile.
-        if (_bound is not long bound || number >= bound)
+        if (_bound is not long bound || number >= bound || passesGreatest)
         {
             _log.Reservation(_agent, number + ReservationSpan);
             _bound = number + ReservationSpan;
 
-            if (number > OutpostProtocol.MaxPollNumber)
+            if (passesGreatest)
             {
                 throw new AgentStopException("the poll numbers are used up; pair the agent anew");
             }

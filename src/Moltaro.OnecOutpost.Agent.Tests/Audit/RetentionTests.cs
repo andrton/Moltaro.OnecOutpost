@@ -154,7 +154,7 @@ public sealed class RetentionTests
     // was received and ended in a file that stays, and confirmed in a later file past the retention; command D was
     // received there and confirmed in a third. Had the later files gone, every poll would list C and D again, and every
     // later start would stop on an ended without its file.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("an unconfirmed command")]
     [InlineData("the highest reservation")]
     public void A_file_past_the_retention_stays_while_a_file_that_stays_holds_an_entry_of_one_of_its_commands(string keeper)
@@ -199,7 +199,7 @@ public sealed class RetentionTests
     // file named before its received. In both cases the file of the received cannot be deleted at first. Had the file of
     // the confirmed gone, every poll would list the command again, and every later start would stop on an ended without
     // its file. A file that shares no command with them goes meanwhile.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("2026-10-01.jsonl", "2026-10-02.jsonl")]
     [InlineData("2026-10-02.jsonl", "2026-10-01.jsonl")]
     public void A_file_that_cannot_be_deleted_keeps_the_files_that_share_a_command_with_it_and_a_confirmed_goes_last(

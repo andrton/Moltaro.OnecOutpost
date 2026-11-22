@@ -182,7 +182,7 @@ public sealed class PollNumberTests
     // From S6a's code review, round 1: a bound reserved within a day of ticks below 2^62 lies above 2^62, and still no
     // number above 2^62 is given (§6.2: a number is from 1 to 2^62). The one that would pass it records its reservation,
     // the record of this first stop, and stops the agent. Here the bound is found at a start.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_reservation_near_the_greatest_number_found_at_a_start_gives_no_number_above_it()
     {
         _data.Audit.Seed(FileOf(Before), Reservation(Before, Agent, Greatest - 2));
@@ -200,7 +200,7 @@ public sealed class PollNumberTests
 
     // The same, with the bound recorded after an answer to an older poll whose newest is 2^62 - 1, and a second such
     // answer whose newest is 2^62.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void After_answers_whose_newest_comes_near_the_greatest_number_no_number_above_it_is_given()
     {
         _data.Audit.Seed(FileOf(Before), Reservation(Before, Agent, 1000));

@@ -279,8 +279,10 @@ internal sealed class AuditLog : IDisposable
     // The whole rule of retention, called after each verified poll answer with its time: nothing when the clock is more
     // than a day away from that time, either way; otherwise it deletes, in the order of their names, every file whose
     // last entry is more than retentionDays plus a day before the clock, and every file with no entry, except a file
-    // with an entry of an unconfirmed command and the file of the highest reservation of the identity. A file it cannot
-    // delete stays until a later call, and nothing is recorded.
+    // with an entry of an unconfirmed command and the file of the highest reservation of the identity. The files of one
+    // command go together: a file stays while a file that stays holds an entry of one of its commands, and a file that
+    // holds a confirmed is deleted after the other files of that command. A file it cannot delete stays until a later
+    // call, with every file not yet deleted that shares a command with it, and nothing is recorded.
     public void RemoveExpired(Guid agent, DateTimeOffset answerTime, int retentionDays)
     {
         DateTimeOffset now = _clock.GetUtcNow();
@@ -294,9 +296,9 @@ internal sealed class AuditLog : IDisposable
         // With the day of tolerance, a file older than this is still older than the retention by the server's clock.
         DateTimeOffset limit = now - TimeSpan.FromDays(retentionDays + 1);
         long? highest = HighestReservation(agent);
-        bool removed = false;
+        HashSet<AuditFile> deletable = [];
 
-        foreach (AuditFile file in _files.Values.ToList())
+        foreach (AuditFile file in _files.Values)
         {
             bool expired = file.LastTime is not DateTimeOffset last || last < limit;
 
@@ -305,22 +307,42 @@ internal sealed class AuditLog : IDisposable
             bool holdsUnconfirmed = file.Commands.Keys.Any(command => !_commands[command].Confirmed);
             bool holdsHighest = file.Reservations.TryGetValue(agent, out long below) && below == highest;
 
-            if (!expired || holdsUnconfirmed || holdsHighest)
+            if (expired && !holdsUnconfirmed && !holdsHighest)
             {
-                continue;
+                deletable.Add(file);
             }
+        }
+
+        KeepTogether(deletable);
+
+        bool removed = false;
+
+        // The first file in the order of names that waits for no other: a file that holds a confirmed goes after the
+        // other files of that command, so that a stop or a failed delete never leaves a command with its received or
+        // ended and without its confirmed.
+        while (true)
+        {
+            AuditFile? next = _files.Values.FirstOrDefault(file => deletable.Contains(file) && !WaitsForOthers(file));
+
+            if (next is null)
+            {
+                break;
+            }
+
+            deletable.Remove(next);
 
             try
             {
-                _folder.Delete(file.Name);
+                _folder.Delete(next.Name);
             }
             catch (IOException)
             {
-                // The file stays until a later call.
+                // The file stays until a later call, and with it every file that shares a command with it.
+                KeepTogether(deletable);
                 continue;
             }
 
-            _files.Remove(file.Name);
+            _files.Remove(next.Name);
             removed = true;
         }
 
@@ -924,6 +946,47 @@ internal sealed class AuditLog : IDisposable
         {
             _reservations[agent] = below;
         }
+    }
+
+    // Takes out of the files to delete every one that shares a command with a file that stays, until none does, so that
+    // the files of one command go together or not at all.
+    private void KeepTogether(HashSet<AuditFile> deletable)
+    {
+        HashSet<Guid> staying = [];
+
+        foreach (AuditFile file in _files.Values.Where(file => !deletable.Contains(file)))
+        {
+            staying.UnionWith(file.Commands.Keys);
+        }
+
+        bool kept = true;
+
+        while (kept)
+        {
+            List<AuditFile> sharing = [.. deletable.Where(file => file.Commands.Keys.Any(staying.Contains))];
+
+            foreach (AuditFile file in sharing)
+            {
+                deletable.Remove(file);
+                staying.UnionWith(file.Commands.Keys);
+            }
+
+            kept = sharing.Count > 0;
+        }
+    }
+
+    // True while another file that is left holds an entry of a command whose confirmed this file holds.
+    private bool WaitsForOthers(AuditFile file)
+    {
+        foreach (AuditCommand facts in file.Commands.Values.Where(facts => facts.Confirmed))
+        {
+            if (_files.Values.Any(other => other != file && other.Commands.ContainsKey(facts.Id)))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // What the log gives, made again from the files that are left, in the order of their names.
