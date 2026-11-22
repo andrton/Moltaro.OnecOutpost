@@ -1,5 +1,4 @@
 using System.Runtime.Versioning;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
@@ -11,7 +10,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 [SupportedOSPlatform("windows")]
 public sealed class WorkerKillTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Kill_ends_the_process_completes_a_pending_run_with_null_and_a_second_kill_is_ignored()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -25,7 +24,7 @@ public sealed class WorkerKillTests
         started.Worker.Kill();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_cancelled_run_kills_the_process_and_throws_OperationCanceledException()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

@@ -4,7 +4,6 @@ using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
@@ -16,7 +15,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 [SupportedOSPlatform("windows")]
 public sealed class AgentRunLimitTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_script_beyond_its_run_limit_fails_a_read_leaves_a_write_unknown_and_the_worker_started_again_runs_the_next_command()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

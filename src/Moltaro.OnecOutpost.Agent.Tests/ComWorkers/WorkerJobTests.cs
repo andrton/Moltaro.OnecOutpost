@@ -3,7 +3,6 @@ using System.Runtime.Versioning;
 using Microsoft.Win32;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
@@ -15,7 +14,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 public sealed class WorkerJobTests
 {
     // The worker runs nothing and waits for its next command line, so only the job ends it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Disposing_the_job_ends_a_running_worker()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

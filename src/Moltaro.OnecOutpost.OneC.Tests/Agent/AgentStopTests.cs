@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
@@ -14,7 +13,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 [SupportedOSPlatform("windows")]
 public sealed class AgentStopTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Stopping_the_agent_during_a_write_gives_unknown_agent_stopped_which_the_next_run_sends()
     {
         using LabAgent agent = LabAgent.Create();

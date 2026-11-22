@@ -4,7 +4,6 @@ using Moltaro.OnecOutpost.Agent.Tests.Workers;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
@@ -17,7 +16,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 [SupportedOSPlatform("windows")]
 public sealed class WorkerRunLimitTests
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", "failed")]
     [InlineData("write", "unknown")]
     public async Task A_script_past_the_run_limit_ends_its_worker_with_run_limit_and_after_the_slots_delay_a_new_worker_runs_the_next_command(

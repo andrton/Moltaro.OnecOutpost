@@ -757,8 +757,8 @@ internal static class OutpostCodec
 
     // Reads an outcome object (§8). It applies §2 and the member rules of §8 for the mode, the outcomes that an agent
     // may send included, and throws `form`. A null mode, for a command the server does not know, accepts what either
-    // mode allows. The agent checks the object of the executor with it for the mode of the command, and then with
-    // OutpostOutcomeCodes.IsExecutorOutcome; nothing changes the object.
+    // mode allows. The agent checks the object that a COM worker hands over with it for the mode of the command, and
+    // then with OutpostOutcomeCodes.IsComWorkerOutcome; nothing changes the object.
     public static OutpostOutcomeMessage ReadOutcome(OutpostModeEnum? mode, ReadOnlySpan<byte> outcome)
     {
         using JsonDocument document = ParseMessage(outcome.ToArray());

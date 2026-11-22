@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 
@@ -97,7 +96,7 @@ public sealed class WorkerOutcomeTests
     // and its mode has one worker fewer; after result-type, the worker's answer to a text of the executor with a line
     // break, its session is whole and it stays. The bytes have white space that the agent's writer does not write, so
     // that they show they were forwarded.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", "failed", "base-unreachable", true)]
     [InlineData("write", "failed", "base-unreachable", true)]
     [InlineData("read", "failed", "connection-lost", true)]

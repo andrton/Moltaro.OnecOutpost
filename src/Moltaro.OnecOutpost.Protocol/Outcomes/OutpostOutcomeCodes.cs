@@ -125,24 +125,10 @@ internal static class OutpostOutcomeCodes
         };
     }
 
-    // Answers the paragraph "The executor" of §8: true when the executor may hand the agent an outcome of this kind
-    // with this code for a command of this mode. That is `succeeded`, with a null code; `failed` with `script-error`,
-    // `result-type` or `result-too-large`; and, for a Write, `unknown` with `transaction-ended`.
-    public static bool IsExecutorOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code)
-    {
-        return kind switch
-        {
-            OutpostAgentOutcomeKindEnum.Succeeded => code is null,
-            OutpostAgentOutcomeKindEnum.Failed => code is ScriptError or ResultType or ResultTooLarge,
-            OutpostAgentOutcomeKindEnum.Unknown => mode == OutpostModeEnum.Write && code is TransactionEnded,
-            _ => false,
-        };
-    }
-
     // True when a COM worker may hand the agent an outcome of this kind with this code for a command of this mode: what
     // the executor hands over (the paragraph "The executor" of §8), and the outcomes that S9's worker writes itself —
     // Failed base-unreachable in either mode, Failed connection-lost for a Read, Unknown connection-lost and Unknown
-    // result-type for a Write. False otherwise. It replaces IsExecutorOutcome in the pool's check.
+    // result-type for a Write. False otherwise. The pool's check of what a worker hands over uses it.
     public static bool IsComWorkerOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code)
     {
         return kind switch

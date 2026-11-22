@@ -33,7 +33,7 @@ public sealed class WithoutSafeModeTests
         }
         """;
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_base_whose_writes_turn_safe_mode_off_starts_no_write_worker_and_its_polls_declare_its_write_as_null()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -50,7 +50,7 @@ public sealed class WithoutSafeModeTests
         Assert.Equal(["accounting"], started.GetProperty("withoutSafeMode").EnumerateArray().Select(key => key.GetString()));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_write_to_a_base_whose_writes_turn_safe_mode_off_is_refused_with_not_served_and_its_read_runs()
     {
         PairedFolder folder = PairedFolder.Create();

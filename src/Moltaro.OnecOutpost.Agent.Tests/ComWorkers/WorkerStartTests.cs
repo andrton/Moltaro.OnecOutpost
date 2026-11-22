@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.Win32;
 using Moltaro.OnecOutpost.Agent.Tests.Workers;
 using Moltaro.OnecOutpost.Agent.Workers;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
@@ -14,7 +13,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 [SupportedOSPlatform("windows")]
 public sealed class WorkerStartTests
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task A_worker_gets_the_base_key_and_the_mode_alone_as_its_command_line_and_its_connection_password_included_as_its_first_line(

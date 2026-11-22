@@ -1,7 +1,6 @@
 using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 
@@ -32,7 +31,7 @@ public sealed class WorkerRestartTests
     // Concept §5: a worker that does not open is started again with a growing delay, up to retryDelayMax; once one
     // opened, a worker that a run then ends comes back after a tenth again. Each delay is passed exactly: the slot's
     // timer is armed for it and for no less, and the slot starts its next worker once it passed.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_slot_starts_its_worker_again_after_a_delay_that_doubles_up_to_retryDelayMax_and_is_a_tenth_after_a_worker_that_opened()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -67,7 +66,7 @@ public sealed class WorkerRestartTests
 
     // The S9b brief, "Lifetimes": DisposeAsync cancels the pool's token first, so that a slot waiting to start its
     // worker again starts nothing, however far the clock moves then. Every worker started is killed and disposed.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task After_DisposeAsync_a_slot_that_waited_to_start_its_worker_again_starts_nothing()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -96,7 +95,7 @@ public sealed class WorkerRestartTests
     // The S9b brief, "Lifetimes": a worker that a slot starts after DisposeAsync cancelled the pool is killed and
     // disposed at once, and never opened. The fake disposes the pool from the start of the slot's second worker, as
     // the host may dispose it while the task of a slot starts a worker.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_that_a_slot_starts_while_the_pool_is_disposed_is_killed_and_disposed_at_once_and_never_opened()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

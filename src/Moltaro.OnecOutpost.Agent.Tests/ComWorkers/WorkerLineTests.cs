@@ -1,6 +1,5 @@
 using System.Runtime.Versioning;
 using System.Text;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
@@ -45,7 +44,7 @@ public sealed class WorkerLineTests
         """{"size":null,"outcome":{}}""",
     ];
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(ReadyLinesRefused))]
     public async Task A_ready_line_other_than_ready_true_gives_false_and_the_process_ends(string line)
     {
@@ -56,7 +55,7 @@ public sealed class WorkerLineTests
     }
 
     // {"ready":true} with white space up to 1 KiB and one byte more, its LF not counted.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_ready_line_over_1_KiB_gives_false_and_the_process_ends()
     {
         string line = """{"ready":true}""".PadRight(1025);
@@ -67,7 +66,7 @@ public sealed class WorkerLineTests
     }
 
     // The program refuses a command line of one argument and ends at once, before any line.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_end_of_the_output_before_a_ready_line_gives_false()
     {
         using StartedWorker started = StartedWorker.Start("accounting");
@@ -76,7 +75,7 @@ public sealed class WorkerLineTests
         await started.EndedAsync();
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(OutcomeLinesRefused))]
     public async Task An_outcome_line_that_is_not_size_then_outcome_or_whose_size_is_not_an_integer_from_0_gives_null_and_the_process_ends(
         string line)
@@ -89,7 +88,7 @@ public sealed class WorkerLineTests
 
     // The limit is OutcomeLimit plus 64 bytes; the line is one byte longer, its LF not counted, and would be read
     // otherwise.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_line_over_OutcomeLimit_plus_64_bytes_gives_null_and_the_process_ends()
     {
         string line = OutcomeLineOfLength((int)TestLines.OutcomeLimit + 64 + 1);
@@ -100,7 +99,7 @@ public sealed class WorkerLineTests
     }
 
     // The size is given as the line has it, a size of 0 too: the pool compares it with the length of the bytes.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("""{"size":3,"outcome": { "kind" : "x" } }""", 3, """{ "kind" : "x" }""")]
     [InlineData("""{"size":0,"outcome":null}""", 0, "null")]
     public async Task An_outcome_line_of_size_then_outcome_gives_the_size_and_the_exact_bytes_of_the_outcome(
@@ -119,7 +118,7 @@ public sealed class WorkerLineTests
     }
 
     // The largest outcome the executor may give, OutcomeLimit bytes, fits its line within the limit.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_of_OutcomeLimit_bytes_is_read_whole()
     {
         string outcome = "\"" + new string('x', (int)TestLines.OutcomeLimit - 2) + "\"";

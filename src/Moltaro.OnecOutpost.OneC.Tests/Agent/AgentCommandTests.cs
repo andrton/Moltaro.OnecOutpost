@@ -4,7 +4,6 @@ using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
@@ -14,7 +13,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 [SupportedOSPlatform("windows")]
 public sealed class AgentCommandTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_write_and_a_read_through_the_agent_reach_the_test_base_and_return_their_outcomes()
     {
         string parameters = new JsonObject { ["description"] = TestBaseScripts.NewDescription() }.ToJsonString();

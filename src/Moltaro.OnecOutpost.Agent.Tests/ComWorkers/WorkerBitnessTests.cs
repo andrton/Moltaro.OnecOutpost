@@ -3,7 +3,6 @@ using System.Runtime.Versioning;
 using Microsoft.Win32;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
@@ -24,7 +23,7 @@ public sealed class WorkerBitnessTests : IDisposable
         _folder.Dispose();
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("in both views", "x64")]
     [InlineData("only in the view of 32 bits", "x86")]
     public async Task A_worker_runs_the_program_of_the_bitness_for_which_the_connector_is_registered(string registered, string bitness)
@@ -43,7 +42,7 @@ public sealed class WorkerBitnessTests : IDisposable
         Assert.Equal(bitness == "x64" ? x64 : x86, path, ignoreCase: true);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("no connector registered")]
     [InlineData("a program that does not exist")]
     public async Task With_no_connector_registered_or_a_program_that_does_not_exist_the_open_of_a_worker_gives_false(string form)
@@ -65,7 +64,7 @@ public sealed class WorkerBitnessTests : IDisposable
 
     // A start that found no connector registered is followed by one that finds the class registered since, as after an
     // administrator registered the connector while the agent ran.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_launcher_reads_the_registry_at_each_start()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
