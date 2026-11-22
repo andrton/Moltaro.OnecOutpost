@@ -17,7 +17,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Audit;
 // that has an entry in a file that stays: a confirmed goes after the other entries of its command, while a received or
 // an ended may go before its confirmed. Nothing goes when the clock is more than a day away from the time of the
 // verified answer, so a clock moved ahead wipes nothing out.
-// That nothing goes before the first verified answer of a run is the call site's, in S6b.
+// That nothing goes before the first verified answer of a run is the call site's, in S6c.
 public sealed class RetentionTests
 {
     private const int RetentionDays = 1;

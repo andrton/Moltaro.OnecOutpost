@@ -17,7 +17,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Records;
 // ended that matches it, writes again the file of a refused that is not confirmed, and gives a received with neither
 // file nor ended the file of Unknown agent-stopped for a Write or Failed lost for a Read, then its ended. An ended that
 // a start writes carries the duration of the last ended, or null, since the start did not see the run. Afterwards every
-// outbox file belongs to a command that is not confirmed and matches its last entry; that S6b sends each is S6b's.
+// outbox file belongs to a command that is not confirmed and matches its last entry; that S6c sends each is S6c's.
 public sealed class RecoverTests
 {
     private static readonly DateTimeOffset Before = TestTimes.Start.AddHours(-1);

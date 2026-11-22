@@ -215,9 +215,13 @@ internal sealed class MemoryFolder : IAgentFolder
         }
     }
 
+    // The list is shared with the fake workers, which add to it from the tasks of their runs (MemoryDataFolder).
     private void Record(string line, byte[] bytes)
     {
-        _changes.Add(new FolderChange(line, bytes));
+        lock (_changes)
+        {
+            _changes.Add(new FolderChange(line, bytes));
+        }
     }
 
     // A held lock, released once when it is disposed.

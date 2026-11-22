@@ -49,9 +49,12 @@ and its outbox of outcomes in order, each entry and file on the disk before the 
 reserves its poll numbers in the log, so that they grow across restarts. After a restart
 it cuts a torn entry and ends a command that was received without an outcome as Unknown
 for a Write and Failed `lost` for a Read. These parts are tested with a data folder in memory, and on Windows
-against the disk, DPAPI and the access lists. The agent program still uses none of them
-and runs nothing: it sends no poll, runs no command and is not a Windows service yet.
-Those come in the next sprint, so nothing runs a script in 1C through the library yet.
+against the disk, DPAPI and the access lists. The agent also checks each command of a poll
+answer as §7 of `docs/protocol.md` says, and the answer as a whole against the workers it
+declared, and runs a command on a pool of workers bounded by the run limit of its mode;
+this is tested with a fake in place of the COM worker. The agent program still uses none
+of it and runs nothing: it sends no poll, runs no command and is not a Windows service
+yet. Those come in S6c, so nothing runs a script in 1C through the library yet.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from
