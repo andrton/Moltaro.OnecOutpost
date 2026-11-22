@@ -98,7 +98,9 @@ public sealed class WorkerBitnessTests : IDisposable
         using Process process = Process.GetProcessById(pid);
 
         worker.Kill();
-        await process.WaitForExitAsync(cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
+        // The synchronous wait: the asynchronous one keeps a handle of the process open for a moment after its exit,
+        // which keeps its program file locked when the test's folder is removed.
+        Assert.True(process.WaitForExit(TestTimes.Deadline));
 
         return path;
     }
