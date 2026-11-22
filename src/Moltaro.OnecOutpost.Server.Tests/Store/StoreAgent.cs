@@ -53,12 +53,12 @@ internal sealed class StoreAgent
     }
 
     // Records the agent's next poll, which declares the bases given.
-    public Task<PollState> PollAsync(IReadOnlyList<OutpostPollBase> bases, CancellationToken cancellationToken)
+    public async Task<PollState> PollAsync(IReadOnlyList<OutpostPollBase> bases, CancellationToken cancellationToken)
     {
         Number++;
 
         OutpostPollRequest poll = PollRequests.Create(Number, _clock.GetUtcNow(), PollTimeout, bases);
 
-        return _store.RecordPollAsync(Id, poll, Hold, LeaseGrace, ClockSkew, cancellationToken);
+        return (await _store.RecordPollAsync(Id, poll, Hold, LeaseGrace, ClockSkew, cancellationToken)).State;
     }
 }

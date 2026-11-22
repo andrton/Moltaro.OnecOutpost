@@ -30,7 +30,7 @@ internal static class CommandChecks
             CheckLoneSurrogates(parameters);
         }
 
-        CheckNoNullCharacter(written.RootElement);
+        CheckText(written.RootElement);
 
         long size = OutpostCodec.CommandSize(script, written.RootElement);
 
@@ -107,42 +107,23 @@ internal static class CommandChecks
         }
     }
 
-    // No string in the parameters, names of members included, may hold U+0000, which PostgreSQL cannot store. Checked
-    // on the text read back, which holds every string that travels, those of wrapped .NET values included.
-    private static void CheckNoNullCharacter(JsonElement value)
+    // The rules of names and strings of docs/protocol.md §2, which the agent applies to the command alike: no name twice
+    // in one object, the names compared after unescaping, and no name or string with U+0000, which PostgreSQL cannot
+    // store. Checked on the text read back, which holds every string that travels, those of wrapped .NET values
+    // included. jsonb keeps the last value of a name given twice, so without this check a repeat could compare equal to
+    // parameters other than those signed (rule 4).
+    private static void CheckText(JsonElement parameters)
     {
-        switch (value.ValueKind)
+        try
         {
-            case JsonValueKind.Object:
-                foreach (JsonProperty member in value.EnumerateObject())
-                {
-                    CheckNoNullCharacter(member.Name);
-                    CheckNoNullCharacter(member.Value);
-                }
-
-                break;
-
-            case JsonValueKind.Array:
-                foreach (JsonElement item in value.EnumerateArray())
-                {
-                    CheckNoNullCharacter(item);
-                }
-
-                break;
-
-            case JsonValueKind.String:
-                CheckNoNullCharacter(value.GetString()!);
-                break;
+            OutpostJsonReader.CheckText(parameters);
         }
-    }
-
-    private static void CheckNoNullCharacter(string text)
-    {
-        if (text.Contains('\0'))
+        catch (OutpostProtocolException exception)
         {
             throw new ArgumentException(
-                "No string in the parameters may hold U+0000, which PostgreSQL cannot store.",
-                nameof(OutpostReadRequest.Parameters));
+                $"The parameters break the rules of the protocol for names and strings: {exception.Message}",
+                nameof(OutpostReadRequest.Parameters),
+                exception);
         }
     }
 }

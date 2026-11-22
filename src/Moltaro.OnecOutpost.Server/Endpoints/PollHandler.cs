@@ -89,13 +89,15 @@ internal sealed class PollHandler
         // The hold never exceeds the wait of the agent, which its poll timeout bounds (§6.2).
         TimeSpan hold = poll.PollTimeout < _options.PollTimeout ? poll.PollTimeout : _options.PollTimeout;
 
-        PollState recorded = await _store.RecordPollAsync(
+        PollRecord record = await _store.RecordPollAsync(
             agentId,
             poll,
             hold,
             _options.LeaseGrace,
             _options.ClockSkew,
             context.RequestAborted);
+
+        PollState recorded = record.State;
 
         if (recorded.Revoked)
         {

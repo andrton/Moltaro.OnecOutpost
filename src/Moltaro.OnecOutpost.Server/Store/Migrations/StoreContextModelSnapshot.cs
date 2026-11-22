@@ -108,6 +108,96 @@ internal sealed class StoreContextModelSnapshot : ModelSnapshot
             claim.ToTable("base_claims", _schema);
         });
 
+        modelBuilder.Entity("Moltaro.OnecOutpost.Server.Store.CommandRow", command =>
+        {
+            command.Property<Guid>("Id")
+                .HasColumnType("uuid")
+                .HasColumnName("id");
+
+            command.Property<Guid>("AgentId")
+                .HasColumnType("uuid")
+                .HasColumnName("agent_id");
+
+            command.Property<string>("BaseKey")
+                .IsRequired()
+                .HasColumnType("text")
+                .HasColumnName("base_key");
+
+            command.Property<byte[]>("Bytes")
+                .IsRequired()
+                .HasColumnType("bytea")
+                .HasColumnName("bytes");
+
+            command.Property<string>("CallerKey")
+                .HasColumnType("text")
+                .HasColumnName("caller_key");
+
+            command.Property<DateTimeOffset>("Deadline")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("deadline");
+
+            command.Property<DateTimeOffset?>("EndedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("ended_at");
+
+            command.Property<int>("Mode")
+                .HasColumnType("integer")
+                .HasColumnName("mode");
+
+            command.Property<byte[]>("Outcome")
+                .HasColumnType("bytea")
+                .HasColumnName("outcome");
+
+            command.Property<string>("OutcomeCode")
+                .HasColumnType("text")
+                .HasColumnName("outcome_code");
+
+            command.Property<int?>("OutcomeKind")
+                .HasColumnType("integer")
+                .HasColumnName("outcome_kind");
+
+            command.Property<int>("OutcomeLimit")
+                .HasColumnType("integer")
+                .HasColumnName("outcome_limit");
+
+            command.Property<int>("Phase")
+                .HasColumnType("integer")
+                .HasColumnName("phase");
+
+            command.Property<TimeSpan?>("RunLimit")
+                .HasColumnType("interval")
+                .HasColumnName("run_limit");
+
+            command.Property<long>("Sequence")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("bigint")
+                .HasColumnName("sequence");
+
+            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(command.Property<long>("Sequence"));
+
+            command.Property<byte[]>("Signature")
+                .IsRequired()
+                .HasColumnType("bytea")
+                .HasColumnName("signature");
+
+            command.Property<TimeSpan>("Skew")
+                .HasColumnType("interval")
+                .HasColumnName("skew");
+
+            command.HasKey("Id");
+
+            command.HasIndex("EndedAt");
+
+            command.HasIndex("AgentId", "Sequence")
+                .HasFilter("outcome_kind IS NULL");
+
+            command.HasIndex("BaseKey", "CallerKey")
+                .IsUnique()
+                .HasFilter("caller_key IS NOT NULL AND (outcome_kind IS NULL OR outcome_kind NOT IN (3, 5))");
+
+            command.ToTable("commands", _schema);
+        });
+
         modelBuilder.Entity("Moltaro.OnecOutpost.Server.Store.PairingTokenRow", token =>
         {
             token.Property<Guid>("AgentId")
@@ -140,6 +230,15 @@ internal sealed class StoreContextModelSnapshot : ModelSnapshot
         modelBuilder.Entity("Moltaro.OnecOutpost.Server.Store.BaseClaimRow", claim =>
         {
             claim.HasOne("Moltaro.OnecOutpost.Server.Store.AgentRow", null)
+                .WithMany()
+                .HasForeignKey("AgentId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+        });
+
+        modelBuilder.Entity("Moltaro.OnecOutpost.Server.Store.CommandRow", command =>
+        {
+            command.HasOne("Moltaro.OnecOutpost.Server.Store.AgentRow", null)
                 .WithMany()
                 .HasForeignKey("AgentId")
                 .OnDelete(DeleteBehavior.Cascade)

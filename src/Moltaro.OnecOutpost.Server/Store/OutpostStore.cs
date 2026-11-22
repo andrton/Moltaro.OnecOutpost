@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
 using Moltaro.OnecOutpost.Protocol.Messages;
+using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Npgsql;
 
 namespace Moltaro.OnecOutpost.Server.Store;
@@ -205,7 +206,10 @@ internal sealed class OutpostStore
     // row holds that row until the commit, so the polls of one agent, its revocation and the releases of its keys wait
     // for each other on it. The claims are inserted in ordinal order of their keys, so two polls that claim the same
     // keys never wait for each other in a cycle.
-    public async Task<PollState> RecordPollAsync(
+    //
+    // The reconcile of `received` that the newest poll makes after its claims comes with the commands of S5; until
+    // then Expired is empty.
+    public async Task<PollRecord> RecordPollAsync(
         Guid agentId,
         OutpostPollRequest poll,
         TimeSpan hold,
@@ -245,7 +249,7 @@ internal sealed class OutpostStore
 
             await transaction.CommitAsync(cancellationToken);
 
-            return older;
+            return new PollRecord(older, []);
         }
 
         await context.AgentBases.Where(agentBase => agentBase.AgentId == agentId).ExecuteDeleteAsync(cancellationToken);
@@ -267,7 +271,7 @@ internal sealed class OutpostStore
 
         await transaction.CommitAsync(cancellationToken);
 
-        return newest with { Newest = null };
+        return new PollRecord(newest with { Newest = null }, []);
     }
 
     // The state of the agent for the answer to its poll of this number, in one statement that changes nothing and takes
@@ -355,7 +359,10 @@ internal sealed class OutpostStore
     //
     // A poll of the agent that commits first has its claims deleted here, since this statement waits for the agent row
     // and the deletion of the claims comes after it; a poll that comes later finds the agent Revoked and claims nothing.
-    public async Task<bool> RevokeAgentAsync(Guid agentId, CancellationToken cancellationToken)
+    //
+    // The end of the agent's commands after its claims (rule 13) comes with the commands of S5; until then Ended is
+    // empty.
+    public async Task<Revocation> RevokeAgentAsync(Guid agentId, CancellationToken cancellationToken)
     {
         await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
 
@@ -374,7 +381,7 @@ internal sealed class OutpostStore
 
         await transaction.CommitAsync(cancellationToken);
 
-        return revoked == 1;
+        return new Revocation(revoked == 1, []);
     }
 
     // Frees a key whose holder's newest poll no longer declares it, in one short transaction (rule 14).
@@ -427,6 +434,76 @@ internal sealed class OutpostStore
         }
 
         return stillClaimed ? OutpostReleaseResultEnum.StillDeclared : OutpostReleaseResultEnum.NotHeld;
+    }
+
+    // The take of a poll, in one short transaction: while the agent is Paired and the poll its newest, under the lock of
+    // the agent row, at most `free` commands of each mode of the poll, oldest first, skipping rows another transaction
+    // holds, while their entries fit `room`, the first always; they become HandedOut with the run limit of their mode
+    // (rules 8, 10, 11, 14). The state of the poll is read in the same transaction.
+    public Task<PollTake> TakeCommandsAsync(
+        Guid agentId,
+        OutpostPollRequest poll,
+        long room,
+        CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // The command that holds the base and caller key, in one short transaction that first makes it Expired when it is
+    // Waiting with no outcome and its deadline has passed; null when none holds it (rule 4).
+    public Task<CommandMatch?> FindCallerKeyAsync(
+        string baseKey,
+        string callerKey,
+        OutpostModeEnum mode,
+        string script,
+        string parameters,
+        CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // The holder of a base key, in one statement; null when no agent holds it.
+    public Task<BaseHolder?> FindBaseAsync(string baseKey, CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // Creates the command, or finds the one that holds its base and caller key, in one short transaction under the lock
+    // FOR SHARE of its agent row while the agent is Paired and connected; null otherwise (rules 4, 6, 13).
+    public Task<CommandMatch?> CreateCommandAsync(CommandRow command, CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // Ends the command when time made its end due, then reads it, in one short transaction (rules 7, 11).
+    public Task<CommandPass> PassCommandAsync(Guid commandId, CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // The mode and the outcome limit of a command; null when there is none of that identity.
+    public Task<CommandLimits?> FindCommandLimitsAsync(Guid commandId, CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // Keeps the outcome of the agent, in one statement, when the command is the agent's, not Waiting, and has no outcome
+    // or a replaceable one; true when it changed the row (rule 11).
+    public Task<bool> KeepOutcomeAsync(
+        Guid agentId,
+        Guid commandId,
+        OutpostOutcomeMessage message,
+        ReadOnlyMemory<byte> outcome,
+        CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
+    }
+
+    // Deletes the commands that ended a retention ago or more, and those with no outcome whose end by time was due that
+    // long ago, in statements of at most 1 000 rows that skip locked rows; gives the number deleted.
+    public Task<int> PurgeCommandsAsync(TimeSpan retention, CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException();
     }
 
     // Claims each key that no agent holds for the agent, in one statement, in ordinal order of the keys (rule 14). Of two

@@ -23,7 +23,7 @@ public sealed class RevocationTests(PostgreSqlFixture postgres) : IClassFixture<
         StoreAgent next = await StoreAgent.PairAsync(store, clock, cancellationToken);
         await revoked.PollAsync([ReadAndWrite("accounting")], cancellationToken);
 
-        Assert.True(await store.RevokeAgentAsync(revoked.Id, cancellationToken));
+        Assert.True((await store.RevokeAgentAsync(revoked.Id, cancellationToken)).Revoked);
 
         AgentRow? row = await schema.FindAgentAsync(revoked.Id, cancellationToken);
         Assert.NotNull(row);
@@ -47,11 +47,11 @@ public sealed class RevocationTests(PostgreSqlFixture postgres) : IClassFixture<
         OutpostStore store = new(schema.ConnectionString, schema.Name, clock);
         StoreAgent agent = await StoreAgent.PairAsync(store, clock, cancellationToken);
         await agent.PollAsync([ReadOnly("accounting")], cancellationToken);
-        Assert.True(await store.RevokeAgentAsync(agent.Id, cancellationToken));
+        Assert.True((await store.RevokeAgentAsync(agent.Id, cancellationToken)).Revoked);
         SchemaSnapshot before = await schema.TakeSnapshotAsync(cancellationToken);
 
-        Assert.False(await store.RevokeAgentAsync(agent.Id, cancellationToken));
-        Assert.False(await store.RevokeAgentAsync(Guid.NewGuid(), cancellationToken));
+        Assert.False((await store.RevokeAgentAsync(agent.Id, cancellationToken)).Revoked);
+        Assert.False((await store.RevokeAgentAsync(Guid.NewGuid(), cancellationToken)).Revoked);
 
         Assert.Equal(before.Lines, (await schema.TakeSnapshotAsync(cancellationToken)).Lines);
     }
@@ -69,7 +69,7 @@ public sealed class RevocationTests(PostgreSqlFixture postgres) : IClassFixture<
         DateTimeOffset expiresAt = clock.GetUtcNow() + TimeSpan.FromMinutes(15);
         await store.CreatePairingTokenAsync(agentId, "Test agent", secret, expiresAt, cancellationToken);
 
-        Assert.True(await store.RevokeAgentAsync(agentId, cancellationToken));
+        Assert.True((await store.RevokeAgentAsync(agentId, cancellationToken)).Revoked);
 
         AgentRow? row = await schema.FindAgentAsync(agentId, cancellationToken);
         Assert.NotNull(row);

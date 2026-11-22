@@ -56,7 +56,9 @@ internal sealed class OutpostServer : IOutpostServer
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return await _store.RevokeAgentAsync(agentId, cancellationToken);
+        Revocation revocation = await _store.RevokeAgentAsync(agentId, cancellationToken);
+
+        return revocation.Revoked;
     }
 
     public Task<OutpostReleaseResultEnum> ReleaseBaseAsync(string baseKey, CancellationToken cancellationToken)
