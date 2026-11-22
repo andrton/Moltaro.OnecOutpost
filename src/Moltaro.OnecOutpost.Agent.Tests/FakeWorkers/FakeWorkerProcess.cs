@@ -13,9 +13,10 @@ namespace Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 // - a run gives the outcome of its FakeRun at once, with its size, or null at once; a run that overruns gives nothing
 //   until Kill ends the process, and then null;
 // - an open or a run that waits is cancelled by its token;
-// - a run of a process that has ended gives null at once.
-// Kill may run beside an open or a run, from another thread. It is idempotent: only the first ends the process and is a
-// line. Its waits are completed asynchronously, so that no code of the caller runs inside the fake's lock.
+// - an open of a process that has ended gives false at once, and a run null at once.
+// Kill completes a pending open with false and a pending run with null, and may run beside either and beside another
+// Kill, from any thread. It is idempotent: only the first ends the process and is a line. Its waits are completed
+// asynchronously, so that no code of the caller runs inside the fake's lock.
 internal sealed class FakeWorkerProcess : IWorkerProcess
 {
     private readonly FakeWorkerLauncher _launcher;

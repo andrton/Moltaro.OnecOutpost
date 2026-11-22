@@ -24,7 +24,17 @@ internal sealed class MemoryDataFolder
 
     public MemoryFolder Outcomes { get; }
 
-    public IReadOnlyList<FolderChange> Changes => _changes;
+    // The changes made so far, copied under the lock of the list.
+    public IReadOnlyList<FolderChange> Changes
+    {
+        get
+        {
+            lock (_changes)
+            {
+                return [.. _changes];
+            }
+        }
+    }
 
     public AgentFolders Folders => new(Root, Audit, Outcomes);
 

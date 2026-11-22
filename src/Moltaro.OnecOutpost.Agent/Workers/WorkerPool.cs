@@ -120,8 +120,8 @@ internal sealed partial class WorkerPool : IAsyncDisposable
             worker.Process.Kill();
         }
 
-        // A kill ends a pending open and a pending run, so every task of a worker ends; what a run gave belongs to its
-        // caller, and nothing uses a process once it is disposed.
+        // Kill completes a pending open with false and a pending run with null (IWorkerProcess), so every task of a
+        // worker ends; what a run gave belongs to its caller, and nothing uses a process once it is disposed.
         IEnumerable<Task> tasks = workers.SelectMany(worker => new[] { worker.Opening, worker.Running });
         await Task.WhenAll(tasks).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 
@@ -274,7 +274,19 @@ internal sealed partial class WorkerPool : IAsyncDisposable
 
         using CancellationTokenSource race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        Task<(long Size, byte[] Outcome)?> run = worker.Process.RunAsync(line, race.Token);
+        Task<(long Size, byte[] Outcome)?> run;
+
+        // A token already cancelled may end RunAsync before it returns a task; the worker is then killed all the same.
+        try
+        {
+            run = worker.Process.RunAsync(line, race.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            worker.Drop();
+            throw;
+        }
+
         Task limit = Task.Delay(worker.RunLimit, _clock, race.Token);
 
         Task first = await Task.WhenAny(run, limit);

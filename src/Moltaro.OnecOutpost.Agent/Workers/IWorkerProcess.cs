@@ -11,6 +11,7 @@ internal interface IWorkerProcess : IDisposable
     // process ended or broke its line first.
     Task<(long Size, byte[] Outcome)?> RunAsync(WorkerCommandLine command, CancellationToken cancellationToken);
 
-    // Ends the process and completes a pending RunAsync with null. It may run beside RunAsync, and is idempotent.
+    // Ends the process, and completes a pending OpenAsync with false and a pending RunAsync with null. It may run beside
+    // either and beside another Kill, from any thread, and is idempotent.
     void Kill();
 }
