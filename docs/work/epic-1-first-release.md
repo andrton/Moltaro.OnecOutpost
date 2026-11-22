@@ -1233,7 +1233,7 @@ The release
 | S5a | Commands in the store | Full | Done, 22 November 2026: the commands table with the third migration `Commands`, the store operations of commands and outcomes with their tests and races against PostgreSQL, revocation ending the agent's commands in its transaction, and parameters with a name twice refused at the call. Read, Write and `outcome` still refuse. The study read actions/runner and Halibut; the internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds and left P4s, listed for S5b in its brief. Of the drafts of the public contract that the S5 brief lists for the owner, S5a makes two: parameters with a name twice refused, and a store database in UTF8 |
 | S5b | The calls, the hand-out, `outcome` and the signals | Full | Done, 22 November 2026: `ReadAsync` and `WriteAsync` create a signed command, wake the agent's poll through the signals and wait for its outcome; the poll hands commands out up to `free` and 64 MiB; the `outcome` request takes the agent's outcome, with the signed 413 `result-too-large`; the purge removes ended commands. All tested over loopback HTTP with the test agent. The tests ran on the internal contract approved for S5; the code review took three rounds, its P3 of round 1 (a second §2 read of an outcome, 464 → 336 MiB at the peak for 64 MiB) and a P2 of round 2 (sets that did not honor cancellation) fixed; the P4s left are listed in the S5 brief. The other two drafts of the public contract that the S5 brief lists for the owner are S5b's |
 | S6a | The agent's files | Full | Done, 22 November 2026: the policy with the changes carried over from S2, `agent.json` and the secrets read through DPAPI for the machine, the access lists of the data folder, the audit log written in order to the disk with its lock, torn entries, start and retention, the outbox, the order of a command's records, the reservation of poll numbers and the start after a restart; the agent program still runs nothing. The internal contract of S6 was reviewed in two rounds and approved under PQ2; the code review took three rounds (a P1 and a P2, then a P2 of retention, then a P3 moved to S8 by the planner). What it changes in the public contract is listed in the S6 brief for the owner |
-| S6b | The agent's checks of commands and poll answers, its workers and run limits | Full | Not started |
+| S6b | The agent's checks of commands and poll answers, its workers and run limits | Full | Done, 22 November 2026: `CommandChecks` with the checks of rule 1 in the order of §7 and the checks of a poll answer, the worker boundary with its fake, and `WorkerPool` with workers, the deadline to open, run limits, the size comparison of S9 and the executor's object; no HTTP, and the agent program still runs nothing. The contract of S6b and S6c was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P3 on what `Kill` promises, fixed), with P4s left in the S6 brief |
 | S6c | The agent's loop: the transport, pairing, polls, outcomes, the host and the service | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
@@ -3827,6 +3827,18 @@ documents step.
     sent through a hop that strips `Expect`, and nobody has a reason to change it. Since
     S6, until permanent. The coordinator enters it under "Approved, not in force yet"
     once the owner approves.
+- **Left by S6b's review** (P4, the coordinator, 22 November 2026), for S6c where its
+  code meets them, otherwise S8:
+  - untested behaviors whose code is right: `run-limit` whatever the run then gives; a
+    late open that answers true never becomes free; a Write worker's Unknown
+    `connection-lost` drops it; the executor's Failed `result-type` and `result-too-large`
+    sent byte for byte; a synchronous `OperationCanceledException` of `RunAsync`;
+  - the agent's own outcome of a mode (Failed for a Read, Unknown for a Write) is chosen in
+    both `WorkerPool` and `CommandRecords`;
+  - `race.Cancel()` after a completed open or run also cancels the token the process was
+    given;
+  - the rethrown cancellation of a synchronous `RunAsync` carries the linked token, not
+    the caller's.
 - **Left by S6a's review** (22 November 2026). The code review took three rounds. Its
   last finding, a P3, was moved to S8 by the planner, 22 November 2026: in
   `AuditLog.RemoveExpired` the rule that a `confirmed` stays while its command has
