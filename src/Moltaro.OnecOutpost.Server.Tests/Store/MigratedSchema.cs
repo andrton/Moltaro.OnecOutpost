@@ -71,6 +71,32 @@ internal sealed class MigratedSchema
         return claim?.AgentId;
     }
 
+    public async Task<CommandRow?> FindCommandAsync(Guid commandId, CancellationToken cancellationToken)
+    {
+        await using StoreContext context = StoreContextFactory.Create(ConnectionString, Name);
+
+        return await context.Commands.SingleOrDefaultAsync(command => command.Id == commandId, cancellationToken);
+    }
+
+    // Every command of the schema, by its sequence.
+    public async Task<IReadOnlyList<CommandRow>> ListCommandsAsync(CancellationToken cancellationToken)
+    {
+        await using StoreContext context = StoreContextFactory.Create(ConnectionString, Name);
+
+        return await context.Commands.OrderBy(command => command.Sequence).ToListAsync(cancellationToken);
+    }
+
+    // Inserts commands as they are given, the sequence generated, where a test needs more of them than its subject
+    // would take the time to create one by one.
+    public async Task InsertCommandsAsync(IReadOnlyList<CommandRow> commands, CancellationToken cancellationToken)
+    {
+        await using StoreContext context = StoreContextFactory.Create(ConnectionString, Name);
+
+        context.Commands.AddRange(commands);
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     // Every row of every table of the schema, as SchemaSnapshot gives them: a test that states that a request or an
     // operation changes nothing compares the lines of two of them.
     public Task<SchemaSnapshot> TakeSnapshotAsync(CancellationToken cancellationToken)

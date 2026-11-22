@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Commands;
 
@@ -90,6 +91,21 @@ public sealed class WriteArgumentTests : IAsyncDisposable
             CallerKey = "invoice-42",
             Script = "Result = 1;",
             Parameters = JsonNode.Parse("""{ "text": "a\u0000b" }""")!.AsObject(),
+        };
+
+        Assert.Throws<ArgumentException>(nameof(OutpostWriteRequest.Parameters), () => Call(request));
+    }
+
+    // The places of a name given twice are stated in full through ReadAsync, which shares the check.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public void Parameters_with_a_name_twice_in_one_object_are_refused_with_the_name_of_their_property()
+    {
+        OutpostWriteRequest request = new()
+        {
+            BaseKey = "accounting",
+            CallerKey = "invoice-42",
+            Script = "Result = 1;",
+            Parameters = JsonNode.Parse("""{ "number": "2026/42", "number": "2026/43" }""")!.AsObject(),
         };
 
         Assert.Throws<ArgumentException>(nameof(OutpostWriteRequest.Parameters), () => Call(request));
