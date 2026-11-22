@@ -738,6 +738,10 @@ public sealed record OutpostMigrationScript(string Name, string Sql);
 The agent keeps everything in one folder, `%ProgramData%\Moltaro.OnecOutpost`: the data
 folder.
 
+Text marked *(S6)* holds as a draft of the contract, until the owner overturns it: the
+changes "Carried over from S2" that S6 builds, and the list "What S6 changes in the public
+contract", both in [S6's brief](#s6--the-agent).
+
 - **The data folder admits nobody else.** The console's `install` creates it with
   inheritance off:
   - Administrators and SYSTEM have full control;
@@ -765,8 +769,9 @@ folder.
 ```json
 {
   "auditRetentionDays": 90,
-  "proxy": "http://proxy.local:3128",
+  "proxy": "http://proxy.example.com:3128",
   "retryDelayMax": "00:00:30",
+  "requestTimeout": "00:05:00",
   "bases": [
     {
       "key": "accounting",
@@ -787,9 +792,10 @@ folder.
 | Member | Rule |
 | --- | --- |
 | `auditRetentionDays` | 1 to 3650; 90 when absent |
-| `proxy` | The HTTP proxy through which the agent reaches the server, as an absolute `http` URL. When absent, the agent connects directly. A proxy that asks for authentication gets the Windows credentials of the agent's account, which on the network are those of the computer |
-| `retryDelayMax` | The longest delay between attempts after an error, for the connection to the server and for starting a COM worker again. The first delay is a tenth of it. In the form of `runLimit`, from 1 second to 1 hour; 30 seconds when absent |
-| `bases` | At least one base; the keys are unique |
+| `proxy` | The HTTP proxy through which the agent reaches the server, as an absolute `http` URL. When absent, the agent connects directly. *(S6)* A URL with a user or a password is refused (Q7). A proxy that asks for authentication is offered the Windows credentials of the agent's account, which on the network are those of the computer, by Kerberos only, never by NTLM, so a machine outside a domain reaches only a proxy that asks for no credentials |
+| `retryDelayMax` | The longest delay between attempts after an error, for the connection to the server and for starting a COM worker again. The first delay is a tenth of it. *(S6)* A tenth of it is also the wait after an answer to an older poll (§6.2 of `docs/protocol.md`). In the form of `runLimit`, from 1 second to 1 hour; 30 seconds when absent |
+| `requestTimeout` | *(S6)* The agent's wait for an answer to `pair` or `outcome`, and for the body of a poll answer. In the form of `runLimit`, from 10 seconds to 1 hour; 5 minutes when absent |
+| `bases` | At least one base, *(S6)* at most 256; the keys are unique |
 | `key` | The rule of base keys |
 | `server`, `database` | The 1C cluster, with its port when it is not the default, and the database name. Either both, or `file` |
 | `file` | The folder of a file database. Either this, or `server` and `database` |
@@ -804,8 +810,11 @@ folder.
   type, a member set to `null`, or a value out of its rule makes the whole file invalid;
   an empty or white-space string is out of the rule of `server`, `database`, `file` and
   `account` (Q1), and a lone surrogate, escaped in a string or in a member name, is out of
-  the rule of every string (Q6). The agent then serves nothing and records why in the audit log. JSON
-  comments are not allowed.
+  the rule of every string (Q6). JSON comments are not allowed. The agent then serves
+  nothing and records why in the audit log. *(S6)* It records `started` with an error and
+  `policy` with `valid` false, and stops; nothing is polled until a start with a valid
+  policy, and the outbox waits on the disk meanwhile. A mode that the policy serves without
+  its password in `secrets.dat` stops the start too.
 - **The error says clearly where and what** (Q1): the path of the member, such as
   `bases[1].read.workers`, what is wrong with it, and what is expected there. For example:
   `bases[0].server: the value is empty; expected the 1C cluster address such as
@@ -814,6 +823,8 @@ folder.
   characters, each Unicode scalar value counting as one. The error never repeats a string
   value of the file, which may hold a secret such as a password in the URL of the proxy
   (principle 9); it names the kind of a wrong value instead, such as empty or a number.
+  *(S6)* The file is read as UTF-8, a byte order mark skipped and not counted in the
+  columns; bytes that are not UTF-8 make it invalid, with an empty path.
 - **The policy is read when the agent starts.** A change takes effect when the service is
   restarted.
 
@@ -824,16 +835,17 @@ Each line is one JSON object in UTF-8, written and flushed before the agent goes
 
 | `entry` | Further members | When |
 | --- | --- | --- |
-| `started` | `version`, `error` (when it stops at once) | The agent started |
+| `started` | `version`, *(S6)* `withoutSafeMode` (the keys of the bases whose Writes run without safe mode, an array, empty when there is none and when there is an `error`), `error` (when it stops at once) | The agent started |
 | `policy` | `valid`, `error` (when not valid) | The agent read its policy |
 | `connection` | `state` (`connected` or `lost`), `reason` (when lost) | The agent's connection to the server changed |
 | `bases` | `held` (the keys the server granted), `claimed` (the keys another agent holds) | The server's answer changed what this agent holds (rule 14) |
-| `received` | `command`, `base`, `mode` (`read` or `write`), `callerKey` (or `null`), `script`, `parameters` (an object or `null`), `issued`, `deadline` | A command passed the checks of rule 1, before it runs |
-| `refused` | `command` (or `null`), `base` (or `null`), `mode` (or `null`), `code` | A command failed a check of rule 1. For a signature that did not verify, `code` is `signature` and the other members are `null`, since nothing in the command can be trusted |
-| `ended` | `command`, `outcome` (`succeeded`, `failed` or `unknown`), `code` (or `null`), `durationMs` | A command ended (rules 3, 5, 9). A second `ended` of the same command replaces the first; it is written only when the outcome was refused for its size, as below |
+| `received` | `command`, `base`, `mode` (`read` or `write`), `callerKey` (or `null`), `script`, `parameters` (an object, *(S6)* always), `issued`, `deadline` | A command passed the checks of rule 1, before it runs |
+| `refused` | `command` (or `null`), `base` (or `null`), `mode` (or `null`), `code` | A command failed a check of rule 1. For a signature that did not verify, `code` is `signature` and the other members are `null`, since nothing in the command can be trusted. *(S6)* The same holds for `form`, verified bytes that name no command. A `refused` of a command ends it as `ended` does |
+| `ended` | `command`, `outcome` (`succeeded`, `failed` or `unknown`), `code` (or `null`), `durationMs` | A command ended (rules 3, 5, 9). *(S6)* A later `ended` of the same command replaces an earlier one; it is written only after the outcome was refused for its size, as below, and at a start, when the outbox file no longer matches the last one. `durationMs` is `null` in an `ended` that a start writes; a second `ended` for the size carries the duration of the first |
 | `confirmed` | `command` | The server confirmed the outcome (rule 11) |
+| `reservation` | *(S6)* `agent`, `below` | Before the agent sends a poll number at or above the `below` of its last reservation, or any number while it knows none of its identity: the bound below which it sends its numbers (§6.2 of `docs/protocol.md`) |
 
-- *(S2)* **Writing.** The agent alone writes the log, and holds `audit\lock` open without
+- *(S6)* **Writing.** The agent alone writes the log, and holds `audit\lock` open without
   sharing for its whole run. It writes one entry at a time, with the writer of §2 of
   `docs/protocol.md`: no white space between tokens, text outside ASCII as it is, and
   `parameters` written again rather than copied. Each entry ends with LF, counts as
@@ -842,26 +854,41 @@ Each line is one JSON object in UTF-8, written and flushed before the agent goes
   `docs/protocol.md` says.
 - **The outbox.** The result of a command is not in the audit log. Before the agent records
   `ended`, it writes and flushes the outcome to `outcomes\`. The file is removed after
-  `confirmed`.
-  - *(S2)* A file of the outbox is written under a temporary name and renamed over the
+  `confirmed`. *(S6)* A `refused` of a command is written before the file of its Refused
+  outcome, which is kept until `confirmed` too.
+  - *(S6)* A file of the outbox is written under a temporary name and renamed over the
     old one, both through to the disk, before the agent goes on, and `confirmed` is on
     the disk before its file is removed. A temporary file left at a start is removed.
-  - *(S2)* The agent reads a file of the outbox with `ReadOutcome` of §8 for the mode of
-    its command, which accepts everything its writer writes. A file it cannot read, and a
-    command with an `ended` but neither its file nor its `confirmed`, make it record
-    `started` with an error and stop, as a line of the log it cannot read does.
+  - *(S6)* The agent reads a file of the outbox with `ReadOutcome` of §8 for the mode of
+    its command, which accepts everything its writer writes. A file it cannot read, a file
+    of a command that the audit log does not name, and a command with an `ended` but
+    neither its file nor its `confirmed`, make it record `started` with an error and stop,
+    as a line of the log it cannot read does. A failed read, write or removal of a file of
+    the outbox stops the agent as a failed write of the log does.
 - **At a restart.** A file without its `ended` is recorded as `ended` and sent. A
   `received` without a file or an `ended` becomes Unknown or `lost` (rule 3). The audit log
   stays the one record of what happened (D7); the outbox only holds what must still be
-  sent. *(S2)* A file whose kind and code differ from the last `ended` or `refused` of its
+  sent. *(S6)* A file whose kind and code differ from the last `ended` or `refused` of its
   command, as after a stop between the replacement of a file and its second `ended`, gets
-  an `ended` that matches it.
+  an `ended` that matches it. The file of a confirmed command is removed, and a `refused`
+  of a command, not confirmed, without its file gets its file again from its code.
 - **An outcome refused for its size.** The server refuses it with its protocol code, or
   something on the path refuses it with HTTP 413. The agent then replaces the outbox file
   with Unknown `result-too-large` for a Write, or Failed `result-too-large` for a Read,
   records a second `ended` with it, and sends it.
 - **Retention.** Files older than `auditRetentionDays` are removed, but never one younger
-  than a day.
+  than a day, *(S6)* by the agent's clock when it wrote them:
+  - *(S6)* a file's age counts from its last entry, and a file is removed once it is older
+    than `auditRetentionDays` plus a day, so that with that day of tolerance it is still
+    older than `auditRetentionDays` by the server's clock;
+  - *(S6)* no file is removed while it holds an entry of a command whose outcome is not
+    confirmed, or the highest `reservation` of the agent's identity;
+  - *(S6)* retention runs only right after a verified poll answer of the current run, and
+    only when the agent's clock is within a day of that answer's `time`. An agent that has
+    had no such answer since it started, or whose clock is further off, removes nothing,
+    so a clock moved ahead wipes nothing out;
+  - *(S6)* entries written while the agent's clock was behind count as older by that
+    much, and may be removed early once the clock is right.
 
 ### Internal types of S1
 

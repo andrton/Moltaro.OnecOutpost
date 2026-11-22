@@ -11,8 +11,8 @@ Contract stage. The [concept](docs/concept.md) is agreed, and the first epic, up
 first release, is under way in [current work](docs/work/README.md). The public contract of
 its first stage exists in code: the types and members of the server library, with their
 documentation. The checks work: the options of the server, the arguments of every call,
-the outcome factories, and the rules of the agent's local policy file, which the agent
-program does not read yet. The protocol assembly holds the codec of the
+the outcome factories, and the rules of the agent's local policy file. The protocol
+assembly holds the codec of the
 [wire protocol](docs/protocol.md): its messages, the signatures of commands, requests and
 answers, and the pairing proof, with their tests. The COM worker runs scripts in 1C: it
 holds an external connection to one base and runs each command through the executor, an
@@ -38,11 +38,20 @@ Commands work on the server, against an agent that speaks the protocol. `ReadAsy
 wake the agent's poll through Moltaro.Signals; the poll hands the command out, the
 `outcome` request takes the agent's outcome, and the call is woken and returns it. The
 server keeps one command per base and caller key, and a repeat returns its outcome; that a
-Write runs once also needs the agent's audit log, which comes with the agent program. A
-command that no poll took in time ends as Expired, and revoking an agent ends its
-commands. All of this is tested over loopback HTTP with a test agent. The agent program,
-which will poll, check the commands and run them through the COM worker, comes in a later
-sprint, so nothing runs a script in 1C through the library yet.
+Write runs once also needs the agent's audit log. A command that no poll took in time ends
+as Expired, and revoking an agent ends its commands. All of this is tested over loopback
+HTTP with a test agent.
+
+The agent keeps its files. At a start it checks that the access lists of its data folder
+admit nobody else, reads `policy.json`, `agent.json` with its identity and the pinned
+server key, and the secrets, encrypted with DPAPI for the machine. It writes its audit log
+and its outbox of outcomes in order, each change on the disk before the next, and
+reserves its poll numbers in the log, so that they grow across restarts. After a restart
+it cuts a torn entry and ends a command that was received without an outcome as Unknown
+for a Write and Failed `lost` for a Read. These parts are tested with a data folder in memory, and on Windows
+against the disk, DPAPI and the access lists. The agent program still uses none of them
+and runs nothing: it sends no poll, runs no command and is not a Windows service yet.
+Those come in the next sprint, so nothing runs a script in 1C through the library yet.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from
