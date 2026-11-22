@@ -9,7 +9,7 @@ approves it with the lists "What S2 changed in the public contract" and "What S4
 in the public contract" of the [epic](work/epic-1-first-release.md). The codec of the
 protocol assembly reads and writes its messages, its signatures and the pairing proof. The
 server's endpoints serve `pair`, and `poll` without commands; an `outcome` passes the
-checks of §9 and its body is read, and then it ends in a 500, since commands do not exist
+checks of §9 before the body and its body is read, and then it ends in a 500, since commands do not exist
 yet. No agent sends the protocol yet.
 
 ## 1. Overview
@@ -314,8 +314,9 @@ on its machine; the application revokes it and creates a new token.
   it poll in a busy loop.
 - **`bases`** gives, as of the moment of the answer, in `held` the keys the agent holds,
   and in `claimed` the keys it declared that it does not hold at that moment: those that
-  another agent holds (rule 14), and any that no agent holds, freed during the hold by a
-  release or a revocation, which the agent's next poll claims. Both lists hold declared
+  another agent holds (rule 14), and any that no agent holds, freed since the agent's
+  newest poll by a release or a revocation: the next poll of an agent that declares it
+  claims it. Both lists hold declared
   keys only, and every key that the newest poll declared is in exactly one of the two.
 - **`commands`**: each holds the exact bytes of a command (§7) and the server's signature
   over them. An answer holds no more commands than the sum of `free` in its poll, and none
@@ -506,14 +507,15 @@ as it travels, every escape counted as it is written:
 | 401 | `signature` | The request's signature does not verify |
 | 413 | `result-too-large` | An `outcome` beyond its limit (§6.3) |
 
-**Unsigned answers**, sent before the library reads the body, or for `pair`:
+**Unsigned answers**, sent before the library reads the body except where a row says
+otherwise, or for `pair`:
 
 | Status | Body | When |
 | --- | --- | --- |
 | 400 | `{"code":"protocol-version"}` | The path names a version the server does not speak. Every later version keeps this form |
 | 400 | None | A header breaks §4, or the request has a `Content-Encoding` |
 | 401 | None | `Outpost-Agent` names no known agent, or one that is still pending and so has no key |
-| 403 | None | The agent is revoked (rule 13). A poll whose agent was revoked after its headers were checked gets it after its body was read: when the poll is recorded, or when its hold ends. Anyone who knows an agent's identity can learn this |
+| 403 | None | The agent is revoked (rule 13). A poll whose agent was revoked after it was looked up gets it after its body was read: when the poll is recorded, or when its hold ends. Anyone who knows an agent's identity can learn this |
 | 403 | None | Any failure of `pair` (§6.1) |
 | 413 | None | A body beyond the limits of §10. Kestrel and every ingress send one too, with headers and a body of their own, such as an HTML page |
 

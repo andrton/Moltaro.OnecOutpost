@@ -321,8 +321,9 @@ machine, as section 11 says.
    with the agent's identity, the agent's public key as it registered it, and its own
    public signing key. The agent checks the server's key against the fingerprint in the
    token, checks the signature and its own key in the answer, and pins the server's key.
-   Any mismatch ends the pairing. The server refuses every failure of pairing alike, with
-   a bare HTTP 403 without a body, which only ends the pairing.
+   Any mismatch ends the pairing. The server refuses every failure of the checks of §6.1
+   of the protocol alike, with a bare HTTP 403 without a body, which only ends the
+   pairing.
 
 The server keeps the agent's public key; no secret of the agent is ever on the server.
 Every later request of the agent is signed with its key. The signature covers the exact
@@ -480,8 +481,8 @@ for the agents it talks to.
   answer before it acts on any of it, and treats an answer that does not verify as a lost
   one.
 - There is one exception: a bare HTTP 413 to an `outcome` request, which an ingress, the
-  web server or the library's own check of the declared length sends before the body is
-  read. The agent acts on it as rule 11 says, because all it can cause is Unknown or
+  web server or the library's own check of the length sends, before the body is read
+  when the length is declared. The agent acts on it as rule 11 says, because all it can cause is Unknown or
   Failed `result-too-large`. That never claims a success and never frees a caller key, so
   a forged 413 can only make an outcome less known.
 - A command names:

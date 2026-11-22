@@ -690,7 +690,8 @@ public sealed record OutpostBase(string Key, bool ReadOpen, bool WriteOpen, bool
 - `Connected` follows rule 6 at the moment of the call, by the clock of the node that
   answers (PQ3).
 - `Bases` lists what the agent declared in its newest poll. `Held` is `false` for a key that
-  another agent holds; the server refused that base for this agent (rule 14).
+  this agent does not hold: another agent holds it, or, after a release or a revocation,
+  no agent holds it until this agent's next poll claims it (rule 14; a draft of S4).
 
 #### `OutpostReleaseResultEnum`
 
@@ -971,7 +972,8 @@ brief lists, and hold only after it.
   limit lives in the protocol assembly, which both sides check it from;
 - **What every poll answer carries** *(S2)*:
   - the commands;
-  - the bases the agent holds and those that another agent holds (rule 14);
+  - the bases the agent holds and the other keys it declared, which it does not hold
+    (rule 14; a draft of S4);
   - the server's time;
   - the poll timeout and the lease grace. Every poll carries the poll timeout the agent
     last learnt, and the server holds it for no longer than the smaller of that and its
@@ -1181,7 +1183,7 @@ The release
 | S1 | The public contract of stage 1, the projects and the test lane | Full | Done |
 | S2 | The protocol, its signatures and the pairing proof | Full | Done, 21 November 2026: the codec, the signatures and the pairing proof with their tests; the code review closed in two rounds, after the ten rounds of `docs/protocol.md`. What it changed in the public contract is listed in its brief for the owner |
 | S3 | The store | Full | Done, 21 November 2026: the store on PostgreSQL in the schema the application chooses, its first migration, `OutpostMigrations` with `MigrateAsync` and `GetScripts`, and the pairing tokens with their pending agents: created, found, redeemed once and purged, which no endpoint uses yet. The internal contract was reviewed in two rounds; the code review took three, and its last finding, a word of the XML documentation of `MigrateAsync`, was fixed on the owner's decision without a fourth round. What it changed in the public contract is listed in its brief for the owner |
-| S4 | Pairing and agents on the server | Full | Not started |
+| S4 | Pairing and agents on the server | Full | Done, 22 November 2026: the store's polls, leases and base keys with their second migration; the endpoints `pair` and `poll`, with the unsigned answers of §9 before the body and the hold of a poll; `AddOutpostServer` in full, `CreatePairingTokenAsync`, `GetAgentsAsync`, `RevokeAgentAsync`, `ReleaseBaseAsync` and the purge. Read, Write and `outcome` still refuse. The internal contract was reviewed in two rounds; the code review closed in one, with four P4 left for the coordinator; the documents were reviewed once. What it changed in the public contract is listed in its brief for the owner |
 | S5 | Commands on the server | Full | Not started |
 | S6 | The agent | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
@@ -2274,8 +2276,8 @@ approval of this plan.
   - the log category `Moltaro.OnecOutpost.Server` holds one warning, for a purge that
     failed;
   - `OutpostAgent.Connected` is `false` for an agent that is not Paired, whatever its
-    lease, so a revoked agent is never shown as connected;
-  - a poll whose agent was revoked after its headers were checked gets the bare 403 of
+    lease, so a revoked agent is never shown as connected; concept rule 6 says so too;
+  - a poll whose agent was revoked after it was looked up gets the bare 403 of
     §9 after its body was read. This happens when it is recorded, or when its hold ends;
   - a declared key that no agent holds at that moment is in `bases.claimed` of a poll
     answer, and has `Held` `false` in `OutpostBase`. That is a key freed during a hold,

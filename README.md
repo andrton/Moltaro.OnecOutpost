@@ -26,7 +26,7 @@ SQL script per migration.
 
 The server pairs agents and holds their polls. `AddOutpostServer` registers it and
 `MapOutpostAgents` maps the endpoints of the agents: an agent pairs over HTTP with a
-pairing token, its signed requests are authenticated, and each poll records the agent's
+pairing token, its signed polls are authenticated, and each newer poll records the agent's
 lease, its bases and its claims of base keys, and is answered without commands when its
 hold ends. The application creates pairing tokens, lists and revokes agents and releases
 base keys, and every node purges the tokens that expired unused, with their pending
