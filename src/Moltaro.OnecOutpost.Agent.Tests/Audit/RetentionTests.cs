@@ -12,10 +12,11 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Audit;
 // The retention of the audit log, with the fake clock ("Carried over from S2", the S6a brief): RemoveExpired holds the
 // whole rule. A file goes once its last entry is more than auditRetentionDays plus a day older than the agent's clock,
 // and a file that holds no entry goes too, in the order of their names; a file that holds an entry of a command whose
-// outcome is not confirmed, and the file that holds the highest reservation of the identity, stay. The files that hold
-// the entries of one command go together, the file of its confirmed last, so that no command is left with its received
-// or ended and without its confirmed. Nothing goes when the clock is more than a day away from the time of the verified
-// answer, so a clock moved ahead wipes nothing out.
+// outcome is not confirmed, and the file that holds the highest reservation of the identity, stay. So that no command
+// is left with its received or ended and without its confirmed, a file stays while it holds the confirmed of a command
+// that has an entry in a file that stays: a confirmed goes after the other entries of its command, while a received or
+// an ended may go before its confirmed. Nothing goes when the clock is more than a day away from the time of the
+// verified answer, so a clock moved ahead wipes nothing out.
 // That nothing goes before the first verified answer of a run is the call site's, in S6b.
 public sealed class RetentionTests
 {
@@ -69,13 +70,15 @@ public sealed class RetentionTests
     }
 
     // The log is the journal of rules 3, 10 and 11: a command not confirmed is still listed in every poll, and the
-    // highest reservation bounds every poll after a restart. A command whose entries are all removed is forgotten.
-    [Fact]
+    // highest reservation bounds every poll after a restart. A command whose entries are all removed is forgotten, and
+    // one whose received and ended go while its confirmed stays is still known.
+    [Fact(Skip = SkipReason.NotImplemented)]
     public void A_file_with_an_entry_of_an_unconfirmed_command_and_the_file_of_the_highest_reservation_are_kept_past_the_retention()
     {
         Guid unconfirmed = Guid.NewGuid();
         Guid refused = Guid.NewGuid();
         Guid confirmed = Guid.NewGuid();
+        Guid confirmedLater = Guid.NewGuid();
         Guid other = Guid.NewGuid();
         DateTimeOffset october = new(2026, 10, 1, 9, 0, 0, TimeSpan.Zero);
         _data.Audit.Seed("2026-10-01.jsonl", Received(october, unconfirmed, OutpostModeEnum.Write));
@@ -89,6 +92,11 @@ public sealed class RetentionTests
         _data.Audit.Seed("2026-10-06.jsonl", Confirmed(october.AddDays(5), confirmed));
         _data.Audit.Seed("2026-10-07.jsonl", Ended(october.AddDays(6), unconfirmed, "unknown", "agent-stopped", null));
         _data.Audit.Seed("2026-10-08.jsonl", Refused(october.AddDays(7), refused, OutpostModeEnum.Write, "expired"));
+        _data.Audit.Seed(
+            "2026-10-09.jsonl",
+            Received(october.AddDays(8), confirmedLater, OutpostModeEnum.Read)
+                + Ended(october.AddDays(8), confirmedLater, "succeeded", null, 4));
+        _data.Audit.Seed("2026-11-22.jsonl", Confirmed(Now.AddHours(-1), confirmedLater));
         using AuditLog log = AuditLog.Open(_data.Audit, _clock);
         int count = _data.Changes.Count;
 
@@ -100,9 +108,11 @@ public sealed class RetentionTests
                 "delete audit\\2026-10-04.jsonl",
                 "delete audit\\2026-10-05.jsonl",
                 "delete audit\\2026-10-06.jsonl",
+                "delete audit\\2026-10-09.jsonl",
             ],
             _data.LinesSince(count));
         Assert.Null(log.Find(confirmed));
+        Assert.NotNull(log.Find(confirmedLater));
         Assert.True(log.Find(unconfirmed)!.Received);
         Assert.NotNull(log.Find(refused));
         Assert.Equal(900, log.HighestReservation(PairedFolder.Agent));
@@ -150,14 +160,15 @@ public sealed class RetentionTests
         Assert.DoesNotContain(_data.LinesSince(count), line => line.StartsWith("append ", StringComparison.Ordinal));
     }
 
-    // The files that hold the entries of one command go together (the brief, from S6a's code review, round 1). Command C
-    // was received and ended in a file that stays, and confirmed in a later file past the retention; command D was
-    // received there and confirmed in a third. Had the later files gone, every poll would list C and D again, and every
-    // later start would stop on an ended without its file.
+    // A confirmed stays while its command has an entry in a file that stays (the brief, from S6a's code review, rounds
+    // 1 and 2). Command C was received and ended in a file that stays, and confirmed in a later file past the retention;
+    // command D was received there and confirmed in a third. Had the later files gone, every poll would list C and D
+    // again, and every later start would stop on an ended without its file.
     [Theory]
     [InlineData("an unconfirmed command")]
     [InlineData("the highest reservation")]
-    public void A_file_past_the_retention_stays_while_a_file_that_stays_holds_an_entry_of_one_of_its_commands(string keeper)
+    public void A_file_past_the_retention_stays_while_it_holds_the_confirmed_of_a_command_with_an_entry_in_a_file_that_stays(
+        string keeper)
     {
         Guid unconfirmed = Guid.NewGuid();
         Guid c = Guid.NewGuid();
@@ -194,15 +205,15 @@ public sealed class RetentionTests
         AssertARestartGoesOn();
     }
 
-    // A file that cannot be deleted keeps every file not yet deleted that shares a command with it, and the file of a
-    // confirmed goes after the other files of its command, also when the clock was set back and put the confirmed in a
-    // file named before its received. In both cases the file of the received cannot be deleted at first. Had the file of
+    // A file that cannot be deleted keeps the file of the confirmed of its command, and the file of a confirmed goes after
+    // the other files of its command, also when the clock was set back and put the confirmed in a file named before its
+    // received. In both cases the file of the received cannot be deleted at first. Had the file of
     // the confirmed gone, every poll would list the command again, and every later start would stop on an ended without
     // its file. A file that shares no command with them goes meanwhile.
     [Theory]
     [InlineData("2026-10-01.jsonl", "2026-10-02.jsonl")]
     [InlineData("2026-10-02.jsonl", "2026-10-01.jsonl")]
-    public void A_file_that_cannot_be_deleted_keeps_the_files_that_share_a_command_with_it_and_a_confirmed_goes_last(
+    public void A_file_that_cannot_be_deleted_keeps_the_file_of_the_confirmed_of_its_command_and_a_confirmed_goes_last(
         string receivedFile,
         string confirmedFile)
     {
@@ -238,6 +249,73 @@ public sealed class RetentionTests
             Assert.Equal([$"delete audit\\{receivedFile}", $"delete audit\\{confirmedFile}"], _data.LinesSince(count));
             Assert.Null(log.Find(command));
         }
+    }
+
+    // The review of S6a, round 2: a busy agent with a correct clock and nothing unconfirmed. Each day holds a command
+    // received, ended and confirmed at noon, and one received and ended just before UTC midnight and confirmed just
+    // after it, in the file of the next day. With one day of retention the files up to 2026-11-19 are past it and go, in
+    // the order of their names; the received and the ended of the command that crosses into 2026-11-20 go while its
+    // confirmed stays. Kept in both directions, the files would chain back to the first one, and the log would grow
+    // without bound.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public void Files_of_commands_confirmed_after_midnight_go_once_past_the_retention_while_their_confirmed_stays()
+    {
+        Dictionary<string, string> files = [];
+        Guid lastCrossing = Guid.Empty;
+
+        for (DateTimeOffset day = new(2026, 11, 15, 0, 0, 0, TimeSpan.Zero); day < Now.AddHours(-12); day = day.AddDays(1))
+        {
+            Guid noon = Guid.NewGuid();
+            Guid crossing = Guid.NewGuid();
+            DateTimeOffset midday = day.AddHours(12);
+            DateTimeOffset beforeMidnight = day.AddDays(1).AddMilliseconds(-500);
+            DateTimeOffset afterMidnight = day.AddDays(1).AddMilliseconds(400);
+
+            Add(files, midday, Received(midday, noon, OutpostModeEnum.Read) + Ended(midday, noon, "succeeded", null, 7));
+            Add(files, midday, Confirmed(midday, noon));
+            Add(files, beforeMidnight, Received(beforeMidnight, crossing, OutpostModeEnum.Write));
+            Add(files, beforeMidnight, Ended(beforeMidnight, crossing, "succeeded", null, 9));
+            Add(files, afterMidnight, Confirmed(afterMidnight, crossing));
+
+            if (FileOf(beforeMidnight) == "2026-11-19.jsonl")
+            {
+                lastCrossing = crossing;
+            }
+        }
+
+        foreach ((string name, string text) in files)
+        {
+            _data.Audit.Seed(name, text);
+        }
+
+        using (AuditLog log = AuditLog.Open(_data.Audit, _clock))
+        {
+            int count = _data.Changes.Count;
+
+            log.RemoveExpired(PairedFolder.Agent, Now, RetentionDays);
+
+            Assert.Equal(
+                [
+                    "delete audit\\2026-11-15.jsonl",
+                    "delete audit\\2026-11-16.jsonl",
+                    "delete audit\\2026-11-17.jsonl",
+                    "delete audit\\2026-11-18.jsonl",
+                    "delete audit\\2026-11-19.jsonl",
+                ],
+                _data.LinesSince(count));
+            Assert.Empty(log.Unconfirmed);
+            Assert.True(log.Find(lastCrossing)!.Confirmed);
+        }
+
+        AssertARestartGoesOn();
+    }
+
+    // Adds lines to the audit file of the UTC day of their time, after those the clock put there before.
+    private static void Add(Dictionary<string, string> files, DateTimeOffset time, string lines)
+    {
+        string name = FileOf(time);
+
+        files[name] = files.GetValueOrDefault(name, "") + lines;
     }
 
     // Nine in the morning of the UTC day that names an audit file, so that its entries are where the clock put them.
