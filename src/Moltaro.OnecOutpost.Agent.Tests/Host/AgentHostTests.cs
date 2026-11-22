@@ -110,19 +110,6 @@ public sealed class AgentHostTests
         Assert.True(folder.Data.Outcomes.Has($"{waiting}.json"));
     }
 
-    // Free 0 until S9b: the program's launcher starts no COM worker yet, and what it starts never opens.
-    [Fact]
-    public async Task With_the_programs_launcher_every_mode_declares_free_0()
-    {
-        PairedFolder folder = PairedFolder.Create();
-        await using TestHost host = TestHost.Start(folder, new FakeClock(TestTimes.Start), new ComWorkerLauncher());
-
-        OutpostPollRequest poll = (await host.NextPollAsync()).ReadPoll();
-
-        Assert.Equal(2, poll.Bases.Count);
-        Assert.All(poll.Bases, served => Assert.Equal(0, served.Read.Free + (served.Write?.Free ?? 0)));
-    }
-
     // Whether the audit log still holds its lock when the handler is disposed: a lock of the test fails while it does.
     private static string LockState(PairedFolder folder)
     {

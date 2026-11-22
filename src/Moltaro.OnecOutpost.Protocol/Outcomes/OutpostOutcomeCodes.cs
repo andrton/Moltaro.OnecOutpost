@@ -138,4 +138,31 @@ internal static class OutpostOutcomeCodes
             _ => false,
         };
     }
+
+    // True when a COM worker may hand the agent an outcome of this kind with this code for a command of this mode: what
+    // the executor hands over (the paragraph "The executor" of §8), and the outcomes that S9's worker writes itself —
+    // Failed base-unreachable in either mode, Failed connection-lost for a Read, Unknown connection-lost and Unknown
+    // result-type for a Write. False otherwise. It replaces IsExecutorOutcome in the pool's check.
+    public static bool IsComWorkerOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code)
+    {
+        return kind switch
+        {
+            OutpostAgentOutcomeKindEnum.Succeeded => code is null,
+
+            OutpostAgentOutcomeKindEnum.Failed when mode == OutpostModeEnum.Write =>
+                code is ScriptError or ResultType or ResultTooLarge or BaseUnreachable,
+
+            OutpostAgentOutcomeKindEnum.Failed => code
+                is ScriptError
+                or ResultType
+                or ResultTooLarge
+                or BaseUnreachable
+                or ConnectionLost,
+
+            OutpostAgentOutcomeKindEnum.Unknown => mode == OutpostModeEnum.Write
+                && code is TransactionEnded or ConnectionLost or ResultType,
+
+            _ => false,
+        };
+    }
 }
