@@ -448,7 +448,7 @@ public sealed class OutpostServerOptions
 | `Schema` | The schema of the store | The rule of names |
 | `SigningKeyPem` | The server's signing key, as PKCS#8 PEM of an ECDSA P-256 private key. The application keeps it in its own secret storage; one line of .NET creates one: `ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()` | Required: exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it; any other text, a second block included, is refused (Q4) |
 | `SignalKeyPrefix` | The prefix of every key the library sets or subscribes to | A name of Moltaro.Signals of at most 64 characters |
-| `PollTimeout` | How long a poll waits for a command at most: a poll is held for the smaller of the poll timeout it carries and this option (§6.2 of the protocol) | 1 second to 5 minutes |
+| `PollTimeout` | How long a poll waits for a command at most: a poll is held for the smaller of the poll timeout it carries and this option (§6.2 of the protocol). It also bounds each wait of a call for its outcome, after which the call reads the store again, so that a lost wake-up of the signals delays an outcome by at most this option | 1 second to 5 minutes |
 | `LeaseGrace` | What the lease of a poll adds to its hold. The lease ends at the earlier of the moment the poll is recorded and its signed time plus `ClockSkew`, plus the hold, plus the grace (rule 6, §6.2 of the protocol) | 1 second to 5 minutes |
 | `TakeTimeout` | The take deadline after a command is created (rule 7) | 1 second to 1 hour |
 | `ClockSkew` | The skew that every command carries (rule 1) | 1 second to 1 hour |

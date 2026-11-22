@@ -4,13 +4,13 @@ The wire protocol between an agent and a server. The [concept](concept.md) fixes
 principles (§3 "Pairing", §4, §6, D1, D4, D5, D15); this document fixes the bytes.
 
 **Status.** Draft of Epic 1, sprint S2, written after the sprint's study, with the changes
-of sprint S4 to §6.2 and §9. It is public contract, and holds as a draft until the owner
-approves it with the lists "What S2 changed in the public contract" and "What S4 changes
-in the public contract" of the [epic](work/epic-1-first-release.md). The codec of the
-protocol assembly reads and writes its messages, its signatures and the pairing proof. The
-server's endpoints serve `pair`, and `poll` without commands; an `outcome` passes the
-checks of §9 before the body and its body is read, and then it ends in a 500, since commands do not exist
-yet. No agent sends the protocol yet.
+of sprint S4 to §6.2 and §9 and of sprint S5 to §9. It is public contract, and holds as a
+draft until the owner approves it with the lists "What S2 changed in the public contract",
+"What S4 changes in the public contract" and "What S5 changes in the public contract" of
+the [epic](work/epic-1-first-release.md). The codec of the protocol assembly reads and
+writes its messages, its signatures and the pairing proof. The server's endpoints serve
+all three requests: `pair`, `poll` with the commands it hands out, and `outcome`. No agent
+sends the protocol yet.
 
 ## 1. Overview
 
@@ -515,7 +515,7 @@ otherwise, or for `pair`:
 | 400 | `{"code":"protocol-version"}` | The path names a version the server does not speak. Every later version keeps this form |
 | 400 | None | A header breaks §4, or the request has a `Content-Encoding` |
 | 401 | None | `Outpost-Agent` names no known agent, or one that is still pending and so has no key |
-| 403 | None | The agent is revoked (rule 13). A poll whose agent was revoked after it was looked up gets it after its body was read: when the poll is recorded, or when its hold ends. Anyone who knows an agent's identity can learn this |
+| 403 | None | The agent is revoked (rule 13). A poll whose agent was revoked after it was looked up gets it after its body was read: when the poll is recorded, when it wakes, or when its hold ends. Anyone who knows an agent's identity can learn this |
 | 403 | None | Any failure of `pair` (§6.1) |
 | 413 | None | A body beyond the limits of §10. Kestrel and every ingress send one too, with headers and a body of their own, such as an HTML page |
 
