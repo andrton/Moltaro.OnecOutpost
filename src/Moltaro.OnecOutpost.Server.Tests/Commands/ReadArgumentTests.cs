@@ -116,7 +116,7 @@ public sealed class ReadArgumentTests : IAsyncDisposable
     // jsonb keeps the last value of such a name, so a repeat would compare equal to parameters other than those signed
     // (concept rule 4). The places are the outer object, an object nested in an array, and a name that is the same as
     // the other only once its escape is read.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(ParametersWithANameTwice))]
     public void Parameters_with_a_name_twice_in_one_object_are_refused_with_the_name_of_their_property(string parameters)
     {

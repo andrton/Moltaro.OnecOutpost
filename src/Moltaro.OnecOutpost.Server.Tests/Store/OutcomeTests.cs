@@ -18,7 +18,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Store;
 public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
     // The outcome comes while the command is handed out, before the agent's next poll lists it, or after that poll.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("handed_out")]
     [InlineData("received")]
     public async Task The_first_outcome_of_a_command_from_the_agent_it_was_handed_to_is_kept_as_it_came(string phase)
@@ -56,7 +56,7 @@ public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<Pos
 
     // Concept rules 5 and 11: a Read that failed stays failed, and a Write whose agent reported it Unknown stays
     // Unknown, a kind the server sets too, when a later outcome claims more.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task A_later_outcome_of_a_command_changes_nothing(string mode)
@@ -90,7 +90,7 @@ public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<Pos
 
     // Concept rule 11: only the agent that the command was handed to reports its outcome. The command stays open for
     // that agent's outcome.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_from_another_agent_changes_nothing()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -110,7 +110,7 @@ public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<Pos
     }
 
     // Concept rule 11: a command that no poll took was handed to no agent.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_for_a_command_that_no_poll_took_changes_nothing()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -130,7 +130,7 @@ public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<Pos
 
     // Concept rule 11: the server confirms an outcome for a command it no longer knows, such as one removed after its
     // retention, and keeps nothing of it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_for_a_command_the_store_does_not_know_changes_nothing()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -149,7 +149,7 @@ public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<Pos
     // Concept rule 11: the server set the outcome when the agent stayed away for the command's run limit after its
     // lease, and the agent comes back with the real outcome. It replaces the server's, and its retention counts from
     // that moment.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("write")]
     [InlineData("read")]
     public async Task The_outcome_of_the_agent_replaces_an_outcome_the_server_set_Unknown_disconnected_or_Failed_lost(
@@ -189,7 +189,7 @@ public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<Pos
 
     // Concept rules 4 and 11: Expired, which a poll set when it proved that the command never reached the agent, freed
     // the caller key, so no outcome replaces it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_for_a_command_that_ended_as_Expired_changes_nothing()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -210,7 +210,7 @@ public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<Pos
         Assert.Equal(before.Lines, (await schema.TakeSnapshotAsync(cancellationToken)).Lines);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task FindCommandLimitsAsync_gives_the_mode_and_the_outcome_limit_of_a_command_and_null_for_one_the_store_does_not_know()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -238,7 +238,7 @@ public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<Pos
     // connection holds the command's row until both outcomes are seen waiting for it, and then lets it go unchanged.
     // Which outcome the store keeps is not the subject; that it keeps one, as it came, and the other changes nothing,
     // is.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Of_two_outcomes_of_one_command_one_is_kept_and_the_other_changes_nothing()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

@@ -16,7 +16,7 @@ public sealed class CommandPurgeTests(PostgreSqlFixture postgres) : IClassFixtur
     private static readonly TimeSpan Retention = TimeSpan.FromDays(7);
 
     // The two commands expired a second apart.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_purge_removes_the_commands_that_ended_a_retention_ago_or_more_and_gives_their_number()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -46,7 +46,7 @@ public sealed class CommandPurgeTests(PostgreSqlFixture postgres) : IClassFixtur
 
     // The command was never ended: no poll took it by its deadline, or its agent stayed away for its run limit after
     // the end of its lease. A second before its end was due a retention ago, the purge leaves it as it is.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("not_taken")]
     [InlineData("taken")]
     public async Task The_purge_removes_a_command_with_no_outcome_once_its_end_by_time_was_due_a_retention_ago(string phase)
@@ -84,7 +84,7 @@ public sealed class CommandPurgeTests(PostgreSqlFixture postgres) : IClassFixtur
 
     // More commands than one statement of the purge removes, with no outcome and no poll that took them. They are
     // inserted at once, as the store creates them, rather than created one by one.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_purge_removes_every_command_that_is_due_however_many_there_are()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

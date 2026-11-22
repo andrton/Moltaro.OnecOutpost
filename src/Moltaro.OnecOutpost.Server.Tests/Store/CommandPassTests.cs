@@ -15,7 +15,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Store;
 [Trait("Requires", "PostgreSQL")]
 public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_pass_of_a_command_that_no_poll_took_gives_no_outcome_before_its_deadline_and_the_deadline_as_due()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -36,7 +36,7 @@ public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture
     }
 
     // Concept rule 7: a command that no poll ever took expires at its take deadline.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_pass_of_a_command_that_no_poll_took_makes_it_Expired_from_its_deadline_on()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -67,7 +67,7 @@ public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture
     // Concept rule 7: a command that was handed out expires only on the evidence of its agent's time. The agent polls
     // again later, listing it as received, which moves the end of its lease and with it the moment time can end the
     // command.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_pass_leaves_a_taken_command_past_its_deadline_and_gives_the_end_of_the_agents_lease_plus_its_run_limit_as_due()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -99,7 +99,7 @@ public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture
 
     // Concept rules 3 and 11: the agent took the command at the last poll it made, and was not seen again. A Write is
     // in its list as received, a Read was only handed out: both count as taken.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("write")]
     [InlineData("read")]
     public async Task A_taken_command_whose_agent_stays_away_for_its_run_limit_after_its_lease_ends_as_Unknown_disconnected_or_Failed_lost(
@@ -152,7 +152,7 @@ public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture
 
     // The outcome object of the agent as the store kept it, read for the mode of its command: a Read that succeeded
     // with its result and its messages trimmed, and a Write that failed with the error text of 1C.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task A_pass_gives_the_outcome_of_the_agent(string mode)

@@ -163,7 +163,7 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // The holder declared a third key in an earlier poll only, and another agent declares the first key, which is
     // claimed for it. The lease of the holder's newest poll ends at the last lookup.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task FindBaseAsync_gives_the_holder_of_a_key_whether_its_newest_poll_declares_it_and_opens_Write_and_whether_it_is_connected()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -187,7 +187,7 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
 
     // The holder released the key, which the newest poll of another agent still declares as claimed: only the claim
     // of a key names its holder.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task FindBaseAsync_gives_null_for_a_key_that_no_agent_holds()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

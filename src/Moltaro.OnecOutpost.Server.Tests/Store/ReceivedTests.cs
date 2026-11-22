@@ -17,7 +17,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Store;
 public sealed class ReceivedTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
     // The workers of the agent run the commands, so the poll has no free worker.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_newest_poll_makes_the_handed_out_commands_that_it_lists_Received()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -50,7 +50,7 @@ public sealed class ReceivedTests(PostgreSqlFixture postgres) : IClassFixture<Po
 
     // Concept rule 7: the agent's clock is ahead of the node's, which has not reached the take deadline. The command's
     // deadline plus its skew is 150 seconds after it was issued.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_handed_out_command_that_the_newest_poll_leaves_out_becomes_Expired_once_the_signed_time_of_the_poll_is_later_than_its_deadline_plus_its_skew()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -80,7 +80,7 @@ public sealed class ReceivedTests(PostgreSqlFixture postgres) : IClassFixture<Po
     // Concept rule 7: the node's clock is ten minutes past the command's deadline plus its skew, and the poll's signed
     // time is exactly at that moment, 150 seconds after the command was issued. The command may still reach the agent
     // from a held-back answer, and the agent would still accept it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_handed_out_command_that_the_newest_poll_leaves_out_stays_HandedOut_until_the_signed_time_of_the_poll_is_later_than_its_deadline_plus_its_skew()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -108,7 +108,7 @@ public sealed class ReceivedTests(PostgreSqlFixture postgres) : IClassFixture<Po
     // Concept rules 3 and 11: the command reached its agent, and Expired would free a key whose Write may still run.
     // The agent no longer lists it, as after a restore of its audit log, with a time long past its deadline plus its
     // skew.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_received_command_is_never_Expired()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -139,7 +139,7 @@ public sealed class ReceivedTests(PostgreSqlFixture postgres) : IClassFixture<Po
     // lease. The agent comes back a second later with a poll that leaves the command out and is signed past its
     // deadline plus its skew, which proves the command never reached it: Expired replaces the outcome, from the moment
     // of that poll.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("write")]
     [InlineData("read")]
     public async Task A_newest_poll_that_proves_a_command_never_reached_its_agent_turns_the_outcome_the_server_set_into_Expired(
@@ -184,7 +184,7 @@ public sealed class ReceivedTests(PostgreSqlFixture postgres) : IClassFixture<Po
 
     // Concept rule 11: only an outcome the server set is replaced. The agent's own outcome is Unknown, a kind that the
     // server sets too; the agent no longer lists the command, since the server confirmed that outcome.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_command_with_the_outcome_of_its_agent_is_not_Expired_by_a_poll_that_leaves_it_out()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -217,7 +217,7 @@ public sealed class ReceivedTests(PostgreSqlFixture postgres) : IClassFixture<Po
 
     // Concept rule 10: the older poll lists one of two handed-out commands and leaves the other out, with a time past
     // their deadline plus their skew. As the newest it would make the first Received and the second Expired.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_older_poll_changes_no_command()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -248,7 +248,7 @@ public sealed class ReceivedTests(PostgreSqlFixture postgres) : IClassFixture<Po
 
     // The other agent's commands were handed out to it. This agent's newest poll lists one of them and an identity
     // that names no command, and leaves the other out, with a time past their deadline plus their skew.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_newest_poll_changes_no_command_of_another_agent()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

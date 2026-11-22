@@ -35,7 +35,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
         { "other_mode", "read", FirstScript, FirstParameters, false },
     };
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_create_for_a_connected_agent_stores_the_command_waiting_with_no_outcome_and_gives_it_as_created()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -71,7 +71,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
 
     // Concept rules 6 and 13: the lease of the agent's poll ends at the moment of the create, or the agent was revoked
     // while its lease runs.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("lease_ended")]
     [InlineData("revoked")]
     public async Task A_create_for_an_agent_that_is_not_connected_gives_null_and_stores_nothing(string why)
@@ -103,7 +103,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
         Assert.Equal(before.Lines, (await schema.TakeSnapshotAsync(cancellationToken)).Lines);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Repeats))]
     public async Task A_create_whose_base_and_caller_key_name_a_command_creates_none_and_finds_it_compared_as_a_repeat(
         string name,
@@ -131,7 +131,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
     // Concept rule 4: nothing ran, so the key is free again. The command ends as Expired when its deadline passed
     // before any poll took it, as Refused by its agent, or as Refused when its agent was revoked; another agent then
     // holds the base, and the new command is its own.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("expired")]
     [InlineData("refused_by_its_agent")]
     [InlineData("refused_at_revocation")]
@@ -190,7 +190,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
     // Concept rules 4 and 5: a command that may have run keeps its key, so that a repeat never runs it again. It ended
     // as Succeeded by its agent, or as Unknown when its agent stayed away for its run limit after its lease; that agent
     // then comes back with a poll that lists it, so that a repeat could be created for it.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("succeeded")]
     [InlineData("unknown_disconnected")]
     public async Task A_command_that_ended_otherwise_keeps_its_caller_key(string end)
@@ -232,7 +232,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
         Assert.Equal<Guid>([first.Id], (await schema.ListCommandsAsync(cancellationToken)).Select(row => row.Id));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Reads_without_a_caller_key_are_each_created()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -251,7 +251,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
             (await schema.ListCommandsAsync(cancellationToken)).Select(row => row.Id));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task FindCallerKeyAsync_gives_null_when_no_command_holds_the_caller_key_on_the_base()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -281,7 +281,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
             cancellationToken));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [MemberData(nameof(Repeats))]
     public async Task FindCallerKeyAsync_gives_the_command_that_holds_the_caller_key_compared_as_a_repeat(
         string name,
@@ -311,7 +311,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
     }
 
     // Concept rule 7: a command that no poll took ends at its take deadline, judged by the clock of the node.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task FindCallerKeyAsync_makes_a_waiting_command_Expired_from_its_deadline_on_and_then_finds_none()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -356,7 +356,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
 
     // Concept rule 7: a command that was handed out may still reach its agent, so it expires only on the evidence of
     // the agent's time, never by the node's clock.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task FindCallerKeyAsync_leaves_a_handed_out_command_whose_deadline_has_passed()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -390,7 +390,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
     // another connection holds an uncommitted command with the base and the caller key, as a create that has not
     // committed yet, until both creates are seen waiting for it, and then rolls it back. Which create makes the command
     // is not the subject; that one does and the other finds it, the same, is.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Of_two_first_creates_with_one_base_and_caller_key_one_creates_the_command_and_the_other_finds_it()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -408,7 +408,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
     // Concept rule 4: the race of two repeats after the first command freed the key, driven to a known order as the
     // race of two first creates is. The first command ended as Expired when its deadline passed before any poll took
     // it, or as Refused by its agent.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("expired")]
     [InlineData("refused")]
     public async Task Of_two_repeats_that_create_after_the_first_command_ended_as_Expired_or_Refused_one_creates_the_command(

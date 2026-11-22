@@ -97,7 +97,7 @@ public sealed class WriteArgumentTests : IAsyncDisposable
     }
 
     // The places of a name given twice are stated in full through ReadAsync, which shares the check.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Parameters_with_a_name_twice_in_one_object_are_refused_with_the_name_of_their_property()
     {
         OutpostWriteRequest request = new()

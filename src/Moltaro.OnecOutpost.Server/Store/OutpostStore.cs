@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
+using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Npgsql;
@@ -18,6 +19,23 @@ namespace Moltaro.OnecOutpost.Server.Store;
 // committed and checks its conditions anew; the statements below rely on that to give the one change to one caller.
 internal sealed class OutpostStore
 {
+    // The moment at which time ends a command with no outcome (rules 7, 11), over the aliases command and agent and
+    // the parameter @waiting: its take deadline while no poll took it, by the clock of the node; once taken, the end of
+    // its agent's lease plus the run limit of its last hand-out.
+    private const string DueAt =
+        "CASE WHEN command.phase = @waiting THEN command.deadline ELSE agent.lease_ends_at + command.run_limit END";
+
+    // An outcome that the server set, of the kind Unknown or Failed, over the parameters @unknown and @failed. It is
+    // the one outcome that a later fact replaces (rule 11): the outcome of the agent, or Expired by a poll that proves
+    // the command never reached its agent.
+    private const string Replaceable = "(outcome IS NULL AND outcome_kind IN (@unknown, @failed))";
+
+    // The JSON of an entry of `commands` in a poll answer around the base64url of its bytes and of its signature (§6.2).
+    private const string EntryJson = """{"bytes":"","signature":""}""";
+
+    // The most commands that one statement of the purge deletes.
+    private const int PurgeBatch = 1_000;
+
     private readonly string _connectionString;
 
     private readonly string _schema;
@@ -199,16 +217,14 @@ internal sealed class OutpostStore
 
     // Records a poll that is newer than the newest recorded, while the agent is Paired, in one short transaction: its
     // number, the node's time, the end of its lease (§6.2) and the agent version; the declared bases in place of the
-    // agent's rows; and a claim of each declared key that no agent holds (rule 14). Newest is null then. An older poll
-    // changes nothing (rule 10) and gets the recorded number with the lists of the newest poll.
+    // agent's rows; a claim of each declared key that no agent holds (rule 14); and its list of received commands
+    // (rules 7, 10, 11). Newest is null then, and Expired lists the commands that the list made Expired. An older poll
+    // changes nothing (rule 10) and gets the recorded number with the lists of the newest poll, and no Expired.
     //
-    // The order of locks is a pairing token, then an agent row, then claims, in every operation. The update of the agent
-    // row holds that row until the commit, so the polls of one agent, its revocation and the releases of its keys wait
-    // for each other on it. The claims are inserted in ordinal order of their keys, so two polls that claim the same
-    // keys never wait for each other in a cycle.
-    //
-    // The reconcile of `received` that the newest poll makes after its claims comes with the commands of S5; until
-    // then Expired is empty.
+    // The order of locks is a pairing token, then an agent row, then claims, then commands, in every operation. The
+    // update of the agent row holds that row until the commit, so the polls of one agent, its takes, its revocation and
+    // the releases of its keys wait for each other on it. The claims are inserted in ordinal order of their keys, so
+    // two polls that claim the same keys never wait for each other in a cycle.
     public async Task<PollRecord> RecordPollAsync(
         Guid agentId,
         OutpostPollRequest poll,
@@ -266,12 +282,14 @@ internal sealed class OutpostStore
 
         await ClaimAsync(context, agentId, poll.Bases.Select(pollBase => pollBase.Key), cancellationToken);
 
+        IReadOnlyList<Guid> expired = await ReconcileReceivedAsync(context, agentId, poll, now, cancellationToken);
+
         // A statement of its own, so that it sees a claim that another poll committed while this one waited for it.
         PollState newest = await ReadStateAsync(context, agentId, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 
-        return new PollRecord(newest with { Newest = null }, []);
+        return new PollRecord(newest with { Newest = null }, expired);
     }
 
     // The state of the agent for the answer to its poll of this number, in one statement that changes nothing and takes
@@ -354,17 +372,59 @@ internal sealed class OutpostStore
         return agents;
     }
 
-    // Deletes the agent's token, makes it Revoked and frees its keys, in one short transaction in the order of locks.
-    // True when the call made the agent Revoked. Its bases stay, so the list shows them, none held.
+    // Deletes the agent's token, makes it Revoked, frees its keys and ends its commands with no outcome, in one short
+    // transaction in the order of locks. True when the call made the agent Revoked, and only then are commands ended:
+    // those that no poll took as Refused `revoked`, the taken ones as rule 3 says, Unknown `revoked` for a Write and
+    // Failed `lost` for a Read (rule 13). Its bases stay, so the list shows them, none held.
     //
     // A poll of the agent that commits first has its claims deleted here, since this statement waits for the agent row
     // and the deletion of the claims comes after it; a poll that comes later finds the agent Revoked and claims nothing.
-    //
-    // The end of the agent's commands after its claims (rule 13) comes with the commands of S5; until then Ended is
-    // empty.
+    // A create of a command holds the agent row FOR SHARE, so it either commits first and its command is ended here,
+    // or finds the agent Revoked and creates nothing.
     public async Task<Revocation> RevokeAgentAsync(Guid agentId, CancellationToken cancellationToken)
     {
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
         await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+
+        string commands = TableName(context, context.Commands.EntityType);
+
+        string refuseWaiting = $"""
+            UPDATE {commands}
+            SET outcome_kind = @refused, outcome_code = @revoked, ended_at = @now
+            WHERE agent_id = @agent_id AND phase = @waiting AND outcome_kind IS NULL
+            RETURNING id AS "Value"
+            """;
+
+        string endTaken = $"""
+            UPDATE {commands}
+            SET outcome_kind = CASE WHEN mode = @write THEN @unknown ELSE @failed END,
+                outcome_code = CASE WHEN mode = @write THEN @revoked ELSE @lost END,
+                ended_at = @now
+            WHERE agent_id = @agent_id AND phase <> @waiting AND outcome_kind IS NULL
+            RETURNING id AS "Value"
+            """;
+
+        NpgsqlParameter[] refuseParameters =
+        [
+            new NpgsqlParameter<Guid>("agent_id", agentId),
+            new NpgsqlParameter<DateTimeOffset>("now", now),
+            new NpgsqlParameter<int>("waiting", (int)CommandPhaseEnum.Waiting),
+            new NpgsqlParameter<int>("refused", (int)OutpostOutcomeKindEnum.Refused),
+            new NpgsqlParameter<string>("revoked", OutpostOutcomeCodes.Revoked),
+        ];
+
+        NpgsqlParameter[] endParameters =
+        [
+            new NpgsqlParameter<Guid>("agent_id", agentId),
+            new NpgsqlParameter<DateTimeOffset>("now", now),
+            new NpgsqlParameter<int>("waiting", (int)CommandPhaseEnum.Waiting),
+            new NpgsqlParameter<int>("write", (int)OutpostModeEnum.Write),
+            new NpgsqlParameter<int>("unknown", (int)OutpostOutcomeKindEnum.Unknown),
+            new NpgsqlParameter<int>("failed", (int)OutpostOutcomeKindEnum.Failed),
+            new NpgsqlParameter<string>("revoked", OutpostOutcomeCodes.Revoked),
+            new NpgsqlParameter<string>("lost", OutpostOutcomeCodes.Lost),
+        ];
 
         await using IDbContextTransaction transaction =
             await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
@@ -379,9 +439,24 @@ internal sealed class OutpostStore
 
         await context.BaseClaims.Where(claim => claim.AgentId == agentId).ExecuteDeleteAsync(cancellationToken);
 
+        if (revoked == 0)
+        {
+            await transaction.CommitAsync(cancellationToken);
+
+            return new Revocation(false, []);
+        }
+
+        List<Guid> refused = await context.Database
+            .SqlQueryRaw<Guid>(refuseWaiting, refuseParameters)
+            .ToListAsync(cancellationToken);
+
+        List<Guid> ended = await context.Database
+            .SqlQueryRaw<Guid>(endTaken, endParameters)
+            .ToListAsync(cancellationToken);
+
         await transaction.CommitAsync(cancellationToken);
 
-        return new Revocation(revoked == 1, []);
+        return new Revocation(true, [.. refused, .. ended]);
     }
 
     // Frees a key whose holder's newest poll no longer declares it, in one short transaction (rule 14).
@@ -440,18 +515,144 @@ internal sealed class OutpostStore
     // the agent row, at most `free` commands of each mode of the poll, oldest first, skipping rows another transaction
     // holds, while their entries fit `room`, the first always; they become HandedOut with the run limit of their mode
     // (rules 8, 10, 11, 14). The state of the poll is read in the same transaction.
-    public Task<PollTake> TakeCommandsAsync(
+    //
+    // A command is taken while it has no outcome, is Waiting or HandedOut, its deadline is later than the node's now
+    // (rule 7), its mode is one the poll declares and its key one the agent holds (rule 14). A poll that takes anything
+    // answers and takes no more, so a HandedOut command that a take finds was handed out by an older poll and is
+    // missing from this poll's list: it is handed out again (rule 11). The lock of the agent row makes two takes of one
+    // agent wait for each other, and keeps the agent's claims as they are until the commit, since a release and a
+    // revocation lock that row too.
+    public async Task<PollTake> TakeCommandsAsync(
         Guid agentId,
         OutpostPollRequest poll,
         long room,
         CancellationToken cancellationToken)
     {
-        throw new NotSupportedException();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        // Each mode of each base of the poll, with its workers. A mode with no free worker takes nothing, by the limit
+        // of its pick.
+        List<(string Key, OutpostModeEnum Mode, OutpostPollMode Workers)> modes = [];
+
+        foreach (OutpostPollBase pollBase in poll.Bases)
+        {
+            modes.Add((pollBase.Key, OutpostModeEnum.Read, pollBase.Read));
+
+            if (pollBase.Write is OutpostPollMode write)
+            {
+                modes.Add((pollBase.Key, OutpostModeEnum.Write, write));
+            }
+        }
+
+        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+
+        string agents = TableName(context, context.Agents.EntityType);
+        string claims = TableName(context, context.BaseClaims.EntityType);
+        string commands = TableName(context, context.Commands.EntityType);
+
+        string lockAgent = $"""
+            SELECT id AS "Value" FROM {agents}
+            WHERE id = @agent_id AND state = @paired AND newest_poll = @number
+            FOR NO KEY UPDATE
+            """;
+
+        // The entry of a command in the answer is the base64url of its bytes and of its signature, without padding,
+        // inside the JSON of EntryJson, with a comma before every entry but the first (§6.2). The entries are summed in
+        // the order of the answer, so the first that does not fit stops the take, whatever follows it.
+        string take = $"""
+            WITH picked AS (
+                SELECT command.id, command.sequence, command.entry_length, wanted.run_limit
+                FROM unnest(@keys, @modes, @frees, @run_limits) AS wanted (base_key, mode, free, run_limit)
+                JOIN {claims} AS claim ON claim.key = wanted.base_key AND claim.agent_id = @agent_id
+                CROSS JOIN LATERAL (
+                    SELECT candidate.id, candidate.sequence,
+                        (4 * octet_length(candidate.bytes)::bigint + 2) / 3
+                            + (4 * octet_length(candidate.signature)::bigint + 2) / 3
+                            + @entry_json AS entry_length
+                    FROM {commands} AS candidate
+                    WHERE candidate.agent_id = @agent_id
+                        AND candidate.base_key = wanted.base_key
+                        AND candidate.mode = wanted.mode
+                        AND candidate.phase IN (@waiting, @handed_out)
+                        AND candidate.outcome_kind IS NULL
+                        AND candidate.deadline > @now
+                    ORDER BY candidate.sequence
+                    LIMIT wanted.free
+                    FOR UPDATE SKIP LOCKED
+                ) AS command
+            ),
+            kept AS (
+                SELECT id, run_limit
+                FROM (
+                    SELECT id, run_limit,
+                        row_number() OVER answer AS position,
+                        sum(entry_length) OVER answer + row_number() OVER answer - 1 AS filled
+                    FROM picked
+                    WINDOW answer AS (ORDER BY sequence)
+                ) AS ranked
+                WHERE position = 1 OR filled <= @room
+            ),
+            handed AS (
+                UPDATE {commands} AS command
+                SET phase = @handed_out, run_limit = kept.run_limit
+                FROM kept
+                WHERE command.id = kept.id
+                RETURNING command.sequence, command.bytes, command.signature
+            )
+            SELECT bytes AS "Bytes", signature AS "Signature" FROM handed ORDER BY sequence
+            """;
+
+        NpgsqlParameter[] lockParameters =
+        [
+            new NpgsqlParameter<Guid>("agent_id", agentId),
+            new NpgsqlParameter<int>("paired", (int)OutpostAgentStateEnum.Paired),
+            new NpgsqlParameter<long>("number", poll.Number),
+        ];
+
+        NpgsqlParameter[] takeParameters =
+        [
+            new NpgsqlParameter<Guid>("agent_id", agentId),
+            new NpgsqlParameter<DateTimeOffset>("now", now),
+            new NpgsqlParameter<long>("room", room),
+            new NpgsqlParameter<int>("entry_json", EntryJson.Length),
+            new NpgsqlParameter<int>("waiting", (int)CommandPhaseEnum.Waiting),
+            new NpgsqlParameter<int>("handed_out", (int)CommandPhaseEnum.HandedOut),
+            new NpgsqlParameter<string[]>("keys", [.. modes.Select(mode => mode.Key)]),
+            new NpgsqlParameter<int[]>("modes", [.. modes.Select(mode => (int)mode.Mode)]),
+            new NpgsqlParameter<int[]>("frees", [.. modes.Select(mode => mode.Workers.Free)]),
+            new NpgsqlParameter<TimeSpan[]>("run_limits", [.. modes.Select(mode => mode.Workers.RunLimit)]),
+        ];
+
+        await using IDbContextTransaction transaction =
+            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        List<Guid> locked = await context.Database
+            .SqlQueryRaw<Guid>(lockAgent, lockParameters)
+            .ToListAsync(cancellationToken);
+
+        List<OutpostSignedCommand> handed = [];
+
+        if (locked.Count == 1)
+        {
+            handed = await context.Database
+                .SqlQueryRaw<OutpostSignedCommand>(take, takeParameters)
+                .ToListAsync(cancellationToken);
+        }
+
+        // Revoked, or a Newest that is not null, says why a take that found no row took nothing.
+        PollState state = await ReadStateAsync(context, agentId, cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return new PollTake(state.Newest == poll.Number ? state with { Newest = null } : state, handed);
     }
 
     // The command that holds the base and caller key, in one short transaction that first makes it Expired when it is
     // Waiting with no outcome and its deadline has passed; null when none holds it (rule 4).
-    public Task<CommandMatch?> FindCallerKeyAsync(
+    //
+    // Same compares the mode, the script exactly and the parameters as JSON values with those of the command, which
+    // are read from its bytes. The parameters are the text the call wrote, which holds no name twice.
+    public async Task<CommandMatch?> FindCallerKeyAsync(
         string baseKey,
         string callerKey,
         OutpostModeEnum mode,
@@ -459,51 +660,392 @@ internal sealed class OutpostStore
         string parameters,
         CancellationToken cancellationToken)
     {
-        throw new NotSupportedException();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+
+        string commands = TableName(context, context.Commands.EntityType);
+
+        string find = $"""
+            SELECT id AS "Id", false AS "Created", {SameCommand("@script", "@parameters::jsonb")} AS "Same"
+            FROM {commands}
+            WHERE base_key = @base_key AND caller_key = @caller_key AND {HoldingTheirKey(context)}
+            """;
+
+        NpgsqlParameter[] findParameters =
+        [
+            new NpgsqlParameter<string>("base_key", baseKey),
+            new NpgsqlParameter<string>("caller_key", callerKey),
+            new NpgsqlParameter<int>("mode", (int)mode),
+            new NpgsqlParameter<string>("script", script),
+            new NpgsqlParameter<string>("parameters", parameters),
+        ];
+
+        await using IDbContextTransaction transaction =
+            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        // Rule 7: a command that no poll took ends at its deadline, by the node's clock, which frees its key. Of a take
+        // and this change, the first to commit wins: this statement waits for a take that holds the row, and then finds
+        // the command HandedOut.
+        await context.Commands
+            .Where(command => command.BaseKey == baseKey
+                && command.CallerKey == callerKey
+                && command.Phase == CommandPhaseEnum.Waiting
+                && command.OutcomeKind == null
+                && command.Deadline <= now)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(command => command.OutcomeKind, OutpostOutcomeKindEnum.Expired)
+                    .SetProperty(command => command.EndedAt, now),
+                cancellationToken);
+
+        List<CommandMatch> found = await context.Database
+            .SqlQueryRaw<CommandMatch>(find, findParameters)
+            .ToListAsync(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return found.SingleOrDefault();
     }
 
-    // The holder of a base key, in one statement; null when no agent holds it.
-    public Task<BaseHolder?> FindBaseAsync(string baseKey, CancellationToken cancellationToken)
+    // The holder of a base key, in one statement; null when no agent holds it. Declared and WriteOpen are those of the
+    // holder's newest poll, and the holder is connected as ListAgentsAsync judges it: Paired, with a lease that ends
+    // later than the store's now.
+    public async Task<BaseHolder?> FindBaseAsync(string baseKey, CancellationToken cancellationToken)
     {
-        throw new NotSupportedException();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+
+        await using IDbContextTransaction transaction =
+            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        var holder = await (
+            from claim in context.BaseClaims
+            join agent in context.Agents on claim.AgentId equals agent.Id
+            join agentBase in context.AgentBases
+                on new { claim.AgentId, claim.Key } equals new { agentBase.AgentId, agentBase.Key } into declared
+            from agentBase in declared.DefaultIfEmpty()
+            where claim.Key == baseKey
+            select new
+            {
+                claim.AgentId,
+                Declared = agentBase != null,
+                WriteOpen = agentBase != null && agentBase.WriteOpen,
+                agent.State,
+                agent.LeaseEndsAt,
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        if (holder is null)
+        {
+            return null;
+        }
+
+        bool connected = holder.State == OutpostAgentStateEnum.Paired && holder.LeaseEndsAt > now;
+
+        return new BaseHolder(holder.AgentId, holder.Declared, holder.WriteOpen, connected);
     }
 
     // Creates the command, or finds the one that holds its base and caller key, in one short transaction under the lock
     // FOR SHARE of its agent row while the agent is Paired and connected; null otherwise (rules 4, 6, 13).
-    public Task<CommandMatch?> CreateCommandAsync(CommandRow command, CancellationToken cancellationToken)
+    //
+    // The lock conflicts with the update of a revocation, so a revocation either ends a command created before it or
+    // makes the create find the agent Revoked. A create that finds the key held by a command that has not committed yet
+    // waits for it, then finds it, or creates its own when that one rolled back; the update of a command found changes
+    // nothing and locks its row, so that RETURNING gives it as committed. Created tells the command given from the one
+    // found by its identity; a created command is the same, so its bytes are not read again.
+    public async Task<CommandMatch?> CreateCommandAsync(CommandRow command, CancellationToken cancellationToken)
     {
-        throw new NotSupportedException();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+
+        string agents = TableName(context, context.Agents.EntityType);
+        string commands = TableName(context, context.Commands.EntityType);
+
+        string lockAgent = $"""
+            SELECT id AS "Value" FROM {agents}
+            WHERE id = @agent_id AND state = @paired AND lease_ends_at > @now
+            FOR SHARE
+            """;
+
+        string sameAsGiven = SameCommand(
+            "convert_from(@bytes, 'UTF8')::jsonb ->> 'script'",
+            "convert_from(@bytes, 'UTF8')::jsonb -> 'parameters'");
+
+        string create = $"""
+            INSERT INTO {commands} AS command
+                (id, agent_id, base_key, mode, caller_key, bytes, signature, deadline, skew, outcome_limit, phase)
+            VALUES
+                (@id, @agent_id, @base_key, @mode, @caller_key, @bytes, @signature, @deadline, @skew, @outcome_limit,
+                 @waiting)
+            ON CONFLICT (base_key, caller_key) WHERE {HoldingTheirKey(context)}
+            DO UPDATE SET phase = command.phase
+            RETURNING
+                command.id AS "Id",
+                command.id = @id AS "Created",
+                CASE WHEN command.id = @id THEN true ELSE {sameAsGiven} END AS "Same"
+            """;
+
+        NpgsqlParameter[] lockParameters =
+        [
+            new NpgsqlParameter<Guid>("agent_id", command.AgentId),
+            new NpgsqlParameter<int>("paired", (int)OutpostAgentStateEnum.Paired),
+            new NpgsqlParameter<DateTimeOffset>("now", now),
+        ];
+
+        NpgsqlParameter[] createParameters =
+        [
+            new NpgsqlParameter<Guid>("id", command.Id),
+            new NpgsqlParameter<Guid>("agent_id", command.AgentId),
+            new NpgsqlParameter<string>("base_key", command.BaseKey),
+            new NpgsqlParameter<int>("mode", (int)command.Mode),
+            new NpgsqlParameter<string?>("caller_key", command.CallerKey),
+            new NpgsqlParameter<byte[]>("bytes", command.Bytes),
+            new NpgsqlParameter<byte[]>("signature", command.Signature),
+            new NpgsqlParameter<DateTimeOffset>("deadline", command.Deadline),
+            new NpgsqlParameter<TimeSpan>("skew", command.Skew),
+            new NpgsqlParameter<int>("outcome_limit", command.OutcomeLimit),
+            new NpgsqlParameter<int>("waiting", (int)CommandPhaseEnum.Waiting),
+        ];
+
+        await using IDbContextTransaction transaction =
+            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        List<Guid> locked = await context.Database
+            .SqlQueryRaw<Guid>(lockAgent, lockParameters)
+            .ToListAsync(cancellationToken);
+
+        if (locked.Count == 0)
+        {
+            await transaction.CommitAsync(cancellationToken);
+
+            return null;
+        }
+
+        List<CommandMatch> match = await context.Database
+            .SqlQueryRaw<CommandMatch>(create, createParameters)
+            .ToListAsync(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return match.Single();
     }
 
-    // Ends the command when time made its end due, then reads it, in one short transaction (rules 7, 11).
-    public Task<CommandPass> PassCommandAsync(Guid commandId, CancellationToken cancellationToken)
+    // Ends the command when time made its end due, then reads it, in one short transaction (rules 7, 11): Expired when
+    // no poll took it by its deadline, by the node's clock; once taken, at or after the end of its agent's lease plus
+    // its run limit, Unknown `disconnected` for a Write and Failed `lost` for a Read. Outcome is the command's outcome,
+    // and Due the moment time can next end it, as DueAt gives it.
+    //
+    // A waiting call is the reader that makes the change time made due, so nothing sweeps. The change waits for a
+    // take or an outcome that holds the row and then finds the command as they left it: the first to commit wins.
+    public async Task<CommandPass> PassCommandAsync(Guid commandId, CancellationToken cancellationToken)
     {
-        throw new NotSupportedException();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+
+        string agents = TableName(context, context.Agents.EntityType);
+        string commands = TableName(context, context.Commands.EntityType);
+
+        string end = $"""
+            UPDATE {commands} AS command
+            SET outcome_kind = CASE
+                    WHEN command.phase = @waiting THEN @expired
+                    WHEN command.mode = @write THEN @unknown
+                    ELSE @failed
+                END,
+                outcome_code = CASE
+                    WHEN command.phase = @waiting THEN NULL
+                    WHEN command.mode = @write THEN @disconnected
+                    ELSE @lost
+                END,
+                ended_at = @now
+            FROM {agents} AS agent
+            WHERE command.id = @command_id
+                AND agent.id = command.agent_id
+                AND command.outcome_kind IS NULL
+                AND {DueAt} <= @now
+            """;
+
+        NpgsqlParameter[] endParameters =
+        [
+            new NpgsqlParameter<Guid>("command_id", commandId),
+            new NpgsqlParameter<DateTimeOffset>("now", now),
+            new NpgsqlParameter<int>("waiting", (int)CommandPhaseEnum.Waiting),
+            new NpgsqlParameter<int>("write", (int)OutpostModeEnum.Write),
+            new NpgsqlParameter<int>("expired", (int)OutpostOutcomeKindEnum.Expired),
+            new NpgsqlParameter<int>("unknown", (int)OutpostOutcomeKindEnum.Unknown),
+            new NpgsqlParameter<int>("failed", (int)OutpostOutcomeKindEnum.Failed),
+            new NpgsqlParameter<string>("disconnected", OutpostOutcomeCodes.Disconnected),
+            new NpgsqlParameter<string>("lost", OutpostOutcomeCodes.Lost),
+        ];
+
+        await using IDbContextTransaction transaction =
+            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        await context.Database.ExecuteSqlRawAsync(end, endParameters, cancellationToken);
+
+        var row = await (
+            from command in context.Commands
+            join agent in context.Agents on command.AgentId equals agent.Id
+            where command.Id == commandId
+            select new
+            {
+                command.Mode,
+                command.Phase,
+                command.Deadline,
+                command.RunLimit,
+                command.OutcomeKind,
+                command.OutcomeCode,
+                command.Outcome,
+                agent.LeaseEndsAt,
+            })
+            .SingleAsync(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        // As DueAt: a command that a poll took has a run limit, and its agent a lease.
+        DateTimeOffset due = row.Phase == CommandPhaseEnum.Waiting
+            ? row.Deadline
+            : row.LeaseEndsAt!.Value + row.RunLimit!.Value;
+
+        OutpostOutcome? outcome = ToOutcome(commandId, row.Mode, row.OutcomeKind, row.OutcomeCode, row.Outcome);
+
+        return new CommandPass(outcome, due);
     }
 
     // The mode and the outcome limit of a command; null when there is none of that identity.
-    public Task<CommandLimits?> FindCommandLimitsAsync(Guid commandId, CancellationToken cancellationToken)
+    public async Task<CommandLimits?> FindCommandLimitsAsync(Guid commandId, CancellationToken cancellationToken)
     {
-        throw new NotSupportedException();
+        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+
+        await using IDbContextTransaction transaction =
+            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        CommandLimits? limits = await context.Commands
+            .Where(command => command.Id == commandId)
+            .Select(command => new CommandLimits(command.Mode, command.OutcomeLimit))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return limits;
     }
 
     // Keeps the outcome of the agent, in one statement, when the command is the agent's, not Waiting, and has no outcome
-    // or a replaceable one; true when it changed the row (rule 11).
-    public Task<bool> KeepOutcomeAsync(
+    // or a replaceable one; true when it changed the row (rule 11). The outcome is kept as its bytes came (§8), and its
+    // retention counts from now.
+    //
+    // Of two outcomes of one command, the second waits for the row and then finds the first kept, which is not
+    // replaceable: it changes nothing.
+    public async Task<bool> KeepOutcomeAsync(
         Guid agentId,
         Guid commandId,
         OutpostOutcomeMessage message,
         ReadOnlyMemory<byte> outcome,
         CancellationToken cancellationToken)
     {
-        throw new NotSupportedException();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        OutpostOutcomeKindEnum kind = message.Kind switch
+        {
+            OutpostAgentOutcomeKindEnum.Succeeded => OutpostOutcomeKindEnum.Succeeded,
+            OutpostAgentOutcomeKindEnum.Failed => OutpostOutcomeKindEnum.Failed,
+            OutpostAgentOutcomeKindEnum.Refused => OutpostOutcomeKindEnum.Refused,
+            OutpostAgentOutcomeKindEnum.Unknown => OutpostOutcomeKindEnum.Unknown,
+            _ => throw new ArgumentOutOfRangeException(nameof(message)),
+        };
+
+        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+
+        string commands = TableName(context, context.Commands.EntityType);
+
+        string keep = $"""
+            UPDATE {commands}
+            SET outcome_kind = @kind, outcome_code = @code, outcome = @outcome, ended_at = @now
+            WHERE id = @command_id
+                AND agent_id = @agent_id
+                AND phase <> @waiting
+                AND (outcome_kind IS NULL OR {Replaceable})
+            """;
+
+        NpgsqlParameter[] parameters =
+        [
+            new NpgsqlParameter<Guid>("command_id", commandId),
+            new NpgsqlParameter<Guid>("agent_id", agentId),
+            new NpgsqlParameter<int>("kind", (int)kind),
+            new NpgsqlParameter<string?>("code", message.Code),
+            new NpgsqlParameter<ReadOnlyMemory<byte>>("outcome", outcome),
+            new NpgsqlParameter<DateTimeOffset>("now", now),
+            new NpgsqlParameter<int>("waiting", (int)CommandPhaseEnum.Waiting),
+            new NpgsqlParameter<int>("unknown", (int)OutpostOutcomeKindEnum.Unknown),
+            new NpgsqlParameter<int>("failed", (int)OutpostOutcomeKindEnum.Failed),
+        ];
+
+        await using IDbContextTransaction transaction =
+            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        int kept = await context.Database.ExecuteSqlRawAsync(keep, parameters, cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return kept == 1;
     }
 
     // Deletes the commands that ended a retention ago or more, and those with no outcome whose end by time was due that
     // long ago, in statements of at most 1 000 rows that skip locked rows; gives the number deleted.
-    public Task<int> PurgeCommandsAsync(TimeSpan retention, CancellationToken cancellationToken)
+    //
+    // A command with no outcome is removed as if it had been ended when due and removed a retention later, without an
+    // update. Each statement is a transaction of its own, so the purges of several nodes share the work and none waits
+    // for another; a row that a call or a poll holds is left for the next round.
+    public async Task<int> PurgeCommandsAsync(TimeSpan retention, CancellationToken cancellationToken)
     {
-        throw new NotSupportedException();
+        DateTimeOffset cutoff = _timeProvider.GetUtcNow() - retention;
+
+        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+
+        string agents = TableName(context, context.Agents.EntityType);
+        string commands = TableName(context, context.Commands.EntityType);
+
+        string purge = $"""
+            DELETE FROM {commands}
+            WHERE id IN (
+                SELECT command.id
+                FROM {commands} AS command
+                JOIN {agents} AS agent ON agent.id = command.agent_id
+                WHERE command.ended_at <= @cutoff OR (command.outcome_kind IS NULL AND {DueAt} <= @cutoff)
+                LIMIT @batch
+                FOR UPDATE OF command SKIP LOCKED)
+            """;
+
+        int purged = 0;
+        int deleted;
+
+        do
+        {
+            NpgsqlParameter[] parameters =
+            [
+                new NpgsqlParameter<DateTimeOffset>("cutoff", cutoff),
+                new NpgsqlParameter<int>("waiting", (int)CommandPhaseEnum.Waiting),
+                new NpgsqlParameter<int>("batch", PurgeBatch),
+            ];
+
+            await using IDbContextTransaction transaction =
+                await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+            deleted = await context.Database.ExecuteSqlRawAsync(purge, parameters, cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+
+            purged += deleted;
+        }
+        while (deleted == PurgeBatch);
+
+        return purged;
     }
 
     // Claims each key that no agent holds for the agent, in one statement, in ordinal order of the keys (rule 14). Of two
@@ -531,6 +1073,126 @@ internal sealed class OutpostStore
         ];
 
         await context.Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken);
+    }
+
+    // The list of received commands of the newest poll, after its claims, in two statements (rules 7, 10, 11). Gives the
+    // commands the second made Expired.
+    //
+    // The first makes the agent's HandedOut commands that the list holds Received: they reached the agent, so they are
+    // never handed out again nor made Expired, which would free a key whose Write may still run. Every HandedOut
+    // command of the agent that is left is one that the list does not hold. The second makes those Expired when their
+    // outcome is none or replaceable and the poll's signed time is later than their deadline plus their skew: from then
+    // on the agent refuses them by its own clock, so they never run. Identities of no command of this agent change
+    // nothing. Each statement waits for a row that an outcome holds, and then finds that outcome: the first to commit
+    // wins.
+    private static async Task<IReadOnlyList<Guid>> ReconcileReceivedAsync(
+        StoreContext context,
+        Guid agentId,
+        OutpostPollRequest poll,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        string commands = TableName(context, context.Commands.EntityType);
+
+        string expire = $"""
+            UPDATE {commands}
+            SET outcome_kind = @expired, outcome_code = NULL, outcome = NULL, ended_at = @now
+            WHERE agent_id = @agent_id
+                AND phase = @handed_out
+                AND (outcome_kind IS NULL OR {Replaceable})
+                AND deadline + skew < @time
+            RETURNING id AS "Value"
+            """;
+
+        NpgsqlParameter[] parameters =
+        [
+            new NpgsqlParameter<Guid>("agent_id", agentId),
+            new NpgsqlParameter<DateTimeOffset>("now", now),
+            new NpgsqlParameter<DateTimeOffset>("time", poll.Time),
+            new NpgsqlParameter<int>("handed_out", (int)CommandPhaseEnum.HandedOut),
+            new NpgsqlParameter<int>("expired", (int)OutpostOutcomeKindEnum.Expired),
+            new NpgsqlParameter<int>("unknown", (int)OutpostOutcomeKindEnum.Unknown),
+            new NpgsqlParameter<int>("failed", (int)OutpostOutcomeKindEnum.Failed),
+        ];
+
+        Guid[] received = [.. poll.Received];
+
+        await context.Commands
+            .Where(command => command.AgentId == agentId
+                && command.Phase == CommandPhaseEnum.HandedOut
+                && received.Contains(command.Id))
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(command => command.Phase, CommandPhaseEnum.Received),
+                cancellationToken);
+
+        return await context.Database.SqlQueryRaw<Guid>(expire, parameters).ToListAsync(cancellationToken);
+    }
+
+    // Rule 4: whether a row of commands is the same command as the one given, over the parameter @mode: its mode, its
+    // script compared exactly and its parameters compared as JSON values, both read from its bytes, against the script
+    // and the parameters given as SQL. A jsonb compares numbers by their value and objects whatever the order of their
+    // members. The bytes are read as UTF-8 text, which a database in the encoding UTF8 holds whole.
+    private static string SameCommand(string script, string parameters)
+    {
+        return $"""
+            (mode = @mode
+                AND convert_from(bytes, 'UTF8')::jsonb ->> 'script' = {script}
+                AND convert_from(bytes, 'UTF8')::jsonb -> 'parameters' = {parameters})
+            """;
+    }
+
+    // The filter of the unique index of base and caller key, as the model has it: the commands that hold their key,
+    // every one but those that ended as Expired or Refused (rule 4).
+    private static string HoldingTheirKey(StoreContext context)
+    {
+        return context.Commands.EntityType.GetIndexes().Single(index => index.IsUnique).GetFilter()!;
+    }
+
+    // The outcome of a command as a call returns it: null while it has none; the agent's, read from its object for the
+    // mode of the command (§8); or one the server set, which is its kind and its code alone.
+    private static OutpostOutcome? ToOutcome(
+        Guid commandId,
+        OutpostModeEnum mode,
+        OutpostOutcomeKindEnum? kind,
+        string? code,
+        byte[]? outcome)
+    {
+        if (kind is not OutpostOutcomeKindEnum set)
+        {
+            return null;
+        }
+
+        if (outcome is not null)
+        {
+            OutpostOutcomeMessage message = OutpostCodec.ReadOutcome(mode, outcome);
+
+            return message.Kind switch
+            {
+                OutpostAgentOutcomeKindEnum.Succeeded => OutpostOutcome.Succeeded(
+                    commandId,
+                    message.Result!.Value,
+                    message.Messages,
+                    message.MessagesTrimmed),
+                OutpostAgentOutcomeKindEnum.Failed => OutpostOutcome.Failed(
+                    commandId,
+                    message.Code!,
+                    message.ErrorText,
+                    message.Messages,
+                    message.MessagesTrimmed),
+                OutpostAgentOutcomeKindEnum.Refused => OutpostOutcome.Refused(commandId, message.Code!),
+                OutpostAgentOutcomeKindEnum.Unknown => OutpostOutcome.Unknown(commandId, message.Code!),
+                _ => throw new ArgumentOutOfRangeException(nameof(outcome)),
+            };
+        }
+
+        return set switch
+        {
+            OutpostOutcomeKindEnum.Expired => OutpostOutcome.Expired(commandId),
+            OutpostOutcomeKindEnum.Refused => OutpostOutcome.Refused(commandId, code!),
+            OutpostOutcomeKindEnum.Unknown => OutpostOutcome.Unknown(commandId, code!),
+            OutpostOutcomeKindEnum.Failed => OutpostOutcome.Failed(commandId, code!, null, [], false),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
     }
 
     // The state of the agent in one statement: Revoked when it is not Paired, or not known; Newest the number of its

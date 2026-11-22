@@ -60,7 +60,7 @@ public sealed class RevocationTests(PostgreSqlFixture postgres) : IClassFixture<
 
     // Concept rules 3 and 13. Of the agent's taken commands, a Read was only handed out and a Write is in its list as
     // received; a third command has the agent's outcome, and another agent's command waits for a poll.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Revoking_an_agent_ends_its_commands_with_no_outcome_as_Refused_revoked_when_no_poll_took_them_and_as_Unknown_revoked_or_Failed_lost_when_taken()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

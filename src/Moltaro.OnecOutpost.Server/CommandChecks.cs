@@ -25,12 +25,14 @@ internal static class CommandChecks
                 nameof(OutpostReadRequest.Parameters));
         }
 
+        // Before the walk of the caller's object: a JsonObject parsed from text that gives a name twice throws an
+        // exception of its own when it is walked.
+        CheckText(written.RootElement);
+
         if (parameters is not null)
         {
             CheckLoneSurrogates(parameters);
         }
-
-        CheckText(written.RootElement);
 
         long size = OutpostCodec.CommandSize(script, written.RootElement);
 

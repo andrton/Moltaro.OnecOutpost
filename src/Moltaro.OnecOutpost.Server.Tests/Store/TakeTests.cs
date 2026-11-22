@@ -17,7 +17,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Store;
 [Trait("Requires", "PostgreSQL")]
 public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_take_hands_out_a_command_as_it_was_signed_and_makes_it_HandedOut_with_the_run_limit_of_its_mode()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -52,7 +52,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // Concept rule 8. The poll has two free workers for the Reads of one base and one for its Writes, one for the
     // Reads of a second base, and none for the Reads of a third. The identities of the commands sort against the order
     // of their creation, so that only the sequence gives the order.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_take_gives_at_most_free_commands_of_each_base_and_mode_of_its_poll_oldest_first()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -105,7 +105,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // Concept rule 11 and §6.2 of docs/protocol.md: the answer to the older poll was lost, so the newer poll does not
     // list the command as received. It is handed out again like any other command, with the run limit that the newer
     // poll declares for Reads.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_command_that_the_newest_poll_does_not_list_is_handed_out_again_against_free_with_the_run_limit_of_that_poll()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -136,7 +136,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     }
 
     // Concept rules 3 and 11: a command that its agent listed as received reached it, and is never handed out again.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_command_that_the_newest_poll_lists_as_received_is_never_handed_out_again()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -160,7 +160,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // Concept rules 7 and 11: neither a command that no poll took nor one handed out again is handed out from its
     // deadline on, by the node's clock. The poll that lists neither is signed before the deadline plus the skew, so the
     // command that was handed out stays HandedOut.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_take_hands_out_no_command_from_its_deadline_on()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -194,7 +194,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // the agent's outcome or for the poll that makes it Expired. The command's take timeout is long enough for the run
     // limit of one minute to end it before its deadline, and the poll that follows lists it no more and is signed
     // before that deadline.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("of_its_agent")]
     [InlineData("set_by_the_server")]
     public async Task A_take_hands_out_no_command_that_has_an_outcome(string outcome)
@@ -235,7 +235,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     }
 
     // The newer poll closes Write on the first base and no longer declares the second.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_take_hands_out_no_command_for_a_mode_or_a_base_that_its_poll_does_not_declare()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -260,7 +260,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 
     // Concept rule 14: the command was made while its agent held the key. The application released the key after the
     // agent stopped declaring it, another agent claimed it, and the first agent declares it again, claimed for it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_command_made_before_its_key_was_released_is_handed_out_neither_to_its_agent_nor_to_the_next_holder()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -286,7 +286,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     }
 
     // Concept rule 10.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_take_of_a_poll_that_is_no_longer_the_newest_takes_nothing_and_its_state_names_the_newest_number()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -309,7 +309,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     }
 
     // Concept rule 13.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_take_of_a_revoked_agent_takes_nothing_and_its_state_says_revoked()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -332,7 +332,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // §10 of docs/protocol.md: an answer is filled only up to its limit, and always holds one command when one is due.
     // The scripts make each entry of the answer about 4 500 bytes, so that a room of two and a half entries holds two
     // of them whatever the few bytes around each entry.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0.25, 1)]
     [InlineData(2.5, 2)]
     [InlineData(3.5, 3)]
@@ -363,7 +363,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 
     // The second command is too large for the room that the first and the third fit: commands are handed out oldest
     // first, so the third waits for an answer of its own.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_take_hands_out_no_command_after_the_first_one_that_does_not_fit_the_room()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -393,7 +393,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // The race of two takes of one command. Two takes of one agent wait for each other on its row, so the race is a
     // take that finds the row of the command held by another transaction, as by a take that has not committed yet. It
     // skips the row without waiting and changes nothing; once the row is free, the same poll takes the command.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_take_that_finds_the_row_of_a_command_held_by_another_take_skips_it_without_waiting()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -433,7 +433,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // Concept rule 7: taking and expiring are one conditional change of the command, each judged by the clock of the
     // node that makes it, and the first to commit wins. The expiry by a node whose clock reached the deadline holds its
     // change open; the take on a node whose clock has not skips the command without waiting, and the expiry commits.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_take_that_finds_a_command_held_by_its_expiry_skips_it_and_the_command_ends_as_Expired()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -475,7 +475,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
     // Concept rule 7, the other order: the take on a node whose clock has not reached the deadline holds its change
     // open, and the pass of a call on a node whose clock has waits for the command and then finds it taken. It ends
     // nothing, and gives the end of the agent's lease plus the run limit of the take as the moment time can end it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_expiry_that_finds_a_command_held_by_its_take_waits_for_it_and_then_changes_nothing()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
