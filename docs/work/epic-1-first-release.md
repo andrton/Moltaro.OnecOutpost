@@ -755,6 +755,13 @@ contract", both in [S6's brief](#s6--the-agent).
   error and stops.
 - **The agent's account** is the virtual service account `NT SERVICE\MoltaroOnecOutpost`,
   which needs no password.
+- *(S6)* **The agent program** takes one argument, `service`, and runs only as the
+  Windows service. It exits with 0 when stopped; 1 when it stops on its own, recorded in
+  the audit log when the log can be written; 2 when the log was not opened, as for a
+  second copy, with nothing recorded; 3 when started outside the service controller, with
+  nothing in the data folder changed; 4 for any other arguments; 5 when not on Windows.
+  As a service it reports a code other than 0 as `ERROR_SERVICE_SPECIFIC_ERROR` with
+  that code.
 
 | File | Written by | Public | Content |
 | --- | --- | --- | --- |
@@ -837,7 +844,7 @@ Each line is one JSON object in UTF-8, written and flushed before the agent goes
 | --- | --- | --- |
 | `started` | `version`, *(S6)* `withoutSafeMode` (the keys of the bases whose Writes run without safe mode, an array, empty when there is none and when there is an `error`), `error` (when it stops at once) | The agent started |
 | `policy` | `valid`, `error` (when not valid) | The agent read its policy |
-| `connection` | `state` (`connected` or `lost`), `reason` (when lost) | The agent's connection to the server changed |
+| `connection` | `state` (`connected` or `lost`), `reason` (when lost) | The agent's connection to the server changed. *(S6)* Once per change of the state of its polls, which answers to outcomes do not change, with the `reason` of §9 of `docs/protocol.md`: the code of a verified refusal, `protocol-version`, `status-` and the HTTP status, `status-407` from a proxy included, or `unreachable` |
 | `bases` | `held` (the keys the server granted), `claimed` (the keys another agent holds) | The server's answer changed what this agent holds (rule 14) |
 | `received` | `command`, `base`, `mode` (`read` or `write`), `callerKey` (or `null`), `script`, `parameters` (an object, *(S6)* always), `issued`, `deadline` | A command passed the checks of rule 1, before it runs |
 | `refused` | `command` (or `null`), `base` (or `null`), `mode` (or `null`), `code` | A command failed a check of rule 1. For a signature that did not verify, `code` is `signature` and the other members are `null`, since nothing in the command can be trusted. *(S6)* The same holds for `form`, verified bytes that name no command. A `refused` of a command ends it as `ended` does |
