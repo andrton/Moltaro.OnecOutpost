@@ -792,7 +792,7 @@ contract", both in [S6's brief](#s6--the-agent).
 | Member | Rule |
 | --- | --- |
 | `auditRetentionDays` | 1 to 3650; 90 when absent |
-| `proxy` | The HTTP proxy through which the agent reaches the server, as an absolute `http` URL. When absent, the agent connects directly. *(S6)* A URL with a user or a password is refused (Q7). A proxy that asks for authentication is offered the Windows credentials of the agent's account, which on the network are those of the computer, by Kerberos only, never by NTLM, so a machine outside a domain reaches only a proxy that asks for no credentials |
+| `proxy` | The HTTP proxy through which the agent reaches the server, as an absolute `http` URL. When absent, the agent connects directly. *(S6)* A URL with a user or a password is refused (Q7). The agent offers the proxy no credentials, by no scheme, so never NTLM: a proxy that asks for authentication answers 407, and the agent is not connected through it (`status-407`). The proxy is used only for an `https` server. Offering the computer's credentials by Kerberos alone is planned |
 | `retryDelayMax` | The longest delay between attempts after an error, for the connection to the server and for starting a COM worker again. The first delay is a tenth of it. *(S6)* A tenth of it is also the wait after an answer to an older poll (§6.2 of `docs/protocol.md`). In the form of `runLimit`, from 1 second to 1 hour; 30 seconds when absent |
 | `requestTimeout` | *(S6)* The agent's wait for an answer to `pair` or `outcome`, and for the body of a poll answer. In the form of `runLimit`, from 10 seconds to 1 hour; 5 minutes when absent |
 | `bases` | At least one base, *(S6)* at most 256; the keys are unique |
@@ -804,7 +804,7 @@ contract", both in [S6's brief](#s6--the-agent).
 | `account` | The 1C account of the mode; its password is a secret that the console writes |
 | `workers` | 1 to 8; 1 when absent |
 | `safeMode` | In `write` only: whether the Writes of the base run in the 1C safe mode; `true` when absent. With `false`, the COM workers of the base run under a Windows account of their own (D12). In `read` it is an unknown member: a Read always runs in safe mode |
-| `runLimit` | A .NET `TimeSpan` in its constant form `[d.]hh:mm:ss`, from 1 second to 1 day (`1.00:00:00`); 10 minutes when absent |
+| `runLimit` | A .NET `TimeSpan` in its constant form `[d.]hh:mm:ss`, from 1 second to 1 day (`1.00:00:00`); 10 minutes when absent. *(S6)* It is also the deadline for a worker of the mode to open its session: a worker that has not opened by then is ended and never runs a command |
 
 - **An invalid file serves nothing.** An unknown member, a member given twice, a wrong
   type, a member set to `null`, or a value out of its rule makes the whole file invalid;
@@ -1164,7 +1164,7 @@ The contract and the wire
 The riskiest unknown: a script in a real 1C
   L1 lab check ── S9 executor, COM worker
 The tunnel, with a fake in place of the worker
-  S3 store ── S4 pairing ── S5a commands in the store ── S5b calls ── S6a agent's files ── S6b agent loop ── S7 nodes, losses
+  S3 store ── S4 pairing ── S5a commands in the store ── S5b calls ── S6a agent's files ── S6b agent checks, workers ── S6c agent loop ── S7 nodes, losses
   S8 refactoring
 The agent with 1C, and the tools
   S9b the agent runs the workers ── S10 console ── S11 shell
@@ -1196,12 +1196,17 @@ The release
   signals, all in strict zones, are too much for one review; a review of the store alone
   can be exhaustive.
 - **S6, the agent, after the server.** Its tests run against the real server of S5 over
-  loopback, so the first end-to-end test exists at the end of S6b.
-- **S6a, the agent's files, apart from S6b, the loop** (the planner, 22 November 2026). The
+  loopback, so the first end-to-end test exists at the end of S6c.
+- **S6a, the agent's files, apart from the loop** (the planner, 22 November 2026). The
   audit log as journal, the outbox, the restart rules and the poll numbers are a strict
   zone that fakes of the disk test without HTTP; the transport, the checks, the workers
   and the end-to-end tests are a second one. Together they are too much for one review,
   and a review of the agent's files alone can be exhaustive.
+- **S6b, the checks and the workers, apart from S6c, the loop** (the coordinator, 22
+  November 2026, under the planner's standing instruction). The checks of rule 1 and of a
+  poll answer, and the workers with their run limits, are tested through internal types
+  without HTTP; the transport, pairing, the loop and the service are a strict zone of
+  their own. Each review can then be exhaustive.
 - **S7, several nodes and lost messages,** on its own, because it needs a test proxy that
   drops and holds messages, and because it is where a wrong rule shows.
 - **S8, refactoring,** after stage 1, the middle of the epic, before stage 2 builds on the
@@ -1228,7 +1233,8 @@ The release
 | S5a | Commands in the store | Full | Done, 22 November 2026: the commands table with the third migration `Commands`, the store operations of commands and outcomes with their tests and races against PostgreSQL, revocation ending the agent's commands in its transaction, and parameters with a name twice refused at the call. Read, Write and `outcome` still refuse. The study read actions/runner and Halibut; the internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds and left P4s, listed for S5b in its brief. Of the drafts of the public contract that the S5 brief lists for the owner, S5a makes two: parameters with a name twice refused, and a store database in UTF8 |
 | S5b | The calls, the hand-out, `outcome` and the signals | Full | Done, 22 November 2026: `ReadAsync` and `WriteAsync` create a signed command, wake the agent's poll through the signals and wait for its outcome; the poll hands commands out up to `free` and 64 MiB; the `outcome` request takes the agent's outcome, with the signed 413 `result-too-large`; the purge removes ended commands. All tested over loopback HTTP with the test agent. The tests ran on the internal contract approved for S5; the code review took three rounds, its P3 of round 1 (a second §2 read of an outcome, 464 → 336 MiB at the peak for 64 MiB) and a P2 of round 2 (sets that did not honor cancellation) fixed; the P4s left are listed in the S5 brief. The other two drafts of the public contract that the S5 brief lists for the owner are S5b's |
 | S6a | The agent's files | Full | Done, 22 November 2026: the policy with the changes carried over from S2, `agent.json` and the secrets read through DPAPI for the machine, the access lists of the data folder, the audit log written in order to the disk with its lock, torn entries, start and retention, the outbox, the order of a command's records, the reservation of poll numbers and the start after a restart; the agent program still runs nothing. The internal contract of S6 was reviewed in two rounds and approved under PQ2; the code review took three rounds (a P1 and a P2, then a P2 of retention, then a P3 moved to S8 by the planner). What it changes in the public contract is listed in the S6 brief for the owner |
-| S6b | The agent's loop: pairing, polls, checks, workers, outcomes and the service | Full | Not started |
+| S6b | The agent's checks of commands and poll answers, its workers and run limits | Full | Not started |
+| S6c | The agent's loop: the transport, pairing, polls, outcomes, the host and the service | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
@@ -2800,8 +2806,9 @@ documentation of `CallerKey`. **Left by S5b's review** (P4, the coordinator, 22 
 ### S6 · The agent
 
 **Track:** full · **Needs:** S5; L1 when it has run, as
-[Order](#order-and-why-these-splits) says. One brief, run as two sprints (the planner, 22
-November 2026):
+[Order](#order-and-why-these-splits) says. One brief, run as three sprints (the planner, 22
+November 2026; the coordinator cut the loop in two, 22 November 2026, under the planner's
+standing instruction to cut a sprint too large for one exhaustive review):
 
 - **S6a, the agent's files.** Branch `epic-1/sprint-06a-agent-files`. What the agent keeps
   on its machine, without HTTP: the policy with the changes carried over from S2;
@@ -2812,29 +2819,33 @@ November 2026):
   access list of the data folder behind their boundaries; the reservation of poll
   numbers, given the `newest` of an older answer as an input; and what a start finds after
   a restart. The agent program still does nothing.
-- **S6b, the loop.** Branch `epic-1/sprint-06b-agent-loop`, cut from `main` after S6a
-  merges. Pairing; numbered polls through the proxy; the checks of every command; running
-  through the COM worker's boundary with a fake; workers and run limits; outcomes sent
-  until confirmed; the `connection` and `bases` entries; the call sites of retention and
-  of the reservation after an older answer; the end-to-end tests against the server of
-  S5; the Windows service; and the documents step.
+- **S6b, the checks and the workers.** Branch `epic-1/sprint-06b-agent-checks`, cut from
+  `main` after S6a merges. The checks of every command (rule 1, §7) and of a poll answer;
+  the worker boundary with its fake; `WorkerPool` with workers and run limits (rules 8,
+  9) and what turns an executor's object into the outcome sent. No HTTP: tested through
+  the internal types and S6a's files in memory. The agent program still runs nothing.
+- **S6c, the loop.** Branch `epic-1/sprint-06c-agent-loop`, cut from `main` after S6b
+  merges. The transport, the addresses of §11, the waits and read limits; pairing;
+  numbered polls; outcomes sent until confirmed; the call sites of retention and of the
+  reservation; `connection` and `bases`; the end-to-end tests against the server of S5;
+  the in-process host; the Windows service; and the documents step.
 
-Each closes with its own code review, pull request and merge under PQ1. The internal
-contract below covers both and is approved once; S6b's contract step puts its own part
-into code, and the steps from the tests on run again for it.
+Each closes with its own tests, implementation, code review, pull request and merge under
+PQ1. S6a's part of the internal contract below was approved once; S6b's and S6c's part is
+approved once, before S6b's tests. Each contract step puts its own part into code.
 
 **Which lines of the Acceptance are S6a's.** In the order of the Acceptance:
 - of the order of the entries, `received`, then the outbox file, then `ended`, then
   `confirmed`, through `CommandRecords`;
 - after a restart, both lines as far as `Recover` records them; that the outbox file is
-  sent is S6b's;
+  sent is S6c's;
 - of an outcome refused for its size, the outbox file and the second `ended` that
-  `ReplaceForSize` writes; what triggers it is S6b's;
+  `ReplaceForSize` writes; what triggers it is S6c's;
 - of the poll numbers, the first four lines, through `PollNumbers` and starts of
   `AgentStart`, and the last, `newest` 2⁶², through `Answered` and `Next`;
 - of the audit log, every line but "nothing runs before its `received` is on the disk";
   of the second copy, a second `AgentStart.Open` that gets `IOException` and records
-  nothing; that the program then exits with an error is S6b's;
+  nothing; that the program then exits with an error is S6c's;
 - of the outbox, every line;
 - an invalid policy serves nothing and is recorded;
 - of the retention, the first two lines, and of the third an answer whose `time` is more
@@ -2844,9 +2855,16 @@ into code, and the steps from the tests on run again for it.
 - the changes carried over from S2 to `AgentPolicy`, `AgentPolicyReader` and the audit
   log.
 
-Every other line is S6b's, among them "a command that cannot be recorded does not run",
-"nothing removed before the first verified poll answer of a run", the cleared log end to
-end, the clock set behind the server's newest number, and the documents step.
+**Which are S6b's**, through `CommandChecks` and `WorkerPool` with the fake worker: of
+rule 1, each check's code, the first of §7 when several fail, and no identity for
+`signature` and `form`; of the poll answers, the verdicts of `CheckAnswer`; the
+executor's object and its `size`; and workers and run limits. That the codes reach the
+outcome and the log, and that a lost answer's commands are neither recorded nor run, is
+S6c's. Every other line is S6c's, among them "a command that cannot be recorded does not
+run", "nothing runs before its `received` is on the disk", the sum of `free`, the second
+copy's exit, "nothing removed before the first verified poll answer of a run", the
+cleared log end to end, the clock set behind the server's newest number, and the
+documents step.
 
 - **Goal.** The agent works end to end against the server of S5, with a fake behind the
   COM worker's boundary:
@@ -2884,9 +2902,10 @@ end, the clock set behind the server's newest number, and the documents step.
     Interfaces stand only at the boundaries the brief names: the files, the access lists,
     the protection of the secrets and the workers; the transport's boundary is a given
     `HttpMessageHandler`. Folders depend one way: `Audit` and `Outcomes` on `Files`;
-    `Records` on both; `Polls` on `Audit`; `Start` on all of S6a; in S6b `Pairing` on
-    `Transport`, `Checks` on `Policy` and `Audit`, `Workers` on `Policy` and `Secrets`,
-    `Loop` on all of S6a and on `Transport`, `Checks` and `Workers`, and `Host` on all.
+    `Records` on both; `Polls` on `Audit`; `Start` on all of S6a; in S6b `Checks` on
+    `Policy` and `Audit`, `Workers` on `Policy` and `Secrets`; in S6c `Pairing` on
+    `Transport`, `Loop` on all of S6a and on `Transport`, `Checks` and `Workers`, and
+    `Host` on all.
 
     ```csharp
     // ---- S6a ----
@@ -2949,7 +2968,7 @@ end, the clock set behind the server's newest number, and the documents step.
         public static byte[] Write(AgentSecrets secrets, IMachineProtection protection);
     }
 
-    // Moltaro.OnecOutpost.Agent.Pairing: the file in S6a, the request in S6b
+    // Moltaro.OnecOutpost.Agent.Pairing: the file in S6a, the request in S6c
     internal sealed record AgentPairingSettings(Uri Server, Guid Agent, byte[] ServerKey, TimeSpan PollTimeout, TimeSpan LeaseGrace);
     internal static class AgentPairingFile
     {
@@ -3018,26 +3037,28 @@ end, the clock set behind the server's newest number, and the documents step.
         public static AgentRun Open(AgentFolders folders, IAccessLists access, IMachineProtection protection, TimeProvider clock, string version);
     }
 
-    // ---- S6b: signatures; its contract step gives the members of PollResult, OutcomeResultEnum,
-    // AgentPairingResult, CommandCheck, WorkerConnectionLine (a class: it holds a password),
-    // WorkerCommandLine, WorkerRun, AgentParts and AgentExitCodes ----
+    // ---- S6b ----
 
-    // Moltaro.OnecOutpost.Agent.Transport: §4, §6, §9, §10, §11 and the `proxy` row
-    internal static class AgentHandler { public static bool IsAllowed(Uri server); public static HttpMessageHandler Create(Uri server, Uri? proxy); }
-    internal sealed class AgentConnection : IDisposable
+    // Moltaro.OnecOutpost.Agent.Checks: §7 and §6.2, concept rule 1
+    internal enum CommandVerdictEnum { Runs, Refused, Known }
+    internal sealed record CommandCheck(CommandVerdictEnum Verdict, Guid? Id, string? BaseKey, OutpostModeEnum? Mode, string? Code, OutpostCommandMessage? Command);
+    internal sealed class CommandChecks
     {
-        public AgentConnection(Uri server, Guid agent, ECDsa agentKey, ECDsa serverKey, HttpMessageHandler handler, TimeProvider clock);
-        public Task<PollResult> PollAsync(OutpostPollRequest poll, int totalFree, TimeSpan leaseGrace, TimeSpan requestTimeout, CancellationToken cancellationToken);
-        public Task<OutcomeResultEnum> SendOutcomeAsync(Guid command, ReadOnlyMemory<byte> outcome, TimeSpan requestTimeout, CancellationToken cancellationToken);
+        public CommandChecks(Guid agent, ECDsa serverKey, AgentPolicy policy, TimeProvider clock);
+        public CommandCheck Check(OutpostSignedCommand command, AuditLog log);
+        public IReadOnlyList<CommandCheck>? CheckAnswer(OutpostPollRequest poll, OutpostPollAnswer answer, AuditLog log);
     }
 
-    // Moltaro.OnecOutpost.Agent.Pairing: §6.1; it writes no file, the console of S10 writes agent.json and secrets.dat
-    internal static class AgentPairing { public static Task<AgentPairingResult> PairAsync(Uri server, string token, string agentVersion, HttpMessageHandler handler, TimeSpan requestTimeout, TimeProvider clock, CancellationToken cancellationToken); }
-
-    // Moltaro.OnecOutpost.Agent.Checks: §7, concept rule 1
-    internal sealed class CommandChecks { public CommandChecks(Guid agent, ECDsa serverKey, AgentPolicy policy, TimeProvider clock); public CommandCheck Check(OutpostSignedCommand command, AuditLog log); }
-
     // Moltaro.OnecOutpost.Agent.Workers: the lines of S9, concept rules 8 and 9
+    internal sealed class WorkerConnectionLine // a class: it holds a password
+    {
+        public required string Location { get; init; }
+        public required string User { get; init; }
+        public required string Password { get; init; }
+        public required bool SafeMode { get; init; }
+        public required string Executor { get; init; }
+    }
+    internal sealed record WorkerCommandLine(string Script, string ParametersJson, string? CallerKey, long OutcomeLimit);
     internal interface IWorkerLauncher { IWorkerProcess Start(string baseKey, OutpostModeEnum mode); }
     internal interface IWorkerProcess : IDisposable
     {
@@ -3045,17 +3066,55 @@ end, the clock set behind the server's newest number, and the documents step.
         Task<(long Size, byte[] Outcome)?> RunAsync(WorkerCommandLine command, CancellationToken cancellationToken);
         void Kill();
     }
+    internal sealed record WorkerRun(byte[] Outcome, long DurationMs);
     internal sealed class WorkerPool : IAsyncDisposable
     {
         public WorkerPool(AgentPolicy policy, AgentSecrets secrets, IWorkerLauncher launcher, string executor, TimeProvider clock);
+        public void Open(CancellationToken cancellationToken);
         public int Free(string baseKey, OutpostModeEnum mode);
         public Task<WorkerRun> RunAsync(OutpostCommandMessage command, CancellationToken cancellationToken);
+        public void Release(Guid command);
+        public ValueTask DisposeAsync();
     }
 
-    // Moltaro.OnecOutpost.Agent.Loop: §6.2, §9 and the Acceptance
+    // ---- S6c ----
+
+    // Moltaro.OnecOutpost.Agent.Transport: §4, §6, §9, §10, §11 and the `proxy` row
+    internal static class ServerRoute
+    {
+        public static bool IsAllowed(Uri server);
+        public static SocketsHttpHandler CreateHandler(Uri server, Uri? proxy);
+    }
+    internal sealed record PollResult(OutpostPollAnswer? Answer, string? Reason);
+    internal enum OutcomeResultEnum { Confirmed, TooLarge, Lost }
+    internal sealed class AgentConnection : IDisposable
+    {
+        public AgentConnection(Uri server, Guid agent, ECDsa agentKey, ECDsa serverKey, HttpMessageHandler handler, TimeProvider clock);
+        public Task<PollResult> PollAsync(OutpostPollRequest poll, TimeSpan leaseGrace, TimeSpan requestTimeout, CancellationToken cancellationToken);
+        public Task<OutcomeResultEnum> SendOutcomeAsync(Guid command, ReadOnlyMemory<byte> outcome, TimeSpan requestTimeout, CancellationToken cancellationToken);
+        public void Dispose();
+    }
+
+    // Moltaro.OnecOutpost.Agent.Pairing: §6.1; it writes no file, the console of S10 writes agent.json and secrets.dat
+    internal enum AgentPairingFailureEnum { Unreachable, Refused, ProtocolVersion, ServerKey, Signature, Answer }
+    internal sealed class AgentPairingResult // a class: it holds the private key
+    {
+        public AgentPairingSettings? Settings { get; init; }
+        public byte[]? PrivateKey { get; init; }
+        public int? Status { get; init; }
+        public AgentPairingFailureEnum? Failure { get; init; }
+    }
+    internal static class AgentPairing { public static Task<AgentPairingResult> PairAsync(Uri server, OutpostPairingTokenText token, string agentVersion, HttpMessageHandler handler, TimeSpan requestTimeout, TimeProvider clock, CancellationToken cancellationToken); }
+
+    // Moltaro.OnecOutpost.Agent.Workers: the program's launcher, which S9b implements
+    internal sealed class ComWorkerLauncher : IWorkerLauncher;
+
+    // Moltaro.OnecOutpost.Agent.Loop: §6.2, §6.3, §9 and the Acceptance
     internal sealed class AgentLoop { public AgentLoop(AgentRun run, AgentConnection connection, CommandChecks checks, WorkerPool workers, TimeProvider clock, string version); public Task RunAsync(CancellationToken cancellationToken); }
 
     // Moltaro.OnecOutpost.Agent.Host
+    internal sealed record AgentParts(AgentFolders Folders, IAccessLists Access, IMachineProtection Protection, IWorkerLauncher Workers, string Executor, Func<Uri, Uri?, HttpMessageHandler> Handlers, TimeProvider Clock, string Version);
+    internal static class AgentExitCodes { public const int Stopped = 0, Error = 1, NotStarted = 2, NotService = 3, Usage = 4, NotWindows = 5; }
     internal static class AgentHost { public static Task<int> RunAsync(AgentParts parts, CancellationToken cancellationToken); }
     [SupportedOSPlatform("windows")]
     internal static class AgentService { public static int Run(Func<CancellationToken, Task<int>> run); }
@@ -3064,7 +3123,7 @@ end, the clock set behind the server's newest number, and the documents step.
     **S6a**, the behavior its tests state:
 
     - **One caller at a time.** `AuditLog`, `Outbox`, `CommandRecords` and `PollNumbers` are
-      not thread-safe: in S6b one task makes every change of the agent's files, so that no
+      not thread-safe: in S6c one task makes every change of the agent's files, so that no
       lock is held across their I/O (principle 10). Each change is on the disk before its
       method returns, unless a bullet says otherwise.
     - **`AgentStopException`** carries the reason that `started` records, and lives in the
@@ -3123,7 +3182,7 @@ end, the clock set behind the server's newest number, and the documents step.
       and the two durations in the ranges of `PollTimeout` and `LeaseGrace`. `Write` writes
       it with the writer of §2; `Read` takes exactly these members and throws
       `FormatException`, quoting nothing, for anything else. The rule of §11 for the
-      address is the transport's (S6b).
+      address is the transport's (S6c).
     - **`AuditLog.Open`** takes `lock` of the folder, and its `IOException` passes: a second
       copy, or a missing `audit\`, records nothing. It then reads every file named
       `YYYY-MM-DD.jsonl`, in the order of their names, line by line to each LF; it ignores
@@ -3165,7 +3224,7 @@ end, the clock set behind the server's newest number, and the documents step.
     - **`HighestReservation(agent)`** is the greatest `below` of the reservations of that
       identity, in whichever files they are, and null when there is none.
     - **`RemoveExpired(agent, answerTime, retentionDays)`** holds the whole rule of retention;
-      S6b calls it after each verified poll answer, with that answer's `time`:
+      S6c calls it after each verified poll answer, with that answer's `time`:
       - it removes nothing when the clock is more than a day away from `answerTime`, either
         way;
       - otherwise it deletes, in the order of their names, every file whose last entry's
@@ -3216,7 +3275,7 @@ end, the clock set behind the server's newest number, and the documents step.
         of Unknown `agent-stopped` for a Write or Failed `lost` for a Read, then its `ended`
         with `durationMs` null (rule 3). A stop in the middle leaves what the next start
         finishes. Afterwards every outbox file belongs to a command that is not confirmed
-        and matches its last entry, and S6b sends each.
+        and matches its last entry, and S6c sends each.
     - **`PollNumbers`** (rule 10, §6.2 of `docs/protocol.md`):
       - The constructor reads `HighestReservation(agent)`; one above 2⁶² throws
         `AgentStopException` with a reason that names both causes, a cleared log that a
@@ -3276,7 +3335,7 @@ end, the clock set behind the server's newest number, and the documents step.
       constructor that takes its start time, since a restart with the clock set back is a
       new start with a clock of its own.
 
-    **S6b**, decided now; its contract step settles the rest:
+    **S6c**, decided with S6a's contract:
 
     - **Free 0 until S9b.** The program's launcher starts no process until S9b, and its
       `OpenAsync` gives `false`, so every mode declares `free` 0.
@@ -3293,23 +3352,163 @@ end, the clock set behind the server's newest number, and the documents step.
       leave a deliberate stop with an error stopped.
     - **The loopback server of S5's tests** moves to `Moltaro.OnecOutpost.TestSupport`, since
       two test projects then need it.
-    - **To settle in S6b's contract step**, and to review independently before its tests:
-      - the worker boundary gives the executor's `size` with the bytes, and `WorkerPool`
-        compares them as S9's contract says: a difference is Failed `result-type` for a
-        Read and Unknown `result-type` for a Write (a requirement);
-      - nothing in a lost answer is acted on: no `Answered`, no retention, no
-        `bases`; an answer lost by the `free` or identity rule records `connection` `lost`
-        with `status-200`;
-      - any two commands of one identity that can be trusted make the answer lost, whatever
-        their verdict;
-      - what `WorkerPool.RunAsync` gives when no free worker is left, and from when a
-        command counts against `Free`;
-      - a deadline on opening a worker (principle 10; concept §5);
-      - the tests supply `AgentParts.Handlers`; the test proxy is reached by a name that is
-        not loopback, or the line of the Acceptance is restated;
-      - whether `SocketsHttpHandler` can offer the proxy Kerberos only, without NTLM and
-        without a package, by a study of its own;
-      - `Program` and CA1416, and the name of `AgentHandler`, which names a mechanism.
+
+    **S6b and S6c**, settled in S6b's contract step (the contract author, 22 November 2026,
+    from S6b's study, with the coordinator's decisions under PQ2 of that day; reviewed in
+    two rounds and approved by the coordinator under PQ2, 22 November 2026). The behavior
+    their tests state:
+
+    - **`CommandChecks.Check`** (S6b) follows §7: `ReadCommand`, whose `signature` and
+      `form` give `Refused` without an identity; with an identity, `Known` when `Find`
+      knows it, whatever the rest of the bytes; then the codec's `protocol-version` and
+      `malformed`, with the identity alone; then `not-addressed`, `not-served` (no base of
+      that key, or a Write where `write` is absent), `clock-skew` (`issued` later than the
+      clock plus `skewMs`) and `expired` (the clock later than `deadline` plus `skewMs`),
+      with identity, base and mode; otherwise `Runs` with the command. It records nothing.
+    - **`CheckAnswer`** (S6b) checks every command of an answer that `ReadPollAnswer`
+      read, and gives null, the answer lost, when two commands with an identity share it,
+      whatever their verdicts, or when those that `Runs` exceed, for a base and mode, the
+      `free` that `poll` declared; otherwise the checks in the order of the answer. Reason
+      for "whatever": the server never sends two, and one comparison keeps "never twice
+      from one answer" (§6.2).
+    - **The lines** (S6b) are S9's. `Location` is `Srvr="{server}";Ref="{database}";` or
+      `File="{file}";`, each `"` in a value doubled; `User` the mode's `Account`;
+      `Password` from `Passwords`; `SafeMode` the mode's; `Executor` the pool's path.
+      `ParametersJson` is `Parameters.GetRawText()`, `OutcomeLimit` the command's.
+    - **`IWorkerProcess`** reports failures as results, by no exception but
+      `OperationCanceledException`: `OpenAsync` gives `ready`; `RunAsync` the executor's
+      `size` with the exact bytes of its `outcome`, or null when the process ended or broke
+      its line first; `Kill` ends the process, completes a pending `RunAsync` with null,
+      may run beside it, and is idempotent.
+    - **`WorkerPool`** (S6b; rules 8, 9):
+      - `Open` starts the opens of the `workers` of every mode and returns at once. Each
+        races `Task.Delay(runLimit, clock)`: the mode's run limit is its deadline
+        (principle 10, concept §5), and a late worker is killed and, like one that gives
+        false, never free. So the loop starts at once, and a slow base holds up no other.
+      - `Free` counts a mode's workers whose open ended with true and that hold no
+        command. A command holds one from `RunAsync`, called right after its `received`,
+        to `Release`, called after `End`: it counts from its acceptance until its outcome
+        is recorded.
+      - `RunAsync` takes such a worker before it returns. With none, it gives Failed
+        `base-unreachable` at once, in either mode, as the script never started (§8); in
+        S6b only a test reaches this, from S9b a worker that ends while idle too.
+      - A run races `RunAsync` with `Task.Delay(runLimit, clock)`. When the delay wins:
+        `Kill`, a wait for the run's end, and `run-limit`, whatever the run then gives.
+        Otherwise null gives `connection-lost`; a `size` other than the length of the bytes
+        (S9's requirement), bytes that `ReadOutcome` refuses for the mode, and a kind and
+        code that `IsExecutorOutcome` refuses give `result-type`; anything else goes byte
+        for byte. Each code is Failed for a Read and Unknown for a Write, written as
+        `CommandRecords` writes its own; S9b relaxes `IsExecutorOutcome` for the worker's
+        codes. `DurationMs` is the clock's time from the call to the outcome.
+      - A worker is dropped after null, after a kill, and after it gave `base-unreachable`
+        or `connection-lost`, after which S9's worker ends; until S9b starts it again with a
+        growing delay (concept §5), its mode has one worker fewer.
+      - Cancellation kills the worker, waits for its run and throws, recording nothing
+        (rule 3 at the next start). `DisposeAsync` kills and disposes every worker.
+      - Not thread-safe, and no lock: the loop's task calls it, a run's task changes only
+        its own worker, and `Release` reads what that left after the loop awaited the run.
+        An open's task sets only its worker's opened flag, with `Volatile.Write`, and the
+        loop reads it with `Volatile.Read`: the flag only goes from false to true, so a
+        late read under-declares `free` and is safe.
+    - **The fake of S6b**, in `Moltaro.OnecOutpost.Agent.Tests`: a launcher whose processes
+      write each `Start`, `Open`, `Run` and `Kill` as a line of the operation list of the
+      folders in memory; whose `OpenAsync` gives true, false or never answers; and whose
+      runs give an outcome with its true size or one off, null, or wait for `Kill`.
+    - **`ServerRoute`** (S6c), renamed from `AgentHandler`, which named the mechanism: it
+      is the way to the server (`AGENTS.md`, naming).
+      - `IsAllowed` (§11) accepts an absolute `https` address, and an `http` one whose
+        `Uri.Host` is `localhost`, an address in `127.0.0.0/8` with `HostNameType` `IPv4`,
+        or `[::1]` with `HostNameType` `IPv6`; nothing is resolved. So `loopback`,
+        `127.1` and `2130706433` count, and `localhost.` and `foo.localhost` do not. Reason
+        (PQ2): `Uri` normalises before anyone reads the host, each form it maps there is
+        loopback, and one rule on its result keeps §11.
+        `AgentPairingFile` now refuses any other address, so a start records it.
+      - `CreateHandler` (PQ2, as the study measured) gives a `SocketsHttpHandler` with
+        `AllowAutoRedirect` false, no decompression, `MaxResponseDrainSize` 0, no cookies,
+        no check of revocation, the 1-second `Expect100ContinueTimeout` of .NET (X2),
+        `UseProxy` only for an `https` server with a proxy named, so never the system's,
+        and no credentials for the proxy or the server; `ArgumentException` for an address
+        that `IsAllowed` refuses.
+    - **`AgentConnection`** (S6c) owns its handler through `HttpMessageInvoker` and sends
+      HTTP/1.1 only, the headers of §4, `Accept-Encoding: identity`, and on `outcome`
+      `Expect: 100-continue`.
+      - A poll waits for its answer to begin for its `pollTimeout` plus `leaseGrace`, then
+        reads the body within `requestTimeout` and 64 MiB; `outcome` and `pair` wait
+        `requestTimeout` over both and read within 64 KiB. Each wait is a
+        `CancellationTokenSource` on the clock; a body beyond its limit is lost unread.
+      - A poll answer verified by §9 and `ReadPollAnswer`, with the sum of the poll's
+        `free`, is `Answer`; any other gives the reason of §9. A tunnel the proxy
+        refuses throws `HttpRequestException` with its status, a status that came:
+        `status-407`.
+      - `SendOutcomeAsync` gives `Confirmed` for a verified `200`; `TooLarge` for a verified
+        `result-too-large` and for a 413 without an `Outpost-Signature` that verifies,
+        whatever its body; `Lost` otherwise.
+    - **`AgentPairing.PairAsync`** (S6c) makes a P-256 key, sends `pair` with the proof and
+      reads the answer with `ReadPairAnswer`: `Settings` and the key in PKCS#8 for a
+      verified `200`; otherwise the status when one came, and `Unreachable` without one,
+      `Refused` for a bare 403, `ProtocolVersion` for the unsigned body of §9, `ServerKey`
+      and `Signature` for the codec's codes, `Answer` for anything else.
+    - **`AgentLoop.RunAsync`** (S6c) ends by `OperationCanceledException` or
+      `AgentStopException`. Its one task awaits whichever of the poll, the one outcome
+      request, the runs and the delays ends first.
+      - A poll has `Next`, the poll timeout last learnt, the policy's bases with `Free` and
+        `runLimit`, and `Unconfirmed` as `received`. Where the sum of `free` would pass the
+        room left, the modes keep theirs in the policy's order, read before write, and the
+        rest declare 0. It opens once the last answer's commands are recorded (rule 10).
+      - A lost answer, one that `CheckAnswer` refuses included (`status-200`), records
+        `connection` `lost` when the state is not, and nothing else: no `Answered`, no
+        command, no `bases`, no retention. Then a growing delay: a tenth of
+        `retryDelayMax`, doubled up to it, reset by an answer that is not lost.
+      - Any other answer: `connection` `connected` when needed; `Answered(newest)`; its
+        `pollTimeoutMs` and `leaseGraceMs` kept; each command in order, `Refuse`, or
+        `Received` then `RunAsync`, or nothing for `Known`; `bases` when it differs from the
+        run's last; `RemoveExpired` with its `time`. After an older poll's answer, a tenth
+        of `retryDelayMax`. A run that ends gets `End`, then `Release`.
+      - Outcomes go one at a time, the files in turn, the start's first. `Confirmed` calls
+        `Confirm`. `TooLarge` calls `ReplaceForSize` when the outbox file is of kind
+        `succeeded` or `failed` with a code other than `result-too-large`, and the
+        replacement goes next; for any other it is lost. After a lost answer the next file
+        waits a growing delay of its own, so an outcome that stays lost holds the others up
+        one delay per turn.
+    - **`AgentHost.RunAsync`** (S6c): `AgentStart.Open`, whose `IOException` gives
+      `NotStarted` and `AgentStopException` `Error`; the keys; the pool, its opens
+      started; the connection over `Handlers(server, proxy)`; the checks; the loop, which
+      gives `Stopped` for the token and `Error` for `AgentStopException`. It disposes the
+      pool, the connection and the log, in that order. It meets a P4 of S6a: `SecretsFile.Read`
+      refuses a key that is not P-256 in PKCS#8 (`FormatException`).
+    - **`AgentExitCodes`** (S6c): `Stopped`, a cancellation while workers open included;
+      `Error`, a stop of the agent's own (`AgentStopException`), recorded when the log can
+      be written; `NotStarted`, the log not opened, a second copy included, nothing
+      recorded; `NotService`, `service` outside the service controller; `Usage`, any
+      arguments but `service`; `NotWindows`.
+    - **`Program`** (S6c; PQ2) gives `NotWindows` unless `OperatingSystem.IsWindows()`,
+      which satisfies CA1416 and keeps the assembly testable everywhere; then `Usage` unless
+      its one argument is `service`, so a console run never waits on the service
+      controller; then `AgentService.Run` of `AgentHost.RunAsync` with the machine's parts,
+      `ComWorkerLauncher`, `OutpostExecutor.epf` beside the program and `CreateHandler`.
+    - **`AgentService.Run`** (S6c; PQ2): the dispatcher, the handler and `SetServiceStatus`
+      by `LibraryImport`, the entry points `static` and `[UnmanagedCallersOnly]`, catching
+      everything, so no delegate lives. Error 1063 gives `NotService` before the data folder
+      is touched. `ServiceMain` reports `SERVICE_RUNNING`, accepting stop and shutdown, and
+      runs `run` on its thread; stop and shutdown report `STOP_PENDING` and cancel from the
+      thread pool; `SERVICE_STOPPED` comes last, with 0 or `ERROR_SERVICE_SPECIFIC_ERROR`
+      and the code. The wait hint of `STOP_PENDING` is no wait of the agent: no option.
+    - **S6c's tests** supply `AgentParts.Handlers`: `CreateHandler` that accepts the test
+      certificate. `agent.json` names `https://outpost.test:{port}/outpost/` (RFC 6761,
+      never resolved), `policy.json` the test proxy at `http://127.0.0.1:{port}`. The proxy,
+      in `TestSupport` beside the loopback server, answers CONNECT with `200`, ends TLS for
+      `outpost.test` with a certificate made by `CertificateRequest` and pipes to Kestrel,
+      opening TLS as a hop does; asked to, it answers 407 with `Negotiate` and `NTLM` and
+      records every `Proxy-Authorization`. The loopback server can answer `outcome` with a
+      bare 413 and an HTML body before its endpoints. A fake handler gives the rest.
+    - **Manual acceptance of the service** (S6c), on a lab or test machine, as
+      administrator, nothing to Git: `sc create` with `service` under a virtual account
+      granted the data folder; `sc start` gives `RUNNING` and `started`, `sc stop` `STOPPED`
+      with 0; without `agent.json`, `STOPPED` with 1066 and `Error`, kept stopped by the
+      failure actions; `taskkill /f` is restarted by them; `sc delete`.
+    - **Planned, when a domain lab exists:** the proxy offered the computer's credentials
+      by Kerberos alone, by a CONNECT of the agent's own in a `ConnectCallback`, with one
+      token from `NegotiateAuthentication` of package `Kerberos` (study of S6b, §1).
 
     **Settled** (the coordinator, 22 November 2026, under PQ2, with their reasons):
 
@@ -3317,7 +3516,7 @@ end, the clock set behind the server's newest number, and the documents step.
       `ServiceBase` are not in the shared framework of .NET 10, and principle 12 gives the
       agent only the protocol. The agent calls `CryptProtectData` and `CryptUnprotectData`
       behind `IMachineProtection` (S6a), and the service control dispatcher behind
-      `AgentService` (S6b), through `LibraryImport`, which generates its marshalling, so no
+      `AgentService` (S6c), through `LibraryImport`, which generates its marshalling, so no
       reflection; both are marked `[SupportedOSPlatform("windows")]`, and the agent's project
       allows unsafe code for the generated marshalling. The access lists use
       `System.Security.AccessControl` of the shared framework. Reason: principle 12 holds
@@ -3357,23 +3556,34 @@ end, the clock set behind the server's newest number, and the documents step.
       free its key. The guarantee of rule 3 under §13 outweighs a needless stop.
     - **The exception to principle 10**, the one-second wait for `100 Continue`, stays as
       "Carried over from S2" has it, as X2 of the register.
+    - **The proxy gets no credentials** (a draft below). Reason: S6b's study showed that
+      `SocketsHttpHandler` cannot offer Kerberos without NTLM inside Negotiate, and a
+      CONNECT of the agent's own with a Kerberos token is a strict-zone mechanism that only
+      a domain lab can prove. With no credentials, "never NTLM" holds; a proxy that asks
+      for authentication answers 407, and the agent is not connected through it. The
+      Kerberos design is planned, above.
     - **The contract step of S6a** puts into code every type of S6a above, each member
       throwing `NotSupportedException` but `AgentPolicyReader`, which keeps working and gives
-      the defaults of the new members. **The contract step of S6b** adds the types of S6b
-      the same way. The agent program still does nothing until S6b's implementation.
+      the defaults of the new members. **The contract steps of S6b and S6c** add their
+      types, as the code block marks them, the same way. The agent program still does
+      nothing until S6c's implementation.
     - **Edits that state nothing new** in S6a's contract step: `AgentPolicyReader` passes
       `RequestTimeout` 5 minutes and `SafeMode` `true`; the expected values of
       `PolicyValuesTests` construct `AgentModePolicy` with `SafeMode: true`. In S6a's tests
       step: `FakeClock` gains its constructor, and the agent's test project references
-      `Moltaro.OnecOutpost.TestSupport`. In S6b's tests step: the loopback server and its
-      helpers move to `Moltaro.OnecOutpost.TestSupport`, and the server's tests use them
-      from there.
+      `Moltaro.OnecOutpost.TestSupport`. In S6b's contract step: three comments of S6a's
+      tests that give the loop's work to S6b give it to S6c. In S6c's tests step: the
+      loopback server and its helpers move to `Moltaro.OnecOutpost.TestSupport`, and the
+      server's tests use them from there.
     - **The documents steps.** S6a's: `README.md` says that the agent keeps its files and
       still runs nothing; "The files of the agent" takes the changes carried over from S2
       and the drafts below; §6.2 and §13 of `docs/protocol.md` take the drafts on counting,
       on a failed write and on moving `outcomes\` aside, §13's "is found at the first poll"
-      included. S6b's: the line of the Acceptance.
-    - **Effort:** the test author and the implementer on `xhigh` in both parts, since the
+      included. S6b's: nothing that a reader sees changes, so the check alone. S6c's: the
+      line of the Acceptance; §9 and §11 of `docs/protocol.md` take the drafts of S6c
+      below, which the `proxy` row has already; `README.md` says that a proxy that asks for
+      authentication is not supported yet.
+    - **Effort:** the test author and the implementer on `xhigh` in every part, since the
       audit log, the secrets, the command checks, pairing and the transport are strict
       zones.
 - **What S6 changes in the public contract, as a draft for the owner** (the contract
@@ -3403,7 +3613,22 @@ end, the clock set behind the server's newest number, and the documents step.
     until an answer is not lost, and an answer to an older poll in that time is the cleared
     log. A poll that a hop retries or duplicates while counting is answered as older and
     stops the agent until it is paired anew: a needless stop, never a double run. A restart
-    before any answer is not lost still leaves a cleared log unseen.
+    before any answer is not lost still leaves a cleared log unseen;
+  - S6c (the coordinator, 22 November 2026, under PQ2): the `proxy` row and §11: the agent
+    offers its proxy no credentials, by no scheme, so never NTLM; a proxy that asks for
+    authentication answers 407, the poll is lost with `status-407` (§9: the status of a
+    proxy's answer to CONNECT is a status that came), and the agent is not connected
+    through it. Kerberos alone is planned for when a domain lab can prove it;
+  - S6c, §11: the host of an `http` address is judged as .NET's `Uri` writes it, so
+    `loopback`, `127.1` and `2130706433` count as loopback, and `localhost.` and
+    `foo.localhost` do not;
+  - S6c: the agent program takes one argument, `service`, and exits with `AgentExitCodes`:
+    0 stopped, 1 a stop of the agent's own, recorded when the log can be written, 2 the log
+    not opened (a second copy), 3 not started by the service controller, 4 other
+    arguments, 5 not Windows; as a service it
+    reports a code other than 0 as `ERROR_SERVICE_SPECIFIC_ERROR` with that code;
+  - S6c, the `runLimit` row: the run limit of a mode is also the deadline for its workers
+    to open, and a worker that opens later is ended and never runs a command.
 - **Study.** Sources, for example: the message loop and job dispatcher of the GitHub
   Actions runner (MIT); the agent and worker of the Azure Pipelines agent (MIT). Questions:
   1. How the agent records a job before it runs, and what it does after a restart with a
@@ -3444,12 +3669,15 @@ end, the clock set behind the server's newest number, and the documents step.
   - The sum of `free` never exceeds the room left in `received`.
   - The executor's object goes through `OutpostCodec.ReadOutcome` and `IsExecutorOutcome`:
     one that §8 does not allow becomes Unknown or Failed `result-type`, and any other is
-    sent as it came.
-  - An outcome refused for its size, by the server's code and by a bare HTTP 413 of the
-    test proxy sent with an HTML body: the outbox file and a second `ended` hold Unknown
+    sent as it came. So does a `size` that is not the length of its bytes.
+  - An outcome refused for its size, by the server's code and by a bare HTTP 413 with an
+    HTML body on the path: the outbox file and a second `ended` hold Unknown
     `result-too-large` for a Write and Failed `result-too-large` for a Read, and that is
     what is sent.
   - Workers bound what runs. A fake run that exceeds its limit is ended, giving `run-limit`.
+    A worker that does not open within the run limit is ended and never free; a run with
+    no free worker is Failed `base-unreachable`; a worker that ends without an outcome
+    gives `connection-lost`, Failed for a Read and Unknown for a Write.
   - Poll numbers grow across a restart, with the fake clock:
     - a reservation is recorded and flushed before a poll at or above the last bound, and
       at every start;
@@ -3495,9 +3723,10 @@ end, the clock set behind the server's newest number, and the documents step.
     `not-served`, and the others run.
   - An answer whose signature does not verify is treated as a lost answer, and nothing in it
     is acted on.
-  - Addresses (§11 of `docs/protocol.md`): `http://` only on a loopback address written as
-    such, never through the proxy; no redirect followed; `Accept-Encoding: identity` on
-    every request; `Expect: 100-continue` on every `outcome`.
+  - Addresses (§11 of `docs/protocol.md`): `http://` only on a loopback address written
+    as such, as `Uri` writes it, never through the proxy; no redirect followed;
+    `Accept-Encoding: identity` on every request; `Expect: 100-continue` on every
+    `outcome`.
   - An invalid policy serves nothing and is recorded.
   - The entries `connection` and `bases`.
   - The retention of the audit log, with the fake clock:
@@ -3508,12 +3737,15 @@ end, the clock set behind the server's newest number, and the documents step.
       answer whose `time` is more than a day away from the agent's clock.
   - Over loopback against the server of S5: a Read and a Write from `ReadAsync` and
     `WriteAsync` to the fake and back, through a test proxy named in `policy.json`.
+  - The proxy is offered no credentials, and an NTLM or Negotiate challenge gets none: the
+    poll is lost with `status-407`.
   - With `Requires=Windows`:
-    - the proxy is offered the computer's credentials by Kerberos only;
     - the secrets file is encrypted with DPAPI for the machine;
     - a data folder, or a file in it, whose access list admits anybody else makes the
       agent stop, recorded;
-    - the program runs as a Windows service.
+    - the program started with `service` outside the service controller exits with
+      `NotService` and changes nothing in its data folder. A real service is the manual
+      acceptance of the contract.
   - The documents step: `README.md` says that the agent works with a fake in place of 1C.
 - **Carried over from S2** (the planner, 21 November 2026): the changes of the public
   contract that came with `docs/protocol.md` and that this sprint builds. They hold as a
@@ -3527,9 +3759,9 @@ end, the clock set behind the server's newest number, and the documents step.
       and for the body of a poll answer, in the form of `runLimit`, from 10 seconds to 1
       hour, 5 minutes when absent;
     - the `proxy` row:
-      - the agent offers the proxy the computer's credentials by Kerberos only, never by
-        NTLM, so a machine outside a domain reaches only a proxy that asks for no
-        credentials;
+      - the agent offers the proxy no credentials, so never NTLM, and reaches only a proxy
+        that asks for none (changed from Kerberos only by the coordinator, 22 November
+        2026, under PQ2: "Settled" and the drafts above);
       - a URL with a user or a password is refused, which answers Q7;
       - the example host is not a `.local` name;
     - `retryDelayMax` gains a second meaning: a tenth of it is also the wait after an
@@ -3598,11 +3830,11 @@ end, the clock set behind the server's newest number, and the documents step.
   `AuditLog.RemoveExpired` the rule that a `confirmed` stays while its command has
   entries in a file that stays is coded twice, by `KeepConfirmed` with `ConfirmsAny` and
   by `WaitsForOthers`; removing the first pair gives the same deletions. The P4s left for
-  the coordinator, for S8 unless S6b meets them:
+  the coordinator, for S8 unless S6b or S6c meets them:
   - while the clock is behind the file of a command's last `ended`, every start appends
     another `ended` that never takes effect;
   - `SecretsFile` accepts any bytes as the agent's key, where `AgentPairingFile` checks
-    the server's key, so a bad key fails only when S6b first signs;
+    the server's key, so a bad key fails only when S6c first signs (S6c meets it);
   - the root of `Moltaro.OnecOutpost.Agent.Tests` holds eight shared helpers, as the
     server's tests do;
   - the reason of a stop after `started` is recorded nowhere.
