@@ -179,6 +179,45 @@ public sealed class PollNumberTests
         Assert.Throws<AgentStopException>(() => new PollNumbers(reopened, Agent, _clock));
     }
 
+    // From S6a's code review, round 1: a bound reserved within a day of ticks below 2^62 lies above 2^62, and still no
+    // number above 2^62 is given (§6.2: a number is from 1 to 2^62). The one that would pass it records its reservation,
+    // the record of this first stop, and stops the agent. Here the bound is found at a start.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public void A_reservation_near_the_greatest_number_found_at_a_start_gives_no_number_above_it()
+    {
+        _data.Audit.Seed(FileOf(Before), Reservation(Before, Agent, Greatest - 2));
+        using AuditLog log = AuditLog.Open(_data.Audit, _clock);
+        PollNumbers numbers = new(log, Agent, _clock);
+
+        Assert.Equal(Greatest - 2, numbers.Next());
+        Assert.Equal(Greatest - 1, numbers.Next());
+        Assert.Equal(Greatest, numbers.Next());
+        int count = _data.Changes.Count;
+
+        Assert.Throws<AgentStopException>(() => numbers.Next());
+        Assert.Equal([Greatest + 1 + Span], ReservationsSince(count));
+    }
+
+    // The same, with the bound recorded after an answer to an older poll whose newest is 2^62 - 1, and a second such
+    // answer whose newest is 2^62.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public void After_answers_whose_newest_comes_near_the_greatest_number_no_number_above_it_is_given()
+    {
+        _data.Audit.Seed(FileOf(Before), Reservation(Before, Agent, 1000));
+        using AuditLog log = AuditLog.Open(_data.Audit, _clock);
+        PollNumbers numbers = new(log, Agent, _clock);
+        Assert.Equal(Ticks, numbers.Next());
+
+        numbers.Answered(Greatest - 1);
+        Assert.Equal(Greatest, numbers.Next());
+        int count = _data.Changes.Count;
+
+        numbers.Answered(Greatest);
+
+        Assert.Throws<AgentStopException>(() => numbers.Next());
+        Assert.Equal([Greatest + 1 + Span], ReservationsSince(count));
+    }
+
     [Fact]
     public void A_highest_reservation_above_the_greatest_number_stops_the_agent_before_any_poll()
     {
