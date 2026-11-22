@@ -1,4 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Moltaro.OnecOutpost.Server.Endpoints;
+using Moltaro.OnecOutpost.Server.Purge;
+using Moltaro.OnecOutpost.Server.Signing;
+using Moltaro.OnecOutpost.Server.Store;
 using Moltaro.Signals;
 
 namespace Moltaro.OnecOutpost.Server;
@@ -8,6 +14,9 @@ namespace Moltaro.OnecOutpost.Server;
 /// </summary>
 public static class OutpostServiceCollectionExtensions
 {
+    // The one category of the library's log, part of the public contract.
+    private const string LogCategory = "Moltaro.OnecOutpost.Server";
+
     /// <summary>
     /// Registers <see cref="IOutpostServer"/> as a singleton, the store, and a hosted service that removes what has
     /// outlived its retention every <see cref="OutpostServerOptions.PurgeInterval"/>.
@@ -24,14 +33,21 @@ public static class OutpostServiceCollectionExtensions
     /// The server needs an <see cref="ISignals"/> of Moltaro.Signals in the container, which the application registers,
     /// such as an in-process <see cref="SignalHost"/> on one node, or a host in one process and clients in the others.
     /// The library never registers one. Resolving <see cref="IOutpostServer"/> without one gives
-    /// <see cref="InvalidOperationException"/> that says so. The library opens one subscription per waiting poll and per
-    /// waiting call, so the application sizes the subscription limit of its Signals host for its agents and its
-    /// concurrent calls.
+    /// <see cref="InvalidOperationException"/> that says so. The library opens no subscription yet; once Read and Write
+    /// work, it opens one per waiting poll and per waiting call, so the application sizes the subscription limit of its
+    /// Signals host for its agents and its concurrent calls.
     /// </para>
     /// <para>
     /// The store has to exist in <see cref="OutpostServerOptions.Schema"/>: the application applies the migrations with
     /// <see cref="OutpostMigrations"/>. <see cref="OutpostEndpointRouteBuilderExtensions.MapOutpostAgents"/> then maps
     /// the requests of the agents.
+    /// </para>
+    /// <para>
+    /// The hosted service purges once when the host starts, and then after every
+    /// <see cref="OutpostServerOptions.PurgeInterval"/>, on every node. A purge that fails for anything but the stop of
+    /// the host is logged as one warning, with its exception, under the log category <c>Moltaro.OnecOutpost.Server</c>,
+    /// and the next purge comes after the interval, so that a store that is down does not stop the host. That warning
+    /// is the only entry the library writes in its log.
     /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException">
@@ -70,8 +86,37 @@ public static class OutpostServiceCollectionExtensions
         OutpostServerOptions validated = options.Copy();
         validated.Validate();
 
-        services.AddSingleton(provider => new OutpostServer(validated, GetSignals(provider)));
+        // Made once, here, from the validated values; Validate has checked that neither is null. Every part of the
+        // server below takes them from the container.
+        services.AddSingleton(new OutpostStore(validated.ConnectionString!, validated.Schema, validated.TimeProvider));
+        services.AddSingleton(new ServerSigningKey(validated.SigningKeyPem!));
+
+        services.AddSingleton(provider => new OutpostServer(
+            validated,
+            GetSignals(provider),
+            provider.GetRequiredService<OutpostStore>(),
+            provider.GetRequiredService<ServerSigningKey>()));
+
         services.AddSingleton<IOutpostServer>(provider => provider.GetRequiredService<OutpostServer>());
+
+        services.AddSingleton(provider => new PairHandler(
+            provider.GetRequiredService<OutpostStore>(),
+            provider.GetRequiredService<ServerSigningKey>(),
+            validated));
+
+        services.AddSingleton(provider => new PollHandler(
+            provider.GetRequiredService<OutpostStore>(),
+            provider.GetRequiredService<ServerSigningKey>(),
+            validated,
+            provider.GetRequiredService<IHostApplicationLifetime>()));
+
+        services.AddSingleton(provider => new OutcomeHandler(provider.GetRequiredService<OutpostStore>(), validated));
+
+        services.AddHostedService(provider => new PurgeService(
+            provider.GetRequiredService<OutpostStore>(),
+            validated.PurgeInterval,
+            validated.TimeProvider,
+            provider.GetRequiredService<ILoggerFactory>().CreateLogger(LogCategory)));
 
         return services;
     }

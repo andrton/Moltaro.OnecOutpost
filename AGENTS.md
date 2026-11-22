@@ -26,9 +26,10 @@ What exists today is the [concept](docs/concept.md), these rules, the developmen
 the build settings, and the public contract of the first stage in code: the server
 library, the protocol assembly and the agent program. Only the checks that need no
 implementation work, the codec of the protocol with its signatures and pairing proof,
-which no endpoint serves yet, and the COM worker with the executor, which no agent starts
-yet: every operation of the server throws `NotSupportedException`, and the agent program
-starts and stops and does nothing else. The server is the one
+the store, pairing and polls without commands on the server with the calls that manage
+agents and base keys, and the COM worker with the executor, which no agent starts yet:
+Read and Write throw `NotSupportedException`, and the agent program starts and stops and
+does nothing else. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions
@@ -194,8 +195,11 @@ row left to right: an earlier quality is not traded for a later one.
   - an outcome never reaches the caller of another command;
   - an unknown outcome is never reported as known;
   - a secret never leaves its machine;
-  - an agent that is gone is reported as connected no longer than its lease, plus the
-    difference between the clocks of the server nodes.
+  - an agent that is gone is reported as connected no longer than the lease its last
+    poll would have had (§6.2 of `docs/protocol.md`), plus the difference between the
+    clocks of the server nodes; its polls held back on the path extend this, together, by
+    at most the allowed clock skew plus the lead its clock had over the node's when it
+    sent them.
 - **A performance claim needs a measurement.** "Faster" or "fewer queries" is accepted
   with a number from a benchmark or a query count, not by argument. Without one, the
   simpler code stays.

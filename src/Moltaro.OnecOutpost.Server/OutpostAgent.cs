@@ -17,9 +17,13 @@ namespace Moltaro.OnecOutpost.Server;
 /// <param name="PairedAt">When the agent paired; <see langword="null"/> for one that never paired.</param>
 /// <param name="LastPollAt">When the server recorded the newest poll of the agent; <see langword="null"/> before its first.</param>
 /// <param name="Connected">
-/// Whether the lease of its newest poll had not run out at the moment of the call, by the clock of the node that
-/// answered. The lease is <see cref="OutpostServerOptions.PollTimeout"/> plus
-/// <see cref="OutpostServerOptions.LeaseGrace"/>. A call to a base of an agent that is not connected gives
+/// Whether the agent is paired and the lease of its newest poll had not run out at the moment of the call, by the
+/// clock of the node that answered. An agent that is not paired is never connected, whatever its lease, so a revoked
+/// agent is never shown as connected. The lease of a poll is its hold, the smaller of the poll timeout it carries and
+/// <see cref="OutpostServerOptions.PollTimeout"/>, plus <see cref="OutpostServerOptions.LeaseGrace"/>, counted from the
+/// moment the poll was recorded, and it ends no later than the poll's signed time plus
+/// <see cref="OutpostServerOptions.ClockSkew"/> plus that hold and grace; <see cref="OutpostServerOptions.LeaseGrace"/>
+/// says what follows. A call to a base of an agent that is not connected gives
 /// <see cref="OutpostOutcomeKindEnum.Unavailable"/>.
 /// </param>
 /// <param name="AgentVersion">The version of the agent program, from its newest poll; <see langword="null"/> before its first.</param>

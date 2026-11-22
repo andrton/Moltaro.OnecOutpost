@@ -18,6 +18,7 @@ internal sealed class StoreMigrationsAssembly : IMigrationsAssembly
     private static readonly SortedList<string, TypeInfo> All = new(StringComparer.Ordinal)
     {
         [AgentsAndPairingTokens.Id] = typeof(AgentsAndPairingTokens).GetTypeInfo(),
+        [PollsAndBaseClaims.Id] = typeof(PollsAndBaseClaims).GetTypeInfo(),
     };
 
     private readonly string _schema;
@@ -42,11 +43,18 @@ internal sealed class StoreMigrationsAssembly : IMigrationsAssembly
 
     public Migration CreateMigration(TypeInfo migrationClass, string activeProvider)
     {
-        if (migrationClass.AsType() != typeof(AgentsAndPairingTokens))
+        Type type = migrationClass.AsType();
+
+        if (type == typeof(AgentsAndPairingTokens))
         {
-            throw new ArgumentException("The type is not a migration of the store.", nameof(migrationClass));
+            return new AgentsAndPairingTokens(_schema) { ActiveProvider = activeProvider };
         }
 
-        return new AgentsAndPairingTokens(_schema) { ActiveProvider = activeProvider };
+        if (type == typeof(PollsAndBaseClaims))
+        {
+            return new PollsAndBaseClaims(_schema) { ActiveProvider = activeProvider };
+        }
+
+        throw new ArgumentException("The type is not a migration of the store.", nameof(migrationClass));
     }
 }

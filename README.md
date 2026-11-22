@@ -10,26 +10,35 @@ across nodes.
 Contract stage. The [concept](docs/concept.md) is agreed, and the first epic, up to the
 first release, is under way in [current work](docs/work/README.md). The public contract of
 its first stage exists in code: the types and members of the server library, with their
-documentation. Only the checks work: the options of the server, the arguments of every
-call, the outcome factories, and the rules of the agent's local policy file, which the
-agent program does not read yet. The protocol assembly holds the codec of the
+documentation. The checks work: the options of the server, the arguments of every call,
+the outcome factories, and the rules of the agent's local policy file, which the agent
+program does not read yet. The protocol assembly holds the codec of the
 [wire protocol](docs/protocol.md): its messages, the signatures of commands, requests and
-answers, and the pairing proof, with their tests; no endpoint serves it yet. The COM worker
-runs scripts in 1C: it holds an external connection to one base and runs each command
-through the executor, an external data processor in `src/Executor`, in safe mode or
-without it. No agent starts it yet. Its tests run against a fake of the COM connection,
-and its 45 tests against a real 1C, in `src/Moltaro.OnecOutpost.OneC.Tests`, passed on the
-lab machine with 1C:Enterprise 8.3.17.1851, against the repository's test base and a copy
-of a typical base. The migrations of the store work: `OutpostMigrations` creates the
+answers, and the pairing proof, with their tests. The COM worker runs scripts in 1C: it
+holds an external connection to one base and runs each command through the executor, an
+external data processor in `src/Executor`, in safe mode or without it. No agent starts it
+yet. Its tests run against a fake of the COM connection, and its 45 tests against a real
+1C, in `src/Moltaro.OnecOutpost.OneC.Tests`, passed on the lab machine with
+1C:Enterprise 8.3.17.1851, against the repository's test base and a copy of a typical
+base. The migrations of the store work: `OutpostMigrations` creates the
 store's tables on PostgreSQL in the schema the application chooses, or gives them as one
-SQL script per migration. The store keeps pairing tokens with their pending agents and
-redeems each once, which no endpoint uses yet. Everything else throws
-`NotSupportedException`: pairing, Read and Write, and the endpoints of the agents. Nothing
-below works yet.
+SQL script per migration.
+
+The server pairs agents and holds their polls. `AddOutpostServer` registers it and
+`MapOutpostAgents` maps the endpoints of the agents: an agent pairs over HTTP with a
+pairing token, its signed polls are authenticated, and each newer poll records the agent's
+lease, its bases and its claims of base keys, and is answered without commands when its
+hold ends. The application creates pairing tokens, lists and revokes agents and releases
+base keys, and every node purges the tokens that expired unused, with their pending
+agents. These are tested over loopback HTTP with a test agent, since the agent program
+does not poll yet. `ReadAsync` and `WriteAsync` still throw `NotSupportedException`, and
+an `outcome` request ends in an error after its checks.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from
-the environment variable `OUTPOST_SAMPLE_POSTGRES`, and says where it stops.
+the environment variable `OUTPOST_SAMPLE_POSTGRES`, applies the migrations, maps the
+endpoints, creates a pairing token, lists the agents, releases a base key and revokes the
+new agent, and says that it stops at `ReadAsync`.
 
 ## What it is, and what it is not
 

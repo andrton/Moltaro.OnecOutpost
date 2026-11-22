@@ -67,22 +67,37 @@ public sealed class OutpostServerOptions
     public string SignalKeyPrefix { get; set; } = "outpost";
 
     /// <summary>
-    /// How long a poll of an agent waits for a command before it is answered without one: 1 second to 5 minutes,
-    /// 25 seconds by default.
+    /// How long a poll of an agent waits for a command at most before it is answered without one: 1 second to
+    /// 5 minutes, 25 seconds by default.
     /// </summary>
     /// <remarks>
-    /// Keep it below the idle limit of every proxy and ingress between the agents and the server. Every poll answer
-    /// carries it, so the agents follow a change.
+    /// A poll is held for the smaller of the poll timeout it carries and this option, its hold, so that a raised value
+    /// never makes a poll outlast the wait of its agent. Keep it below the idle limit of every proxy and ingress between
+    /// the agents and the server. Every poll answer carries it, so the agents follow a change.
     /// </remarks>
     public TimeSpan PollTimeout { get; set; } = TimeSpan.FromSeconds(25);
 
     /// <summary>
-    /// What the lease of an agent adds to <see cref="PollTimeout"/>: 1 second to 5 minutes, 10 seconds by default.
+    /// What the lease of a poll adds to its hold: 1 second to 5 minutes, 10 seconds by default.
     /// </summary>
     /// <remarks>
-    /// An agent counts as connected while the lease of its newest poll has not run out; a call to a base whose agent
-    /// is not connected gives <see cref="OutpostOutcomeKindEnum.Unavailable"/> at once. A gone agent is reported as
-    /// connected for at most its lease, plus the difference between the clocks of the nodes.
+    /// <para>
+    /// An agent counts as connected while the lease of its newest poll runs; a call to a base whose agent is not
+    /// connected gives <see cref="OutpostOutcomeKindEnum.Unavailable"/> at once. The hold of a poll is the smaller of
+    /// the poll timeout it carries and <see cref="PollTimeout"/>. Its lease ends at the earlier of two moments, both
+    /// judged by the clock of the node that records the poll: the moment it is recorded, plus its hold, plus this grace;
+    /// and its signed time, plus <see cref="ClockSkew"/>, plus its hold, plus this grace. The grace is the value of this
+    /// option when the poll is recorded.
+    /// </para>
+    /// <para>
+    /// So polls of an agent that has gone, held back on the path, keep it connected together for at most
+    /// <see cref="ClockSkew"/>, plus the lead the agent's clock had over the node's when it sent them, beyond the lease
+    /// its last poll would have had, plus the difference between the clocks of the nodes. An agent whose clock is
+    /// behind the node's by more than <see cref="ClockSkew"/> plus this grace shows as connected only for part of each
+    /// poll, and behind by more than <see cref="ClockSkew"/> plus the hold plus this grace never; calls for it then get
+    /// <see cref="OutpostOutcomeKindEnum.Unavailable"/>. A live agent that reads an answer for longer than this grace
+    /// shows as not connected until its next poll.
+    /// </para>
     /// </remarks>
     public TimeSpan LeaseGrace { get; set; } = TimeSpan.FromSeconds(10);
 

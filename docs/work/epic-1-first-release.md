@@ -448,8 +448,8 @@ public sealed class OutpostServerOptions
 | `Schema` | The schema of the store | The rule of names |
 | `SigningKeyPem` | The server's signing key, as PKCS#8 PEM of an ECDSA P-256 private key. The application keeps it in its own secret storage; one line of .NET creates one: `ECDsa.Create(ECCurve.NamedCurves.nistP256).ExportPkcs8PrivateKeyPem()` | Required: exactly one PEM block, the unencrypted PKCS#8 `PRIVATE KEY` of an ECDSA P-256 key, with nothing but white space before or after it; any other text, a second block included, is refused (Q4) |
 | `SignalKeyPrefix` | The prefix of every key the library sets or subscribes to | A name of Moltaro.Signals of at most 64 characters |
-| `PollTimeout` | How long a poll waits for a command | 1 second to 5 minutes |
-| `LeaseGrace` | What an agent's lease adds to the poll timeout (rule 6) | 1 second to 5 minutes |
+| `PollTimeout` | How long a poll waits for a command at most: a poll is held for the smaller of the poll timeout it carries and this option (§6.2 of the protocol) | 1 second to 5 minutes |
+| `LeaseGrace` | What the lease of a poll adds to its hold. The lease ends at the earlier of the moment the poll is recorded and its signed time plus `ClockSkew`, plus the hold, plus the grace (rule 6, §6.2 of the protocol) | 1 second to 5 minutes |
 | `TakeTimeout` | The take deadline after a command is created (rule 7) | 1 second to 1 hour |
 | `ClockSkew` | The skew that every command carries (rule 1) | 1 second to 1 hour |
 | `CommandSizeLimit` | The largest command, in bytes | 4 KiB to 16 MiB |
@@ -690,7 +690,8 @@ public sealed record OutpostBase(string Key, bool ReadOpen, bool WriteOpen, bool
 - `Connected` follows rule 6 at the moment of the call, by the clock of the node that
   answers (PQ3).
 - `Bases` lists what the agent declared in its newest poll. `Held` is `false` for a key that
-  another agent holds; the server refused that base for this agent (rule 14).
+  this agent does not hold: another agent holds it, or, after a release or a revocation,
+  no agent holds it until this agent's next poll claims it (rule 14; a draft of S4).
 
 #### `OutpostReleaseResultEnum`
 
@@ -971,7 +972,8 @@ brief lists, and hold only after it.
   limit lives in the protocol assembly, which both sides check it from;
 - **What every poll answer carries** *(S2)*:
   - the commands;
-  - the bases the agent holds and those that another agent holds (rule 14);
+  - the bases the agent holds and the other keys it declared, which it does not hold
+    (rule 14; a draft of S4);
   - the server's time;
   - the poll timeout and the lease grace. Every poll carries the poll timeout the agent
     last learnt, and the server holds it for no longer than the smaller of that and its
@@ -1181,7 +1183,7 @@ The release
 | S1 | The public contract of stage 1, the projects and the test lane | Full | Done |
 | S2 | The protocol, its signatures and the pairing proof | Full | Done, 21 November 2026: the codec, the signatures and the pairing proof with their tests; the code review closed in two rounds, after the ten rounds of `docs/protocol.md`. What it changed in the public contract is listed in its brief for the owner |
 | S3 | The store | Full | Done, 21 November 2026: the store on PostgreSQL in the schema the application chooses, its first migration, `OutpostMigrations` with `MigrateAsync` and `GetScripts`, and the pairing tokens with their pending agents: created, found, redeemed once and purged, which no endpoint uses yet. The internal contract was reviewed in two rounds; the code review took three, and its last finding, a word of the XML documentation of `MigrateAsync`, was fixed on the owner's decision without a fourth round. What it changed in the public contract is listed in its brief for the owner |
-| S4 | Pairing and agents on the server | Full | Not started |
+| S4 | Pairing and agents on the server | Full | Done, 22 November 2026: the store's polls, leases and base keys with their second migration; the endpoints `pair` and `poll`, with the unsigned answers of §9 before the body and the hold of a poll; `AddOutpostServer` in full, `CreatePairingTokenAsync`, `GetAgentsAsync`, `RevokeAgentAsync`, `ReleaseBaseAsync` and the purge. Read, Write and `outcome` still refuse. The internal contract was reviewed in two rounds; the code review closed in one, with four P4 left for the coordinator; the documents were reviewed once. What it changed in the public contract is listed in its brief for the owner |
 | S5 | Commands on the server | Full | Not started |
 | S6 | The agent | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
@@ -2016,25 +2018,274 @@ approval of this plan.
     - `CreatePairingTokenAsync`, `GetAgentsAsync`, `RevokeAgentAsync`, `ReleaseBaseAsync`;
     - the purge.
   - *Still refusing:* `ReadAsync`, `WriteAsync` and the `outcome` request.
-  - *Internal:* the handlers of the endpoints and the holding of a poll, written into this
-    brief after the study.
-  - *The store, moved here from S3* (the planner, 21 November 2026): the operations of
-    polls, leases and base keys, added to `OutpostStore` with a migration, and tested
-    against PostgreSQL before the endpoints use them. They have to be able to:
-    - record a poll: its number, treating one that is not greater than the newest as
-      older and changing nothing else for it (rule 10); the lease (rule 6); the declared
-      bases with their claims (rule 14);
-    - list agents with their bases;
-    - revoke an agent;
-    - release a base key (rule 14).
+  - *Internal, after the study* (the contract author, 21 November 2026; reviewed in two
+    rounds and approved by the coordinator under PQ2, 21 November 2026). The store keeps
+    the operations of polls, leases and base keys moved here from S3 (the planner, 21
+    November 2026), tested against PostgreSQL before the endpoints use them. Folders and
+    namespaces of the server's assembly: `Store` for the store; `Endpoints` for the
+    handlers of the agents' requests; `Signing` for the server's key; `Purge` for the
+    hosted service of the purge.
 
-    Every change is one statement or one short transaction under ReadCommitted, holds no
-    lock while it waits for anything, and takes its time from the server's `TimeProvider`
-    (PQ3). From the study of S3: the row of the agent is the one lock that orders its polls, taken
-    by the conditional `UPDATE … WHERE newest poll < the new number … RETURNING`. To settle
-    when this contract is written: what a poll stores beside its number, the agent's time
-    and the lease; and whether "still declares" in a release means the newest poll or a
-    live lease.
+    ```csharp
+    // Moltaro.OnecOutpost.Server.Store
+    internal sealed class AgentRow // gains, all null until the agent's first poll
+    {
+        public long? NewestPoll { get; set; }
+        public DateTimeOffset? LastPollAt { get; set; }
+        public DateTimeOffset? LeaseEndsAt { get; set; }
+        public string? AgentVersion { get; set; }
+    }
+
+    internal sealed class AgentBaseRow
+    {
+        public Guid AgentId { get; set; }
+        public string Key { get; set; }
+        public bool WriteOpen { get; set; }
+    }
+
+    internal sealed class BaseClaimRow
+    {
+        public string Key { get; set; }
+        public Guid AgentId { get; set; }
+    }
+
+    internal sealed record PollState(bool Revoked, long? Newest, IReadOnlyList<string> Held, IReadOnlyList<string> Claimed);
+
+    internal sealed class StoreContext // gains
+    {
+        public DbSet<AgentBaseRow> AgentBases { get; }
+        public DbSet<BaseClaimRow> BaseClaims { get; }
+    }
+
+    internal sealed class OutpostStore // gains
+    {
+        public Task<AgentRow?> FindAgentAsync(Guid agentId, CancellationToken cancellationToken);
+        public Task<PollState> RecordPollAsync(Guid agentId, OutpostPollRequest poll, TimeSpan hold, TimeSpan leaseGrace, TimeSpan clockSkew, CancellationToken cancellationToken);
+        public Task<PollState> ReadPollStateAsync(Guid agentId, long number, CancellationToken cancellationToken);
+        public Task<IReadOnlyList<OutpostAgent>> ListAgentsAsync(CancellationToken cancellationToken);
+        public Task<bool> RevokeAgentAsync(Guid agentId, CancellationToken cancellationToken);
+        public Task<OutpostReleaseResultEnum> ReleaseBaseAsync(string baseKey, CancellationToken cancellationToken);
+    }
+
+    // Moltaro.OnecOutpost.Server.Signing
+    internal sealed class ServerSigningKey
+    {
+        public ServerSigningKey(string pkcs8Pem);
+        public byte[] PublicKey { get; }
+        public string Fingerprint { get; }
+        public byte[] SignAnswer(OutpostRequestKindEnum kind, Guid agent, int status, ReadOnlySpan<byte> requestBody, ReadOnlySpan<byte> answerBody);
+    }
+
+    // Moltaro.OnecOutpost.Server.Endpoints: PairHandler, PollHandler and OutcomeHandler, each with
+    // public Task HandleAsync(HttpContext context); AgentRequests, the checks of §9 before the body and
+    // the reading of the body; AgentAnswers, the bare, unsigned and signed answers.
+    // Moltaro.OnecOutpost.Server.Purge: PurgeService : BackgroundService.
+    ```
+
+    - **The model.** `agents` gains `newest_poll` (`bigint`), `last_poll_at` and
+      `lease_ends_at` (`timestamptz`) and `agent_version`. `agent_bases` holds the bases
+      of an agent's newest poll, keyed by `agent_id` and `key`. `base_claims` holds one row
+      per claimed key, keyed by `key`, with an index on `agent_id`. Both have a foreign key
+      to `agents` that deletes with the agent. The second migration, `PollsAndBaseClaims`,
+      creates them; `StoreMigrationsAssembly` lists it and the snapshot follows.
+    - **Held and claimed.** Of the keys the newest poll declared, `Held` lists those whose
+      claim names the agent and `Claimed` every other, both in key order: ordinal, by
+      `COLLATE "C"` or a sort in .NET, here and wherever this brief says it. A key the agent
+      holds and no longer declares is in neither list.
+    - **The order of locks** is a pairing token, then an agent row, then claims, in every
+      operation. The agent row orders the agent's polls and the releases of its keys.
+      Claims are inserted in key order, so two polls that claim the same keys never wait
+      on each other in a cycle. `RedeemPairingTokenAsync` and the purge already take
+      token before agent.
+    - **`FindAgentAsync`** reads the row, or gives `null`.
+    - **`RecordPollAsync`** is one short transaction. `now` is read once: it is
+      `LastPollAt`, and the lease ends at the earlier of `now + hold + leaseGrace` and
+      `poll.Time + clockSkew + hold + leaseGrace` (§6.2).
+      1. A conditional `UPDATE` of the agent row, while it is Paired and its `newest_poll`
+         is null or below `poll.Number`, sets the number, the times and the version, with
+         `RETURNING`.
+      2. When no row was updated, one statement reads the answer and nothing changes (rule
+         10). `Revoked` is true when the agent is not Paired. Otherwise `Newest` is the
+         recorded number, and the lists are those of the newest poll.
+      3. Otherwise the transaction replaces the agent's `agent_bases` with the declared
+         bases. It inserts a claim for each declared key, `ON CONFLICT (key) DO NOTHING`
+         (rule 14), reads the lists and commits. `Newest` is `null`.
+    - **`ReadPollStateAsync`** is one statement that changes nothing and takes no lock, so
+      that the number and the lists come from one snapshot. `Revoked` is true when the
+      agent is not Paired. `Newest` is the recorded number when it is not `number`, and
+      `null` when it is.
+    - **`ListAgentsAsync`** is one statement: the agents by `created_at` and identity,
+      their bases by key, and the claims of those keys. `Connected` is true when the agent
+      is Paired and `lease_ends_at` is later than the store's now. `ReadOpen` is always
+      true, since every declared base opens Read (§6.2).
+    - **`RevokeAgentAsync`** is one short transaction, in the order of locks. It deletes
+      the agent's token, then updates the agent to Revoked when it is not already, then
+      deletes its claims. It gives `true` when the update changed the row. The bases rows
+      stay, so `GetAgentsAsync` still shows them, none held. S5 adds the end of the
+      agent's commands to this transaction.
+    - **`ReleaseBaseAsync`** is one short transaction.
+      1. It reads the holder of the claim: `NotHeld` when there is none.
+      2. It locks the holder's agent row `FOR NO KEY UPDATE`, so that a poll of the holder
+         that is committing is seen whole. That lock conflicts with the poll's `UPDATE`,
+         but not with the key-share locks that S5's inserts take.
+      3. It deletes the claim when its holder is still that agent and the holder's
+         `agent_bases` do not declare the key, with `RETURNING`: `Released`.
+      4. Otherwise it reads the claim again: `NotHeld` when it is gone, and
+         `StillDeclared` when it is not.
+
+      *Limitation.* Another agent may claim the key between steps 1 and 2, after a
+      release or a revocation. The call then answers `StillDeclared` and changes nothing,
+      and the next call decides.
+    - Every operation is as S3 says: a context of its own, ReadCommitted, no lock held
+      while it waits for anything, time from the store's `TimeProvider` (PQ3), and raw SQL
+      with the table names from the model where EF Core cannot say it.
+    - **`MapOutpostAgents`** keeps its checks. It maps a group at `prefix`, with
+      `AllowAnonymous` and `DisableRequestTimeout`, and in it `POST v1/pair`, `v1/poll`
+      and `v1/outcome`. Each is a `RequestDelegate` of the handler that `AddOutpostServer`
+      registered and takes `HttpContext` only, so that nothing binds the body. One more
+      `POST {version}/{request}`, whose internal route constraint refuses `v1` compared
+      without regard to case, as routing compares the literal, answers every other
+      version. This keeps the public promise of no routing 404, and it never matches a
+      path under `v1`, which stays the application's (§9). Every other
+      `POST {prefix}/{version}/{request}` belongs to the library.
+    - **Before the body** (§9):
+      1. a version other than `v1` gets the unsigned 400 of `WriteUnsupportedVersion`;
+      2. a header of §4 that is missing, repeated or in another form, and a
+         `Content-Encoding`, get a bare 400;
+      3. the handler sets `IHttpMaxRequestBodySizeFeature.MaxRequestBodySize` to the limit
+         of §10. For an `outcome` that is `OutcomeSizeLimit` plus
+         `OutcomeEnvelopeAllowance`. A declared `Content-Length` beyond the limit gets a
+         bare 413, unread;
+      4. `poll` and `outcome` then look up the agent: none or Pending gets a bare 401, and
+         Revoked a bare 403.
+
+      Only then is the body read, whole, into one array. Kestrel's
+      `BadHttpRequestException` with status 413, for a body without a declared length,
+      becomes a bare 413 while the response has not started, so that the application's
+      exception handler never decides it. "Bare" means a status alone, without a body or
+      `Outpost-Signature`. *Limitation.* When the feature is missing or read-only, as
+      after a middleware buffered the body, the request fails loudly with a 500 and no
+      guarantee is lost.
+    - **`pair`** gives a bare 403 to every failure of §6.1, in this order:
+      `ReadPairRequest`, `FindPairingSecretAsync`, `OutpostPairingProof.Check`, then
+      `RedeemPairingTokenAsync`, whose `false` is the lost race. Its 200 is
+      `OutpostPairAnswer` with the key it registered, the server's key, `PollTimeout` and
+      `LeaseGrace`, signed with `SignAnswer`.
+    - **`poll`.**
+      - `ReadPollRequest` gives the signed refusals of §9: `signature` with 401 and `form`
+        with 400, each an `OutpostRefusal` signed as the answer to that request.
+      - The hold is the smaller of the poll's `PollTimeout` and the option.
+        `RecordPollAsync` then decides. `Revoked` gets a bare 403. An older poll gets its
+        signed 200 at once, with `newest` and no commands.
+      - The newest poll is held on one linked token: a `CancellationTokenSource` of the
+        hold on the options' `TimeProvider`, started once the poll is recorded,
+        `RequestAborted`, and `ApplicationStopping`.
+      - When the request is aborted, the handler writes nothing and changes nothing more:
+        the lease stays as recorded.
+      - When the hold ends or the node stops, the handler calls `ReadPollStateAsync` with
+        `RequestAborted` and answers by its result. `Revoked` gets a bare 403. A
+        `Newest` that is not `null` means a newer poll replaced this one while it was
+        held, which only the store tells, since nodes share nothing: the answer is the one
+        of an older poll. Otherwise it is the ordinary 200 without commands.
+      - Every 200 carries the node's time, the options `PollTimeout` and `LeaseGrace`, and
+        the lists of the `PollState`.
+    - **`outcome`** runs the checks of §9 and reads its body within its limit. It then
+      throws `NotSupportedException`, which ASP.NET Core answers with a 500; S5 replaces
+      it.
+    - **`ServerSigningKey`** is made once by `AddOutpostServer` from the validated PEM.
+      `PublicKey` is the 91 bytes of §2, and `Fingerprint` comes from
+      `OutpostKeys.Fingerprint`. Each signature imports the key into an `ECDsa` of its own
+      and disposes it, since .NET does not document an `ECDsa` as safe for concurrent
+      use. No lock is taken. S5 adds the signing of commands here.
+    - **`AddOutpostServer` in full** adds singletons to the checks of S1: the
+      `OutpostStore` with the options' connection string, schema and `TimeProvider`; the
+      `ServerSigningKey`; the three handlers; and `PurgeService` as a hosted service.
+      Resolving `IOutpostServer` still needs `ISignals`, which S5 uses.
+    - **The members of `IOutpostServer`** check their arguments, then their token: a
+      cancelled one gives a cancelled task before the store is opened.
+      - `CreatePairingTokenAsync` makes the identity with `Guid.NewGuid()` and 16 bytes
+        of `RandomNumberGenerator`. The expiry is now plus `PairingTokenLifetime`,
+        truncated to whole microseconds, so that `ExpiresAt` is what the store keeps.
+        `Token` is the text of `OutpostPairingTokenText` with the key's fingerprint.
+      - `GetAgentsAsync`, `RevokeAgentAsync` and `ReleaseBaseAsync` give what the store
+        operation of the same name gives; `GetAgentsAsync` uses `ListAgentsAsync`.
+    - **The purge.** `PurgeService` runs on every node: once when the host starts, then
+      after every `PurgeInterval`, waiting with `Task.Delay` on the options'
+      `TimeProvider`. It ends with the host's stopping token. In S4 it calls
+      `PurgePairingTokensAsync`, and S5 adds the commands past their retention. A failure
+      other than stopping is logged as one warning, with its exception, under the
+      category `Moltaro.OnecOutpost.Server`, and the next round comes after the interval.
+      Otherwise a store that is down would stop the host: that is the default of
+      `BackgroundService`.
+    - **The test agent** of the Acceptance is test code of
+      `Moltaro.OnecOutpost.Server.Tests`, built from the protocol's internal types. S5
+      reuses it.
+    - **The contract step** puts into code the rows, the two `DbSet`s, the model, the
+      migration `PollsAndBaseClaims` and its snapshot, and `PollState`. The test of pending
+      model changes of S3 then stays green after every commit. The six operations throw
+      `NotSupportedException`. The types of `Signing`, `Endpoints` and `Purge` are the
+      implementer's, since the tests reach them only through the public API and HTTP.
+    - **Settled: what a poll stores** (the contract author, 21 November 2026, as the study
+      recommends).
+      - It stores its number, the node's moment of recording as `LastPollAt`, and the end
+        of its lease, computed once, so that `Connected` is `lease_ends_at > now` and the
+        hold and the grace need not be kept. It also stores the agent version.
+      - It replaces its bases whole, as rows with `WriteOpen`, and claims its keys as rows
+        of their own, which settles the race of two claims in one statement.
+      - Left out, since nothing in S4 reads them: the agent's time, which S5 adds with its
+        own migration if its contract needs it; `ReadOpen`, always true in v1; and
+        `free`, `runLimitMs` and `received`, which belong to S5.
+    - **Settled: "still declares" means the newest poll**, whatever its lease (the
+      contract author, 21 November 2026, as the study recommends).
+      - Rule 14 frees a key only by revocation or release, so that the scripts of one
+        database never reach another. A holder that is down for maintenance and comes back
+        declaring the key finds it still its own.
+      - The decision depends on no clock, which a live lease would.
+      - It matches `OutpostAgent.Bases`, what the newest poll declared.
+      - A holder gone for good is revoked, which frees its keys.
+    - **Edits that state nothing new:** none on tests or samples.
+      - The argument tests of S1 call with a cancelled token and a database nobody
+        listens on, and stay green because every member checks its token before the store.
+      - `MapOutpostAgentsTests` never starts its application, and stays green now that
+        mapping works.
+      - `StoreMigrationsAssembly` lists and creates the second migration, in the contract
+        step.
+      - No test of an earlier sprint is skipped, so S4 unskips none.
+    - **Deferred to S4 by S2's list** ("What S2 makes of this list"). Whoever writes the
+      code that each item describes makes it, and the documents step writes the prose of
+      `README.md`, `AGENTS.md`, the concept and the protocol:
+      - concept rule 6, and the correctness item of `AGENTS.md` on an agent that is gone,
+        state the lease of §6.2 exactly, polls held back on the path included;
+      - the XML documentation of `OutpostServerOptions.LeaseGrace` and of
+        `OutpostAgent.Connected`, which today says that the lease is `PollTimeout` plus
+        `LeaseGrace`, follows §6.2, and so do the rows of `PollTimeout` and `LeaseGrace`
+        in the options table. This is in the contract step (the coordinator's decision);
+      - rule 14 says that a claimed key is reported in `bases.claimed`;
+      - concept §4 says that every poll carries its poll timeout;
+      - D4, §6 and this plan's "The protocol" say that every answer the agent acts on is
+        signed and bound to the request's body, except a bare 413 to an outcome. Concept
+        §6 adds that the library's own check of the declared length sends a bare 413 too;
+      - "Pairing" says that a refusal of `pair` is a bare 403 without a body.
+
+      The other items of that list are the agent's, for S6.
+    - **Effort:** the test author and the implementer on `xhigh`, since pairing, the
+      transport and the store are strict zones.
+- **What S4 changes in the public contract, as a draft for the owner** (the contract
+  author, 21 November 2026). Each holds until the owner overturns it. The XML
+  documentation it touches says so, written by whoever writes the code it describes:
+  - the log category `Moltaro.OnecOutpost.Server` holds one warning, for a purge that
+    failed;
+  - `OutpostAgent.Connected` is `false` for an agent that is not Paired, whatever its
+    lease, so a revoked agent is never shown as connected; concept rule 6 says so too;
+  - a poll whose agent was revoked after it was looked up gets the bare 403 of
+    §9 after its body was read. This happens when it is recorded, or when its hold ends;
+  - a declared key that no agent holds at that moment is in `bases.claimed` of a poll
+    answer, and has `Held` `false` in `OutpostBase`. That is a key freed during a hold,
+    by a release or a revocation, and the agent's next poll claims it. Both lists of a
+    poll answer hold declared keys only.
+
+  The same change makes `docs/protocol.md` say so, in §6.2 `bases`, in §9 and in its
+  Status, and the XML documentation of `OutpostBase.Held` too.
 - **Study.** Sources, for example: the message long poll of the GitHub Actions runner
   service (MIT); the long polling transport of ASP.NET Core SignalR (MIT). Questions:
   1. How a long poll is held and ended: its timeout, a client that went away,
@@ -2069,6 +2320,11 @@ approval of this plan.
       older poll comes at once, signed, and names the newest number recorded;
     - a poll is held for the smaller of the poll timeout it carries and the option, and
       ends without commands at that time, with the fake clock;
+    - the end of a hold, with the fake clock:
+      - a held poll that a newer one replaced is answered as older when its hold ends;
+      - a revocation during the hold ends the poll in the bare 403 when its hold ends;
+      - stopping the node ends the hold at once with the ordinary 200;
+      - an aborted poll gets no answer written, and its lease stays as recorded;
     - `Connected` follows the lease of §6.2, with the fake clock: a poll recorded on time
       grants its hold plus the lease grace; a poll whose signed time is behind the node's
       by more than `ClockSkew` grants less by the part of its lag beyond `ClockSkew`; and
