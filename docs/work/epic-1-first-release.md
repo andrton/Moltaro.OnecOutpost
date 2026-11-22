@@ -740,7 +740,9 @@ folder.
 
 Text marked *(S6)* holds as a draft of the contract, until the owner overturns it: the
 changes "Carried over from S2" that S6 builds, and the list "What S6 changes in the public
-contract", both in [S6's brief](#s6--the-agent).
+contract", both in [S6's brief](#s6--the-agent). Text marked *(S9b)* holds the same way:
+the list "What S9b changes in the public contract, as a draft for the owner" in
+[S9b's brief](#s9b--the-agent-runs-the-com-workers).
 
 - **The data folder admits nobody else.** The console's `install` creates it with
   inheritance off:
@@ -810,7 +812,7 @@ contract", both in [S6's brief](#s6--the-agent).
 | `write` | Present only when the base may be written |
 | `account` | The 1C account of the mode; its password is a secret that the console writes |
 | `workers` | 1 to 8; 1 when absent |
-| `safeMode` | In `write` only: whether the Writes of the base run in the 1C safe mode; `true` when absent. With `false`, the COM workers of the base run under a Windows account of their own (D12). In `read` it is an unknown member: a Read always runs in safe mode |
+| `safeMode` | In `write` only: whether the Writes of the base run in the 1C safe mode; `true` when absent. With `false`, the COM workers of the base run under a Windows account of their own (D12). *(S9b)* Until S9c, the agent starts its COM workers under its own account, so it serves a base with `false` for Read only: it starts no Write worker for it, declares its `write` as `null` in its polls, and refuses a Write that reaches it with `not-served`. In `read` it is an unknown member: a Read always runs in safe mode |
 | `runLimit` | A .NET `TimeSpan` in its constant form `[d.]hh:mm:ss`, from 1 second to 1 day (`1.00:00:00`); 10 minutes when absent. *(S6)* It is also the deadline for a worker of the mode to open its session: a worker that has not opened by then is ended and never runs a command |
 
 - **An invalid file serves nothing.** An unknown member, a member given twice, a wrong
@@ -842,7 +844,7 @@ Each line is one JSON object in UTF-8, written and flushed before the agent goes
 
 | `entry` | Further members | When |
 | --- | --- | --- |
-| `started` | `version`, *(S6)* `withoutSafeMode` (the keys of the bases whose Writes run without safe mode, an array, empty when there is none and when there is an `error`), `error` (when it stops at once) | The agent started |
+| `started` | `version`, *(S6)* `withoutSafeMode` (*(S9b)* the keys of the bases whose policy turns safe mode off for Writes, an array, empty when there is none and when there is an `error`), `error` (when it stops at once) | The agent started |
 | `policy` | `valid`, `error` (when not valid) | The agent read its policy |
 | `connection` | `state` (`connected` or `lost`), `reason` (when lost) | The agent's connection to the server changed. *(S6)* Once per change of the state of its polls, which answers to outcomes do not change, with the `reason` of §9 of `docs/protocol.md`: the code of a verified refusal, `protocol-version`, `status-` and the HTTP status, `status-407` from a proxy included, or `unreachable` |
 | `bases` | `held` (the keys the server granted), `claimed` (the keys another agent holds) | The server's answer changed what this agent holds (rule 14) |
@@ -4763,6 +4765,9 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   - its name is `Moltaro.OnecOutpost-<version>-win.zip`;
   - it holds the agent, the COM worker for x64 and for x86, the console, the executor
     `.epf`, the licence and the notices;
+  - *(S9b, a draft for the owner)* the COM worker of each bitness lies in `x64\` and
+    `x86\` beside the agent's program, each with the files of its build, since the agent
+    starts it from there; S12 builds the archive so;
   - every program in it is self-contained, so that no .NET runtime of either bitness has to
     be installed;
   - its SHA-256 checksum is on the release page;

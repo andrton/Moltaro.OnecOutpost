@@ -31,8 +31,11 @@ manage agents and base keys, the agent end to end against the server with a fake
 of the COM worker (its files, numbered polls through its proxy, the checks, the audit log,
 the outbox with outcomes sent until confirmed, pairing, and the Windows service started
 with `service`; a proxy that asks for authentication is not supported yet), and the COM
-worker with the executor, which no agent starts until S9b, so nothing runs a script in 1C
-through the library yet. The server is the one
+worker with the executor, which the agent now starts for its bases with the bitness of the
+registered connector, inside a job object, ended at the run limit and started again with a
+growing delay. Until S9c a base whose Writes run without safe mode is served for Read
+only, and the tests of the agent against a real 1C are ready for the lab but have not run
+there yet. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions
@@ -52,7 +55,7 @@ in code, tests, samples or documents.
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | The wire protocol, extended by the sprint that introduces a part of it |
 | `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
-| `docs/guides` | Planned: the user guides, how to install and run an agent, how to write scripts and how to embed the server. Every command and script they show is run by a test |
+| `docs/guides` | The user guides: how to write scripts (`scripts.md`); planned, how to install and run an agent and how to embed the server. Every command and script they show is run by a test |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
 Each project is created by the sprint that first needs it, under the name the plan of the

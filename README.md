@@ -8,7 +8,9 @@ across nodes.
 ## Status
 
 Contract stage. The [concept](docs/concept.md) is agreed, and the first epic, up to the
-first release, is under way in [current work](docs/work/README.md). The public contract of
+first release, is under way in [current work](docs/work/README.md). How to write the
+scripts that Read and Write run is in the guide [Writing scripts](docs/guides/scripts.md).
+The public contract of
 its first stage exists in code: the types and members of the server library, with their
 documentation. The checks work: the options of the server, the arguments of every call,
 the outcome factories, and the rules of the agent's local policy file. The protocol
@@ -16,8 +18,7 @@ assembly holds the codec of the
 [wire protocol](docs/protocol.md): its messages, the signatures of commands, requests and
 answers, and the pairing proof, with their tests. The COM worker runs scripts in 1C: it
 holds an external connection to one base and runs each command through the executor, an
-external data processor in `src/Executor`, in safe mode or without it. No agent starts it
-yet. Its tests run against a fake of the COM connection, and its 45 tests against a real
+external data processor in `src/Executor`, in safe mode or without it. Its tests run against a fake of the COM connection, and its 45 tests against a real
 1C, in `src/Moltaro.OnecOutpost.OneC.Tests`, passed on the lab machine with
 1C:Enterprise 8.3.17.1851, against the repository's test base and a copy of a typical
 base. The migrations of the store work: `OutpostMigrations` creates the
@@ -61,11 +62,25 @@ outbox and sends it until the server confirms it, and replaces an outcome refuse
 size. It pairs with a pairing token, for the console to call. The agent program runs as a
 Windows service, started with its one argument `service`, and exits with a code that says
 why it stopped. This is tested over loopback HTTP with the server and a test proxy: a Read
-and a Write from `ReadAsync` and `WriteAsync` reach the fake and come back. The program
-starts no COM worker until S9b, so every base declares no free worker, and nothing runs a
-script in 1C through the library yet. A proxy that asks for authentication is not
-supported yet: the agent offers it no credentials, so it is not connected through such a
-proxy.
+and a Write from `ReadAsync` and `WriteAsync` reach the fake and come back. A proxy that
+asks for authentication is not supported yet: the agent offers it no credentials, so it is
+not connected through such a proxy.
+
+The agent runs its commands in 1C through the COM workers it starts. For each mode of each
+base it starts the workers that `policy.json` asks for, with the bitness of the registered
+COM connector: the 64-bit worker from `x64\` beside its program when a 64-bit connector is
+registered, otherwise the 32-bit one from `x86\`. Every worker runs inside a job object,
+so it ends with the agent, however the agent ends. A worker whose script runs past the run
+limit of its mode is ended: the Read fails and the Write is Unknown, both with
+`run-limit`. A worker that ends or does not open its session is started again after a
+delay, which grows while its session does not open, up to `retryDelayMax`. This is tested
+on Windows with a test program in place of the worker. Until S9c, a base whose policy turns
+safe mode off for its Writes is served for Read only: the agent starts no Write worker for
+it, and a Write to it is Refused, since the agent would run it under its own account,
+which can read the agent's secrets. The tests that run a Read and a Write through the
+agent and the worker against the repository's test base, and every script of
+[Writing scripts](docs/guides/scripts.md), are ready for the lab machine with
+1C:Enterprise 8.3.17.1851 and have not run there yet.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from
@@ -104,6 +119,8 @@ Windows; the server runs wherever .NET runs.
 
 - [Concept](docs/concept.md): where it comes from, semantics and rules, protocol
   principles, decisions and quality bar.
+- [Writing scripts](docs/guides/scripts.md): the guide for the developer who writes the
+  scripts of Read and Write.
 - [Documentation index](docs/README.md) and [current work](docs/work/README.md).
 - [How the project is built](AGENTS.md): architectural principles, code style and working
   rules, for people and coding agents.

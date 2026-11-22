@@ -3,11 +3,11 @@
 For the developer of an application that calls `ReadAsync` and `WriteAsync` of the Moltaro.OnecOutpost server: how
 to write the 1C script that a command runs, what it receives, what it may return, and what each outcome tells you.
 
-**Status:** every script in this guide is run from this file by a test on the lab machine, against the repository's
-test base on 1C:Enterprise 8.3.17.1851 in the compatibility mode 8.2.13, through the COM worker; the run of this
-version of the guide is pending. The agent of this version does not start its COM workers yet, so `ReadAsync` and
-`WriteAsync` do not reach 1C until it does; the contract this guide describes is the one the executor and the COM
-worker keep.
+**Status:** in this version the agent starts its COM workers, so a command from `ReadAsync` or `WriteAsync` runs in
+the base, except a Write of a base whose Writes run without safe mode, as
+[What a command is](#what-a-command-is) says. Every script in this guide is run from this file by a test on the lab
+machine, through the COM worker, against the repository's test base on 1C:Enterprise 8.3.17.1851 in the
+compatibility mode 8.2.13. These tests are ready and have not run on the lab yet.
 
 ## Before you start
 
@@ -39,11 +39,11 @@ but running your script.
   The script can still do everything the account's rights allow with the data. Only the administrator of the agent
   machine can turn safe mode off, and only for the Writes of a base.
 
-In this version the agent does not serve the Writes of a base whose local policy turns safe mode off
-(`"safeMode": false`): it starts no Write worker for that base, the server refuses such a Write with `mode-closed`,
-and an agent that receives one refuses it with `not-served`. The Reads of that base are served as usual. The reason:
-the agent would run those Writes under its own service account, which can read its secrets; running them under a
-Windows account of their own is planned.
+**Not in this version: Writes without safe mode.** The agent does not serve the Writes of a base whose local policy
+turns safe mode off (`"safeMode": false`). It starts no Write worker for that base, so the server refuses such a
+Write with `mode-closed`, and an agent that receives one all the same refuses it with `not-served`. The Reads of that
+base are served as usual. The reason: the agent would run those Writes under its own service account, which can read
+the agent's secrets. Running them under a Windows account of their own is planned.
 
 ## The contract of a script
 
@@ -191,10 +191,10 @@ was written.
 CommitTransaction();
 ```
 
-**Leave a transaction of its own open.** The executor rolls it back, with everything else of a Write, and the command
-fails with `script-error` and a sentence of the executor as its error text. A script may begin and commit a
-transaction of its own inside a Write, but a nested rollback rolls the whole Write back in the compatibility mode
-8.2.13, and the executor then fails it with `script-error` too.
+**Leave a transaction of its own open.** The executor rolls it back, in a Write together with everything else the
+script did, and the command fails with `script-error` and a sentence of the executor as its error text. A script may
+begin and commit a transaction of its own inside a Write, but a nested rollback rolls the whole Write back in the
+compatibility mode 8.2.13, and the executor then fails it with `script-error` too.
 
 ```bsl read failed script-error
 BeginTransaction();
@@ -251,7 +251,7 @@ Raise "The order has no lines, so nothing is written.";
 | Failed | The script did not succeed. For a Write, nothing was written: 1C rolled it back, or the script never started. `Code` says why, `ErrorText` holds the text of 1C for `script-error` | See the codes below; a Write may be sent again with a new caller key |
 | Refused | A check refused the command before it ran: nothing ran | Fix what `Code` names |
 | Unavailable | The agent of the base is not connected; no command was created | Try again later |
-| Expired | No poll of the agent took the command before its take deadline, 30 seconds by default, for example while the workers of the base were busy: nothing ran | Send it again |
+| Expired | No poll of the agent took the command before its take deadline, 30 seconds by default, for example while the workers of the base were busy, or while none of them could open a session in 1C: nothing ran | Send it again; when it keeps expiring, ask the administrator of the agent machine |
 | Unknown | Only a Write: nobody can tell whether it was committed | Find out, as below, before you write again |
 
 **After an Unknown Write**, do not send the same work with a new caller key: it could be written twice. Repeating the
@@ -272,7 +272,9 @@ outcome for the retention of the server, 7 days by default; after that a repeat 
   a mistake of the call, which throws `ArgumentException`.
 - **The run limit** of each mode of a base is set by the administrator in the local policy, 10 minutes by default. A
   script that runs longer is ended with its worker: a Read fails with `run-limit`, and a Write is Unknown with
-  `run-limit`, since its commit may have come just before the end.
+  `run-limit`, since its commit may have come just before the end. The agent starts a new worker in its place after
+  a short delay, a tenth of the policy's `retryDelayMax`, 3 seconds by default; until then the mode has one worker
+  fewer.
 - **The workers** of a mode, one by default, run one command each at a time. A long Read holds the Read worker of its
   base, and the next Read waits for a free worker until its take deadline.
 - **Parameters and results** nest at most 64 levels.
@@ -699,13 +701,13 @@ Each code below is a constant of `OutpostCodes`, which `OutpostOutcome.Code` hol
 | `result-too-large` | Failed, Unknown | The outcome is larger than its limit | Return less, or read in pages |
 | `run-limit` | Failed (Read), Unknown (Write) | The script ran longer than the run limit of its mode | Make the script shorter, or ask the administrator for a longer limit |
 | `transaction-ended` | Unknown | The script ended the transaction of its Write itself, or the commit raised | Do not call `CommitTransaction` or `RollbackTransaction` on it; find out what was written |
-| `base-unreachable` | Failed | The agent has no session in the base, for example after a wrong password, a cluster that does not answer or no free licence, or could not open its executor; the script never started | Ask the administrator of the agent machine |
+| `base-unreachable` | Failed | No worker could run the command: the worker had its session in the base but could not open the executor in it, or no worker of the mode was ready any more when the command reached the agent; the script never started. A worker that cannot open its session at all, after a wrong password, with a cluster that does not answer or without a free licence, takes no command, so the command ends as Expired instead | Send it again; when it keeps failing, ask the administrator of the agent machine |
 | `connection-lost` | Failed (Read), Unknown (Write) | The session in 1C ended while the script ran, as when the cluster restarted | Send a Read again; find out what a Write did |
 | `lost` | Failed | A Read whose agent or worker stopped while it ran, whose agent stayed away, or whose agent was revoked | Send it again |
 | `agent-stopped` | Unknown | A Write whose agent or worker stopped while it ran | Find out what it did |
 | `disconnected` | Unknown | A Write whose agent stayed away longer than its run limit | Find out what it did |
-| `not-served` | Refused | The local policy of the agent does not serve the base or the mode | Ask the administrator |
-| `mode-closed` | Refused | The agent that holds the base does not open the mode, such as Write for a base that is only read | Ask the administrator |
+| `not-served` | Refused | The local policy of the agent does not serve the base or the mode, or, in this version, the command is a Write of a base whose Writes run without safe mode | Ask the administrator |
+| `mode-closed` | Refused | The agent that holds the base does not open the mode, such as Write for a base that is only read or, in this version, whose Writes run without safe mode | Ask the administrator |
 | `unknown-base` | Refused | No agent holds the base key | Check the key, and that its agent is paired and polls |
 | `caller-key-conflict` | Refused | The caller key names another command of the base, with another mode, script or parameters | Use a new key for new work |
 | `expired`, `clock-skew` | Refused | By the agent's clock the command came too late, or from too far ahead | Send it again; check the clocks of the machines |
