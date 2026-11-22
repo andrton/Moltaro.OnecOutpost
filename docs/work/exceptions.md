@@ -48,7 +48,21 @@ An entry is a table:
 
 ## Approved, not in force yet
 
-None.
+### X2. The agent's wait for `100 Continue`
+
+Waiting for the owner: entered by the coordinator of S6 as a draft, 22 November 2026, as
+the S6 brief of the [epic document](epic-1-first-release.md) proposes it. Until the owner
+approves it, the agent is built so; the owner may overturn it.
+
+| | |
+| --- | --- |
+| **Rule** | "A timeout or a limit an application or an administrator can observe is an option with a default, validated when the object that uses it is created. … Such a value is never a constant in the code." (`AGENTS.md`, principle 10) |
+| **Departure** | The agent's wait of one second for `100 Continue` before it sends the body of an `outcome` (§9 of `docs/protocol.md`) is a constant of the agent, the default of .NET, not a member of `policy.json` |
+| **Why** | Its only effect is a second added to an outcome sent through a hop that strips `Expect`, and nobody has a reason to change it |
+| **Kept small by** | It is the one wait of the agent that is not an option; every other wait is a member of `policy.json` or of the pairing answer |
+| **Approved** | Waiting for the owner |
+| **Since** | Epic 1, S6 |
+| **Until** | Permanent |
 
 ## Ended
 
