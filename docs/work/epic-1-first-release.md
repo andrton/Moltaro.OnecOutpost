@@ -883,8 +883,9 @@ Each line is one JSON object in UTF-8, written and flushed before the agent goes
     older than `auditRetentionDays` by the server's clock;
   - *(S6)* no file is removed while it holds an entry of a command whose outcome is not
     confirmed, or the highest `reservation` of the agent's identity, nor while it holds
-    the `confirmed` of a command whose other entries are in a file that stays. So a file
-    is kept past `auditRetentionDays` while such a command stays unconfirmed, and, after
+    the `confirmed` of a command whose other entries are in a file that stays. So the
+    files chained to a file that holds an unconfirmed command are kept past
+    `auditRetentionDays` while that command stays unconfirmed, and, after
     the clock was set back, two files whose entries confirm each other's commands are
     kept for good;
   - *(S6)* retention runs only right after a verified poll answer of the current run, and
