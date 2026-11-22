@@ -52,6 +52,9 @@ internal static class AgentPolicyReader
 
     private static readonly TimeSpan DefaultRunLimit = TimeSpan.FromMinutes(10);
 
+    // The default of requestTimeout. The member is not read yet, so every policy has it.
+    private static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromMinutes(5);
+
     // The constant form [d.]hh:mm:ss of a TimeSpan, without a sign and without a fraction of a second.
     private static readonly string[] TimeSpanForms = [@"hh\:mm\:ss", @"d\.hh\:mm\:ss"];
 
@@ -101,7 +104,7 @@ internal static class AgentPolicyReader
             throw MissingMember("bases", "an array of at least one base");
         }
 
-        return new AgentPolicy(auditRetentionDays, proxy, retryDelayMax, bases);
+        return new AgentPolicy(auditRetentionDays, proxy, retryDelayMax, DefaultRequestTimeout, bases);
     }
 
     private static JsonDocument Parse(string json)
@@ -298,7 +301,8 @@ internal static class AgentPolicyReader
             throw MissingMember($"{path}.account", accountRule);
         }
 
-        return new AgentModePolicy(account, workers, runLimit);
+        // safeMode of write is not read yet, so every mode runs in safe mode, its default.
+        return new AgentModePolicy(account, workers, runLimit, SafeMode: true);
     }
 
     // The members of an object, each with its path. A value that is not an object, or a member given twice, makes the
