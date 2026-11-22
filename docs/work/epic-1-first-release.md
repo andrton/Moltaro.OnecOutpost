@@ -4351,8 +4351,11 @@ the contract of the executor and the COM worker approved.
       - Threads: `Start` may run on several slots' tasks at once. A slot publishes its
         worker with `Volatile.Write`, and `Free` and `RunAsync` read it with
         `Volatile.Read`, so a worker read late is one not yet opened and `free` is only
-        under-declared. `IsHeld` stays the loop's; a slot reads `IsDropped` only after the
-        worker's end. The pool's class comment states this ownership.
+        under-declared. A slot publishes a worker whose open gave true before it ends that
+        open's deadline, so a test sees `Free` count it once that timer is gone (the
+        coordinator, 23 November 2026, from S9b's code review, round 1). `IsHeld` stays the
+        loop's; a slot reads `IsDropped` only after the worker's end. The pool's class
+        comment states this ownership.
       - *Limitation:* a worker whose process ends while it holds no command is seen only
         when a command reaches it, which gets `connection-lost`, Unknown for a Write,
         though its script never started; the worker is then started again. S9's worker ends
