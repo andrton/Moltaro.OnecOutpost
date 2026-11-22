@@ -16,7 +16,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.EndToEnd;
 [Trait("Requires", "PostgreSQL")]
 public sealed class RoundTripTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", null)]
     [InlineData("write", "invoice-17")]
     public async Task A_call_reaches_the_fake_worker_through_the_proxy_named_in_policy_json_and_returns_its_outcome(

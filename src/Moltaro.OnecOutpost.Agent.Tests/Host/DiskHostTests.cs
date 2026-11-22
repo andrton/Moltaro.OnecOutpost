@@ -28,7 +28,7 @@ public sealed class DiskHostTests : IDisposable
     }
 
     // "" is the data folder itself.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
     [InlineData("policy.json")]
     [InlineData("secrets.dat")]

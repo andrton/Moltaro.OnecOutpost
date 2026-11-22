@@ -20,7 +20,7 @@ public sealed class AgentHostTests
 {
     // The workers are killed first, then the handler goes while the log still holds its lock, and the lock is free
     // once the run ended.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_run_stopped_by_its_token_gives_Stopped_and_disposes_the_pool_the_connection_and_the_log_in_that_order()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -42,7 +42,7 @@ public sealed class AgentHostTests
     }
 
     // The workers never answer their opens, so every mode declares free 0.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_run_stopped_while_its_workers_open_gives_Stopped()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -57,7 +57,7 @@ public sealed class AgentHostTests
 
     // §13: the agent holds audit\lock for its whole run, so a second copy of the program exits with an error while the
     // first runs, and writes nothing.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_second_copy_gives_NotStarted_and_records_nothing_while_the_first_runs_on()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -76,7 +76,7 @@ public sealed class AgentHostTests
     }
 
     // A start that stops records started with its error, and nothing is polled.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_start_that_stops_gives_Error_recorded_and_polls_nothing()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -93,7 +93,7 @@ public sealed class AgentHostTests
 
     // An invalid policy serves nothing and is recorded: started with the error and policy invalid; its outbox waits on
     // the disk for a start with a valid policy, and nothing is sent.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_invalid_policy_serves_nothing_is_recorded_and_its_outbox_waits_on_the_disk()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -111,7 +111,7 @@ public sealed class AgentHostTests
     }
 
     // Free 0 until S9b: the program's launcher starts no COM worker yet, and what it starts never opens.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task With_the_programs_launcher_every_mode_declares_free_0()
     {
         PairedFolder folder = PairedFolder.Create();

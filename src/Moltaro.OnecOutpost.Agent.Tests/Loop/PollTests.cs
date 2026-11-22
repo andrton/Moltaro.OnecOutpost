@@ -20,7 +20,7 @@ public sealed class PollTests
 {
     private static readonly TimeSpan RunLimit = TimeSpan.FromMinutes(10);
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_first_poll_carries_number_1_the_agents_time_and_version_the_poll_timeout_of_agent_json_and_the_bases_of_the_policy()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -44,7 +44,7 @@ public sealed class PollTests
 
     // The answer teaches a poll timeout of 40 seconds and a lease grace of 15: the next poll carries 40 and waits 55
     // for its answer to begin; a lost answer teaches nothing.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Every_poll_carries_the_poll_timeout_the_agent_last_learnt_and_waits_for_it_plus_the_last_lease_grace()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -68,7 +68,7 @@ public sealed class PollTests
 
     // 9 999 refused commands of an earlier run wait for their confirmation, so the list has room for one more: the
     // first mode keeps its free worker, and the others declare none.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_sum_of_free_never_passes_the_room_left_in_the_list_of_received_commands()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -99,7 +99,7 @@ public sealed class PollTests
 
     // The log holds a reservation of the identity, so the agent numbers from its clock (§6.2). The server's newest is
     // ten days of ticks above the first poll.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task After_an_answer_to_an_older_poll_the_agent_waits_a_tenth_of_retryDelayMax_and_numbers_its_polls_above_the_newest()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -124,7 +124,7 @@ public sealed class PollTests
 
     // The next number would pass 2⁶²: the agent records its reservation, the record of this first stop, and stops; a
     // later start finds a reservation that leaves no number, records started with an error, and polls nothing.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_answer_to_an_older_poll_whose_newest_is_2_to_the_62_stops_the_agent_for_good()
     {
         PairedFolder folder = PairedFolder.Create();

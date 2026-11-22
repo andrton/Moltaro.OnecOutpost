@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using Moltaro.OnecOutpost.Agent.Host;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Host;
 
@@ -18,7 +17,7 @@ public sealed class ProgramTests
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
         "Moltaro.OnecOutpost");
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_program_started_with_service_outside_the_service_controller_exits_with_NotService_and_changes_nothing_in_its_data_folder()
     {
         string before = Describe(DataFolder);
@@ -29,7 +28,7 @@ public sealed class ProgramTests
         Assert.Equal(before, Describe(DataFolder));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData]
     [InlineData("serve")]
     [InlineData("service", "now")]

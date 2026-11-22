@@ -236,7 +236,8 @@ internal sealed partial class WorkerPool : IAsyncDisposable
     {
         using CancellationTokenSource race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        Task<bool> open = worker.Process.OpenAsync(connection, race.Token);
+        // The process is given the caller's token, so that ending the race below leaves it as it is.
+        Task<bool> open = worker.Process.OpenAsync(connection, cancellationToken);
         Task deadline = Task.Delay(worker.RunLimit, _clock, race.Token);
 
         Task first = await Task.WhenAny(open, deadline);
@@ -254,7 +255,7 @@ internal sealed partial class WorkerPool : IAsyncDisposable
             worker.Process.Kill();
         }
 
-        // Ends the timer of the deadline, or the open that a cancellation left waiting.
+        // Ends the timer of the deadline.
         race.Cancel();
         await ((Task)open).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
     }
@@ -276,10 +277,11 @@ internal sealed partial class WorkerPool : IAsyncDisposable
 
         Task<(long Size, byte[] Outcome)?> run;
 
-        // A token already cancelled may end RunAsync before it returns a task; the worker is then killed all the same.
+        // The process is given the caller's token, as its open is. A token already cancelled may end RunAsync before it
+        // returns a task; the worker is then killed all the same.
         try
         {
-            run = worker.Process.RunAsync(line, race.Token);
+            run = worker.Process.RunAsync(line, cancellationToken);
         }
         catch (OperationCanceledException)
         {

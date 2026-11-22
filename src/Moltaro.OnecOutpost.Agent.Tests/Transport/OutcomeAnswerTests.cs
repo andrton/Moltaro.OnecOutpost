@@ -5,7 +5,6 @@ using Moltaro.OnecOutpost.Agent.Transport;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
-using Moltaro.OnecOutpost.TestSupport;
 using static Moltaro.OnecOutpost.Agent.Tests.Transport.TestConnection;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
@@ -17,7 +16,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 // and reads no more than 64 KiB.
 public sealed class OutcomeAnswerTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_verified_200_that_confirms_the_command_is_Confirmed()
     {
         using TestConnection test = new();
@@ -29,7 +28,7 @@ public sealed class OutcomeAnswerTests
     }
 
     // "Bare" means without an Outpost-Signature that verifies, whatever the body (§9).
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("refusal-result-too-large")]
     [InlineData("bare")]
     [InlineData("html-page")]
@@ -46,7 +45,7 @@ public sealed class OutcomeAnswerTests
     }
 
     // A 413 whose signature verifies is no bare 413, and with another code it is no refusal of the table either.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("confirms-another-command")]
     [InlineData("unsigned-200")]
     [InlineData("content-type-with-charset")]
@@ -70,7 +69,7 @@ public sealed class OutcomeAnswerTests
     }
 
     // The answer begins after half of requestTimeout and its body stops: the one wait of requestTimeout covers both.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_wait_for_an_outcome_is_the_request_timeout_over_the_answer_and_its_body()
     {
         using TestConnection test = new();
@@ -90,7 +89,7 @@ public sealed class OutcomeAnswerTests
     }
 
     // §10: each limit is accepted at it and refused one byte beyond it. White space after the answer keeps §2.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_answer_of_64_KiB_is_read()
     {
         using TestConnection test = new();
@@ -106,7 +105,7 @@ public sealed class OutcomeAnswerTests
         Assert.Equal(OutcomeResultEnum.Confirmed, await EndOf(result));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_answer_declared_beyond_64_KiB_is_lost_unread()
     {
         using TestConnection test = new();
@@ -120,7 +119,7 @@ public sealed class OutcomeAnswerTests
         Assert.Equal(0, body.BytesRead);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_answer_beyond_64_KiB_that_declares_no_length_is_lost()
     {
         using TestConnection test = new();

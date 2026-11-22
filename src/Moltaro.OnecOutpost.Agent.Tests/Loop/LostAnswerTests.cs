@@ -20,7 +20,7 @@ public sealed class LostAnswerTests
     // The answer holds a command and bases, and the audit log a file that retention would remove, more than 90 days
     // plus a day old. The agent counts its polls, as its log holds no reservation, so the next poll is number 2 while
     // no answer is acted on.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("more-than-free")]
     [InlineData("two-of-one-id")]
     [InlineData("signature-that-does-not-verify")]
@@ -47,7 +47,7 @@ public sealed class LostAnswerTests
 
     // retryDelayMax is 4 seconds: 0.4, 0.8, 1.6 and 3.2 seconds, then 4, and 4 again; an ordinary answer, after which
     // the next poll opens at once, and the delay begins again at 0.4.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task After_a_lost_answer_the_agent_waits_a_tenth_of_retryDelayMax_doubled_up_to_it_until_an_answer_is_not_lost()
     {
         PairedFolder folder = PairedFolder.Create();

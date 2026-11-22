@@ -11,7 +11,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 // the poll is lost with status-407, the status of the proxy's answer to CONNECT (§9).
 public sealed class ProxyTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_proxy_is_offered_no_credentials_and_a_challenge_of_Negotiate_and_NTLM_gets_none_so_the_poll_is_lost_with_status_407()
     {
         await using TestProxy proxy = TestProxy.Start();

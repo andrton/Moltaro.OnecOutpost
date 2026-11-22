@@ -1,7 +1,6 @@
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using Moltaro.OnecOutpost.Agent.Transport;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 
@@ -16,7 +15,7 @@ public sealed class ServerRouteTests
     private static readonly Uri Proxy = new("http://proxy.example.com:3128");
 
     // Uri writes loopback as localhost, and 127.1, 0x7f000001 and 2130706433 as 127.0.0.1, before anyone reads the host.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("https://outpost.example.com/agents")]
     [InlineData("https://203.0.113.7:8443/agents/")]
     [InlineData("http://localhost:5000/agents")]
@@ -36,7 +35,7 @@ public sealed class ServerRouteTests
 
     // localhost. and foo.localhost may resolve to loopback, but nothing is resolved; an IPv4 address mapped into IPv6 is
     // not written as ::1.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("http://outpost.example.com/agents")]
     [InlineData("http://localhost./")]
     [InlineData("http://foo.localhost/")]
@@ -51,7 +50,7 @@ public sealed class ServerRouteTests
         Assert.False(ServerRoute.IsAllowed(new Uri(address)));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_handler_for_an_address_that_is_refused_is_refused_with_ArgumentException()
     {
         Assert.ThrowsAny<ArgumentException>(
@@ -60,7 +59,7 @@ public sealed class ServerRouteTests
 
     // The certificate is validated as the system does, never by a callback of the agent's own; the guarantees rest on the
     // pinned server key, not on the certificate (§11).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_handler_follows_no_redirect_decompresses_nothing_drains_nothing_keeps_no_cookies_and_checks_no_revocation()
     {
         using SocketsHttpHandler handler = ServerRoute.CreateHandler(new Uri("https://outpost.example.com/agents"), Proxy);
@@ -74,7 +73,7 @@ public sealed class ServerRouteTests
         Assert.Equal(TimeSpan.FromSeconds(1), handler.Expect100ContinueTimeout);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_https_server_with_a_proxy_named_is_reached_through_that_proxy_offered_no_credentials()
     {
         Uri server = new("https://outpost.example.com/agents");
@@ -92,7 +91,7 @@ public sealed class ServerRouteTests
     }
 
     // A handler that used a proxy without one named would take the system's, from WinINet or the environment.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("https://outpost.example.com/agents", null)]
     [InlineData("http://127.0.0.1:5000/agents", "http://proxy.example.com:3128")]
     [InlineData("http://localhost:5000/agents", null)]

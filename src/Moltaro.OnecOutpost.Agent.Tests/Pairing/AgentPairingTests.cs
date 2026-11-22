@@ -50,7 +50,7 @@ public sealed class AgentPairingTests : IDisposable
         _serverKey.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_agent_sends_a_new_P256_key_with_its_proof_signed_by_that_key_and_a_verified_200_gives_the_settings_and_the_key()
     {
         Task<AgentPairingResult> pairing = PairAsync();
@@ -88,7 +88,7 @@ public sealed class AgentPairingTests : IDisposable
 
     // "Bare" means without an Outpost-Signature that verifies, whatever the body (§9), so a 403 with a page of its own
     // is Refused too.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("bare-403", 403, "Refused")]
     [InlineData("403-with-a-page", 403, "Refused")]
     [InlineData("protocol-version", 400, "ProtocolVersion")]
@@ -116,7 +116,7 @@ public sealed class AgentPairingTests : IDisposable
         Assert.Equal(Enum.Parse<AgentPairingFailureEnum>(failure), result.Failure);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_pairing_whose_connection_fails_ends_as_Unreachable_without_a_status()
     {
         Task<AgentPairingResult> pairing = PairAsync();
@@ -126,7 +126,7 @@ public sealed class AgentPairingTests : IDisposable
         AssertEnded(result, null, AgentPairingFailureEnum.Unreachable);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_pairing_that_gets_no_answer_within_the_request_timeout_ends_as_Unreachable()
     {
         DateTimeOffset start = _clock.GetUtcNow();
@@ -142,7 +142,7 @@ public sealed class AgentPairingTests : IDisposable
     }
 
     // §10: each limit is accepted at it and refused one byte beyond it. White space after the answer keeps §2.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_pairing_answer_of_64_KiB_is_read()
     {
         Task<AgentPairingResult> pairing = PairAsync();
@@ -160,7 +160,7 @@ public sealed class AgentPairingTests : IDisposable
     }
 
     // Which failure such an answer gives is not stated: its status came, and its body did not.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_pairing_answer_declared_beyond_64_KiB_ends_the_pairing_unread()
     {
         GeneratedStream body = new(OutpostProtocol.AnswerLimit + 1L);

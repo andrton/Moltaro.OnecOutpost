@@ -23,7 +23,7 @@ public sealed class PollNumberTests(PostgreSqlFixture postgres) : IClassFixture<
     // The second run's clock is a minute behind every poll of the first; within the skew, so its commands run. The node's
     // clock does not move, so the lease of the first run's last poll still runs when the second run's Read is made: the
     // node creates it, and only a poll of the second run that is newer than every poll before can take it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task After_a_restart_with_the_clock_set_back_the_first_poll_is_above_every_poll_before_and_takes_commands()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -51,7 +51,7 @@ public sealed class PollNumberTests(PostgreSqlFixture postgres) : IClassFixture<
     // a log restored from an older copy (§13). The next run's clock is a minute behind the node's newest number, so its
     // first poll is older; it waits a tenth of retryDelayMax by its own clock, and its next poll, above the newest that
     // the answer named, takes commands.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task With_its_reservation_and_the_clock_set_behind_the_newest_number_the_first_poll_is_older_and_the_next_takes_commands()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -97,7 +97,7 @@ public sealed class PollNumberTests(PostgreSqlFixture postgres) : IClassFixture<
     // next run's first poll, 1 again, is answered as older: the agent records a reservation that leaves no number and
     // stops without running anything, and the Write is not handed out to it again. Every later start records started
     // with an error.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_cleared_log_is_found_by_the_first_poll_and_stops_the_agent_for_good_without_running_anything()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

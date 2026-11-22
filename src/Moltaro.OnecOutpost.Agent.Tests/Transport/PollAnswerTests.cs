@@ -6,7 +6,6 @@ using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 using static Moltaro.OnecOutpost.Agent.Tests.Transport.TestConnection;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
@@ -19,7 +18,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 // grace, then reads its body within requestTimeout and 64 MiB, and a body beyond that is lost unread.
 public sealed class PollAnswerTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_verified_200_is_the_answer()
     {
         using TestConnection test = new();
@@ -52,7 +51,7 @@ public sealed class PollAnswerTests
     // §9: only an answer that the table names is acted on; every other answer to a poll is lost. An answer is verified
     // when its Content-Type is exactly application/json, its body is within the read limit, its Outpost-Signature
     // verifies for this poll and its status, and its body keeps §2 and §6.2.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("connection-error", "unreachable")]
     [InlineData("tunnel-refused", "status-407")]
     [InlineData("redirect", "status-302")]
@@ -83,7 +82,7 @@ public sealed class PollAnswerTests
         Assert.Equal(reason, lost.Reason);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_answer_that_does_not_begin_within_the_poll_timeout_plus_the_lease_grace_is_lost_as_unreachable()
     {
         using TestConnection test = new();
@@ -98,7 +97,7 @@ public sealed class PollAnswerTests
     }
 
     // The answer begins after 20 of its 35 seconds; its body then has requestTimeout, 10 seconds, from then.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_body_of_an_answer_that_began_is_read_within_the_request_timeout_or_lost_with_its_status()
     {
         using TestConnection test = new();
@@ -119,7 +118,7 @@ public sealed class PollAnswerTests
     }
 
     // §10: each limit is accepted at it and refused one byte beyond it. White space after the answer keeps §2.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_poll_answer_of_64_MiB_is_read()
     {
         using TestConnection test = new();
@@ -135,7 +134,7 @@ public sealed class PollAnswerTests
         Assert.NotNull(answer.Answer);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_poll_answer_declared_beyond_64_MiB_is_lost_unread()
     {
         using TestConnection test = new();
@@ -151,7 +150,7 @@ public sealed class PollAnswerTests
         Assert.Equal(0, body.BytesRead);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_poll_answer_beyond_64_MiB_that_declares_no_length_is_lost()
     {
         using TestConnection test = new();

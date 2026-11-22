@@ -15,7 +15,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Loop;
 // one with the code result-too-large already, is never replaced: it is sent again as it is.
 public sealed class SizeTests
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", "failed", "refusal")]
     [InlineData("write", "unknown", "refusal")]
     [InlineData("read", "failed", "html-413")]
@@ -60,7 +60,7 @@ public sealed class SizeTests
     }
 
     // The replacement meets a bare 413 too: it is lost, and the same replacement is sent again after the delay.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task For_the_replacement_any_answer_but_a_verified_200_is_lost_and_it_is_not_replaced_again()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -81,7 +81,7 @@ public sealed class SizeTests
     }
 
     // A Refused outcome, an Unknown one, and a Failed result-too-large of the executor's own.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("refused")]
     [InlineData("unknown")]
     [InlineData("failed-result-too-large")]

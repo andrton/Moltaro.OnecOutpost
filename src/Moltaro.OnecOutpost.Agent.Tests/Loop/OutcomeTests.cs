@@ -13,7 +13,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Loop;
 public sealed class OutcomeTests
 {
     // The polls go on meanwhile; the first stays open, as a poll does while the server holds it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Outcomes_are_sent_one_at_a_time_the_files_in_turn_until_each_is_confirmed()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -48,7 +48,7 @@ public sealed class OutcomeTests
 
     // The earlier run received a Write and a Read and stopped before they ended, and wrote the outcome file of another
     // Read but not its ended. Every one of them is listed as received and sent.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task After_a_restart_the_outcomes_that_the_start_recorded_are_sent()
     {
         PairedFolder folder = PairedFolder.Create();

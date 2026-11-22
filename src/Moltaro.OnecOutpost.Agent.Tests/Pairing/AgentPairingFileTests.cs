@@ -2,7 +2,6 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using Moltaro.OnecOutpost.Agent.Pairing;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Pairing;
 
@@ -123,7 +122,7 @@ public sealed class AgentPairingFileTests
     }
 
     // §11, from S6c: http:// only on a loopback address, as Uri writes its host.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("http://outpost.example.com/agents")]
     [InlineData("http://localhost./agents")]
     [InlineData("http://192.0.2.10:5000/agents")]

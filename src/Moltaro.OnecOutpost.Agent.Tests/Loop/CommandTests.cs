@@ -19,7 +19,7 @@ public sealed class CommandTests
     // Rows 1 and 2 of the table of §9: the verified 200 to a poll is acted on, and the verified 200 to an outcome records
     // confirmed and removes the outcome from the outbox. The executor's object goes byte for byte (§8). The outcome is
     // sent once it is recorded, and the worker is free again from then: the poll that opens after it declares it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_command_is_received_before_it_runs_and_its_outcome_is_recorded_sent_and_confirmed_before_its_file_goes()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -51,7 +51,7 @@ public sealed class CommandTests
     }
 
     // Rule 10: the agent records every command it received before it opens its next poll, which lists them.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Every_command_of_an_answer_is_recorded_before_the_next_poll_opens_and_each_before_it_runs()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -78,7 +78,7 @@ public sealed class CommandTests
     }
 
     // Rule 2: a command that cannot be recorded does not run. The write of its received fails, and the agent stops.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_command_whose_received_cannot_be_written_does_not_run_and_the_agent_stops()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -99,7 +99,7 @@ public sealed class CommandTests
 
     // Rule 1 and §7: the code reaches the audit log and the outcome that the agent sends; protocol-version and malformed
     // name the command alone. A refused command is listed as received until its outcome is confirmed.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("not-addressed", "accounting", "read")]
     [InlineData("not-served", "payroll", "read")]
     [InlineData("clock-skew", "accounting", "read")]
@@ -132,7 +132,7 @@ public sealed class CommandTests
 
     // Rule 1: nothing in bytes that do not verify can be trusted, and verified bytes without a protocol and an id name
     // no command: both are only recorded, with nothing for the command and nothing reported.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("signature")]
     [InlineData("form")]
     public async Task A_command_that_cannot_be_trusted_or_names_no_command_is_only_recorded(string code)
@@ -159,7 +159,7 @@ public sealed class CommandTests
 
     // Rule 3 and §7: a command whose identity is in the audit log does not run again, and its record stays as it is,
     // whatever an answer that hands it out again holds.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_command_that_the_audit_log_knows_is_neither_recorded_again_nor_run()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -181,7 +181,7 @@ public sealed class CommandTests
     }
 
     // The local policy serves no base payroll, and warehouse only for Read.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("payroll", "read")]
     [InlineData("warehouse", "write")]
     public async Task A_command_for_a_base_or_mode_that_the_policy_does_not_serve_is_refused_with_not_served_and_the_others_run(

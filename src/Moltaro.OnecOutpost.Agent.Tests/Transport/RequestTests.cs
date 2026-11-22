@@ -4,7 +4,6 @@ using Moltaro.OnecOutpost.Agent.Transport;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 
@@ -16,7 +15,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 public sealed class RequestTests
 {
     // The server's address is the prefix that the application gave MapOutpostAgents, with or without its last slash.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("https://outpost.example.com/agents")]
     [InlineData("https://outpost.example.com/agents/")]
     public async Task A_poll_is_a_POST_over_HTTP_1_1_of_the_exact_bytes_it_signed_with_the_headers_of_section_4(
@@ -40,7 +39,7 @@ public sealed class RequestTests
     }
 
     // The outcome object goes byte for byte as the executor wrote it, white space included (§8).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_is_a_POST_with_Expect_100_continue_of_the_exact_bytes_of_its_outcome_object()
     {
         using TestConnection test = new();
@@ -61,7 +60,7 @@ public sealed class RequestTests
         Assert.Equal(OutcomeResultEnum.Confirmed, await result);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Disposing_the_connection_disposes_its_handler()
     {
         TestConnection test = new();

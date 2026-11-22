@@ -4,7 +4,6 @@ using System.Text;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Secrets;
 
@@ -131,7 +130,7 @@ public sealed class SecretsFileTests
     // The S6 brief, "AgentHost": the agent signs with its key from the first poll on, so a key that is not an ECDSA key
     // on P-256 in PKCS#8 is refused when the file is read, not when the agent first signs: random bytes, a key on
     // P-384, and an RSA key.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("random")]
     [InlineData("p384")]
     [InlineData("rsa")]

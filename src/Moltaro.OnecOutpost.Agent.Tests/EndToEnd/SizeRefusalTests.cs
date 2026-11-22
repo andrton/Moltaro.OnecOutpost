@@ -18,7 +18,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.EndToEnd;
 [Trait("Requires", "PostgreSQL")]
 public sealed class SizeRefusalTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", null, "server", "failed")]
     [InlineData("write", "invoice-17", "server", "unknown")]
     [InlineData("read", null, "path", "failed")]

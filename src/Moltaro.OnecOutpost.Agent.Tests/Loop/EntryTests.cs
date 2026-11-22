@@ -16,7 +16,7 @@ public sealed class EntryTests
 {
     // Each kind of reason of §9: the code of a verified refusal, protocol-version, status- and the status, unreachable.
     // A new reason while the state stays lost is no change.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Connection_is_recorded_once_per_change_of_the_state_of_the_polls_with_each_kind_of_reason()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -49,7 +49,7 @@ public sealed class EntryTests
     }
 
     // Only the answers to polls count, so that an outcome held up on its path cannot make the state flap (§9).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outcome_whose_answers_keep_being_lost_while_the_polls_go_through_records_no_connection_entry()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -70,7 +70,7 @@ public sealed class EntryTests
 
     // The first answer of the run records what the agent holds; an answer that holds the same records nothing, one that
     // changes it records it again, and a lost answer records nothing.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Bases_is_recorded_when_an_answer_changes_what_the_agent_holds()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -95,7 +95,7 @@ public sealed class EntryTests
     // A file whose last entry is 100 days old, past auditRetentionDays plus a day. Nothing removes it at the start, after
     // a lost answer, or after an answer whose time is two days ahead of the agent's clock; the answer whose time is the
     // clock's removes it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Retention_runs_only_after_a_verified_poll_answer_whose_time_is_within_a_day_of_the_agents_clock()
     {
         PairedFolder folder = PairedFolder.Create();
