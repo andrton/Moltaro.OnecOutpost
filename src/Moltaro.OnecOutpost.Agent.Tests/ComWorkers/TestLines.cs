@@ -12,7 +12,7 @@ internal static class TestLines
     public const long OutcomeLimit = 1024;
 
     // A connection line of the base accounting on its cluster, with a password that the line quotes, for the location
-    // of the test program: any but no-session and line <text> answers {"ready":true}.
+    // of the test program: any but line <text> answers {"ready":true}.
     public static WorkerConnectionLine Connection(string location = "Srvr=\"srv-1c:1541\";Ref=\"accounting\";")
     {
         return new WorkerConnectionLine

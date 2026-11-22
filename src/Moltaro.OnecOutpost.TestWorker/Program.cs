@@ -11,8 +11,8 @@ namespace Moltaro.OnecOutpost.TestWorker;
 // - the command line is <base key> <read|write>, and anything else ends it with exit code 1;
 // - the end of its input ends it with exit code 0, before the first line and after an outcome;
 // - a line it cannot read ends it with exit code 1;
-// - the location of the connection line decides the ready line: no-session gets {"ready":false} and exit code 2,
-//   line <text> gets <text> as its ready line, and any other {"ready":true};
+// - the location of the connection line decides the ready line: line <text> gets <text> as its ready line, and any
+//   other {"ready":true};
 // - each command line runs its script, and each outcome is the executor's line, {"size":<number>,"outcome":<object>},
 //   with the true size of the object.
 //
@@ -49,13 +49,6 @@ internal static class Program
         if (location is null)
         {
             return 1;
-        }
-
-        if (location == "no-session")
-        {
-            WriteLine(output, """{"ready":false}""");
-
-            return 2;
         }
 
         bool ownReady = location.StartsWith(LinePrefix, StringComparison.Ordinal);
