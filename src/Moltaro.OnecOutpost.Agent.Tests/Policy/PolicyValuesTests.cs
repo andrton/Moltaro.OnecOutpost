@@ -1,4 +1,5 @@
 using Moltaro.OnecOutpost.Agent.Policy;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Policy;
 
@@ -101,7 +102,62 @@ public sealed class PolicyValuesTests
         Assert.Equal(90, policy.AuditRetentionDays);
         Assert.Null(policy.Proxy);
         Assert.Equal(TimeSpan.FromSeconds(30), policy.RetryDelayMax);
+        Assert.Equal(TimeSpan.FromMinutes(5), policy.RequestTimeout);
         Assert.Equal(new AgentModePolicy("outpost-read", 1, TimeSpan.FromMinutes(10), SafeMode: true), policy.Bases[0].Read);
         Assert.Null(policy.Bases[0].Write);
+    }
+
+    // The owner's change of D12 (21 November 2026): a Write runs in safe mode unless its base turns it off.
+    [Fact]
+    public void A_write_without_safe_mode_given_runs_in_safe_mode()
+    {
+        const string Json = """
+            {
+              "bases": [
+                {
+                  "key": "accounting",
+                  "file": "C:\\1C\\Accounting",
+                  "read": { "account": "outpost-read" },
+                  "write": { "account": "outpost-write" }
+                }
+              ]
+            }
+            """;
+
+        AgentPolicy policy = AgentPolicyReader.Read(Json);
+
+        Assert.True(policy.Bases[0].Write!.SafeMode);
+    }
+
+    // safeMode of write is kept as given, false or true, while a Read always runs in safe mode.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public void A_request_timeout_and_safe_mode_turned_off_or_on_are_kept()
+    {
+        const string Json = """
+            {
+              "requestTimeout": "00:00:45",
+              "bases": [
+                {
+                  "key": "accounting",
+                  "file": "C:\\1C\\Accounting",
+                  "read": { "account": "outpost-read" },
+                  "write": { "account": "outpost-write", "safeMode": false }
+                },
+                {
+                  "key": "warehouse",
+                  "file": "C:\\1C\\Warehouse",
+                  "read": { "account": "outpost-read" },
+                  "write": { "account": "outpost-write", "safeMode": true }
+                }
+              ]
+            }
+            """;
+
+        AgentPolicy policy = AgentPolicyReader.Read(Json);
+
+        Assert.Equal(TimeSpan.FromSeconds(45), policy.RequestTimeout);
+        Assert.True(policy.Bases[0].Read.SafeMode);
+        Assert.False(policy.Bases[0].Write!.SafeMode);
+        Assert.True(policy.Bases[1].Write!.SafeMode);
     }
 }

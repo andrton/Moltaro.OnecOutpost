@@ -8,7 +8,7 @@ namespace Moltaro.OnecOutpost.TestSupport;
 // timer would fire late.
 public sealed class FakeClock : TimeProvider
 {
-    private readonly FakeTimeProvider _time = new();
+    private readonly FakeTimeProvider _time;
 
     // Guards _timers and _waits. FakeTimeProvider is never called under it.
     private readonly Lock _lock = new();
@@ -18,6 +18,18 @@ public sealed class FakeClock : TimeProvider
 
     // The waits of WaitForTimersAsync that not enough armed timers have completed yet.
     private readonly List<(DateTimeOffset DueBy, int Count, TaskCompletionSource Armed)> _waits = [];
+
+    // A clock at the start time of FakeTimeProvider.
+    public FakeClock()
+    {
+        _time = new FakeTimeProvider();
+    }
+
+    // A clock that starts at the given time. A restart with the clock set back is a new start with a clock of its own.
+    public FakeClock(DateTimeOffset start)
+    {
+        _time = new FakeTimeProvider(start);
+    }
 
     public override long TimestampFrequency => _time.TimestampFrequency;
 
