@@ -1,6 +1,6 @@
 using Moltaro.OnecOutpost.Agent.Host;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.Host;
+namespace Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 
 // One run of the agent in the process, AgentHost.RunAsync on the parts a test gives, as the service runs it, and its
 // exit code. A test stops it as the service controller stops the service, by cancelling its token. It runs on the

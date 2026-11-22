@@ -7,6 +7,7 @@ using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 using Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
+using Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 using Moltaro.OnecOutpost.Agent.Tests.Start;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.TestSupport;

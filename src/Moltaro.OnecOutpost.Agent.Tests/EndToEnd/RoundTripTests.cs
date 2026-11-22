@@ -1,6 +1,5 @@
 using Moltaro.OnecOutpost.Agent.Host;
-using Moltaro.OnecOutpost.Agent.Tests.Host;
-using Moltaro.OnecOutpost.Agent.Tests.Loop;
+using Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Server;
 using Moltaro.OnecOutpost.TestSupport;

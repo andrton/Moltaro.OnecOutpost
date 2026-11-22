@@ -6,7 +6,7 @@ using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.TestSupport;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.Host;
+namespace Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 
 // The agent of a PairedFolder running in the process, as AgentHost.RunAsync runs it, over the fakes: its data folder
 // in memory, the fake access lists and protection, the fake workers, the fake clock, and the FakeServer as the handler

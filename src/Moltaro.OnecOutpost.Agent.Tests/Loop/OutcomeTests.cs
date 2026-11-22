@@ -1,5 +1,5 @@
 using Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
-using Moltaro.OnecOutpost.Agent.Tests.Host;
+using Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
 

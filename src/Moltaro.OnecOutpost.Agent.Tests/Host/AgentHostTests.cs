@@ -2,7 +2,7 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
-using Moltaro.OnecOutpost.Agent.Tests.Loop;
+using Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Messages;

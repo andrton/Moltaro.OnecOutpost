@@ -2,7 +2,7 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 using Moltaro.OnecOutpost.Protocol;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.Loop;
+namespace Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 
 // The changes and operations of a data folder in memory as words, so that a test of the loop states their order: an
 // entry of the audit log as its kind, with its command when it names one, such as "received {id}" or "connection";

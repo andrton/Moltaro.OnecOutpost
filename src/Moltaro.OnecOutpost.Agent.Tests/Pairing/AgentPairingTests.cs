@@ -159,7 +159,7 @@ public sealed class AgentPairingTests : IDisposable
         Assert.Null(result.Failure);
     }
 
-    // Which failure such an answer gives is not stated: its status came, and its body did not.
+    // Its failure, as for every answer whose status came and whose body did not, is stated by the test after this one.
     [Fact]
     public async Task A_pairing_answer_declared_beyond_64_KiB_ends_the_pairing_unread()
     {
@@ -178,6 +178,32 @@ public sealed class AgentPairingTests : IDisposable
         Assert.Equal(200, result.Status);
         Assert.NotNull(result.Failure);
         Assert.Equal(0, body.BytesRead);
+    }
+
+    // The brief, "AgentPairing.PairAsync": the status when one came, Unreachable without one, and Answer for anything
+    // else. A 200 whose body is beyond 64 KiB, or does not come within requestTimeout, is an answer whose status came.
+    [Theory(Skip = SkipReason.NotImplemented)]
+    [InlineData("beyond-64-KiB")]
+    [InlineData("late")]
+    public async Task A_pairing_answer_whose_status_came_and_whose_body_did_not_ends_with_that_status_and_Answer(string body)
+    {
+        DateTimeOffset start = _clock.GetUtcNow();
+
+        Task<AgentPairingResult> pairing = PairAsync();
+        ServerExchange exchange = await _server.NextAsync(OutpostRequestKindEnum.Pair);
+
+        if (body == "late")
+        {
+            exchange.AnswerStalled(Answer(OutpostCodec.ReadPairRequest(Agent, exchange.Body, exchange.Signature).Key));
+            await WaitForTimerAsync(start + RequestTimeout);
+            _clock.Advance(RequestTimeout);
+        }
+        else
+        {
+            exchange.AnswerStreamed(new GeneratedStream(OutpostProtocol.AnswerLimit + 1L), declared: true);
+        }
+
+        AssertEnded(await EndOf(pairing), 200, AgentPairingFailureEnum.Answer);
     }
 
     private static void AssertEnded(AgentPairingResult result, int? status, AgentPairingFailureEnum failure)

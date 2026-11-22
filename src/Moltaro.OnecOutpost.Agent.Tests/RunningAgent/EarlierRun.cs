@@ -3,7 +3,7 @@ using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.Loop;
+namespace Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 
 // What an earlier run of the agent of a PairedFolder left in its data folder, five minutes before TestTimes.Start, as
 // a restart finds it: commands received, ended with their outcome in the outbox, or refused, none of them confirmed.
