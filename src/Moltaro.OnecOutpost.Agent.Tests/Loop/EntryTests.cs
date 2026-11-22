@@ -57,6 +57,7 @@ public sealed class EntryTests
         await using TestHost host = TestHost.Start(folder, new FakeClock(TestTimes.Start));
 
         (await host.NextPollAsync()).AnswerPoll(host.Server.Ordinary());
+        await host.NextPollAsync();
         (await host.NextOutcomeAsync()).AnswerBare(503);
         await host.PassAsync(TimeSpan.FromSeconds(3));
         (await host.NextOutcomeAsync()).AnswerBare(502);
