@@ -1227,7 +1227,7 @@ The release
 | S4 | Pairing and agents on the server | Full | Done, 22 November 2026: the store's polls, leases and base keys with their second migration; the endpoints `pair` and `poll`, with the unsigned answers of §9 before the body and the hold of a poll; `AddOutpostServer` in full, `CreatePairingTokenAsync`, `GetAgentsAsync`, `RevokeAgentAsync`, `ReleaseBaseAsync` and the purge. Read, Write and `outcome` still refuse. The internal contract was reviewed in two rounds; the code review closed in one, with four P4 left for the coordinator; the documents were reviewed once. What it changed in the public contract is listed in its brief for the owner |
 | S5a | Commands in the store | Full | Done, 22 November 2026: the commands table with the third migration `Commands`, the store operations of commands and outcomes with their tests and races against PostgreSQL, revocation ending the agent's commands in its transaction, and parameters with a name twice refused at the call. Read, Write and `outcome` still refuse. The study read actions/runner and Halibut; the internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds and left P4s, listed for S5b in its brief. Of the drafts of the public contract that the S5 brief lists for the owner, S5a makes two: parameters with a name twice refused, and a store database in UTF8 |
 | S5b | The calls, the hand-out, `outcome` and the signals | Full | Done, 22 November 2026: `ReadAsync` and `WriteAsync` create a signed command, wake the agent's poll through the signals and wait for its outcome; the poll hands commands out up to `free` and 64 MiB; the `outcome` request takes the agent's outcome, with the signed 413 `result-too-large`; the purge removes ended commands. All tested over loopback HTTP with the test agent. The tests ran on the internal contract approved for S5; the code review took three rounds, its P3 of round 1 (a second §2 read of an outcome, 464 → 336 MiB at the peak for 64 MiB) and a P2 of round 2 (sets that did not honor cancellation) fixed; the P4s left are listed in the S5 brief. The other two drafts of the public contract that the S5 brief lists for the owner are S5b's |
-| S6a | The agent's files: the policy, `agent.json`, the secrets, the audit log, the outbox, the poll numbers and the start | Full | Not started |
+| S6a | The agent's files | Full | Done, 22 November 2026: the policy with the changes carried over from S2, `agent.json` and the secrets read through DPAPI for the machine, the access lists of the data folder, the audit log written in order to the disk with its lock, torn entries, start and retention, the outbox, the order of a command's records, the reservation of poll numbers and the start after a restart; the agent program still runs nothing. The internal contract of S6 was reviewed in two rounds and approved under PQ2; the code review took three rounds (a P1 and a P2, then a P2 of retention, then a P3 moved to S8 by the planner). What it changes in the public contract is listed in the S6 brief for the owner |
 | S6b | The agent's loop: pairing, polls, checks, workers, outcomes and the service | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
@@ -3593,6 +3593,19 @@ end, the clock set behind the server's newest number, and the documents step.
     sent through a hop that strips `Expect`, and nobody has a reason to change it. Since
     S6, until permanent. The coordinator enters it under "Approved, not in force yet"
     once the owner approves.
+- **Left by S6a's review** (22 November 2026). The code review took three rounds. Its
+  last finding, a P3, was moved to S8 by the planner, 22 November 2026: in
+  `AuditLog.RemoveExpired` the rule that a `confirmed` stays while its command has
+  entries in a file that stays is coded twice, by `KeepConfirmed` with `ConfirmsAny` and
+  by `WaitsForOthers`; removing the first pair gives the same deletions. The P4s left for
+  the coordinator, for S8 unless S6b meets them:
+  - while the clock is behind the file of a command's last `ended`, every start appends
+    another `ended` that never takes effect;
+  - `SecretsFile` accepts any bytes as the agent's key, where `AgentPairingFile` checks
+    the server's key, so a bad key fails only when S6b first signs;
+  - the root of `Moltaro.OnecOutpost.Agent.Tests` holds eight shared helpers, as the
+    server's tests do;
+  - the reason of a stop after `started` is recorded nowhere.
 - **Out of scope.** COM, the executor, the console.
 
 ### S7 · Several nodes and lost messages
@@ -3661,6 +3674,11 @@ end, the clock set behind the server's newest number, and the documents step.
   easy to change and free of duplication. It is always a balance: a change that makes the
   code larger, more abstract or more general than today's case needs is not a
   refactoring.
+- **Carried in** (the planner, 22 November 2026): the last finding of S6a's code review,
+  as "Left by S6a's review" in the S6 brief gives it: `KeepConfirmed` and `ConfirmsAny`
+  repeat in `AuditLog.RemoveExpired` the check that `WaitsForOthers` makes, and are
+  removed, with a review, the retention tests unchanged. The P4s left there and in the S5
+  brief are looked at too.
 
 ### L1 · The lab check of open items O1–O8
 
