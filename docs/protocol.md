@@ -6,9 +6,8 @@ principles (§3 "Pairing", §4, §6, D1, D4, D5, D15); this document fixes the b
 **Status.** Draft of Epic 1, sprint S2, written after the sprint's study, with the changes
 of sprint S4 to §6.2 and §9, of sprint S5 to §9 and of sprint S6 to §6.2, §9, §11 and
 §13. It is public contract, and holds as a draft until the owner approves it with the
-lists "What S2
-changed in the public contract", "What S4 changes in the public contract", "What S5
-changes in the public contract" and "What S6 changes in the public contract" of the
+lists "What S2 changed in the public contract", "What S4 changes in the public contract",
+"What S5 changes in the public contract" and "What S6 changes in the public contract" of the
 [epic](work/epic-1-first-release.md). The codec of the protocol assembly reads and writes
 its messages, its signatures and the pairing proof. The server's endpoints serve all three
 requests: `pair`, `poll` with the commands it hands out, and `outcome`. The agent sends all
