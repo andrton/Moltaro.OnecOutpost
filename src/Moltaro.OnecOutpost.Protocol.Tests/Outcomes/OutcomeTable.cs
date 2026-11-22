@@ -3,7 +3,7 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 namespace Moltaro.OnecOutpost.Protocol.Tests.Outcomes;
 
 // The tables of §8 of docs/protocol.md, written out as the document gives them: the outcomes an agent may send, by
-// mode, and the outcomes the executor may hand the agent. The first has the codes of the connection to 1C, which S9
+// mode, and the outcomes a COM worker may hand the agent. The first has the codes of the connection to 1C, which S9
 // adds to it: Failed base-unreachable for a Read and a Write, Failed connection-lost for a Read and Unknown
 // connection-lost for a Write. The tests of the outcome codes and of the reader of the outcome object both go through
 // every combination of a mode, a kind and a code, and expect what these tables say.
@@ -116,14 +116,18 @@ internal static class OutcomeTable
         };
     }
 
-    // The paragraph "The executor".
-    public static bool ExecutorMayHandOver(string mode, string kind, string? code)
+    // The paragraph "The executor", with the outcomes that S9's worker writes itself in the same form (the S9b brief,
+    // "The lines the pool accepts"): what the executor hands over, succeeded, failed with script-error, result-type or
+    // result-too-large, and for a Write unknown with transaction-ended; and Failed base-unreachable in either mode,
+    // Failed connection-lost for a Read, and Unknown connection-lost and Unknown result-type for a Write.
+    public static bool ComWorkerMayHandOver(string mode, string kind, string? code)
     {
         return (kind, mode) switch
         {
             ("succeeded", _) => code is null,
-            ("failed", _) => FailedOfTheExecutor.Contains(code),
-            ("unknown", "write") => code == "transaction-ended",
+            ("failed", "read") => FailedOfTheExecutor.Contains(code) || code is "base-unreachable" or "connection-lost",
+            ("failed", "write") => FailedOfTheExecutor.Contains(code) || code is "base-unreachable",
+            ("unknown", "write") => code is "transaction-ended" or "connection-lost" or "result-type",
             _ => false,
         };
     }

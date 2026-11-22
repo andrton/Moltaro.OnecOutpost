@@ -16,6 +16,11 @@
          runtimeconfig.json, next to the tests. They use none of its types and speak to it only over its standard
          streams. It runs with the bitness of the test process, x64 on the lab machine. -->
     <ProjectReference Include="..\Moltaro.OnecOutpost.ComWorker\Moltaro.OnecOutpost.ComWorker.csproj" />
+    <!-- The tests of the agent run AgentHost against the test base, with the server of the test made of the protocol's
+         codec and signatures, and the fake clock, the access lists and the launcher that reports what the workers did
+         from TestSupport. They use no PostgreSQL, Testcontainers or store of a server. -->
+    <ProjectReference Include="..\Moltaro.OnecOutpost.Agent\Moltaro.OnecOutpost.Agent.csproj" />
+    <ProjectReference Include="..\Moltaro.OnecOutpost.TestSupport\Moltaro.OnecOutpost.TestSupport.csproj" />
   </ItemGroup>
 
   <ItemGroup>

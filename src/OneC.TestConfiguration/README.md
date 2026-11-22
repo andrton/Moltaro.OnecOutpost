@@ -5,15 +5,17 @@ The tests that need 1C run on the lab machine against a base built from this fol
 1C server gives a licence to nobody who opens a file base.
 
 **Status:** the script built the base from these sources on the lab machine on 21 November 2026, on
-1C:Enterprise 8.3.17.1851 with PostgreSQL.
+1C:Enterprise 8.3.17.1851 with PostgreSQL. The sources changed on 22 November 2026 for guide G2 (S9b): `Products`
+became hierarchical and `GoodsReceipt` got its `Comment`. The lab builds the base again before it runs the tests.
 
 ## What is here
 
 - `Configuration`: the XML sources of a minimal configuration, in the hierarchical format that the Designer of
   1C:Enterprise 8.3.17 writes (format version 2.10), as UTF-8 with a BOM. The configuration runs in the
   compatibility mode 8.2.13, the lowest in use, with the English script variant. It has:
-  - the catalog `Products`;
-  - the document `GoodsReceipt`, which posts its `Product` and `Quantity` to the accumulation register `Stock`;
+  - the catalog `Products`, hierarchical, with folders and items;
+  - the document `GoodsReceipt`, which posts its `Product` and `Quantity` to the accumulation register `Stock`,
+    and has a `Comment` of 200 characters, where an idempotent Write of guide G2 keeps its caller key;
   - the common module `Calculations`, available to an external connection, with the function `Add`;
   - the role `OutpostRead`, which reads every object and changes none, and the role `OutpostWrite`, which also
     writes and posts. Both have the right of external connection and nothing else on the configuration;

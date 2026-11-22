@@ -10,9 +10,9 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 // started. A run races the run limit of its mode: when the limit wins, the worker is killed and the command ends with
 // run-limit, Failed for a Read and Unknown for a Write. A worker that ends without an outcome gives connection-lost the
 // same way. A worker is dropped after it ended, after a kill, and after it gave base-unreachable or connection-lost
-// itself, and its mode then has one worker fewer. DurationMs is the clock's time from the call to the outcome. Each
-// test opens the workers and moves the clock past the deadlines of the opens first, so that the only timer a run waits
-// on is its own.
+// itself, and its mode then has one worker fewer until its slot starts it again, after a delay that no test here
+// passes. DurationMs is the clock's time from the call to the outcome. Each test opens the workers and moves the clock
+// past the deadlines of the opens first, so that the only timer a run waits on is its own.
 public sealed class WorkerRunTests
 {
     // Rule 8: a command holds its worker from its acceptance until its outcome is recorded, so that a poll never
@@ -129,12 +129,13 @@ public sealed class WorkerRunTests
     }
 
     // The S6b brief: a worker is dropped after it ended without an outcome, and after it gave base-unreachable or
-    // connection-lost itself, after which S9's worker ends. Until S9b starts it again, its mode has one worker fewer.
+    // connection-lost itself, after which S9's worker ends. Its mode has one worker fewer until its slot starts it
+    // again (the S9b brief), after a delay that the clock does not pass here.
     [Theory]
     [InlineData("ends without an outcome")]
     [InlineData("gives Failed base-unreachable itself")]
     [InlineData("gives Failed connection-lost itself")]
-    public async Task A_worker_that_ended_is_dropped_and_its_mode_has_one_worker_fewer(string form)
+    public async Task A_worker_that_ended_is_dropped_and_its_mode_has_one_worker_fewer_until_its_slot_starts_it_again(string form)
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         await using TestPool test = TestPool.Create(readWorkers: 2, writeWorkers: 1);

@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using System.Security.Principal;
 using Moltaro.OnecOutpost.Agent.Access;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Access;
 

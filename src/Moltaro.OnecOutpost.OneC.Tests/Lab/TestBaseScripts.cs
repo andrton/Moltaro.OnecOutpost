@@ -22,6 +22,13 @@ internal static class TestBaseScripts
         Result = Selection.ProductCount;
         """;
 
+    // Loops for ten minutes by the clock of 1C, far beyond the run limit of the agent's tests, and touches no data.
+    public const string LoopForTenMinutes = """
+        Finish = CurrentDate() + 600;
+        While CurrentDate() < Finish Do
+        EndDo;
+        """;
+
     public static string NewDescription()
     {
         return $"outpost-test {Guid.NewGuid():N}";

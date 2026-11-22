@@ -12,6 +12,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Moltaro.OnecOutpost.Agent\Moltaro.OnecOutpost.Agent.csproj" />
     <ProjectReference Include="..\Moltaro.OnecOutpost.TestSupport\Moltaro.OnecOutpost.TestSupport.csproj" />
+    <!-- The test program that stands in for the COM worker: the reference builds it and copies it, with its
+         runtimeconfig.json, next to the tests, which start it only as a process and use none of its types. -->
+    <ProjectReference Include="..\Moltaro.OnecOutpost.TestWorker\Moltaro.OnecOutpost.TestWorker.csproj" />
   </ItemGroup>
 
   <ItemGroup>

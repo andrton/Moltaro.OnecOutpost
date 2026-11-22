@@ -57,8 +57,8 @@ in code, tests, samples or documents.
 
 Each project is created by the sprint that first needs it, under the name the plan of the
 first epic fixes. The protocol, the server, the agent, the COM worker, the executor's
-sources, the samples, the test support, the test projects of these four and the tests that
-need 1C exist; the others are planned. Only the server is packed;
+sources, the samples, the test support, the test worker, the test projects of these four
+and the tests that need 1C exist; the others are planned. Only the server is packed;
 every other project is not.
 
 | Project | Contents |
@@ -75,6 +75,7 @@ every other project is not.
 | `src/*.Tests` | Tests, one project per library or program |
 | `Moltaro.OnecOutpost.OneC.Tests` | The tests that need 1C, run only on the lab machine. It is not in the solution, so `dotnet test` from `src` never runs it; CI builds it and checks its format |
 | `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake clock, the PostgreSQL fixture and the fake of the COM worker. Never shipped; no tests |
+| `Moltaro.OnecOutpost.TestWorker` | The test program that stands in for the COM worker in the agent's tests on Windows: it speaks the worker's lines without 1C. Never shipped |
 
 The repository root holds only repository-level files. Code never lives there.
 

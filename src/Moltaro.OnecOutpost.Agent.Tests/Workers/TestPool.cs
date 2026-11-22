@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
@@ -118,6 +119,36 @@ internal sealed class TestPool : IAsyncDisposable
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
         return Clock.WaitForTimerAsync(dueBy, cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
+    }
+
+    // Waits until the pool has armed a timer due by the delay from now, states that none is due a millisecond earlier,
+    // and moves the clock by the delay.
+    public async Task PassExactlyAsync(TimeSpan delay)
+    {
+        DateTimeOffset now = Clock.GetUtcNow();
+
+        await WaitForTimerAsync(now + delay);
+        Assert.False(Clock.HasTimerDueBy(now + delay - Millisecond), $"The pool waits less than {delay}.");
+
+        Clock.Advance(delay);
+    }
+
+    // Completes once Free counts at least this many workers of the base and mode. A slot publishes its worker once the
+    // worker's open gave true (the S9b brief, "Threads"), so Free counts it a moment after the open ended, which the
+    // caller has observed first; meanwhile the wait yields. It fails the test when Free does not count them within the
+    // deadline of the tests.
+    public static async Task WaitForFreeAsync(WorkerPool pool, string baseKey, OutpostModeEnum mode, int free)
+    {
+        long started = Stopwatch.GetTimestamp();
+
+        while (pool.Free(baseKey, mode) < free)
+        {
+            Assert.True(
+                Stopwatch.GetElapsedTime(started) < TestTimes.Deadline,
+                $"Free counts no {free} workers of {baseKey} within {TestTimes.Deadline}.");
+
+            await Task.Yield();
+        }
     }
 
     public ValueTask DisposeAsync()

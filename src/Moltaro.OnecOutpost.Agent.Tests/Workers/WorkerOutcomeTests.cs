@@ -1,6 +1,9 @@
+using System.Text;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.Agent.Workers;
+using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 
@@ -71,8 +74,8 @@ public sealed class WorkerOutcomeTests
     }
 
     // §8, "The executor": it may hand over only succeeded, failed with script-error, result-type or result-too-large,
-    // and, for a Write, unknown with transaction-ended. An outcome that an agent may send but the executor may not hand
-    // over becomes result-type, until S9b admits the codes that S9's worker writes itself.
+    // and, for a Write, unknown with transaction-ended. S9b admits the codes that S9's worker writes itself as well
+    // (below). An outcome that an agent may send but neither of them hands over becomes result-type.
     [Theory]
     [InlineData("read", "failed", "run-limit", "failed")]
     [InlineData("read", "refused", "not-served", "failed")]
@@ -86,6 +89,40 @@ public sealed class WorkerOutcomeTests
         WorkerRun run = await RunAsync(modeWord, FakeRun.Gives(TestOutcomes.Own(TestOutcomes.KindOf(givenKind), givenCode)));
 
         Assert.Equal(TestOutcomes.Own(TestOutcomes.KindOf(kindWord), "result-type"), run.Outcome);
+    }
+
+    // S9b, "The lines the pool accepts": the outcomes that S9's worker writes itself go byte for byte, as the executor's
+    // do: Failed base-unreachable in either mode, Failed connection-lost for a Read, and Unknown connection-lost and
+    // Unknown result-type for a Write. After base-unreachable and connection-lost the worker has ended, so it is dropped
+    // and its mode has one worker fewer; after result-type, the worker's answer to a text of the executor with a line
+    // break, its session is whole and it stays. The bytes have white space that the agent's writer does not write, so
+    // that they show they were forwarded.
+    [Theory(Skip = SkipReason.NotImplemented)]
+    [InlineData("read", "failed", "base-unreachable", true)]
+    [InlineData("write", "failed", "base-unreachable", true)]
+    [InlineData("read", "failed", "connection-lost", true)]
+    [InlineData("write", "unknown", "connection-lost", true)]
+    [InlineData("write", "unknown", "result-type", false)]
+    public async Task An_outcome_that_the_COM_worker_writes_itself_is_sent_byte_for_byte_and_a_worker_that_ended_is_dropped(
+        string modeWord,
+        string kindWord,
+        string code,
+        bool dropped)
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        OutpostModeEnum mode = TestCommands.ModeOf(modeWord);
+        byte[] outcome = Encoding.UTF8.GetBytes(
+            $$"""{ "kind": "{{kindWord}}", "code": "{{code}}", "result": null, "errorText": null, "messages": [], "messagesTrimmed": false }""");
+        await using TestPool test = TestPool.Create();
+        test.Launcher.Runs = _ => FakeRun.Gives(outcome);
+        test.OpenAll();
+        OutpostCommandMessage command = test.Command(mode);
+
+        WorkerRun run = await test.Pool.RunAsync(command, cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
+        test.Pool.Release(command.Id);
+
+        Assert.Equal(outcome, run.Outcome);
+        Assert.Equal(dropped ? 0 : 1, test.Pool.Free("accounting", mode));
     }
 
     // A run of a command of accounting in a mode, on a pool whose workers opened, whose run gives this.
