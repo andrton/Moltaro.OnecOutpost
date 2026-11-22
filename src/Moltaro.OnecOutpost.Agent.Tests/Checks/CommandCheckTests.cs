@@ -2,7 +2,6 @@ using Moltaro.OnecOutpost.Agent.Checks;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 using static Moltaro.OnecOutpost.Agent.Tests.Checks.TestChecks;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Checks;
@@ -24,7 +23,7 @@ public sealed class CommandCheckTests : IDisposable
 
     // Rule 1: a command runs only when every check holds; here a Write of a base that the policy writes, and a Read of
     // a base it only reads.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("accounting", "write")]
     [InlineData("warehouse", "read")]
     public void A_command_that_passes_every_check_runs_with_the_command_read_from_its_bytes(string baseKey, string mode)
@@ -42,7 +41,7 @@ public sealed class CommandCheckTests : IDisposable
     // Rule 1 and step 1 of §7: nothing in bytes that do not verify with the pinned key can be trusted, their identity
     // included, so the refusal names no command, and only the audit log records it. It comes first, before the audit
     // log is asked about the identity the bytes claim.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("signed with another key")]
     [InlineData("changed by one byte after it was signed")]
     [InlineData("of an identity the audit log knows, signed with another key")]
@@ -62,7 +61,7 @@ public sealed class CommandCheckTests : IDisposable
 
     // Step 2 of §7: verified bytes that do not yield both a `protocol` and an `id` name no command that a refusal could
     // answer, so the refusal has no identity. An `id` without a `protocol` is no identity, even one the log knows.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Result = 1;")]
     [InlineData("""{"protocol":1}""")]
     [InlineData("""{"id":"0b6f2c1d-3e4a-4b5c-8d6e-7f8091a2b3c4","mode":"write"}""")]
@@ -75,7 +74,7 @@ public sealed class CommandCheckTests : IDisposable
 
     // Rule 3 and step 2 of §7: a command whose identity the audit log holds ran, or was refused, before. Nothing more
     // is done with its bytes, whatever they hold, so its recorded outcome, or its refusal, stays as it is.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("the same identity again")]
     [InlineData("another version of the protocol")]
     [InlineData("a Write without a caller key")]
@@ -99,7 +98,7 @@ public sealed class CommandCheckTests : IDisposable
 
     // Step 2 of §7: a command of another version is refused under its identity, and the rest of its bytes is not read,
     // so the refusal names no base and no mode, and no check of step 4 is made: here it names another agent.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_command_of_another_version_of_the_protocol_is_refused_with_its_identity_alone()
     {
         Guid id = Guid.NewGuid();
@@ -113,7 +112,7 @@ public sealed class CommandCheckTests : IDisposable
 
     // Step 3 of §7: a verified command of this version that breaks §7 does not run, and is refused with malformed under
     // its identity alone. It comes before the checks of step 4: here it also names another agent.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_verified_command_that_breaks_section_7_is_refused_with_malformed_and_its_identity_alone()
     {
         OutpostCommandMessage command = Command("accounting", OutpostModeEnum.Write) with
@@ -129,7 +128,7 @@ public sealed class CommandCheckTests : IDisposable
 
     // Step 4 of §7 and rule 1: each check of the agent's identity, its local policy and its clock refuses with its own
     // code, naming the identity, the base and the mode of the command. The skew is the one the command carries.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("addressed to another agent", "accounting", "write", "not-addressed")]
     [InlineData("for a base the policy does not hold", "payroll", "read", "not-served")]
     [InlineData("a Write of a base the policy does not write", "warehouse", "write", "not-served")]
@@ -158,7 +157,7 @@ public sealed class CommandCheckTests : IDisposable
 
     // Rule 1: by the agent's clock, a command issued no later than the skew ahead, and whose deadline passed no longer
     // than the skew ago, runs.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("issued exactly the skew ahead")]
     [InlineData("whose deadline passed exactly the skew ago")]
     public void A_command_at_either_bound_of_its_skew_runs(string form)
@@ -173,7 +172,7 @@ public sealed class CommandCheckTests : IDisposable
     }
 
     // Step 4 of §7: the checks run in their order, and the first that fails gives the code.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("addressed to another agent, for a base the policy does not hold, expired", "not-addressed")]
     [InlineData("a Write of a base the policy does not write, issued beyond the skew ahead", "not-served")]
     public void When_several_checks_of_step_4_fail_the_first_in_the_order_of_section_7_gives_the_code(

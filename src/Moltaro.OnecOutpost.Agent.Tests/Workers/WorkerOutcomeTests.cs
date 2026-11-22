@@ -1,7 +1,6 @@
 using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 
@@ -20,7 +19,7 @@ public sealed class WorkerOutcomeTests
 
     // §8: the agent forwards the bytes of an object that the executor may hand it as they came, in either mode. The
     // run took no time on the clock.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", "succeeded")]
     [InlineData("read", "script-error")]
     [InlineData("write", "succeeded")]
@@ -42,7 +41,7 @@ public sealed class WorkerOutcomeTests
 
     // S9's requirement: the executor returns the size it measured beside its object, and a size other than the length
     // of the bytes the agent received is an outcome it cannot accept, a byte more as a byte less.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", 1, "failed")]
     [InlineData("write", -1, "unknown")]
     public async Task A_size_other_than_the_length_of_the_bytes_gives_result_type(string modeWord, long off, string kindWord)
@@ -54,7 +53,7 @@ public sealed class WorkerOutcomeTests
 
     // §8: anything the agent cannot read by §2 and §8, or that the mode of the command does not allow, becomes
     // result-type.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", "an Unknown, which a Read never is", "failed")]
     [InlineData("write", "bytes that are not JSON", "unknown")]
     public async Task An_object_that_section_8_refuses_for_the_mode_gives_result_type(
@@ -74,7 +73,7 @@ public sealed class WorkerOutcomeTests
     // §8, "The executor": it may hand over only succeeded, failed with script-error, result-type or result-too-large,
     // and, for a Write, unknown with transaction-ended. An outcome that an agent may send but the executor may not hand
     // over becomes result-type, until S9b admits the codes that S9's worker writes itself.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", "failed", "run-limit", "failed")]
     [InlineData("read", "refused", "not-served", "failed")]
     [InlineData("write", "unknown", "agent-stopped", "unknown")]

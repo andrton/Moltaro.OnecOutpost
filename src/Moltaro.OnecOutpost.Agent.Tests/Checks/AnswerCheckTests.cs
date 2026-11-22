@@ -1,7 +1,6 @@
 using Moltaro.OnecOutpost.Agent.Checks;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 using static Moltaro.OnecOutpost.Agent.Tests.Checks.TestChecks;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Checks;
@@ -24,7 +23,7 @@ public sealed class AnswerCheckTests : IDisposable
     // §6.2 and the acceptance of S6: a command for a base or mode that the policy does not serve is refused with
     // not-served, a command that fails another check is refused too, a known one is not run again, and the others
     // run. Only those that run count against free: here each base and mode has one free worker.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_gives_the_check_of_each_command_in_its_order_and_only_those_that_run_count_against_free()
     {
         OutpostCommandMessage write = Command("accounting", OutpostModeEnum.Write);
@@ -57,7 +56,7 @@ public sealed class AnswerCheckTests : IDisposable
 
     // §6.2: when the commands that pass §7 are more than the free of a base and mode, the answer is lost, and none of
     // its commands is recorded or run. The count is by base and mode, whatever the free of the others.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("two Reads where the base declared one worker free for reading")]
     [InlineData("a Write where the base declared none free for writing")]
     public void An_answer_whose_commands_that_run_exceed_the_free_of_a_base_and_mode_is_lost(string form)
@@ -86,7 +85,7 @@ public sealed class AnswerCheckTests : IDisposable
 
     // §6.2: an answer that holds two commands of one identity is lost, whatever their verdicts, so that a command never
     // runs twice from one answer. The poll has room for both.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("the same command twice")]
     [InlineData("a command, and a command of its identity that is refused")]
     [InlineData("a command that the audit log knows, twice")]
@@ -112,7 +111,7 @@ public sealed class AnswerCheckTests : IDisposable
 
     // Rule 1: a command whose signature does not verify has no identity, so two of the same bytes are not two commands
     // of one identity: each is refused with signature, and the answer is not lost.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Two_commands_whose_signature_does_not_verify_are_each_refused_and_the_answer_is_not_lost()
     {
         OutpostSignedCommand forged = _test.Forged(Command("accounting", OutpostModeEnum.Read));
@@ -128,7 +127,7 @@ public sealed class AnswerCheckTests : IDisposable
     }
 
     // §6.2: the ordinary answer without commands, as when the hold ends, is not lost.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_answer_without_commands_gives_no_checks_and_is_not_lost()
     {
         IReadOnlyList<CommandCheck>? checks = _test.Checks.CheckAnswer(
@@ -142,7 +141,7 @@ public sealed class AnswerCheckTests : IDisposable
 
     // The S6b brief: the checks record nothing, neither the commands that run nor the refusals; the loop records what
     // they give (rule 2).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_checks_of_an_answer_record_nothing()
     {
         OutpostCommandMessage read = Command("accounting", OutpostModeEnum.Read);

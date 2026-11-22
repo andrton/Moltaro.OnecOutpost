@@ -2,7 +2,6 @@ using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 
@@ -18,7 +17,7 @@ public sealed class WorkerRunTests
 {
     // Rule 8: a command holds its worker from its acceptance until its outcome is recorded, so that a poll never
     // declares a worker that a command still holds. The other modes keep theirs.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_command_holds_its_worker_from_RunAsync_until_Release()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -43,7 +42,7 @@ public sealed class WorkerRunTests
     // Rule 8 and §8: no more commands run at once in a mode than it has workers. A command with no free worker never
     // started its script, so it is Failed base-unreachable at once, a Write too, and no worker is asked to run it.
     // Releasing it frees nothing, since it held no worker.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task Workers_bound_what_runs_and_a_command_without_a_free_worker_is_Failed_base_unreachable_at_once(
@@ -76,7 +75,7 @@ public sealed class WorkerRunTests
     // Rule 9: a script that exceeds the run limit of its mode ends with its worker: a Read fails with run-limit, and a
     // Write is Unknown. The worker is killed when the limit passes, the run is waited for, the duration is the limit,
     // and the worker is dropped.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", "failed")]
     [InlineData("write", "unknown")]
     public async Task A_run_that_exceeds_the_run_limit_of_its_mode_is_killed_and_gives_run_limit(string modeWord, string kindWord)
@@ -112,7 +111,7 @@ public sealed class WorkerRunTests
 
     // The acceptance of S6 and §8: a worker that ends without an outcome, or breaks its line, gives connection-lost:
     // Failed for a Read, and Unknown for a Write, whose script may have committed.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", "failed")]
     [InlineData("write", "unknown")]
     public async Task A_worker_that_ends_without_an_outcome_gives_connection_lost(string modeWord, string kindWord)
@@ -131,7 +130,7 @@ public sealed class WorkerRunTests
 
     // The S6b brief: a worker is dropped after it ended without an outcome, and after it gave base-unreachable or
     // connection-lost itself, after which S9's worker ends. Until S9b starts it again, its mode has one worker fewer.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("ends without an outcome")]
     [InlineData("gives Failed base-unreachable itself")]
     [InlineData("gives Failed connection-lost itself")]
@@ -158,7 +157,7 @@ public sealed class WorkerRunTests
 
     // The S6b brief and rule 3: a cancelled run kills its worker, waits for its run and throws, recording nothing, so
     // that the next start finds the command received without an outcome.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_cancelled_run_kills_its_worker_and_throws()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -177,7 +176,7 @@ public sealed class WorkerRunTests
 
     // The lines of S9 (the S6b brief): the command line of a run holds the command's script, the text of its parameters
     // as it came, its caller key, null for a Read without one, and its outcome limit.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task A_run_gives_its_worker_the_command_line_of_its_command(string modeWord)
