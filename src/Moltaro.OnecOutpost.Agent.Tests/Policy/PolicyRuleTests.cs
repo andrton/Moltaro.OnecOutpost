@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Moltaro.OnecOutpost.Agent.Policy;
+using Moltaro.OnecOutpost.Protocol;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Policy;
 
@@ -159,6 +160,112 @@ public sealed class PolicyRuleTests
             () => AgentPolicyReader.Read(policy.ToJsonString()));
 
         AssertSaysWhereAndWhat(exception, PathOf(owner, member));
+    }
+
+    // Carried over from S2: requestTimeout is in the form of runLimit, from 10 seconds to 1 hour, and safeMode of write
+    // is true or false.
+    [Theory]
+    [InlineData("", "requestTimeout", "\"00:00:10\"")]
+    [InlineData("", "requestTimeout", "\"01:00:00\"")]
+    [InlineData("bases[0].write", "safeMode", "true")]
+    [InlineData("bases[0].write", "safeMode", "false")]
+    public void A_request_timeout_at_either_end_of_its_range_and_a_safe_mode_of_write_are_accepted(
+        string owner,
+        string member,
+        string value)
+    {
+        JsonObject policy = ValidPolicy();
+        Owner(policy, owner)[member] = JsonNode.Parse(value);
+
+        AgentPolicyReader.Read(policy.ToJsonString());
+    }
+
+    [Theory]
+    [InlineData("", "requestTimeout", "\"00:00:09\"")]
+    [InlineData("", "requestTimeout", "\"01:00:01\"")]
+    [InlineData("", "requestTimeout", "\"5 minutes\"")]
+    [InlineData("", "requestTimeout", "300")]
+    [InlineData("", "requestTimeout", "null")]
+    [InlineData("bases[0].write", "safeMode", "\"false\"")]
+    [InlineData("bases[0].write", "safeMode", "0")]
+    [InlineData("bases[0].write", "safeMode", "null")]
+    public void A_request_timeout_or_a_safe_mode_of_write_that_breaks_its_rule_makes_the_policy_invalid_at_its_path(
+        string owner,
+        string member,
+        string value)
+    {
+        JsonObject policy = ValidPolicy();
+        Owner(policy, owner)[member] = JsonNode.Parse(value);
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(policy.ToJsonString()));
+
+        AssertSaysWhereAndWhat(exception, PathOf(owner, member));
+    }
+
+    // A Read always runs in safe mode, so safeMode stays an unknown member of read, even with a value that write takes.
+    [Fact]
+    public void A_safe_mode_in_read_makes_the_policy_invalid_at_its_path()
+    {
+        JsonObject policy = ValidPolicy();
+        Owner(policy, "bases[0].read")["safeMode"] = true;
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(policy.ToJsonString()));
+
+        AssertSaysWhereAndWhat(exception, "bases[0].read.safeMode");
+    }
+
+    // At most 256 bases, as many as a poll declares (§6.2 and §10 of docs/protocol.md).
+    [Fact]
+    public void A_policy_of_256_bases_is_valid()
+    {
+        AgentPolicy policy = AgentPolicyReader.Read(PolicyOfBases(OutpostProtocol.MaxBases));
+
+        Assert.Equal(OutpostProtocol.MaxBases, policy.Bases.Count);
+    }
+
+    [Fact]
+    public void A_policy_of_257_bases_makes_the_policy_invalid_at_bases()
+    {
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(PolicyOfBases(OutpostProtocol.MaxBases + 1)));
+
+        AssertSaysWhereAndWhat(exception, "bases");
+    }
+
+    // Q7: the agent offers the proxy the computer's credentials and never any written in the file. A user or a
+    // password in the URL is refused, and neither is repeated, since either may be a secret (principle 9).
+    [Theory]
+    [InlineData("http://svc@proxy.example.com:3128")]
+    [InlineData("http://svc:S3cret@proxy.example.com:3128")]
+    [InlineData("http://:S3cret@proxy.example.com:3128")]
+    public void A_proxy_URL_with_a_user_or_a_password_makes_the_policy_invalid_without_repeating_either(string proxy)
+    {
+        JsonObject policy = ValidPolicy();
+        policy["proxy"] = proxy;
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(policy.ToJsonString()));
+
+        AssertSaysWhereAndWhat(exception, "proxy");
+        Assert.DoesNotContain("svc", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("S3cret", exception.Message, StringComparison.Ordinal);
+    }
+
+    // The example host of the proxy is not a .local name.
+    [Fact]
+    public void The_error_of_a_proxy_that_is_not_an_http_URL_names_the_example_proxy_example_com()
+    {
+        JsonObject policy = ValidPolicy();
+        policy["proxy"] = "https://gateway.example.org:3128";
+
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(
+            () => AgentPolicyReader.Read(policy.ToJsonString()));
+
+        AssertSaysWhereAndWhat(exception, "proxy");
+        Assert.Contains("\"http://proxy.example.com:3128\"", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(".local", exception.Message, StringComparison.Ordinal);
     }
 
     // The contract names no single member at fault when the connection of a base is incomplete or doubled, so the
@@ -341,6 +448,24 @@ public sealed class PolicyRuleTests
                 },
             },
         };
+    }
+
+    // A policy of so many bases in folders, each only read.
+    private static string PolicyOfBases(int count)
+    {
+        JsonArray bases = [];
+
+        for (int index = 0; index < count; index++)
+        {
+            bases.Add(new JsonObject
+            {
+                ["key"] = $"base-{index}",
+                ["file"] = $@"D:\1C\Base{index}",
+                ["read"] = new JsonObject { ["account"] = "outpost-read" },
+            });
+        }
+
+        return new JsonObject { ["bases"] = bases }.ToJsonString();
     }
 
     private static JsonObject Owner(JsonObject policy, string owner)

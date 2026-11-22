@@ -21,19 +21,25 @@ internal static class AgentPolicyReader
     private const int DefaultWorkers = 1;
 
     // What each object of the file may hold, for the errors: the names it allows, and what it is expected to be.
-    private const string PolicyNames = "\"auditRetentionDays\", \"proxy\", \"retryDelayMax\", \"bases\"";
+    private const string PolicyNames =
+        "\"auditRetentionDays\", \"proxy\", \"retryDelayMax\", \"requestTimeout\", \"bases\"";
 
     private const string PolicyObject =
-        "a JSON object with \"bases\", and optionally \"auditRetentionDays\", \"proxy\" and \"retryDelayMax\"";
+        "a JSON object with \"bases\", and optionally \"auditRetentionDays\", \"proxy\", \"retryDelayMax\" and \"requestTimeout\"";
 
     private const string BaseNames = "\"key\", \"server\", \"database\", \"file\", \"read\", \"write\"";
 
     private const string BaseObject =
         "an object with \"key\", \"read\", either \"server\" and \"database\" or \"file\", and optionally \"write\"";
 
-    private const string ModeNames = "\"account\", \"workers\", \"runLimit\"";
+    private const string ReadNames = "\"account\", \"workers\", \"runLimit\"";
 
-    private const string ModeObject = "an object with \"account\", and optionally \"workers\" and \"runLimit\"";
+    private const string WriteNames = "\"account\", \"workers\", \"runLimit\", \"safeMode\"";
+
+    private const string ReadObject = "an object with \"account\", and optionally \"workers\" and \"runLimit\"";
+
+    private const string WriteObject =
+        "an object with \"account\", and optionally \"workers\", \"runLimit\" and \"safeMode\", or no \"write\" when the base may not be written";
 
     // What the values of a base are expected to be, for the errors.
     private const string BaseKeyRule =
@@ -52,6 +58,14 @@ internal static class AgentPolicyReader
 
     private static readonly TimeSpan DefaultRunLimit = TimeSpan.FromMinutes(10);
 
+    // The range and the default of requestTimeout. It mirrors no member of a message, so no constant of the protocol
+    // holds its range.
+    private static readonly TimeSpan MinRequestTimeout = TimeSpan.FromSeconds(10);
+
+    private static readonly TimeSpan MaxRequestTimeout = TimeSpan.FromHours(1);
+
+    private static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromMinutes(5);
+
     // The constant form [d.]hh:mm:ss of a TimeSpan, without a sign and without a fraction of a second.
     private static readonly string[] TimeSpanForms = [@"hh\:mm\:ss", @"d\.hh\:mm\:ss"];
 
@@ -64,6 +78,7 @@ internal static class AgentPolicyReader
         int auditRetentionDays = DefaultAuditRetentionDays;
         Uri? proxy = null;
         TimeSpan retryDelayMax = DefaultRetryDelayMax;
+        TimeSpan requestTimeout = DefaultRequestTimeout;
         IReadOnlyList<AgentBasePolicy>? bases = null;
 
         foreach ((string name, JsonElement value, string path) in Members(document.RootElement, "", PolicyObject))
@@ -87,6 +102,15 @@ internal static class AgentPolicyReader
                         DefaultRetryDelayMax);
                     break;
 
+                case "requestTimeout":
+                    requestTimeout = ReadTimeSpan(
+                        value,
+                        path,
+                        MinRequestTimeout,
+                        MaxRequestTimeout,
+                        DefaultRequestTimeout);
+                    break;
+
                 case "bases":
                     bases = ReadBases(value, path);
                     break;
@@ -101,7 +125,7 @@ internal static class AgentPolicyReader
             throw MissingMember("bases", "an array of at least one base");
         }
 
-        return new AgentPolicy(auditRetentionDays, proxy, retryDelayMax, bases);
+        return new AgentPolicy(auditRetentionDays, proxy, retryDelayMax, requestTimeout, bases);
     }
 
     private static JsonDocument Parse(string json)
@@ -158,6 +182,14 @@ internal static class AgentPolicyReader
             throw new AgentPolicyException(path, "the array is empty; expected at least one base");
         }
 
+        // A poll declares every base of the policy, and at most so many (§6.2 and §10 of docs/protocol.md).
+        if (value.GetArrayLength() > OutpostProtocol.MaxBases)
+        {
+            throw new AgentPolicyException(
+                path,
+                $"the array holds {value.GetArrayLength()} bases; expected at most {OutpostProtocol.MaxBases}");
+        }
+
         List<AgentBasePolicy> bases = [];
         Dictionary<string, int> indexOfKey = new(StringComparer.Ordinal);
 
@@ -209,15 +241,11 @@ internal static class AgentPolicyReader
                     break;
 
                 case "read":
-                    read = ReadMode(member, memberPath, ModeObject, "outpost-read");
+                    read = ReadMode(member, memberPath, isWrite: false);
                     break;
 
                 case "write":
-                    write = ReadMode(
-                        member,
-                        memberPath,
-                        $"{ModeObject}, or no \"write\" when the base may not be written",
-                        "outpost-write");
+                    write = ReadMode(member, memberPath, isWrite: true);
                     break;
 
                 default:
@@ -254,18 +282,23 @@ internal static class AgentPolicyReader
 
         if (read is null)
         {
-            throw MissingMember($"{path}.read", $"{ModeObject}, such as {{ \"account\": \"outpost-read\" }}");
+            throw MissingMember($"{path}.read", $"{ReadObject}, such as {{ \"account\": \"outpost-read\" }}");
         }
 
         return new AgentBasePolicy(key, server, database, file, read, write);
     }
 
-    private static AgentModePolicy ReadMode(JsonElement value, string path, string expectedObject, string exampleAccount)
+    // A mode of a base. safeMode belongs to write alone: a Read always runs in safe mode, so in read it is an unknown
+    // member, and a Write runs in safe mode unless its base turns it off (D12).
+    private static AgentModePolicy ReadMode(JsonElement value, string path, bool isWrite)
     {
+        string exampleAccount = isWrite ? "outpost-write" : "outpost-read";
         string accountRule = $"the 1C account of the mode, such as \"{exampleAccount}\"";
+        string expectedObject = isWrite ? WriteObject : ReadObject;
         string? account = null;
         int workers = DefaultWorkers;
         TimeSpan runLimit = DefaultRunLimit;
+        bool safeMode = true;
 
         foreach ((string name, JsonElement member, string memberPath) in Members(value, path, expectedObject))
         {
@@ -288,8 +321,12 @@ internal static class AgentPolicyReader
                         DefaultRunLimit);
                     break;
 
+                case "safeMode" when isWrite:
+                    safeMode = ReadBoolean(member, memberPath);
+                    break;
+
                 default:
-                    throw UnknownMember(memberPath, ModeNames);
+                    throw UnknownMember(memberPath, isWrite ? WriteNames : ReadNames);
             }
         }
 
@@ -298,7 +335,7 @@ internal static class AgentPolicyReader
             throw MissingMember($"{path}.account", accountRule);
         }
 
-        return new AgentModePolicy(account, workers, runLimit);
+        return new AgentModePolicy(account, workers, runLimit, safeMode);
     }
 
     // The members of an object, each with its path. A value that is not an object, or a member given twice, makes the
@@ -400,17 +437,36 @@ internal static class AgentPolicyReader
         return key;
     }
 
-    // A string that is not an absolute http URL is named by that rule, never repeated.
+    private static bool ReadBoolean(JsonElement value, string path)
+    {
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => throw WrongValue(path, value, "true or false"),
+        };
+    }
+
+    // A string that is not an absolute http URL is named by that rule, never repeated. The agent offers the proxy the
+    // credentials of the computer, never any written in the file (Q7), so a URL with a user or a password is refused,
+    // and neither is repeated, since either may be a secret.
     private static Uri ReadProxy(JsonElement value, string path)
     {
         const string Expected =
-            "an absolute http URL such as \"http://proxy.local:3128\", or no \"proxy\" to connect directly";
+            "an absolute http URL such as \"http://proxy.example.com:3128\", or no \"proxy\" to connect directly";
 
         string text = ReadText(value, path, Expected);
 
         if (!Uri.TryCreate(text, UriKind.Absolute, out Uri? proxy) || proxy.Scheme != Uri.UriSchemeHttp)
         {
             throw new AgentPolicyException(path, $"the value is not an absolute http URL; expected {Expected}");
+        }
+
+        if (proxy.UserInfo.Length > 0)
+        {
+            throw new AgentPolicyException(
+                path,
+                $"the URL holds a user or a password; expected {Expected}, without credentials, since the agent offers the proxy those of the computer");
         }
 
         return proxy;

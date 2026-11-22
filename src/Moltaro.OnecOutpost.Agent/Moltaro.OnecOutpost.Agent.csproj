@@ -4,6 +4,8 @@
     <OutputType>Exe</OutputType>
     <!-- A program of the agent archive, never a package. -->
     <IsPackable>false</IsPackable>
+    <!-- The marshalling that LibraryImport generates for DPAPI and the rename of the outbox is unsafe code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

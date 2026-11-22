@@ -4,13 +4,15 @@ The wire protocol between an agent and a server. The [concept](concept.md) fixes
 principles (§3 "Pairing", §4, §6, D1, D4, D5, D15); this document fixes the bytes.
 
 **Status.** Draft of Epic 1, sprint S2, written after the sprint's study, with the changes
-of sprint S4 to §6.2 and §9 and of sprint S5 to §9. It is public contract, and holds as a
-draft until the owner approves it with the lists "What S2 changed in the public contract",
-"What S4 changes in the public contract" and "What S5 changes in the public contract" of
-the [epic](work/epic-1-first-release.md). The codec of the protocol assembly reads and
-writes its messages, its signatures and the pairing proof. The server's endpoints serve
-all three requests: `pair`, `poll` with the commands it hands out, and `outcome`. No agent
-sends the protocol yet.
+of sprint S4 to §6.2 and §9, of sprint S5 to §9 and of sprint S6 to §6.2 and §13. It is
+public contract, and holds as a draft until the owner approves it with the lists "What S2
+changed in the public contract", "What S4 changes in the public contract", "What S5
+changes in the public contract" and "What S6 changes in the public contract" of the
+[epic](work/epic-1-first-release.md). The codec of the protocol assembly reads and writes
+its messages, its signatures and the pairing proof. The server's endpoints serve all three
+requests: `pair`, `poll` with the commands it hands out, and `outcome`. The agent's code
+keeps its audit log as §13 says and gives poll numbers with the reservation of §6.2, but
+no agent sends the protocol yet.
 
 ## 1. Overview
 
@@ -229,13 +231,19 @@ on its machine; the application revokes it and creates a new token.
     - when it starts, it takes the highest `below` of the reservations of its identity in
       its audit log, whatever the files and times they are in. Its first number is at or
       above that bound, so the first poll records a new reservation;
-    - **a log that was cleared is found at the first poll.** An agent with no reservation
-      of its identity, as after pairing, numbers its first poll 1, after it has recorded
-      the reservation for that number. A server that answers that poll as older has
-      recorded polls of this identity that the log does not hold: the log was cleared,
-      and with it the commands it had received. The agent then records a reservation that
-      leaves no number, `below` 2⁶² + 1, and stops, so that it runs nothing until it is
-      paired anew. A new pairing's first poll is the newest, and runs as any other.
+    - **a log that was cleared is found while the agent counts.** An agent with no
+      reservation of its identity, as after pairing, numbers its polls 1, 2, 3, …, the
+      first after it has recorded the reservation for that number, until an answer is not
+      lost. A server that answers one of these polls as older has recorded polls of this
+      identity that the log does not hold, since one poll is open at a time: the log was
+      cleared, and with it the commands it had received. The agent then records a
+      reservation that leaves no number, `below` 2⁶² + 1, and stops, so that it runs
+      nothing until it is paired anew. A new pairing's first poll is the newest, and runs
+      as any other. What counting costs: a poll that a hop retries or duplicates while the
+      agent counts is answered as older and stops the agent until it is paired anew, a
+      needless stop and never a double run; and a restart before any answer is not lost
+      numbers from the clock, since the log then holds a reservation, so a cleared log
+      then goes unseen.
 
     Reservations only grow, so the highest is also the last. Every number sent after a
     restart is therefore above every number sent before it, even when the agent's clock was
@@ -691,9 +699,11 @@ nobody signed, or make an outcome claim more than happened. What it can do:
 
 **What the reservation rests on.** It lives as long as the audit log of the agent's
 identity.
-- An audit log that was cleared is found at the first poll and stops the agent (§6.2):
-  otherwise a Write it had received, gone from the log and from the next poll's list,
-  could be handed out again, or end as Expired and free its caller key, and run twice.
+- An audit log that was cleared is found by the polls that the agent counts until an
+  answer is not lost, and stops the agent (§6.2): otherwise a Write it had received, gone
+  from the log and from the next poll's list, could be handed out again, or end as Expired
+  and free its caller key, and run twice. A restart before any of those answers is not
+  lost leaves it unseen.
 - A log of which only some files were removed, or one restored from an older data folder
   or a snapshot of the machine, still holds a reservation, so nothing finds it. It brings
   back lower reservations and can forget received commands, with the replay above and a
@@ -711,10 +721,12 @@ identity.
   after a loss of power. The agent went on from no such line.
 - A write that fails, for example on a full disk, makes the agent cut the file back to the
   length it had before that write, write nothing more, and stop. The next start finds the
-  log as it was before that write.
+  log as it was before that write, or with that entry whole when cutting it back failed
+  too: every entry is safe to find written.
 - Any other line that it cannot read, and an audit file that it cannot open, make the
   agent record `started` with an error and stop, since the log is also its journal of
-  rules 3, 10 and 11. The administrator moves `audit\` aside and pairs the agent anew.
+  rules 3, 10 and 11. The administrator moves `audit\` aside, and `outcomes\` with it,
+  since an outbox file that no entry names stops the start too, and pairs the agent anew.
   The reader of the log accepts everything its writer writes: no limit of depth or length
   below the deepest and the longest entry.
 
