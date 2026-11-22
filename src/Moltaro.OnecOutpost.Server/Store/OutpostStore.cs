@@ -222,10 +222,11 @@ internal sealed class OutpostStore
     // changes nothing (rule 10) and gets the recorded number with the lists of the newest poll, and no Expired.
     //
     // The order of locks is a pairing token, then an agent row, then claims, then commands, in every operation. The
-    // update of the agent row holds that row until the commit, so the polls of one agent, its takes, its revocation,
-    // the releases of its keys and the creates of its commands, which hold the row FOR SHARE, wait for each other on
-    // it. The claims are inserted in ordinal order of their keys, so two polls that claim the same keys never wait for
-    // each other in a cycle.
+    // update of the agent row holds that row until the commit, so the polls of one agent, its takes, its revocation
+    // and the releases of its keys wait for each other on it. A create of one of its commands holds the row FOR SHARE:
+    // it waits for each of those and each of them for it, but two creates do not wait for each other, since FOR SHARE
+    // locks do not conflict. The claims are inserted in ordinal order of their keys, so two polls that claim the same
+    // keys never wait for each other in a cycle.
     public async Task<PollRecord> RecordPollAsync(
         Guid agentId,
         OutpostPollRequest poll,

@@ -16,8 +16,8 @@ public sealed class FakeClock : TimeProvider
     // Every timer of this clock as it was last armed: when it was due first, and its period.
     private readonly Dictionary<ITimer, (DateTimeOffset DueAt, TimeSpan Period)> _timers = [];
 
-    // The waits of WaitForTimerAsync that no armed timer has completed yet.
-    private readonly List<(DateTimeOffset DueBy, TaskCompletionSource Armed)> _waits = [];
+    // The waits of WaitForTimersAsync that not enough armed timers have completed yet.
+    private readonly List<(DateTimeOffset DueBy, int Count, TaskCompletionSource Armed)> _waits = [];
 
     public override long TimestampFrequency => _time.TimestampFrequency;
 
@@ -34,6 +34,13 @@ public sealed class FakeClock : TimeProvider
     // Completes once a timer of this clock is armed to fire at or before dueBy, at once if one already is.
     public Task WaitForTimerAsync(DateTimeOffset dueBy, CancellationToken cancellationToken)
     {
+        return WaitForTimersAsync(dueBy, 1, cancellationToken);
+    }
+
+    // Completes once at least `count` timers of this clock are armed to fire at or before dueBy, at once if they
+    // already are: for code under test that arms one timer for each of several waits at once.
+    public Task WaitForTimersAsync(DateTimeOffset dueBy, int count, CancellationToken cancellationToken)
+    {
         DateTimeOffset now = GetUtcNow();
 
         // Asynchronous continuations, so that the test never goes on inside the call of the code that armed the timer.
@@ -41,12 +48,12 @@ public sealed class FakeClock : TimeProvider
 
         lock (_lock)
         {
-            if (IsAnyTimerDueBy(dueBy, now))
+            if (CountTimersDueBy(dueBy, now) >= count)
             {
                 return Task.CompletedTask;
             }
 
-            _waits.Add((dueBy, armed));
+            _waits.Add((dueBy, count, armed));
         }
 
         return armed.Task.WaitAsync(cancellationToken);
@@ -80,7 +87,7 @@ public sealed class FakeClock : TimeProvider
 
             for (int index = _waits.Count - 1; index >= 0; index--)
             {
-                if (IsAnyTimerDueBy(_waits[index].DueBy, now))
+                if (CountTimersDueBy(_waits[index].DueBy, now) >= _waits[index].Count)
                 {
                     _waits[index].Armed.SetResult();
                     _waits.RemoveAt(index);
@@ -97,17 +104,19 @@ public sealed class FakeClock : TimeProvider
         }
     }
 
-    private bool IsAnyTimerDueBy(DateTimeOffset dueBy, DateTimeOffset now)
+    private int CountTimersDueBy(DateTimeOffset dueBy, DateTimeOffset now)
     {
+        int count = 0;
+
         foreach ((DateTimeOffset dueAt, TimeSpan period) in _timers.Values)
         {
             if (NextFiring(dueAt, period, now) <= dueBy)
             {
-                return true;
+                count++;
             }
         }
 
-        return false;
+        return count;
     }
 
     // FakeTimeProvider fires a timer as soon as the time reaches it, even inside the call that arms it with a due time

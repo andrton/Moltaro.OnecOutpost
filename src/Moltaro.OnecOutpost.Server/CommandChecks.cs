@@ -13,12 +13,29 @@ namespace Moltaro.OnecOutpost.Server;
 // none, both as the command carries them, in UTF-8 with every escape counted as it is written.
 internal static class CommandChecks
 {
-    internal static void Check(string script, JsonObject? parameters, int commandSizeLimit)
+    // Gives the parameters as the call wrote them, which the checks passed: the command is made of exactly these, so a
+    // later change of the caller's object has no effect on it. The caller disposes the document.
+    internal static JsonDocument Check(string script, JsonObject? parameters, int commandSizeLimit)
     {
         // A command without parameters carries an empty object.
-        using JsonDocument written = Write(parameters ?? []);
+        JsonDocument written = Write(parameters ?? []);
 
-        if (OutpostCodec.ValueDepth(written.RootElement) > OutpostProtocol.MaxValueDepth)
+        try
+        {
+            CheckWritten(script, parameters, written.RootElement, commandSizeLimit);
+        }
+        catch
+        {
+            written.Dispose();
+            throw;
+        }
+
+        return written;
+    }
+
+    private static void CheckWritten(string script, JsonObject? parameters, JsonElement written, int commandSizeLimit)
+    {
+        if (OutpostCodec.ValueDepth(written) > OutpostProtocol.MaxValueDepth)
         {
             throw new ArgumentException(
                 $"The parameters nest deeper than {OutpostProtocol.MaxValueDepth} levels, counted from their own outer value, the outer object being level 1.",
@@ -27,14 +44,14 @@ internal static class CommandChecks
 
         // Before the walk of the caller's object: a JsonObject parsed from text that gives a name twice throws an
         // exception of its own when it is walked.
-        CheckText(written.RootElement);
+        CheckText(written);
 
         if (parameters is not null)
         {
             CheckLoneSurrogates(parameters);
         }
 
-        long size = OutpostCodec.CommandSize(script, written.RootElement);
+        long size = OutpostCodec.CommandSize(script, written);
 
         if (size > commandSizeLimit)
         {

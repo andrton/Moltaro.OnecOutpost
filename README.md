@@ -24,21 +24,32 @@ base. The migrations of the store work: `OutpostMigrations` creates the
 store's tables on PostgreSQL in the schema the application chooses, or gives them as one
 SQL script per migration.
 
-The server pairs agents and holds their polls. `AddOutpostServer` registers it and
-`MapOutpostAgents` maps the endpoints of the agents: an agent pairs over HTTP with a
-pairing token, its signed polls are authenticated, and each newer poll records the agent's
-lease, its bases and its claims of base keys, and is answered without commands when its
-hold ends. The application creates pairing tokens, lists and revokes agents and releases
-base keys, and every node purges the tokens that expired unused, with their pending
-agents. These are tested over loopback HTTP with a test agent, since the agent program
-does not poll yet. `ReadAsync` and `WriteAsync` still throw `NotSupportedException`, and
-an `outcome` request ends in an error after its checks.
+The server pairs agents, holds their polls and runs commands through them.
+`AddOutpostServer` registers it and `MapOutpostAgents` maps the endpoints of the agents: an
+agent pairs over HTTP with a pairing token, its signed polls are authenticated, and each
+newer poll records the agent's lease, its bases and its claims of base keys, and is
+answered with the commands it takes, or without commands when its hold ends. The
+application creates pairing tokens, lists and revokes agents and releases base keys, and
+every node purges the tokens that expired unused, with their pending agents, and the
+ended commands after `OutcomeRetention`.
+
+Commands work on the server, against an agent that speaks the protocol. `ReadAsync` and
+`WriteAsync` check the caller key, the base and the agent, create a signed command and
+wake the agent's poll through Moltaro.Signals; the poll hands the command out, the
+`outcome` request takes the agent's outcome, and the call is woken and returns it. The
+server keeps one command per base and caller key, and a repeat returns its outcome; that a
+Write runs once also needs the agent's audit log, which comes with the agent program. A
+command that no poll took in time ends as Expired, and revoking an agent ends its
+commands. All of this is tested over loopback HTTP with a test agent. The agent program,
+which will poll, check the commands and run them through the COM worker, comes in a later
+sprint, so nothing runs a script in 1C through the library yet.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from
 the environment variable `OUTPOST_SAMPLE_POSTGRES`, applies the migrations, maps the
-endpoints, creates a pairing token, lists the agents, releases a base key and revokes the
-new agent, and says that it stops at `ReadAsync`.
+endpoints, creates a pairing token, lists the agents, releases a base key, revokes the new
+agent, and runs a Read in a base that no agent holds, which ends as Refused with
+`unknown-base`.
 
 ## What it is, and what it is not
 

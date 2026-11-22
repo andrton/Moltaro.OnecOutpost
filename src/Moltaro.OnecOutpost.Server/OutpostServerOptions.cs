@@ -73,9 +73,17 @@ public sealed class OutpostServerOptions
     /// 5 minutes, 25 seconds by default.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A poll is held for the smaller of the poll timeout it carries and this option, its hold, so that a raised value
     /// never makes a poll outlast the wait of its agent. Keep it below the idle limit of every proxy and ingress between
     /// the agents and the server. Every poll answer carries it, so the agents follow a change.
+    /// </para>
+    /// <para>
+    /// It also bounds each wait of <see cref="IOutpostServer.ReadAsync"/> and <see cref="IOutpostServer.WriteAsync"/>
+    /// for an outcome: after at most this long the call reads the store again, so that a wake-up of Moltaro.Signals
+    /// that was lost, such as one set while the Signals host could not be reached, delays its outcome by at most this
+    /// option.
+    /// </para>
     /// </remarks>
     public TimeSpan PollTimeout { get; set; } = TimeSpan.FromSeconds(25);
 
@@ -202,6 +210,13 @@ public sealed class OutpostServerOptions
     /// judged by it. Nodes are expected to keep their clocks synchronized. Tests use a fake one.
     /// </remarks>
     public TimeProvider TimeProvider { get; set; } = TimeProvider.System;
+
+    // The key of the signals for an agent or a command: the prefix, a dot, and the identity in the form of §2 of
+    // docs/protocol.md. At most 64 + 1 + 36 characters, within the 128 of a name of Moltaro.Signals.
+    internal string SignalKey(Guid id)
+    {
+        return SignalKeyPrefix + "." + OutpostForms.WriteId(id);
+    }
 
     // A copy that a later change of this object does not reach. Every property is a value or an immutable string,
     // except TimeProvider, which the copy shares on purpose.

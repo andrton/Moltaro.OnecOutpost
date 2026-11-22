@@ -34,6 +34,12 @@ internal static class AgentOutcomes
             false);
     }
 
+    // A failure without the error text of 1C and without user messages, such as `run-limit` for a Read.
+    public static OutpostOutcomeMessage Failed(string code)
+    {
+        return new OutpostOutcomeMessage(OutpostAgentOutcomeKindEnum.Failed, code, null, null, [], false);
+    }
+
     public static OutpostOutcomeMessage Refused(string code)
     {
         return new OutpostOutcomeMessage(OutpostAgentOutcomeKindEnum.Refused, code, null, null, [], false);

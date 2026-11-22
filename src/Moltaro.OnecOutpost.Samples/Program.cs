@@ -37,49 +37,36 @@ builder.Services.AddOutpostServer(options =>
 });
 
 await using WebApplication app = builder.Build();
-string step = "MigrateAsync";
 
-try
-{
-    await OutpostMigrations.MigrateAsync(connectionString, Schema);
+await OutpostMigrations.MigrateAsync(connectionString, Schema);
 
-    step = "MapOutpostAgents";
-    app.MapOutpostAgents("/outpost");
-    await app.StartAsync();
+app.MapOutpostAgents("/outpost");
+await app.StartAsync();
 
-    IOutpostServer server = app.Services.GetRequiredService<IOutpostServer>();
+IOutpostServer server = app.Services.GetRequiredService<IOutpostServer>();
 
-    // The token itself is a credential for the administrator of the agent machine; its text leaves it out.
-    step = "CreatePairingTokenAsync";
-    OutpostPairingToken token = await server.CreatePairingTokenAsync("Sample agent");
-    Console.WriteLine(token);
+// The token itself is a credential for the administrator of the agent machine; its text leaves it out.
+OutpostPairingToken token = await server.CreatePairingTokenAsync("Sample agent");
+Console.WriteLine(token);
 
-    // The agent of the token is pending until the console on the agent machine pairs with the token. Once paired, it
-    // polls, and the list shows whether it is connected and which bases it declared.
-    step = "GetAgentsAsync";
-    IReadOnlyList<OutpostAgent> agents = await server.GetAgentsAsync();
-    OutpostAgent created = agents.Single(agent => agent.Id == token.AgentId);
-    Console.WriteLine($"The server knows {agents.Count} agents; the new one is {created.State}.");
+// The agent of the token is pending until the console on the agent machine pairs with the token. Once paired, it
+// polls, and the list shows whether it is connected and which bases it declared.
+IReadOnlyList<OutpostAgent> agents = await server.GetAgentsAsync();
+OutpostAgent created = agents.Single(agent => agent.Id == token.AgentId);
+Console.WriteLine($"The server knows {agents.Count} agents; the new one is {created.State}.");
 
-    // A base key belongs to the first agent that declares it. Releasing it lets another agent take it, once the agent
-    // that holds it no longer declares it; here no agent has declared it.
-    step = "ReleaseBaseAsync";
-    OutpostReleaseResultEnum released = await server.ReleaseBaseAsync("accounting");
-    Console.WriteLine($"Releasing the base accounting: {released}.");
+// A base key belongs to the first agent that declares it. Releasing it lets another agent take it, once the agent
+// that holds it no longer declares it; here no agent has declared it.
+OutpostReleaseResultEnum released = await server.ReleaseBaseAsync("accounting");
+Console.WriteLine($"Releasing the base accounting: {released}.");
 
-    // Revoking an agent refuses its requests from then on and frees its base keys; for a pending agent, it ends its
-    // token, which the sample never gives an agent.
-    step = "RevokeAgentAsync";
-    bool revoked = await server.RevokeAgentAsync(token.AgentId);
-    Console.WriteLine($"Revoking the new agent: {revoked}.");
+// Revoking an agent refuses its requests from then on and frees its base keys; for a pending agent, it ends its
+// token, which the sample never gives an agent.
+bool revoked = await server.RevokeAgentAsync(token.AgentId);
+Console.WriteLine($"Revoking the new agent: {revoked}.");
 
-    step = "ReadAsync";
-    OutpostOutcome outcome = await server.ReadAsync(new OutpostReadRequest { BaseKey = "accounting", Script = "Result = 1 + 1;" });
-    Console.WriteLine($"The read in the base accounting ended as {outcome.Kind} {outcome.Code}.");
+// No agent holds the base accounting, so the Read ends at once as Refused with unknown-base, and no command is created.
+OutpostOutcome outcome = await server.ReadAsync(new OutpostReadRequest { BaseKey = "accounting", Script = "Result = 1 + 1;" });
+Console.WriteLine($"The read in the base accounting ended as {outcome.Kind} {outcome.Code}.");
 
-    await app.StopAsync();
-}
-catch (NotSupportedException)
-{
-    Console.WriteLine($"The sample stops at {step}: it is not implemented yet.");
-}
+await app.StopAsync();

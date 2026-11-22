@@ -26,10 +26,10 @@ What exists today is the [concept](docs/concept.md), these rules, the developmen
 the build settings, and the public contract of the first stage in code: the server
 library, the protocol assembly and the agent program. Only the checks that need no
 implementation work, the codec of the protocol with its signatures and pairing proof,
-the store, pairing and polls without commands on the server with the calls that manage
-agents and base keys, and the COM worker with the executor, which no agent starts yet:
-Read and Write throw `NotSupportedException`, and the agent program starts and stops and
-does nothing else. The server is the one
+the store, pairing, polls, commands and their outcomes on the server with the calls that
+manage agents and base keys, and the COM worker with the executor, which no agent starts
+yet: Read and Write work only against an agent that speaks the protocol, since the agent
+program starts and stops and does nothing else. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions

@@ -48,7 +48,9 @@ public sealed class OutpostWriteRequest
     /// <see cref="OutpostCodes.CallerKeyConflict"/>. When the first command ended as
     /// <see cref="OutpostOutcomeKindEnum.Expired"/> or <see cref="OutpostOutcomeKindEnum.Refused"/>, nothing ran, so
     /// the key is free again and a repeat creates a new command. An outcome, and with it its key, is kept for
-    /// <see cref="OutpostServerOptions.OutcomeRetention"/>; after that a repeat runs the script again.
+    /// <see cref="OutpostServerOptions.OutcomeRetention"/>; after that a repeat runs the script again. The store
+    /// compares the parameters as PostgreSQL's <c>jsonb</c>, so a number in them that its <c>numeric</c> cannot hold,
+    /// such as <c>1e-20000</c>, makes a call with a caller key fail with the exception of the store.
     /// </para>
     /// <para>
     /// A script can use the key to make itself idempotent, for example by marking what it creates, so that a later
