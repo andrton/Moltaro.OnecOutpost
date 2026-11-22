@@ -1241,7 +1241,7 @@ The release
 | S5b | The calls, the hand-out, `outcome` and the signals | Full | Done, 22 November 2026: `ReadAsync` and `WriteAsync` create a signed command, wake the agent's poll through the signals and wait for its outcome; the poll hands commands out up to `free` and 64 MiB; the `outcome` request takes the agent's outcome, with the signed 413 `result-too-large`; the purge removes ended commands. All tested over loopback HTTP with the test agent. The tests ran on the internal contract approved for S5; the code review took three rounds, its P3 of round 1 (a second §2 read of an outcome, 464 → 336 MiB at the peak for 64 MiB) and a P2 of round 2 (sets that did not honor cancellation) fixed; the P4s left are listed in the S5 brief. The other two drafts of the public contract that the S5 brief lists for the owner are S5b's |
 | S6a | The agent's files | Full | Done, 22 November 2026: the policy with the changes carried over from S2, `agent.json` and the secrets read through DPAPI for the machine, the access lists of the data folder, the audit log written in order to the disk with its lock, torn entries, start and retention, the outbox, the order of a command's records, the reservation of poll numbers and the start after a restart; the agent program still runs nothing. The internal contract of S6 was reviewed in two rounds and approved under PQ2; the code review took three rounds (a P1 and a P2, then a P2 of retention, then a P3 moved to S8 by the planner). What it changes in the public contract is listed in the S6 brief for the owner |
 | S6b | The agent's checks of commands and poll answers, its workers and run limits | Full | Done, 22 November 2026: `CommandChecks` with the checks of rule 1 in the order of §7 and the checks of a poll answer, the worker boundary with its fake, and `WorkerPool` with workers, the deadline to open, run limits, the size comparison of S9 and the executor's object; no HTTP, and the agent program still runs nothing. The contract of S6b and S6c was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P3 on what `Kill` promises, fixed), with P4s left in the S6 brief |
-| S6c | The agent's loop: the transport, pairing, polls, outcomes, the host and the service | Full | Not started |
+| S6c | The agent's loop: the transport, pairing, polls, outcomes, the host and the service | Full | Done, 22 November 2026: the transport with the addresses of §11, the waits and read limits, pairing, numbered polls through the proxy, the loop that records every command before it runs and sends outcomes until confirmed, the replacement for size, `connection` and `bases`, retention and the reservation called after verified answers, the in-process host and the Windows service by the `service` argument; end to end against the server of S5 over loopback with a fake in place of the COM worker, through a test proxy. The code review took two rounds (three P3s of round 1 fixed). The manual acceptance of the service is the owner's, on a lab or test machine. What it changes in the public contract is listed in the S6 brief for the owner |
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
@@ -3834,6 +3834,13 @@ documents step.
     sent through a hop that strips `Expect`, and nobody has a reason to change it. Since
     S6, until permanent. The coordinator enters it under "Approved, not in force yet"
     once the owner approves.
+- **Left by S6c's review** (P4, the coordinator, 22 November 2026), for S8 or the sprint
+  named:
+  - a poll answer is copied once after it is buffered, so a 64 MiB answer peaks near
+    128 MiB, not measured;
+  - `Program.Version()` reads the version resource of the `.exe` and no test reaches it;
+    S12 checks that the archive's `.exe` keeps its product version;
+  - X2 is built and waits for the owner in `docs/work/exceptions.md`.
 - **Left by S6b's review** (P4, the coordinator, 22 November 2026), for S6c where its
   code meets them, otherwise S8:
   - untested behaviors whose code is right: `run-limit` whatever the run then gives; a
