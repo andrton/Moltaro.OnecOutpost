@@ -33,9 +33,9 @@ public static class OutpostServiceCollectionExtensions
     /// The server needs an <see cref="ISignals"/> of Moltaro.Signals in the container, which the application registers,
     /// such as an in-process <see cref="SignalHost"/> on one node, or a host in one process and clients in the others.
     /// The library never registers one. Resolving <see cref="IOutpostServer"/> without one gives
-    /// <see cref="InvalidOperationException"/> that says so. The library opens one subscription per waiting poll and per
-    /// waiting call, so the application sizes the subscription limit of its Signals host for its agents and its
-    /// concurrent calls.
+    /// <see cref="InvalidOperationException"/> that says so. The library opens no subscription yet; once Read and Write
+    /// work, it opens one per waiting poll and per waiting call, so the application sizes the subscription limit of its
+    /// Signals host for its agents and its concurrent calls.
     /// </para>
     /// <para>
     /// The store has to exist in <see cref="OutpostServerOptions.Schema"/>: the application applies the migrations with

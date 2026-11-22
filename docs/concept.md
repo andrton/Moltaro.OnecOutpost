@@ -211,13 +211,25 @@ machine, as section 11 says.
      `RollbackTransaction`, voids this rule for its Write. The executor reports Unknown
      when it finds no active transaction after such a script, and when its own commit
      raises. A script that leaves a transaction of its own open is rolled back and fails.
-6. **An agent that is not connected is an error at once.** An agent counts as connected
-   while the lease of its newest poll in the store has not run out. The lease is the poll
-   timeout plus a grace, 10 seconds by default.
+6. **An agent that is not connected is an error at once.** A paired agent counts as
+   connected while the lease of its newest poll in the store has not run out. The lease of
+   a poll is its hold, the smaller of the poll timeout it carries and the server's, plus a
+   grace, 10 seconds by default, counted from the moment the poll is recorded. It ends no
+   later than the poll's signed time plus the allowed skew plus that hold and grace, judged
+   by the clock of the node that records the poll (§6.2 of the [protocol](protocol.md)).
    - A call to a base whose agent is not connected returns Unavailable at once and creates
      no command, unless its caller key names an existing command (rule 4).
-   - An agent that is gone is reported as connected no longer than its lease, plus the
-     difference between the clocks of the nodes, which are expected to be synchronized.
+   - An agent that is gone is reported as connected no longer than the lease its last poll
+     would have had, plus the difference between the clocks of the nodes, which are
+     expected to be synchronized. Its polls held back on the path extend this, together,
+     by at most the allowed skew plus the lead its clock had over the node's when it sent
+     them.
+   - An agent whose clock is behind the node's by more than the skew plus the grace shows
+     as connected only for part of each poll, and behind by more than the skew plus the
+     hold plus the grace never. Calls for it may then get Unavailable where they would get
+     Refused with `clock-skew`.
+   - A live agent that reads an answer for longer than the grace shows as not connected
+     until its next poll.
    - The server keeps nothing for later delivery.
 7. **A command waits for a poll only until its take deadline.** A command waits in the
    store until a poll of its agent takes it, for example while the workers of its base are
@@ -281,7 +293,8 @@ machine, as section 11 says.
     - Its commands that no poll took end as Refused with `revoked`.
     - Its taken commands without an outcome end at once as rule 3 says.
 14. **A base key belongs to the first agent that declares it.** Another agent that
-    declares the same key is refused for that base with `base-claimed`. This holds until
+    declares the same key is refused for that base: its poll answers report the key in
+    `bases.claimed` (§6.2 of the [protocol](protocol.md)). This holds until
     the first agent is revoked or the application releases the key.
     - A release is refused while the agent that holds the key still declares it.
     - The next agent to declare a released key gets it.
@@ -308,7 +321,8 @@ machine, as section 11 says.
    with the agent's identity, the agent's public key as it registered it, and its own
    public signing key. The agent checks the server's key against the fingerprint in the
    token, checks the signature and its own key in the answer, and pins the server's key.
-   Any mismatch ends the pairing.
+   Any mismatch ends the pairing. The server refuses every failure of pairing alike, with
+   a bare HTTP 403 without a body, which only ends the pairing.
 
 The server keeps the agent's public key; no secret of the agent is ever on the server.
 Every later request of the agent is signed with its key. The signature covers the exact
@@ -352,7 +366,8 @@ Write.
   timeout, 25 seconds by default, below the idle limits of common proxies. Then the agent
   opens the next one.
 - Every poll carries:
-  - the protocol version, the agent version, the poll number and the agent's time;
+  - the protocol version, the agent version, the poll number, the agent's time and its
+    poll timeout;
   - the bases, with their modes, free workers and run limits;
   - the received commands whose outcome is not confirmed.
 - After an error, the agent retries with a growing delay, up to the longest delay of its
@@ -460,14 +475,15 @@ for the agents it talks to.
 - A command travels as the exact UTF-8 bytes of its JSON with a separate ECDSA P-256
   signature over those bytes. The agent verifies the bytes before it parses them, so no
   re-serialization stands between the signature and what runs.
-- Every answer of the server is signed in the same way and bound to the request it
-  answers by the SHA-256 of that request's exact body. The agent verifies an answer
-  before it acts on any of it, and treats an answer that does not verify as a lost one.
-- There is one exception: a bare HTTP 413 to an `outcome` request, which an ingress or the
-  web server sends before the library sees the request. The agent acts on it as rule 11
-  says, because all it can cause is Unknown or Failed `result-too-large`. That never
-  claims a success and never frees a caller key, so a forged 413 can only make an outcome
-  less known.
+- Every answer of the server that the agent acts on is signed in the same way and bound to
+  the request it answers by the SHA-256 of that request's exact body. The agent verifies an
+  answer before it acts on any of it, and treats an answer that does not verify as a lost
+  one.
+- There is one exception: a bare HTTP 413 to an `outcome` request, which an ingress, the
+  web server or the library's own check of the declared length sends before the body is
+  read. The agent acts on it as rule 11 says, because all it can cause is Unknown or
+  Failed `result-too-large`. That never claims a success and never frees a caller key, so
+  a forged 413 can only make an outcome less known.
 - A command names:
   - the protocol version, its identity, the agent, the base and the mode;
   - the caller key, if it has one;
@@ -506,7 +522,7 @@ contract is their command line, the local policy and the audit log.
 | D1 | The agent dials out over HTTPS with long polling. There is no WebSocket and no gRPC | Polls pass every proxy and need nothing special from an ingress. A held socket would tie the agent to one node, which would still need the store and the signals to meet the caller |
 | D2 | A tunnel with two commands, Read and Write, each a script in the 1C language. There is no model of 1C objects | A script reaches everything the configuration offers. A model would never be complete and would tie the library to configurations |
 | D3 | 1C is reached through the external connection and the executor `.epf`. OData, HTTP services and the DBMS are not used | The external connection needs no change of the configuration and no web server, and keeps the rights and the logic of 1C |
-| D4 | Every command and every answer of the server is signed over its exact bytes with the server key that the agent pinned at pairing, checked against the fingerprint in the pairing token. The one exception is a bare HTTP 413 to an outcome (§6) | Nothing between the agent and the server can turn into a command or change what the agent acts on, whatever the TLS path looks like, beyond making an outcome less known |
+| D4 | Every command, and every answer of the server that the agent acts on, is signed over its exact bytes with the server key that the agent pinned at pairing, checked against the fingerprint in the pairing token. The one exception is a bare HTTP 413 to an outcome (§6) | Nothing between the agent and the server can turn into a command or change what the agent acts on, whatever the TLS path looks like, beyond making an outcome less known |
 | D5 | An agent signs every request with its own key pair, created at pairing and bound to its token by an HMAC with a secret that never travels. The server keeps only the public key. Polls are numbered, and only the newest takes commands | No secret of the agent ever travels or sits on the server, nobody on the path can pair in its place, and a replayed request achieves nothing |
 | D6 | The local policy decides bases, accounts and modes. The server cannot change it, and there is no list of allowed scripts | The administrator of the back office keeps the last word, and the tunnel stays a tunnel |
 | D7 | The audit log is written before a command runs, and it is also the agent's journal | The administrator sees everything that was done, independently of the server, and there is one record, not two |

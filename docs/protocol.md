@@ -3,11 +3,14 @@
 The wire protocol between an agent and a server. The [concept](concept.md) fixes its
 principles (§3 "Pairing", §4, §6, D1, D4, D5, D15); this document fixes the bytes.
 
-**Status.** Draft of Epic 1, sprint S2, written after the sprint's study. It is public
-contract, and holds as a draft until the owner approves it with the list "What S2 changed
-in the public contract" of the [epic](work/epic-1-first-release.md). The codec of the protocol
-assembly reads and writes its messages, its signatures and the pairing proof; no endpoint
-serves it yet, and no agent sends it.
+**Status.** Draft of Epic 1, sprint S2, written after the sprint's study, with the changes
+of sprint S4 to §6.2 and §9. It is public contract, and holds as a draft until the owner
+approves it with the lists "What S2 changed in the public contract" and "What S4 changes
+in the public contract" of the [epic](work/epic-1-first-release.md). The codec of the
+protocol assembly reads and writes its messages, its signatures and the pairing proof. The
+server's endpoints serve `pair`, and `poll` without commands; an `outcome` passes the
+checks of §9 and its body is read, and then it ends in a 500, since commands do not exist
+yet. No agent sends the protocol yet.
 
 ## 1. Overview
 
@@ -309,9 +312,11 @@ on its machine; the application revokes it and creates a new token.
   number recorded for the agent, from 1 to 2⁶². The agent waits a tenth of its
   `retryDelayMax` before its next poll, so that a duplicated or retried request cannot make
   it poll in a busy loop.
-- **`bases`** gives, as of the moment of the answer, the keys the agent holds and the keys
-  it declared that another agent holds (rule 14). Every key that the newest poll declared is
-  in exactly one of the two.
+- **`bases`** gives, as of the moment of the answer, in `held` the keys the agent holds,
+  and in `claimed` the keys it declared that it does not hold at that moment: those that
+  another agent holds (rule 14), and any that no agent holds, freed during the hold by a
+  release or a revocation, which the agent's next poll claims. Both lists hold declared
+  keys only, and every key that the newest poll declared is in exactly one of the two.
 - **`commands`**: each holds the exact bytes of a command (§7) and the server's signature
   over them. An answer holds no more commands than the sum of `free` in its poll, and none
   when `newest` is not `null`; an answer that breaks either is lost. The agent checks every
@@ -508,7 +513,7 @@ as it travels, every escape counted as it is written:
 | 400 | `{"code":"protocol-version"}` | The path names a version the server does not speak. Every later version keeps this form |
 | 400 | None | A header breaks §4, or the request has a `Content-Encoding` |
 | 401 | None | `Outpost-Agent` names no known agent, or one that is still pending and so has no key |
-| 403 | None | The agent is revoked (rule 13). Anyone who knows an agent's identity can learn this |
+| 403 | None | The agent is revoked (rule 13). A poll whose agent was revoked after its headers were checked gets it after its body was read: when the poll is recorded, or when its hold ends. Anyone who knows an agent's identity can learn this |
 | 403 | None | Any failure of `pair` (§6.1) |
 | 413 | None | A body beyond the limits of §10. Kestrel and every ingress send one too, with headers and a body of their own, such as an HTML page |
 
