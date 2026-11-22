@@ -10,8 +10,9 @@ namespace Moltaro.OnecOutpost.Server.Tests.Purge;
 
 // The purge on a node that runs, with the fake clock: the hosted service that AddOutpostServer registers removes the
 // pairing tokens that expired unused, with their pending agents, and the commands that outlived their retention, once
-// when the host starts and then after every PurgeInterval. A round arms the delay of the next one, on the clock of the options, once it has ended, so the test
-// waits for that delay before it moves the clock and before it reads what a round left.
+// when the host starts and then after every PurgeInterval. A round arms the delay of the next one, on the clock of the
+// options, once it has ended, so the test waits for that delay before it moves the clock and before it reads what a
+// round left.
 [Trait("Requires", "PostgreSQL")]
 public sealed class PurgeTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {

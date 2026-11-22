@@ -410,28 +410,53 @@ internal static class OutpostCodec
         ReadOnlyMemory<byte> body,
         ReadOnlySpan<byte> signature)
     {
+        OutpostOutcomeRequest request = ReadOutcomeRequest(agentKey, agent, body, signature, out JsonDocument document);
+        document.Dispose();
+
+        return request;
+    }
+
+    // The same, and it gives the document of the body that it read by §2, which reads `body` in place, so that
+    // ReadRequestOutcome applies §8 to the `outcome` member once its size is checked, without reading it again. The
+    // caller disposes the document; it is disposed already when the reader throws.
+    public static OutpostOutcomeRequest ReadOutcomeRequest(
+        ECDsa agentKey,
+        Guid agent,
+        ReadOnlyMemory<byte> body,
+        ReadOnlySpan<byte> signature,
+        out JsonDocument document)
+    {
         if (!OutpostSignatures.VerifyRequest(agentKey, OutpostRequestKindEnum.Outcome, agent, body.Span, signature))
         {
             throw NotVerified("The outcome is not signed with the key of its agent.");
         }
 
-        using JsonDocument document = ParseMessage(body);
-        JsonElement request = Members(document.RootElement, "command", "outcome");
+        document = ParseMessage(body);
 
-        Guid command = ReadId(request, "command");
-        JsonElement outcome = request.GetProperty("outcome");
-
-        if (outcome.ValueKind != JsonValueKind.Object)
+        try
         {
-            throw Form("The outcome is not an object.");
+            JsonElement request = Members(document.RootElement, "command", "outcome");
+
+            Guid command = ReadId(request, "command");
+            JsonElement outcome = request.GetProperty("outcome");
+
+            if (outcome.ValueKind != JsonValueKind.Object)
+            {
+                throw Form("The outcome is not an object.");
+            }
+
+            // The document reads the body in place, so the raw bytes of the member lie inside the body, and their
+            // offset gives the slice: the size of the outcome is the length of the bytes that came.
+            ReadOnlySpan<byte> outcomeBytes = JsonMarshal.GetRawUtf8Value(outcome);
+            body.Span.Overlaps(outcomeBytes, out int offset);
+
+            return new OutpostOutcomeRequest(command, body.Slice(offset, outcomeBytes.Length));
         }
-
-        // The document reads the body in place, so the raw bytes of the member lie inside the body, and their offset
-        // gives the slice: the size of the outcome is the length of the bytes that came.
-        ReadOnlySpan<byte> outcomeBytes = JsonMarshal.GetRawUtf8Value(outcome);
-        body.Span.Overlaps(outcomeBytes, out int offset);
-
-        return new OutpostOutcomeRequest(command, body.Slice(offset, outcomeBytes.Length));
+        catch
+        {
+            document.Dispose();
+            throw;
+        }
     }
 
     // Readers of the agent: they verify the answer, then parse it; `pair` checks the fingerprint first (§3). Each
@@ -738,8 +763,25 @@ internal static class OutpostCodec
     public static OutpostOutcomeMessage ReadOutcome(OutpostModeEnum? mode, ReadOnlySpan<byte> outcome)
     {
         using JsonDocument document = ParseMessage(outcome.ToArray());
+        OutpostOutcomeMessage message = ReadOutcomeMembers(mode, document.RootElement);
+
+        // The document is disposed when the reader returns, so the result is a copy of its own.
+        return message with { Result = message.Result?.Clone() };
+    }
+
+    // Reads the outcome object of a request that ReadOutcomeRequest read into `request` and checked by §2, the server's
+    // step 3 of §6.3: the member rules of §8 for the mode, as ReadOutcome applies them, without a second check of §2
+    // and without a copy. The result of the message is an element of `request`, valid until the caller disposes it.
+    public static OutpostOutcomeMessage ReadRequestOutcome(OutpostModeEnum? mode, JsonDocument request)
+    {
+        return ReadOutcomeMembers(mode, request.RootElement.GetProperty("outcome"));
+    }
+
+    // The members of an outcome object by §8 for the mode, in an object that §2 has been checked on.
+    private static OutpostOutcomeMessage ReadOutcomeMembers(OutpostModeEnum? mode, JsonElement outcome)
+    {
         JsonElement message = Members(
-            document.RootElement,
+            outcome,
             "kind",
             "code",
             "result",
@@ -1001,7 +1043,8 @@ internal static class OutpostCodec
         return keys;
     }
 
-    // `result` (§8): for `succeeded`, any value of at most 64 levels, `null` included; `null` for every other kind.
+    // `result` (§8): for `succeeded`, any value of at most 64 levels, `null` included; `null` for every other kind. The
+    // value is an element of the document of the message.
     private static JsonElement? ReadResult(JsonElement message, OutpostAgentOutcomeKindEnum kind)
     {
         JsonElement result = message.GetProperty("result");
@@ -1021,8 +1064,7 @@ internal static class OutpostCodec
             throw Form($"The result nests deeper than {OutpostProtocol.MaxValueDepth} levels.");
         }
 
-        // The document is disposed when the reader returns, so the result is a copy of its own.
-        return result.Clone();
+        return result;
     }
 
     private static string ModeWord(OutpostModeEnum mode)

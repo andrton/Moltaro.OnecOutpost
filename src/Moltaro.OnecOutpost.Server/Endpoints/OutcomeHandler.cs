@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
@@ -68,13 +69,14 @@ internal sealed class OutcomeHandler
         }
 
         OutpostOutcomeRequest request;
+        JsonDocument read;
 
         try
         {
             // A paired agent has the key that its pairing registered in the form of §2.
             using ECDsa agentKey = OutpostKeys.ImportPublicKey(agent.PublicKey);
 
-            request = OutpostCodec.ReadOutcomeRequest(agentKey, agentId, body, signature);
+            request = OutpostCodec.ReadOutcomeRequest(agentKey, agentId, body, signature, out read);
         }
         catch (OutpostProtocolException exception)
         {
@@ -83,39 +85,45 @@ internal sealed class OutcomeHandler
             return;
         }
 
-        CommandLimits? limits = await _store.FindCommandLimitsAsync(request.Command, context.RequestAborted);
-
-        // The size of an outcome is the length of its object as it came (§8).
-        if (request.Outcome.Length > (limits?.OutcomeLimit ?? _options.OutcomeSizeLimit))
+        // The body as it was read by §2, whose outcome member §8 is applied to without reading it again. The message
+        // read from it refers to it until the outcome is kept.
+        using (read)
         {
-            await WriteRefusalAsync(context, agentId, body, OutpostProtocolCodes.ResultTooLarge);
+            CommandLimits? limits = await _store.FindCommandLimitsAsync(request.Command, context.RequestAborted);
 
-            return;
-        }
+            // The size of an outcome is the length of its object as it came (§8).
+            if (request.Outcome.Length > (limits?.OutcomeLimit ?? _options.OutcomeSizeLimit))
+            {
+                await WriteRefusalAsync(context, agentId, body, OutpostProtocolCodes.ResultTooLarge);
 
-        OutpostOutcomeMessage message;
+                return;
+            }
 
-        try
-        {
-            message = OutpostCodec.ReadOutcome(limits?.Mode, request.Outcome.Span);
-        }
-        catch (OutpostProtocolException exception)
-        {
-            await WriteRefusalAsync(context, agentId, body, exception.Code);
+            OutpostOutcomeMessage message;
 
-            return;
-        }
+            try
+            {
+                message = OutpostCodec.ReadRequestOutcome(limits?.Mode, read);
+            }
+            catch (OutpostProtocolException exception)
+            {
+                await WriteRefusalAsync(context, agentId, body, exception.Code);
 
-        bool kept = await _store.KeepOutcomeAsync(
-            agentId,
-            request.Command,
-            message,
-            request.Outcome,
-            context.RequestAborted);
+                return;
+            }
 
-        if (kept)
-        {
-            await _signals.SetAsync(_options.SignalKey(request.Command), context.RequestAborted);
+            bool kept = await _store.KeepOutcomeAsync(
+                agentId,
+                request.Command,
+                message,
+                request.Outcome,
+                context.RequestAborted);
+
+            // A set after a commit is not cancelled, as OutpostServer says.
+            if (kept)
+            {
+                await _signals.SetAsync(_options.SignalKey(request.Command), CancellationToken.None);
+            }
         }
 
         byte[] answer = OutpostCodec.Write(new OutpostOutcomeAnswer(_options.TimeProvider.GetUtcNow(), request.Command));

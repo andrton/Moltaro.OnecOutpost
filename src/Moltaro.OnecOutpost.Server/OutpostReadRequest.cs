@@ -77,7 +77,9 @@ public sealed class OutpostReadRequest
     /// <see cref="OutpostOutcomeKindEnum.Refused"/> with <see cref="OutpostCodes.CallerKeyConflict"/>. When the first
     /// command ended as <see cref="OutpostOutcomeKindEnum.Expired"/> or <see cref="OutpostOutcomeKindEnum.Refused"/>,
     /// the key is free again, and a repeat creates a new command. An outcome, and with it its key, is kept for
-    /// <see cref="OutpostServerOptions.OutcomeRetention"/>.
+    /// <see cref="OutpostServerOptions.OutcomeRetention"/>. The store compares the parameters as PostgreSQL's
+    /// <c>jsonb</c>, so a number in them that its <c>numeric</c> cannot hold, such as <c>1e-20000</c>, makes a call
+    /// with a caller key fail with the exception of the store.
     /// </para>
     /// </remarks>
     public string? CallerKey { get; init; }

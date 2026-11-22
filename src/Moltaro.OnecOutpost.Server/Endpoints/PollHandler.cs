@@ -109,19 +109,24 @@ internal sealed class PollHandler
             _options.ClockSkew,
             context.RequestAborted);
 
-        // The calls that wait for the commands that the list made Expired learn of it once it is committed.
-        foreach (Guid expired in record.Expired)
-        {
-            await _signals.SetAsync(_options.SignalKey(expired), context.RequestAborted);
-        }
-
         // An agent that is not paired gets the bare 403, and an older poll, an exact replay included, is answered at
-        // once and changed nothing (rule 10).
+        // once and changed nothing (rule 10): neither made a command Expired.
         if (record.State.Revoked || record.State.Newest is not null)
         {
             await WriteAnswerAsync(context, agentId, body, record.State, []);
 
             return;
+        }
+
+        // The timer of the hold runs on the clock of the options from here, once the poll is recorded, so that the
+        // hold ends within the lease that the poll recorded, however long the sets below take.
+        using CancellationTokenSource holdEnds = new(hold, _options.TimeProvider);
+
+        // The calls that wait for the commands that the list made Expired learn of it once it is committed. A set
+        // after a commit is not cancelled, as OutpostServer says.
+        foreach (Guid expired in record.Expired)
+        {
+            await _signals.SetAsync(_options.SignalKey(expired), CancellationToken.None);
         }
 
         // The room of the commands in the answer is the limit of §10 less the answer without them. The time has a
@@ -130,7 +135,7 @@ internal sealed class PollHandler
         // without commands keeps this length for the whole hold, and an answer with them is at most the limit.
         long room = OutpostProtocol.PollAnswerLimit - OutpostCodec.Write(Answer(record.State, [])).Length;
 
-        PollTake? take = await HoldAsync(context, agentId, poll, hold, room, wakes);
+        PollTake? take = await HoldAsync(context, agentId, poll, room, wakes, holdEnds.Token);
 
         if (take is not null)
         {
@@ -153,21 +158,18 @@ internal sealed class PollHandler
 
     // Passes and waits until a pass decides the answer or the hold ends: its time is up, the request is aborted or the
     // node stops, whichever comes first. A pass is a take. It decides the answer when it took anything, since a poll
-    // that takes answers and so takes once, or when it found the agent revoked or the poll replaced. The timer of the
-    // hold runs on the clock of the options and starts here, once the poll is recorded; it is gone once this returns.
-    // Null when the hold ended without such a pass.
+    // that takes answers and so takes once, or when it found the agent revoked or the poll replaced. Null when the hold
+    // ended without such a pass.
     private async Task<PollTake?> HoldAsync(
         HttpContext context,
         Guid agentId,
         OutpostPollRequest poll,
-        TimeSpan hold,
         long room,
-        ISignalSubscription wakes)
+        ISignalSubscription wakes,
+        CancellationToken holdEnds)
     {
-        using CancellationTokenSource holdEnds = new(hold, _options.TimeProvider);
-
         using CancellationTokenSource held = CancellationTokenSource.CreateLinkedTokenSource(
-            holdEnds.Token,
+            holdEnds,
             context.RequestAborted,
             _lifetime.ApplicationStopping);
 
