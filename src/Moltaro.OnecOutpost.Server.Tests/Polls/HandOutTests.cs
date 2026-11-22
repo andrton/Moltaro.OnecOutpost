@@ -27,6 +27,12 @@ public sealed class HandOutTests(PostgreSqlFixture postgres) : IClassFixture<Pos
     // The default of the option, which every poll of these tests carries.
     private static readonly TimeSpan PollTimeout = TimeSpan.FromSeconds(25);
 
+    // The guard of the calls of the test of 64 MiB, in place of the deadline of TestCalls, which is a guard against a
+    // hang and states nothing. Each of its calls lasts while three commands of 16 MiB are created, handed out in answers
+    // of up to 64 MiB and confirmed: about 7 seconds alone, and over a minute on a loaded machine. A correct
+    // implementation meets this with a wide margin on a slow runner, and a call that never returns still fails the test.
+    private static readonly TimeSpan LargeCallDeadline = TimeSpan.FromMinutes(5);
+
     // The order in which the calls create their commands: Reads without a caller key and Writes with one, each told by
     // the number of its script.
     private static readonly (string Mode, string? CallerKey, int Number)[] Created =
@@ -102,11 +108,11 @@ public sealed class HandOutTests(PostgreSqlFixture postgres) : IClassFixture<Pos
 
         foreach (int length in scriptLengths)
         {
-            string script = new('x', length);
+            OutpostReadRequest request = new() { BaseKey = TestCalls.BaseKey, Script = new('x', length), Parameters = [] };
 
             calls.Add(await server.StartCallAsync(
                 agent.Id,
-                () => TestCalls.CallAsync(server.Server, "read", null, script, "{}", cancellationToken),
+                () => server.Server.ReadAsync(request, cancellationToken).WaitAsync(LargeCallDeadline),
                 cancellationToken));
         }
 
