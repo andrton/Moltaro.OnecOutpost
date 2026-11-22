@@ -36,14 +36,13 @@ ended commands after `OutcomeRetention`.
 Commands work on the server, against an agent that speaks the protocol. `ReadAsync` and
 `WriteAsync` check the caller key, the base and the agent, create a signed command and
 wake the agent's poll through Moltaro.Signals; the poll hands the command out, the
-`outcome` request takes the agent's outcome, and the call is woken and returns it. The server
-keeps one command per base and caller key, and a repeat returns its outcome; that a Write
-runs once also needs the agent's audit log, which comes with the agent program. A command
-that no poll took in time ends as Expired, and
-revoking an agent ends its commands. All of this is tested over loopback HTTP with a test
-agent. The agent program, which will poll, check the commands and run them through the
-COM worker, comes in a later sprint, so nothing runs a script in 1C through the library
-yet.
+`outcome` request takes the agent's outcome, and the call is woken and returns it. The
+server keeps one command per base and caller key, and a repeat returns its outcome; that a
+Write runs once also needs the agent's audit log, which comes with the agent program. A
+command that no poll took in time ends as Expired, and revoking an agent ends its
+commands. All of this is tested over loopback HTTP with a test agent. The agent program,
+which will poll, check the commands and run them through the COM worker, comes in a later
+sprint, so nothing runs a script in 1C through the library yet.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from

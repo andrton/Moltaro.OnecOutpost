@@ -1189,7 +1189,7 @@ The release
 | S3 | The store | Full | Done, 21 November 2026: the store on PostgreSQL in the schema the application chooses, its first migration, `OutpostMigrations` with `MigrateAsync` and `GetScripts`, and the pairing tokens with their pending agents: created, found, redeemed once and purged, which no endpoint uses yet. The internal contract was reviewed in two rounds; the code review took three, and its last finding, a word of the XML documentation of `MigrateAsync`, was fixed on the owner's decision without a fourth round. What it changed in the public contract is listed in its brief for the owner |
 | S4 | Pairing and agents on the server | Full | Done, 22 November 2026: the store's polls, leases and base keys with their second migration; the endpoints `pair` and `poll`, with the unsigned answers of §9 before the body and the hold of a poll; `AddOutpostServer` in full, `CreatePairingTokenAsync`, `GetAgentsAsync`, `RevokeAgentAsync`, `ReleaseBaseAsync` and the purge. Read, Write and `outcome` still refuse. The internal contract was reviewed in two rounds; the code review closed in one, with four P4 left for the coordinator; the documents were reviewed once. What it changed in the public contract is listed in its brief for the owner |
 | S5a | Commands in the store | Full | Done, 22 November 2026: the commands table with the third migration `Commands`, the store operations of commands and outcomes with their tests and races against PostgreSQL, revocation ending the agent's commands in its transaction, and parameters with a name twice refused at the call. Read, Write and `outcome` still refuse. The study read actions/runner and Halibut; the internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds and left P4s, listed for S5b in its brief. Of the drafts of the public contract that the S5 brief lists for the owner, S5a makes two: parameters with a name twice refused, and a store database in UTF8 |
-| S5b | The calls, the hand-out, `outcome` and the signals | Full | Not started |
+| S5b | The calls, the hand-out, `outcome` and the signals | Full | Done, 22 November 2026: `ReadAsync` and `WriteAsync` create a signed command, wake the agent's poll through the signals and wait for its outcome; the poll hands commands out up to `free` and 64 MiB; the `outcome` request takes the agent's outcome, with the signed 413 `result-too-large`; the purge removes ended commands. All tested over loopback HTTP with the test agent. The tests ran on the internal contract approved for S5; the code review took three rounds, its P3 of round 1 (a second §2 read of an outcome, 464 → 336 MiB at the peak for 64 MiB) and a P2 of round 2 (sets that did not honor cancellation) fixed; the P4s left are listed in the S5 brief. The other two drafts of the public contract that the S5 brief lists for the owner are S5b's |
 | S6 | The agent | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
@@ -2375,6 +2375,22 @@ each where its own code meets it:
 - deleting a Pending agent scans `commands` through its foreign key;
 - the comment on the order of locks in `OutpostStore` reads as if two creates for one
   agent wait for each other, which `FOR SHARE` locks do not.
+
+S5b closed the first, the fourth and the last; it stated the second in the XML
+documentation of `CallerKey`. **Left by S5b's review** (P4, the coordinator, 22 November
+2026), for S8 unless an earlier sprint meets them:
+
+- a repeat that finds its command as the purge removes it gets `InvalidOperationException`
+  from `PassCommandAsync`; deleting a Pending agent scans `commands`;
+- the poll answer is written through UTF-16 base64 strings and a growing buffer, about
+  352 MiB at the peak for a full 64 MiB answer; a waiting call reads a stored outcome with
+  a copy and a clone;
+- a cancellation during the sets of a revocation or of a poll's Expired skips the sets
+  after the one in flight, so those callers learn of the end up to `PollTimeout` later;
+- a signal that arrives as a hold ends gets no take, and the next poll takes the command;
+- at the lease boundary a call can get Unavailable while another call's command for the
+  same key is committing; nothing runs twice;
+- the 4-argument `ReadOutcomeRequest` is called only by the tests of the protocol.
 
 - **Goal.** Read and Write work on the server, end to end against an agent that speaks
   the protocol:
