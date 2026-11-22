@@ -72,7 +72,7 @@ public sealed class RetentionTests
     // The log is the journal of rules 3, 10 and 11: a command not confirmed is still listed in every poll, and the
     // highest reservation bounds every poll after a restart. A command whose entries are all removed is forgotten, and
     // one whose received and ended go while its confirmed stays is still known.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_with_an_entry_of_an_unconfirmed_command_and_the_file_of_the_highest_reservation_are_kept_past_the_retention()
     {
         Guid unconfirmed = Guid.NewGuid();
@@ -257,7 +257,7 @@ public sealed class RetentionTests
     // the order of their names; the received and the ended of the command that crosses into 2026-11-20 go while its
     // confirmed stays. Kept in both directions, the files would chain back to the first one, and the log would grow
     // without bound.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Files_of_commands_confirmed_after_midnight_go_once_past_the_retention_while_their_confirmed_stays()
     {
         Dictionary<string, string> files = [];

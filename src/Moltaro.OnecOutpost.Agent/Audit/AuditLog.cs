@@ -279,10 +279,11 @@ internal sealed class AuditLog : IDisposable
     // The whole rule of retention, called after each verified poll answer with its time: nothing when the clock is more
     // than a day away from that time, either way; otherwise it deletes, in the order of their names, every file whose
     // last entry is more than retentionDays plus a day before the clock, and every file with no entry, except a file
-    // with an entry of an unconfirmed command and the file of the highest reservation of the identity. The files of one
-    // command go together: a file stays while a file that stays holds an entry of one of its commands, and a file that
-    // holds a confirmed is deleted after the other files of that command. A file it cannot delete stays until a later
-    // call, with every file not yet deleted that shares a command with it, and nothing is recorded.
+    // with an entry of an unconfirmed command and the file of the highest reservation of the identity. No command is
+    // left with its received or ended and without its confirmed: a file stays while it holds the confirmed of a command
+    // that has an entry in a file that stays, and it is deleted after the other files of that command, while a received
+    // or an ended may go before its confirmed. A file it cannot delete stays until a later call, and so does the file
+    // of the confirmed of each of its commands; nothing is recorded.
     public void RemoveExpired(Guid agent, DateTimeOffset answerTime, int retentionDays)
     {
         DateTimeOffset now = _clock.GetUtcNow();
@@ -313,7 +314,7 @@ internal sealed class AuditLog : IDisposable
             }
         }
 
-        KeepTogether(deletable);
+        KeepConfirmed(deletable);
 
         bool removed = false;
 
@@ -337,8 +338,8 @@ internal sealed class AuditLog : IDisposable
             }
             catch (IOException)
             {
-                // The file stays until a later call, and with it every file that shares a command with it.
-                KeepTogether(deletable);
+                // The file stays until a later call, and with it the file of the confirmed of each of its commands.
+                KeepConfirmed(deletable);
                 continue;
             }
 
@@ -948,9 +949,11 @@ internal sealed class AuditLog : IDisposable
         }
     }
 
-    // Takes out of the files to delete every one that shares a command with a file that stays, until none does, so that
-    // the files of one command go together or not at all.
-    private void KeepTogether(HashSet<AuditFile> deletable)
+    // Takes out of the files to delete every one that holds the confirmed of a command with an entry in a file that
+    // stays, until none does, so that no command is left with its received or ended and without its confirmed. Only
+    // that direction keeps a file: a received or an ended may go while its confirmed stays, so a file that is never past
+    // the retention keeps no older one.
+    private void KeepConfirmed(HashSet<AuditFile> deletable)
     {
         HashSet<Guid> staying = [];
 
@@ -963,7 +966,7 @@ internal sealed class AuditLog : IDisposable
 
         while (kept)
         {
-            List<AuditFile> sharing = [.. deletable.Where(file => file.Commands.Keys.Any(staying.Contains))];
+            List<AuditFile> sharing = [.. deletable.Where(file => ConfirmsAny(file, staying))];
 
             foreach (AuditFile file in sharing)
             {
@@ -973,6 +976,12 @@ internal sealed class AuditLog : IDisposable
 
             kept = sharing.Count > 0;
         }
+    }
+
+    // True when the file holds the confirmed of one of these commands.
+    private static bool ConfirmsAny(AuditFile file, HashSet<Guid> commands)
+    {
+        return file.Commands.Values.Any(facts => facts.Confirmed && commands.Contains(facts.Id));
     }
 
     // True while another file that is left holds an entry of a command whose confirmed this file holds.
