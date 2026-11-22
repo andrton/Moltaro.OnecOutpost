@@ -9,9 +9,10 @@ namespace Moltaro.OnecOutpost.Server.Tests.Loopback;
 
 // An agent of the protocol, made of the internal types of the protocol assembly, that speaks to a LoopbackServer over
 // HTTP as docs/protocol.md says an agent does: it pairs with its pairing token and a key of its own, pins the server
-// key from the verified answer (§6.1), signs every request (§3), and verifies every answer that it reads (§9). A
-// test drives it request by request and reads what came; it decides nothing that the agent program decides, such as
-// when to poll again or what to do with a lost answer. S5 reuses it for commands and outcomes.
+// key from the verified answer (§6.1), signs every request (§3), verifies every answer that it reads (§9) and every
+// command that an answer hands it (§7), and sends outcomes (§6.3). A test drives it request by request and reads what
+// came; it decides nothing that the agent program decides, such as when to poll again, which commands its next poll
+// lists as received, or what to do with a lost answer.
 internal sealed class TestAgent : IDisposable
 {
     private const string ContentType = "application/json";
@@ -103,9 +104,18 @@ internal sealed class TestAgent : IDisposable
     // bases declared, without received commands.
     public OutpostPollRequest NextPoll(TimeSpan pollTimeout, IReadOnlyList<OutpostPollBase> bases)
     {
+        return NextPoll(pollTimeout, bases, []);
+    }
+
+    // Its next poll, which lists the commands given as received (§6.2).
+    public OutpostPollRequest NextPoll(
+        TimeSpan pollTimeout,
+        IReadOnlyList<OutpostPollBase> bases,
+        IReadOnlyList<Guid> received)
+    {
         Number++;
 
-        return PollRequests.Create(Number, _clock.GetUtcNow(), pollTimeout, bases);
+        return PollRequests.Create(Number, _clock.GetUtcNow(), pollTimeout, bases) with { Received = received };
     }
 
     public Task<AgentAnswer> PollAsync(OutpostPollRequest poll, CancellationToken cancellationToken)
@@ -128,6 +138,58 @@ internal sealed class TestAgent : IDisposable
             answer.RequestBody,
             answer.Body,
             answer.SignatureBytes);
+    }
+
+    // The commands that a verified poll answer hands out, in its order, each verified with the pinned server key and
+    // read as §7 says.
+    public IReadOnlyList<OutpostCommandMessage> ReadCommands(OutpostPollAnswer answer)
+    {
+        return [.. answer.Commands.Select(command => OutpostCodec.ReadCommand(PinnedKey, command))];
+    }
+
+    // Sends an outcome request for the command, with the outcome object written as the agent writes the outcomes of its
+    // own (§8).
+    public Task<AgentAnswer> SendOutcomeAsync(
+        Guid commandId,
+        OutpostOutcomeMessage outcome,
+        CancellationToken cancellationToken)
+    {
+        return SendOutcomeAsync(commandId, OutpostCodec.Write(outcome), cancellationToken);
+    }
+
+    // Sends an outcome request for the command with the exact bytes of an outcome object, as the agent forwards the
+    // object of the executor (§8).
+    public Task<AgentAnswer> SendOutcomeAsync(Guid commandId, byte[] outcome, CancellationToken cancellationToken)
+    {
+        byte[] body = OutpostCodec.Write(new OutpostOutcomeRequest(commandId, outcome));
+
+        return SendAsync(OutpostRequestKindEnum.Outcome, body, cancellationToken);
+    }
+
+    // Checks that an answer to an outcome request is a verified 200 that confirms the command (§6.3, §9), and reads it.
+    public OutpostOutcomeAnswer ReadOutcomeAnswer(Guid commandId, AgentAnswer answer)
+    {
+        Assert.Equal(200, answer.Status);
+        Assert.Equal(ContentType, answer.ContentType);
+
+        return OutpostCodec.ReadOutcomeAnswer(
+            PinnedKey,
+            Id,
+            commandId,
+            answer.RequestBody,
+            answer.Body,
+            answer.SignatureBytes);
+    }
+
+    // Sends the outcome of the command and checks that the server confirmed it.
+    public async Task<OutpostOutcomeAnswer> ConfirmOutcomeAsync(
+        Guid commandId,
+        OutpostOutcomeMessage outcome,
+        CancellationToken cancellationToken)
+    {
+        AgentAnswer answer = await SendOutcomeAsync(commandId, outcome, cancellationToken);
+
+        return ReadOutcomeAnswer(commandId, answer);
     }
 
     // Checks that an answer is a verified signed refusal of §9, bound to the request as the server received it, and

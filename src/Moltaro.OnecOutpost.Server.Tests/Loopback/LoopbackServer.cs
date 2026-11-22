@@ -6,16 +6,19 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Server.Tests.Store;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.Signals;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Loopback;
 
 // One node of the server as an application embeds it, reached over loopback HTTP: Kestrel on port 0 of 127.0.0.1, the
 // store in a schema of its own that the library migrated, a signing key made for the node, the fake clock as the
-// TimeProvider of the options, and the endpoints of the agents at /outpost. A test starts one and drives it through
-// the public API and through test agents; S5 reuses it.
+// TimeProvider of the options, the endpoints of the agents at /outpost, and an in-process SignalHost as its ISignals,
+// or the client of a host apart that the test gives. A test starts one and drives it through the public API and
+// through test agents.
 //
 // Every wait of a test on the node has a deadline, reached only when the node never does what the test waits for: on
 // loopback, every answer, every timer and every end of a request comes well within it. A test that reaches it fails
@@ -47,6 +50,7 @@ internal sealed class LoopbackServer : IAsyncDisposable
         Schema = schema;
         Options = options;
         Server = app.Services.GetRequiredService<IOutpostServer>();
+        Signals = app.Services.GetRequiredService<ISignals>();
         Address = new Uri(app.Urls.Single() + Prefix + "/");
 
         // A body is sent with Expect: 100-continue only when the server asks for it: the wait for 100 Continue is
@@ -65,6 +69,9 @@ internal sealed class LoopbackServer : IAsyncDisposable
 
     public IOutpostServer Server { get; }
 
+    // The ISignals of the node, through which a test watches the keys that the node sets.
+    public ISignals Signals { get; }
+
     // The address of the endpoints, http://127.0.0.1:{port}/outpost/, so that v1/poll relative to it names a request.
     public Uri Address { get; }
 
@@ -80,10 +87,32 @@ internal sealed class LoopbackServer : IAsyncDisposable
     }
 
     // Starts a node whose options the test may change after the store, the signing key and the clock are set.
-    public static async Task<LoopbackServer> StartAsync(
+    public static Task<LoopbackServer> StartAsync(
         PostgreSqlFixture postgres,
         string schemaName,
         Action<OutpostServerOptions> configure,
+        CancellationToken cancellationToken)
+    {
+        return StartNodeAsync(postgres, schemaName, configure, null, cancellationToken);
+    }
+
+    // Starts a node that reaches the Signals host through the ISignals given, which the test owns and disposes after
+    // the node.
+    public static Task<LoopbackServer> StartAsync(
+        PostgreSqlFixture postgres,
+        string schemaName,
+        Action<OutpostServerOptions> configure,
+        RemoteSignals signals,
+        CancellationToken cancellationToken)
+    {
+        return StartNodeAsync(postgres, schemaName, configure, signals.Client, cancellationToken);
+    }
+
+    private static async Task<LoopbackServer> StartNodeAsync(
+        PostgreSqlFixture postgres,
+        string schemaName,
+        Action<OutpostServerOptions> configure,
+        ISignals? signals,
         CancellationToken cancellationToken)
     {
         MigratedSchema schema = await MigratedSchema.CreateAsync(postgres, schemaName, cancellationToken);
@@ -96,7 +125,15 @@ internal sealed class LoopbackServer : IAsyncDisposable
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
         builder.WebHost.ConfigureKestrel(kestrel => kestrel.Listen(IPAddress.Loopback, 0));
-        ServerSetup.AddSignals(builder.Services);
+
+        if (signals is null)
+        {
+            ServerSetup.AddSignals(builder.Services);
+        }
+        else
+        {
+            builder.Services.AddSingleton(signals);
+        }
 
         builder.Services.AddOutpostServer(configured =>
         {
@@ -115,13 +152,17 @@ internal sealed class LoopbackServer : IAsyncDisposable
         {
             app.Use(async (context, next) =>
             {
+                // A header is read, never the body, which only the endpoint reads within its limit.
+                string? signature = context.Request.Headers[OutpostProtocol.SignatureHeader].FirstOrDefault();
+
                 try
                 {
                     await next(context);
                 }
                 finally
                 {
-                    ended.Writer.TryWrite(new EndedRequest(context.Request.Path, context.Response.HasStarted));
+                    ended.Writer.TryWrite(
+                        new EndedRequest(context.Request.Path, context.Response.HasStarted, signature));
                 }
             });
 
@@ -161,6 +202,67 @@ internal sealed class LoopbackServer : IAsyncDisposable
         return Clock.WaitForTimerAsync(dueBy, cancellationToken).WaitAsync(Deadline, cancellationToken);
     }
 
+    // Completes once `count` timers of the clock are armed to fire at or before dueBy: for calls, one timer for the
+    // wait of each, which ends it at the earlier of its due moment and PollTimeout after it starts.
+    public Task WaitForTimersAsync(DateTimeOffset dueBy, int count, CancellationToken cancellationToken)
+    {
+        return Clock.WaitForTimersAsync(dueBy, count, cancellationToken).WaitAsync(Deadline, cancellationToken);
+    }
+
+    // The key of the signals for an agent or a command, as the node names it: the prefix of the options, then the
+    // identity in the form of §2 of docs/protocol.md.
+    public string SignalKey(Guid id)
+    {
+        return Options.SignalKeyPrefix + "." + id.ToString("D");
+    }
+
+    // Sends a poll that becomes the newest and is held, and gives the task of its answer once the node has recorded it
+    // and holds it: once the timer of its hold is armed. No other timer may be due by the end of its hold; a test gives
+    // a poll a shorter poll timeout where one is.
+    public async Task<Task<AgentAnswer>> HoldPollAsync(
+        TestAgent agent,
+        OutpostPollRequest poll,
+        CancellationToken cancellationToken)
+    {
+        TimeSpan hold = poll.PollTimeout < Options.PollTimeout ? poll.PollTimeout : Options.PollTimeout;
+        DateTimeOffset start = Clock.GetUtcNow();
+
+        Task<AgentAnswer> answer = agent.PollAsync(poll, cancellationToken);
+        await WaitForTimerAsync(start + hold, cancellationToken);
+
+        return answer;
+    }
+
+    // Starts a call for a base of the agent and gives its task once the node has created its command. The node sets the
+    // agent's key after the commit of every command it creates, and a member of a group of its own on that key sees
+    // the set. A call that ends before, as one that creates no command does, fails the test.
+    public async Task<Task<OutpostOutcome>> StartCallAsync(
+        Guid agentId,
+        Func<Task<OutpostOutcome>> call,
+        CancellationToken cancellationToken)
+    {
+        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(Deadline);
+
+        using ISignalSubscription created = Signals.Subscribe(SignalKey(agentId), Guid.NewGuid().ToString("N"));
+
+        // The first wait of a member returns Joined once the member is open on its host; a set from then on reaches it.
+        Assert.Equal(SignalWaitResultEnum.Joined, await created.WaitAsync(null, deadline.Token));
+
+        Task<OutpostOutcome> outcome = call();
+        Task<SignalWaitResultEnum> signaled = created.WaitAsync(null, deadline.Token).AsTask();
+
+        if (await Task.WhenAny(signaled, outcome) == outcome && !signaled.IsCompleted)
+        {
+            OutpostOutcome ended = await outcome;
+            Assert.Fail($"The call ended as {ended.Kind} {ended.Code} before it created a command.");
+        }
+
+        Assert.Equal(SignalWaitResultEnum.Signaled, await signaled);
+
+        return outcome;
+    }
+
     // Sends the agent's next poll, with the option's poll timeout and the bases given, ends its hold and gives the
     // verified answer. It waits until the timer of the hold is armed before it moves the clock to the end of the hold,
     // so it serves only a poll that becomes the newest.
@@ -195,6 +297,44 @@ internal sealed class LoopbackServer : IAsyncDisposable
                 return ended;
             }
         }
+    }
+
+    // Completes once the node has finished handling the request that the answer answers, found by its signature, after
+    // the ended requests a test read before. An answer can reach the agent before its endpoint has returned, so this
+    // is what tells that the endpoint has let go of what it held, such as the timer of a hold.
+    public async Task WaitForEndOfAsync(AgentAnswer answer, CancellationToken cancellationToken)
+    {
+        string signature = OutpostHeaders.FormatSignature(answer.RequestSignature);
+
+        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(Deadline);
+
+        EndedRequest ended;
+
+        do
+        {
+            ended = await _ended.ReadAsync(deadline.Token);
+        }
+        while (ended.Signature != signature);
+    }
+
+    // Holds the poll, makes the call, and gives the task of the call with the command that the poll hands out, the one
+    // command of its answer, once the request of the poll has ended on the node: the timer of its hold is then gone,
+    // and the next timer that the node arms is the wait of the call.
+    public async Task<(Task<OutpostOutcome> Call, OutpostCommandMessage Command)> HandOutAsync(
+        TestAgent agent,
+        OutpostPollRequest poll,
+        Func<Task<OutpostOutcome>> call,
+        CancellationToken cancellationToken)
+    {
+        Task<AgentAnswer> held = await HoldPollAsync(agent, poll, cancellationToken);
+        Task<OutpostOutcome> outcome = call();
+
+        AgentAnswer answer = await held;
+        OutpostCommandMessage command = Assert.Single(agent.ReadCommands(agent.ReadPollAnswer(poll, answer)));
+        await WaitForEndOfAsync(answer, cancellationToken);
+
+        return (outcome, command);
     }
 
     // Whether the agent shows as connected in the list of the public API, at the moment of the call.

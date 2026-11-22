@@ -41,6 +41,22 @@ internal static class StoreCommands
         TimeSpan? takeTimeout = null,
         int outcomeLimit = OutcomeLimit)
     {
+        return Create(agent.Id, baseKey, mode, callerKey, issued, script, parameters, id, takeTimeout, outcomeLimit);
+    }
+
+    // The same for an agent known by its identity, such as a test agent that paired over HTTP.
+    public static CommandRow Create(
+        Guid agentId,
+        string baseKey,
+        OutpostModeEnum mode,
+        string? callerKey,
+        DateTimeOffset issued,
+        string script = Script,
+        string parameters = "{}",
+        Guid? id = null,
+        TimeSpan? takeTimeout = null,
+        int outcomeLimit = OutcomeLimit)
+    {
         Guid commandId = id ?? Guid.NewGuid();
         DateTimeOffset deadline = issued + (takeTimeout ?? TakeTimeout);
 
@@ -49,7 +65,7 @@ internal static class StoreCommands
         OutpostCommandMessage message = new(
             OutpostProtocol.Version,
             commandId,
-            agent.Id,
+            agentId,
             baseKey,
             mode,
             callerKey,
@@ -63,7 +79,7 @@ internal static class StoreCommands
         return new CommandRow
         {
             Id = commandId,
-            AgentId = agent.Id,
+            AgentId = agentId,
             BaseKey = baseKey,
             Mode = mode,
             CallerKey = callerKey,
