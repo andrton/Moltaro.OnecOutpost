@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Server.Store;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.Store;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Store;
 

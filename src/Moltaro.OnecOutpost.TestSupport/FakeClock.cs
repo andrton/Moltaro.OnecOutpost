@@ -71,6 +71,18 @@ public sealed class FakeClock : TimeProvider
         return armed.Task.WaitAsync(cancellationToken);
     }
 
+    // Whether a timer of this clock is armed to fire at or before dueBy, now. With WaitForTimerAsync, a test states when
+    // the code under test armed its timer to fire: armed by a moment, and not by the moment before.
+    public bool HasTimerDueBy(DateTimeOffset dueBy)
+    {
+        DateTimeOffset now = GetUtcNow();
+
+        lock (_lock)
+        {
+            return CountTimersDueBy(dueBy, now) > 0;
+        }
+    }
+
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
         FakeClockTimer timer = new(this, _time.CreateTimer(callback, state, dueTime, period));

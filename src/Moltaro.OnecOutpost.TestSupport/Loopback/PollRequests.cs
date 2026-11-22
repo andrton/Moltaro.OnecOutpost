@@ -1,6 +1,6 @@
 using Moltaro.OnecOutpost.Protocol.Messages;
 
-namespace Moltaro.OnecOutpost.Server.Tests;
+namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 
 // Polls as the tests of the store and of the endpoints declare them: each base with one free worker per mode it opens
 // and a run limit of ten minutes, and no received commands. The free workers and the run limits are the subject of the

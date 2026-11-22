@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Moltaro.OnecOutpost.TestSupport.Loopback;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Endpoints;
 
@@ -63,7 +64,7 @@ public sealed class MapOutpostAgentsTests
     private static WebApplication CreateApplication(bool withServer)
     {
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
-        ServerSetup.AddSignals(builder.Services);
+        InProcessSignals.Add(builder.Services);
 
         if (withServer)
         {

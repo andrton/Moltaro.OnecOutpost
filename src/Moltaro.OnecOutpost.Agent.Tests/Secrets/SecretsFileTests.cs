@@ -4,6 +4,7 @@ using System.Text;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Secrets;
 
@@ -125,5 +126,43 @@ public sealed class SecretsFileTests
         FormatException exception = Assert.ThrowsAny<FormatException>(() => SecretsFile.Read(file, _protection));
 
         Assert.DoesNotContain("S3cret", exception.Message, StringComparison.Ordinal);
+    }
+
+    // The S6 brief, "AgentHost": the agent signs with its key from the first poll on, so a key that is not an ECDSA key
+    // on P-256 in PKCS#8 is refused when the file is read, not when the agent first signs: random bytes, a key on
+    // P-384, and an RSA key.
+    [Theory(Skip = SkipReason.NotImplemented)]
+    [InlineData("random")]
+    [InlineData("p384")]
+    [InlineData("rsa")]
+    public void A_key_that_is_not_an_ECDSA_key_on_P256_in_PKCS8_fails_with_FormatException(string kind)
+    {
+        AgentSecrets secrets = new(KeyOf(kind), new Dictionary<(string Base, OutpostModeEnum Mode), string>
+        {
+            [("accounting", OutpostModeEnum.Read)] = "read-pw",
+        });
+
+        byte[] file = SecretsFile.Write(secrets, _protection);
+
+        Assert.ThrowsAny<FormatException>(() => SecretsFile.Read(file, _protection));
+    }
+
+    private static byte[] KeyOf(string kind)
+    {
+        if (kind == "p384")
+        {
+            using ECDsa other = ECDsa.Create(ECCurve.NamedCurves.nistP384);
+
+            return other.ExportPkcs8PrivateKey();
+        }
+
+        if (kind == "rsa")
+        {
+            using RSA rsa = RSA.Create(2048);
+
+            return rsa.ExportPkcs8PrivateKey();
+        }
+
+        return RandomNumberGenerator.GetBytes(138);
     }
 }

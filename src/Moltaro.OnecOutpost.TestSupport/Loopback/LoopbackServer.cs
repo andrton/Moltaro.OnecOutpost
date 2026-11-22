@@ -1,4 +1,5 @@
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Builder;
@@ -8,17 +9,19 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Messages;
-using Moltaro.OnecOutpost.Server.Tests.Store;
-using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.Server;
+using Moltaro.OnecOutpost.TestSupport.Store;
 using Moltaro.Signals;
+using Xunit;
 
-namespace Moltaro.OnecOutpost.Server.Tests.Loopback;
+namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 
 // One node of the server as an application embeds it, reached over loopback HTTP: Kestrel on port 0 of 127.0.0.1, the
 // store in a schema of its own that the library migrated, a signing key made for the node, the fake clock as the
 // TimeProvider of the options, the endpoints of the agents at /outpost, and an in-process SignalHost as its ISignals,
 // or the client of a host apart that the test gives. A test starts one and drives it through the public API and
-// through test agents.
+// through test agents, or through the agent itself. In front of the endpoints, it can play a hop whose body limit
+// refuses an outcome with a bare 413 and an HTML page of its own.
 //
 // Every wait of a test on the node has a deadline, reached only when the node never does what the test waits for: on
 // loopback, every answer, every timer and every end of a request comes well within it. A test that reaches it fails
@@ -35,17 +38,23 @@ internal sealed class LoopbackServer : IAsyncDisposable
     // around the endpoints and read by the tests that wait for the end of a request.
     private readonly ChannelReader<EndedRequest> _ended;
 
+    // The body limit of the hop in front of the endpoints, shared with the middleware that plays it; null while there
+    // is none. A test sets it before it lets the agent send the requests it concerns.
+    private readonly StrongBox<long?> _pathLimit;
+
     private bool _stopped;
 
     private LoopbackServer(
         WebApplication app,
         ChannelReader<EndedRequest> ended,
+        StrongBox<long?> pathLimit,
         FakeClock clock,
         MigratedSchema schema,
         OutpostServerOptions options)
     {
         _app = app;
         _ended = ended;
+        _pathLimit = pathLimit;
         Clock = clock;
         Schema = schema;
         Options = options;
@@ -77,6 +86,15 @@ internal sealed class LoopbackServer : IAsyncDisposable
 
     // The client of the test agents.
     public HttpClient Client { get; }
+
+    // When set, a hop in front of the endpoints, as an ingress with a body limit is, answers every outcome request whose
+    // declared length is beyond this many bytes with a bare 413 and an HTML page, before the endpoint reads anything
+    // (§9 of docs/protocol.md). The other requests pass.
+    public long? OutcomeLimitOnThePath
+    {
+        get => _pathLimit.Value;
+        set => _pathLimit.Value = value;
+    }
 
     public static Task<LoopbackServer> StartAsync(
         PostgreSqlFixture postgres,
@@ -128,7 +146,7 @@ internal sealed class LoopbackServer : IAsyncDisposable
 
         if (signals is null)
         {
-            ServerSetup.AddSignals(builder.Services);
+            InProcessSignals.Add(builder.Services);
         }
         else
         {
@@ -147,6 +165,7 @@ internal sealed class LoopbackServer : IAsyncDisposable
 
         WebApplication app = builder.Build();
         Channel<EndedRequest> ended = Channel.CreateUnbounded<EndedRequest>();
+        StrongBox<long?> pathLimit = new(null);
 
         try
         {
@@ -166,6 +185,26 @@ internal sealed class LoopbackServer : IAsyncDisposable
                 }
             });
 
+            app.Use(async (context, next) =>
+            {
+                bool refused = pathLimit.Value is long limit
+                    && context.Request.Path.Value!.EndsWith("/v1/outcome", StringComparison.Ordinal)
+                    && context.Request.ContentLength > limit;
+
+                if (!refused)
+                {
+                    await next(context);
+
+                    return;
+                }
+
+                // The body is not read, so Kestrel sends no 100 Continue, as a hop that refuses a declared length.
+                context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+                context.Response.ContentType = "text/html";
+                await context.Response.WriteAsync(
+                    "<html><head><title>413 Request Entity Too Large</title></head><body>Request Entity Too Large</body></html>");
+            });
+
             app.MapOutpostAgents(Prefix);
             await app.StartAsync(cancellationToken);
         }
@@ -175,7 +214,7 @@ internal sealed class LoopbackServer : IAsyncDisposable
             throw;
         }
 
-        return new LoopbackServer(app, ended.Reader, clock, schema, options!);
+        return new LoopbackServer(app, ended.Reader, pathLimit, clock, schema, options!);
     }
 
     // A new agent with a pairing token of its own, not paired yet.

@@ -1,6 +1,7 @@
 using Moltaro.OnecOutpost.Protocol;
+using Xunit;
 
-namespace Moltaro.OnecOutpost.Server.Tests.Loopback;
+namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 
 // What came back for a request of a TestAgent: the status, the Content-Type and the Outpost-Signature of the answer,
 // when it has them, and its body; with the kind, the exact bytes and the signature of the request, which a signed

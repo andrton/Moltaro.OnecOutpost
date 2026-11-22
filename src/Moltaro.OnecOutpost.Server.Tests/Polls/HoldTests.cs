@@ -1,8 +1,8 @@
 using Moltaro.OnecOutpost.Protocol.Messages;
-using Moltaro.OnecOutpost.Server.Tests.Loopback;
-using Moltaro.OnecOutpost.Server.Tests.Migrations;
 using Moltaro.OnecOutpost.TestSupport;
-using static Moltaro.OnecOutpost.Server.Tests.PollRequests;
+using Moltaro.OnecOutpost.TestSupport.Loopback;
+using Moltaro.OnecOutpost.TestSupport.Store;
+using static Moltaro.OnecOutpost.TestSupport.Loopback.PollRequests;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Polls;
 

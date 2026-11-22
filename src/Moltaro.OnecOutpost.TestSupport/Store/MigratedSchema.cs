@@ -1,9 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Moltaro.OnecOutpost.Server;
 using Moltaro.OnecOutpost.Server.Store;
-using Moltaro.OnecOutpost.Server.Tests.Migrations;
-using Moltaro.OnecOutpost.TestSupport;
 
-namespace Moltaro.OnecOutpost.Server.Tests.Store;
+namespace Moltaro.OnecOutpost.TestSupport.Store;
 
 // A schema of one test, migrated by the library, and the rows that the store committed in it. Each read opens a context
 // of its own, as each operation of the store does. The tests of the endpoints read the store of their node through it.

@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
+using Moltaro.OnecOutpost.Server;
 
-namespace Moltaro.OnecOutpost.Server.Tests.Loopback;
+namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 
 // The calls of the tests over loopback HTTP: a Read or a Write, chosen by the word of its mode in §7 of
 // docs/protocol.md, in the base that the test agents declare, with the script and the parameters of the tests unless a

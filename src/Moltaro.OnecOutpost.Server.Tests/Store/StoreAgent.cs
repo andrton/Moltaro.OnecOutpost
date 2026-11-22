@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Server.Store;
+using Moltaro.OnecOutpost.TestSupport.Loopback;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Store;
 

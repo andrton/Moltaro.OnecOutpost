@@ -38,9 +38,10 @@ internal sealed class PairedFolder
         }
         """;
 
-    private PairedFolder(byte[] serverKey, byte[] privateKey)
+    private PairedFolder(byte[] serverKey, byte[] serverPrivateKey, byte[] privateKey)
     {
         ServerKey = serverKey;
+        ServerPrivateKey = serverPrivateKey;
         PrivateKey = privateKey;
     }
 
@@ -53,6 +54,9 @@ internal sealed class PairedFolder
     // The 91 bytes of the server key that the agent pinned.
     public byte[] ServerKey { get; }
 
+    // The PKCS#8 form of the server's signing key, which only the server holds: the fake server of a test signs with it.
+    public byte[] ServerPrivateKey { get; }
+
     // The PKCS#8 form of the agent's key.
     public byte[] PrivateKey { get; }
 
@@ -60,12 +64,21 @@ internal sealed class PairedFolder
     public string AgentJson =>
         $$"""{"server":"https://outpost.example.com/agents","agent":"{{Agent}}","serverKey":"{{Base64Url.EncodeToString(ServerKey)}}","pollTimeoutMs":25000,"leaseGraceMs":10000}""";
 
+    // The policy with these members of its own besides the bases, such as "retryDelayMax": "00:00:04".
+    public static string PolicyWith(string members)
+    {
+        return Policy.Replace("\"bases\":", members + ", \"bases\":", StringComparison.Ordinal);
+    }
+
     public static PairedFolder Create()
     {
         using ECDsa server = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         using ECDsa agent = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 
-        PairedFolder folder = new(server.ExportSubjectPublicKeyInfo(), agent.ExportPkcs8PrivateKey());
+        PairedFolder folder = new(
+            server.ExportSubjectPublicKeyInfo(),
+            server.ExportPkcs8PrivateKey(),
+            agent.ExportPkcs8PrivateKey());
 
         folder.Data.Root.Seed("policy.json", Policy);
         folder.Data.Root.Seed("agent.json", folder.AgentJson);

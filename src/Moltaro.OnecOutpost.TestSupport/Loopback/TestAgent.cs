@@ -4,8 +4,10 @@ using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
+using Moltaro.OnecOutpost.Server;
+using Xunit;
 
-namespace Moltaro.OnecOutpost.Server.Tests.Loopback;
+namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 
 // An agent of the protocol, made of the internal types of the protocol assembly, that speaks to a LoopbackServer over
 // HTTP as docs/protocol.md says an agent does: it pairs with its pairing token and a key of its own, pins the server

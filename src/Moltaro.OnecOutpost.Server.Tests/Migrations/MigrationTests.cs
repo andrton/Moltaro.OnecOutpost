@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Moltaro.OnecOutpost.Server.Store;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.Store;
 using Npgsql;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Migrations;

@@ -1,6 +1,6 @@
 using Npgsql;
 
-namespace Moltaro.OnecOutpost.Server.Tests.Migrations;
+namespace Moltaro.OnecOutpost.TestSupport.Store;
 
 // What a schema of PostgreSQL holds, as lines of text that compare across schemas: its tables with their columns,
 // constraints and indexes, and the rows of every table, the record of applied migrations among them. The name of the

@@ -2,14 +2,15 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using Moltaro.OnecOutpost.Agent.Pairing;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Pairing;
 
 // The form of agent.json (the S6a brief): {"server":…,"agent":…,"serverKey":…,"pollTimeoutMs":…,"leaseGraceMs":…} in the
 // forms of §2 of docs/protocol.md: an absolute http or https URL, an identity, the 91-byte server key in base64url, and
 // the two durations in the ranges of the options PollTimeout and LeaseGrace, from 1 second to 5 minutes. Read takes
-// exactly these members and refuses anything else with FormatException, quoting nothing of the file. The rule of §11
-// for the address is the transport's, not the file's.
+// exactly these members and refuses anything else with FormatException, quoting nothing of the file. From S6c on, it
+// also refuses an address that the transport's rule of §11 refuses (ServerRoute.IsAllowed), so a start records it.
 public sealed class AgentPairingFileTests
 {
     private static readonly Guid Agent = Guid.Parse("5f0c3a1e-2b4d-4c6e-8a10-b2c3d4e5f607");
@@ -119,5 +120,21 @@ public sealed class AgentPairingFileTests
             () => AgentPairingFile.Read(Encoding.UTF8.GetBytes(file)));
 
         Assert.DoesNotContain("S3cret", exception.Message, StringComparison.Ordinal);
+    }
+
+    // §11, from S6c: http:// only on a loopback address, as Uri writes its host.
+    [Theory(Skip = SkipReason.NotImplemented)]
+    [InlineData("http://outpost.example.com/agents")]
+    [InlineData("http://localhost./agents")]
+    [InlineData("http://192.0.2.10:5000/agents")]
+    public void An_address_that_section_11_refuses_fails_with_FormatException_quoting_nothing(string server)
+    {
+        string file =
+            $$"""{"server":"{{server}}","agent":"{{Agent}}","serverKey":"{{Base64Url.EncodeToString(_serverKey)}}","pollTimeoutMs":25000,"leaseGraceMs":10000}""";
+
+        FormatException exception = Assert.ThrowsAny<FormatException>(
+            () => AgentPairingFile.Read(Encoding.UTF8.GetBytes(file)));
+
+        Assert.DoesNotContain(new Uri(server).Host, exception.Message, StringComparison.Ordinal);
     }
 }

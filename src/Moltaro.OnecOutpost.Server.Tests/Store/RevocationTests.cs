@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.Server.Store;
-using Moltaro.OnecOutpost.Server.Tests.Migrations;
 using Moltaro.OnecOutpost.TestSupport;
-using static Moltaro.OnecOutpost.Server.Tests.PollRequests;
+using Moltaro.OnecOutpost.TestSupport.Store;
 using static Moltaro.OnecOutpost.Server.Tests.Store.StoreCommands;
+using static Moltaro.OnecOutpost.TestSupport.Loopback.PollRequests;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Store;
 

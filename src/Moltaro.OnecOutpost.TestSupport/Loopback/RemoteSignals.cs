@@ -1,7 +1,7 @@
 using System.Net;
 using Moltaro.Signals;
 
-namespace Moltaro.OnecOutpost.Server.Tests.Loopback;
+namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 
 // A Signals host over loopback TCP, apart from the node, and the SignalClient through which the node reaches it: the
 // setup of an application whose Signals host runs in a process of its own. A test stops the host and starts another on
