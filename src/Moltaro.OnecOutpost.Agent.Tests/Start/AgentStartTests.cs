@@ -66,7 +66,7 @@ public sealed class AgentStartTests
     }
 
     // The acceptance of S6a: a second copy of the agent gets IOException from the lock and records nothing; that the
-    // program then exits with an error is S6b's. Disposing the log of the run releases the lock.
+    // program then exits with an error is S6c's. Disposing the log of the run releases the lock.
     [Fact]
     public void A_second_start_while_the_first_runs_fails_with_IOException_and_records_nothing()
     {
