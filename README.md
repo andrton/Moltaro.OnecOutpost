@@ -40,7 +40,7 @@ wake the agent's poll through Moltaro.Signals; the poll hands the command out, t
 server keeps one command per base and caller key, and a repeat returns its outcome; that a
 Write runs once also needs the agent's audit log. A command that no poll took in time ends
 as Expired, and revoking an agent ends its commands. All of this is tested over loopback
-HTTP with a test agent.
+HTTP with a test agent, and with the agent below.
 
 The agent keeps its files. At a start it checks that the access lists of its data folder
 admit nobody else, reads `policy.json`, `agent.json` with its identity and the pinned
@@ -52,9 +52,20 @@ for a Write and Failed `lost` for a Read. These parts are tested with a data fol
 against the disk, DPAPI and the access lists. The agent also checks each command of a poll
 answer as §7 of `docs/protocol.md` says, and the answer as a whole against the workers it
 declared, and runs a command on a pool of workers bounded by the run limit of its mode;
-this is tested with a fake in place of the COM worker. The agent program still uses none
-of it and runs nothing: it sends no poll, runs no command and is not a Windows service
-yet. Those come in S6c, so nothing runs a script in 1C through the library yet.
+this is tested with a fake in place of the COM worker.
+
+The agent works end to end against the server, with a fake in place of the COM worker. It
+sends numbered polls through the proxy that `policy.json` names, checks each command of an
+answer and records it in the audit log before the next poll, keeps each outcome in its
+outbox and sends it until the server confirms it, and replaces an outcome refused for its
+size. It pairs with a pairing token, for the console to call. The agent program runs as a
+Windows service, started with its one argument `service`, and exits with a code that says
+why it stopped. This is tested over loopback HTTP with the server and a test proxy: a Read
+and a Write from `ReadAsync` and `WriteAsync` reach the fake and come back. The program
+starts no COM worker until S9b, so every base declares no free worker, and nothing runs a
+script in 1C through the library yet. A proxy that asks for authentication is not
+supported yet: the agent offers it no credentials, so it is not connected through such a
+proxy.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from

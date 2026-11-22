@@ -1,7 +1,9 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
+using Moltaro.OnecOutpost.Protocol.Signing;
 
 namespace Moltaro.OnecOutpost.Agent.Secrets;
 
@@ -10,7 +12,8 @@ namespace Moltaro.OnecOutpost.Agent.Secrets;
 internal static class SecretsFile
 {
     // Unprotects the file and reads its secrets. The CryptographicException of the protection passes; content that
-    // breaks the form, a base key against its rule or a base and mode given twice is FormatException, quoting nothing.
+    // breaks the form, a key that is not an ECDSA key on P-256 in PKCS#8, a base key against its rule or a base and mode
+    // given twice is FormatException, quoting nothing.
     public static AgentSecrets Read(byte[] file, IMachineProtection protection)
     {
         byte[] plain = protection.Unprotect(file);
@@ -21,6 +24,8 @@ internal static class SecretsFile
             JsonElement secrets = OutpostJsonReader.Members(document.RootElement, "key", "passwords");
 
             byte[] key = OutpostJsonReader.ReadBytes(secrets, "key");
+            CheckKey(key);
+
             Dictionary<(string Base, OutpostModeEnum Mode), string> passwords = [];
 
             foreach (JsonElement item in OutpostJsonReader.ReadArray(secrets, "passwords").EnumerateArray())
@@ -79,6 +84,33 @@ internal static class SecretsFile
         writer.EndObject();
 
         return protection.Protect(writer.ToArray());
+    }
+
+    // The agent signs with its key from its first poll on, so a key it cannot sign with is refused here, when the file is
+    // read, and not when it first signs: the key's public part has to be the one form of §2 of docs/protocol.md, and
+    // the PKCS#8 bytes hold nothing beyond the key.
+    private static void CheckKey(byte[] key)
+    {
+        using ECDsa imported = ECDsa.Create();
+        int read;
+
+        try
+        {
+            imported.ImportPkcs8PrivateKey(key, out read);
+        }
+        catch (CryptographicException)
+        {
+            throw OutpostJsonReader.Form("The key is not an ECDSA key in PKCS#8.");
+        }
+
+        if (read != key.Length)
+        {
+            throw OutpostJsonReader.Form("The key has bytes beyond its PKCS#8 form.");
+        }
+
+        // ImportPublicKey refuses every key but one on P-256 with the code form, which the caller turns into a
+        // FormatException.
+        OutpostKeys.ImportPublicKey(OutpostKeys.ExportPublicKey(imported)).Dispose();
     }
 
     private static OutpostModeEnum ReadMode(JsonElement entry)

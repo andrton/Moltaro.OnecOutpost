@@ -1,7 +1,6 @@
-using System.Net;
 using System.Security.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
-using Moltaro.Signals;
+using Moltaro.OnecOutpost.TestSupport.Loopback;
 
 namespace Moltaro.OnecOutpost.Server.Tests;
 
@@ -19,21 +18,11 @@ internal static class ServerSetup
         options.SigningKeyPem = SigningKeyPem;
     }
 
-    // Registers the ISignals that the application provides: an in-process SignalHost, which needs no socket.
-    public static void AddSignals(IServiceCollection services)
-    {
-        services.AddSingleton<ISignals>(_ => new SignalHost(new SignalHostOptions
-        {
-            ListenEndPoint = new IPEndPoint(IPAddress.Loopback, 0),
-            Token = "test-token",
-        }));
-    }
-
     // A container with the signals and the server, whose options the test may change after the required ones are set.
     public static ServiceProvider Create(Action<OutpostServerOptions>? configure = null)
     {
         ServiceCollection services = new();
-        AddSignals(services);
+        InProcessSignals.Add(services);
 
         services.AddOutpostServer(options =>
         {

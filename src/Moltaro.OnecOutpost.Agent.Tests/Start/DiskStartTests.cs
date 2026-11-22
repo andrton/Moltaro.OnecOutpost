@@ -1,10 +1,6 @@
-using System.Buffers.Text;
 using System.Runtime.Versioning;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Access;
-using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.TestSupport;
@@ -19,37 +15,26 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 [SupportedOSPlatform("windows")]
 public sealed class DiskStartTests : IDisposable
 {
-    private readonly TemporaryFolder _temporary = new();
-
-    private readonly string _data;
+    private readonly DiskDataFolder _data = new();
 
     private readonly FakeClock _clock = new(TestTimes.Start);
 
-    public DiskStartTests()
-    {
-        _data = _temporary.PathOf("data");
-        Directory.CreateDirectory(_data);
-        AccessListEdits.AdmitNobodyElse(_data);
-        Directory.CreateDirectory(Path.Combine(_data, "audit"));
-        Directory.CreateDirectory(Path.Combine(_data, "outcomes"));
-    }
-
     public void Dispose()
     {
-        _temporary.Dispose();
+        _data.Dispose();
     }
 
     [Fact]
     public void A_file_on_the_disk_whose_access_list_admits_anybody_else_stops_the_start_recorded()
     {
-        WriteDataFolder();
+        _data.WriteFiles();
         Start().Log.Dispose();
 
-        AccessListEdits.Allow(Path.Combine(_data, "policy.json"), AccessListEdits.Everyone);
+        AccessListEdits.Allow(_data.PathOf("policy.json"), AccessListEdits.Everyone);
 
         AgentStopException exception = Assert.Throws<AgentStopException>(() => Start());
 
-        JsonElement started = LastEntry();
+        JsonElement started = _data.LastEntry(TestTimes.Start);
         Assert.Equal("started", started.GetProperty("entry").GetString());
         Assert.Equal(exception.Message, started.GetProperty("error").GetString());
         Assert.Contains("policy.json", exception.Message, StringComparison.Ordinal);
@@ -59,12 +44,12 @@ public sealed class DiskStartTests : IDisposable
     [Fact]
     public void A_data_folder_on_the_disk_whose_access_list_admits_anybody_else_stops_the_start_recorded()
     {
-        WriteDataFolder();
-        AccessListEdits.Allow(_data, AccessListEdits.Everyone);
+        _data.WriteFiles();
+        AccessListEdits.Allow(_data.Path, AccessListEdits.Everyone);
 
         AgentStopException exception = Assert.Throws<AgentStopException>(() => Start());
 
-        JsonElement started = LastEntry();
+        JsonElement started = _data.LastEntry(TestTimes.Start);
         Assert.Equal("started", started.GetProperty("entry").GetString());
         Assert.Equal(exception.Message, started.GetProperty("error").GetString());
         Assert.Contains(AccessListEdits.NameOf(AccessListEdits.Everyone), exception.Message, StringComparison.Ordinal);
@@ -72,37 +57,6 @@ public sealed class DiskStartTests : IDisposable
 
     private AgentRun Start()
     {
-        AgentFolders folders = new(
-            new DiskFolder(_data),
-            new DiskFolder(Path.Combine(_data, "audit")),
-            new DiskFolder(Path.Combine(_data, "outcomes")));
-
-        return AgentStart.Open(folders, new WindowsAccessLists(_data), new MachineDpapi(), _clock, PairedFolder.Version);
-    }
-
-    // policy.json, agent.json and secrets.dat as an administrator and the console write them.
-    private void WriteDataFolder()
-    {
-        using ECDsa server = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        using ECDsa agent = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-
-        File.WriteAllText(Path.Combine(_data, "policy.json"), PairedFolder.Policy);
-        File.WriteAllText(
-            Path.Combine(_data, "agent.json"),
-            $$"""{"server":"https://outpost.example.com/agents","agent":"{{PairedFolder.Agent}}","serverKey":"{{Base64Url.EncodeToString(server.ExportSubjectPublicKeyInfo())}}","pollTimeoutMs":25000,"leaseGraceMs":10000}""");
-
-        string secrets =
-            $$"""{"key":"{{Base64Url.EncodeToString(agent.ExportPkcs8PrivateKey())}}","passwords":[{"base":"accounting","mode":"read","password":"read-pw"},{"base":"accounting","mode":"write","password":"write-pw"},{"base":"warehouse","mode":"read","password":""}]}""";
-
-        File.WriteAllBytes(Path.Combine(_data, "secrets.dat"), new MachineDpapi().Protect(Encoding.UTF8.GetBytes(secrets)));
-    }
-
-    private JsonElement LastEntry()
-    {
-        string line = File.ReadAllLines(Path.Combine(_data, "audit", AuditLines.FileOf(TestTimes.Start)))[^1];
-
-        using JsonDocument document = JsonDocument.Parse(line);
-
-        return document.RootElement.Clone();
+        return AgentStart.Open(_data.Folders, new WindowsAccessLists(_data.Path), new MachineDpapi(), _clock, PairedFolder.Version);
     }
 }

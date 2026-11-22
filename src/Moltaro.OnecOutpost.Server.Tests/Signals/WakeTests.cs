@@ -1,9 +1,9 @@
 using Moltaro.OnecOutpost.Protocol.Messages;
-using Moltaro.OnecOutpost.Server.Tests.Loopback;
 using Moltaro.OnecOutpost.Server.Tests.Store;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.Loopback;
 using Moltaro.Signals;
-using static Moltaro.OnecOutpost.Server.Tests.PollRequests;
+using static Moltaro.OnecOutpost.TestSupport.Loopback.PollRequests;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Signals;
 

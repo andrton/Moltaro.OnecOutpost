@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net.Sockets;
 using System.Text;
+using Moltaro.OnecOutpost.TestSupport.Loopback;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Loopback;
 

@@ -4,9 +4,9 @@ using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
 using Moltaro.OnecOutpost.Server.Store;
-using Moltaro.OnecOutpost.Server.Tests.Loopback;
-using Moltaro.OnecOutpost.Server.Tests.Migrations;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.Loopback;
+using Moltaro.OnecOutpost.TestSupport.Store;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Pairing;
 

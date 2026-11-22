@@ -20,8 +20,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The store has no public surface; its tests address it directly. -->
+    <!-- The store has no public surface; its tests address it directly, and so does the loopback server of the tests. -->
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Server.Tests" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.TestSupport" />
   </ItemGroup>
 
   <ItemGroup>

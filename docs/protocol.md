@@ -4,15 +4,15 @@ The wire protocol between an agent and a server. The [concept](concept.md) fixes
 principles (§3 "Pairing", §4, §6, D1, D4, D5, D15); this document fixes the bytes.
 
 **Status.** Draft of Epic 1, sprint S2, written after the sprint's study, with the changes
-of sprint S4 to §6.2 and §9, of sprint S5 to §9 and of sprint S6 to §6.2 and §13. It is
-public contract, and holds as a draft until the owner approves it with the lists "What S2
-changed in the public contract", "What S4 changes in the public contract", "What S5
-changes in the public contract" and "What S6 changes in the public contract" of the
+of sprint S4 to §6.2 and §9, of sprint S5 to §9 and of sprint S6 to §6.2, §9, §11 and
+§13. It is public contract, and holds as a draft until the owner approves it with the
+lists "What S2 changed in the public contract", "What S4 changes in the public contract",
+"What S5 changes in the public contract" and "What S6 changes in the public contract" of the
 [epic](work/epic-1-first-release.md). The codec of the protocol assembly reads and writes
 its messages, its signatures and the pairing proof. The server's endpoints serve all three
-requests: `pair`, `poll` with the commands it hands out, and `outcome`. The agent's code
-keeps its audit log as §13 says and gives poll numbers with the reservation of §6.2, but
-no agent sends the protocol yet.
+requests: `pair`, `poll` with the commands it hands out, and `outcome`. The agent sends all
+three, keeps its audit log as §13 says and gives poll numbers with the reservation of
+§6.2; it runs no script in 1C until sprint S9b.
 
 ## 1. Overview
 
@@ -603,7 +603,8 @@ of these that applies:
 1. the code of a verified refusal;
 2. `protocol-version` for a `400` whose body is `{"code":"protocol-version"}`;
 3. `status-` and the HTTP status of any other answer whose status came, such as
-   `status-403`, or `status-200` for a `200` that is not verified;
+   `status-403`, `status-200` for a `200` that is not verified, or `status-407` for a
+   proxy's answer to the agent's `CONNECT`;
 4. `unreachable` when no status came.
 
 Recording a reason acts on nothing.
@@ -636,16 +637,19 @@ until the agent is fixed.
 ## 11. Addresses, TLS and the proxy
 
 - **`http://`** is accepted only when the host of the address is written as `localhost`, as
-  an address in `127.0.0.0/8`, or as `::1`. It is judged on the text of the address, never
-  by resolving a name, and such an address is never reached through the proxy.
+  an address in `127.0.0.0/8`, or as `::1`. It is judged on the host as .NET's `Uri`
+  writes it, never by resolving a name, so `loopback`, `127.1` and `2130706433` count, and
+  `localhost.` and `foo.localhost` do not. Such an address is never reached through the
+  proxy.
 - **Every other address is `https://`.** The agent validates the server's certificate as the
   system does, without a check of revocation, and never turns that validation off. The
   guarantees rest on the pinned server key in every command and answer, not on the
   certificate. Confidentiality rests on TLS (concept §3).
-- **The proxy** is used as `policy.json` says. The agent offers it the computer's Windows
-  credentials by Kerberos only, never by NTLM, so that a proxy that is not what it claims
-  cannot relay them. A machine outside a domain therefore reaches only a proxy that asks
-  for no credentials.
+- **The proxy** is used as `policy.json` says. The agent offers it no credentials, by no
+  scheme, so never NTLM, which a proxy that is not what it claims could relay. A proxy
+  that asks for authentication answers 407, the poll is lost with `status-407` (§9), and
+  the agent is not connected through it. Offering the computer's credentials by Kerberos
+  alone is planned, for when a domain lab can prove it.
 
 ## 12. The console's check of the server
 

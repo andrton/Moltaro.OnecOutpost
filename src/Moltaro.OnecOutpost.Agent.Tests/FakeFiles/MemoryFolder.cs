@@ -14,7 +14,8 @@ namespace Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 // that code which needs an order sorts them itself. Not thread-safe: the code under test makes one change at a time.
 internal sealed class MemoryFolder : IAgentFolder
 {
-    private readonly List<FolderChange> _changes;
+    // The data folder whose list of changes this folder adds to.
+    private readonly MemoryDataFolder _data;
 
     // The path of the folder in the data folder: "" for the data folder itself, audit or outcomes.
     private readonly string _path;
@@ -29,9 +30,9 @@ internal sealed class MemoryFolder : IAgentFolder
     // How many bytes the next Append or Replace keeps before it fails; null when it does not fail.
     private int? _nextWriteKeeps;
 
-    public MemoryFolder(List<FolderChange> changes, string path)
+    public MemoryFolder(MemoryDataFolder data, string path)
     {
-        _changes = changes;
+        _data = data;
         _path = path;
     }
 
@@ -218,10 +219,7 @@ internal sealed class MemoryFolder : IAgentFolder
     // The list is shared with the fake workers, which add to it from the tasks of their runs (MemoryDataFolder).
     private void Record(string line, byte[] bytes)
     {
-        lock (_changes)
-        {
-            _changes.Add(new FolderChange(line, bytes));
-        }
+        _data.Add(new FolderChange(line, bytes));
     }
 
     // A held lock, released once when it is disposed.

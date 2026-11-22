@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Moltaro.OnecOutpost.Agent.Transport;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Signing;
@@ -6,8 +7,8 @@ using Moltaro.OnecOutpost.Protocol.Signing;
 namespace Moltaro.OnecOutpost.Agent.Pairing;
 
 // The form of agent.json: {"server":…,"agent":…,"serverKey":…,"pollTimeoutMs":…,"leaseGraceMs":…} in the forms of §2
-// of docs/protocol.md: an absolute http or https URL, an identity, the 91-byte key in base64url, and the two durations
-// in the ranges of PollTimeout and LeaseGrace. The rule of §11 for the address is the transport's.
+// of docs/protocol.md: an absolute http or https URL that the transport's rule of §11 allows (ServerRoute.IsAllowed), an
+// identity, the 91-byte key in base64url, and the two durations in the ranges of PollTimeout and LeaseGrace.
 internal static class AgentPairingFile
 {
     // Reads exactly these members, and throws FormatException, quoting nothing, for anything else.
@@ -73,7 +74,8 @@ internal static class AgentPairingFile
         return writer.ToArray();
     }
 
-    // An absolute http or https URL. The string is named by the rule it breaks, never repeated.
+    // An absolute http or https URL that §11 allows, so that a start records an address the agent never reaches. The
+    // string is named by the rule it breaks, never repeated.
     private static Uri ReadServer(JsonElement settings)
     {
         string text = OutpostJsonReader.ReadString(settings, "server");
@@ -82,6 +84,11 @@ internal static class AgentPairingFile
             || (server.Scheme != Uri.UriSchemeHttp && server.Scheme != Uri.UriSchemeHttps))
         {
             throw OutpostJsonReader.Form("The member server is not an absolute http or https URL.");
+        }
+
+        if (!ServerRoute.IsAllowed(server))
+        {
+            throw OutpostJsonReader.Form("The member server is an http URL whose host is not a loopback address (§11 of the protocol).");
         }
 
         return server;
