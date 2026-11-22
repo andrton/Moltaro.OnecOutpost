@@ -45,7 +45,7 @@ HTTP with a test agent.
 The agent keeps its files. At a start it checks that the access lists of its data folder
 admit nobody else, reads `policy.json`, `agent.json` with its identity and the pinned
 server key, and the secrets, encrypted with DPAPI for the machine. It writes its audit log
-and its outbox of outcomes in order, each change on the disk before the next, and
+and its outbox of outcomes in order, each entry and file on the disk before the next, and
 reserves its poll numbers in the log, so that they grow across restarts. After a restart
 it cuts a torn entry and ends a command that was received without an outcome as Unknown
 for a Write and Failed `lost` for a Read. These parts are tested with a data folder in memory, and on Windows

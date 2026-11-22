@@ -3167,6 +3167,12 @@ end, the clock set behind the server's newest number, and the documents step.
         `time` is more than `retentionDays` plus a day before the clock, and every file
         that holds no entry, except a file that holds an entry of a command `Unconfirmed`
         gives, and the file that holds the highest reservation of `agent`;
+      - the files that hold the entries of one command go together, so that no command is
+        left with its `received` or `ended` and without its `confirmed`: a file stays while
+        a file that stays holds an entry of one of its commands, a file that holds a
+        `confirmed` is deleted after the other files of that command, and a file it cannot
+        delete keeps every file not yet deleted that shares a command with it (the
+        coordinator, 22 November 2026, from S6a's code review, round 1);
       - a file it cannot delete stays until a later call, and nothing is recorded;
       - afterwards `Find` no longer knows a command none of whose entries is left.
     - **`Outbox.Open`** deletes every file whose name ends with `.tmp`, torn or left by a
