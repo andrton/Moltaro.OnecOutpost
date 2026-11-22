@@ -82,7 +82,8 @@ public sealed class OutcomeAnswerTests
         test.Clock.Advance(RequestTimeout / 2);
 
         byte[] body = OutpostCodec.Write(new OutpostOutcomeAnswer(test.Clock.GetUtcNow(), command));
-        exchange.AnswerStalled(body);
+        StalledStream stalled = exchange.AnswerStalled(body);
+        await stalled.Stalled.WaitAsync(TestTimes.Deadline, TestContext.Current.CancellationToken);
         await test.PassExactlyAsync(RequestTimeout / 2);
 
         Assert.Equal(OutcomeResultEnum.Lost, await EndOf(result));

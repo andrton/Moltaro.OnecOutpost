@@ -194,8 +194,12 @@ public sealed class AgentPairingTests : IDisposable
 
         if (body == "late")
         {
-            exchange.AnswerStalled(Answer(OutpostCodec.ReadPairRequest(Agent, exchange.Body, exchange.Signature).Key));
+            // The one wait covers the answer and its body, so its timer is armed before the answer begins: the clock moves
+            // only once the agent has the status and waits for the rest of the body.
+            byte[] sentKey = OutpostCodec.ReadPairRequest(Agent, exchange.Body, exchange.Signature).Key;
+            StalledStream stalled = exchange.AnswerStalled(Answer(sentKey));
             await WaitForTimerAsync(start + RequestTimeout);
+            await stalled.Stalled.WaitAsync(TestTimes.Deadline, TestContext.Current.CancellationToken);
             _clock.Advance(RequestTimeout);
         }
         else

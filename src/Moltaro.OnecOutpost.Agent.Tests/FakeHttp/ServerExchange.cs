@@ -165,13 +165,16 @@ internal sealed class ServerExchange
     }
 
     // A verified 200 whose status and headers come and whose body gives its first bytes and then stops: the signature
-    // is the server's over the whole body.
-    public void AnswerStalled(byte[] body)
+    // is the server's over the whole body. It gives the body, whose Stalled a test waits for before it moves the clock.
+    public StalledStream AnswerStalled(byte[] body)
     {
-        StreamContent content = new(new StalledStream(body[..10]));
+        StalledStream stalled = new(body[..10]);
+        StreamContent content = new(stalled);
         content.Headers.ContentType = new MediaTypeHeaderValue(Json);
 
         Answer(Signed(new HttpResponseMessage(HttpStatusCode.OK) { Content = content }, _server.SignAnswer(this, 200, body)));
+
+        return stalled;
     }
 
     // A 200 in application/json with a body made as it is read, its length declared or not, and a signature that no

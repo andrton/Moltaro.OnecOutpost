@@ -2,10 +2,13 @@ namespace Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
 
 // The body of an answer whose status and headers came and whose bytes stop: it gives its first bytes, and then a read
 // waits until its token is cancelled, as a hop that holds an answer back does. A test of a wait ends it with the fake
-// clock.
+// clock, once Stalled shows that the reader has the status and waits for the rest of the body.
 internal sealed class StalledStream : Stream
 {
     private readonly byte[] _first;
+
+    // Completed apart, so that the test never goes on inside the reader's call.
+    private readonly TaskCompletionSource _stalled = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private int _position;
 
@@ -13,6 +16,9 @@ internal sealed class StalledStream : Stream
     {
         _first = first;
     }
+
+    // Completes once a read waits for the bytes after the first: the answer began, and its body stopped.
+    public Task Stalled => _stalled.Task;
 
     public override bool CanRead => true;
 
@@ -44,6 +50,7 @@ internal sealed class StalledStream : Stream
             return count;
         }
 
+        _stalled.TrySetResult();
         await Task.Delay(Timeout.Infinite, cancellationToken);
 
         return 0;
