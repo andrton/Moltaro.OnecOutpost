@@ -33,7 +33,7 @@ public sealed class AgentListTests(PostgreSqlFixture postgres) : IClassFixture<P
         clock.Advance(TimeSpan.FromMinutes(1));
         DateTimeOffset revokedCreatedAt = clock.GetUtcNow();
         await CreateTokenAsync(store, least, "Revoked agent", clock, cancellationToken);
-        Assert.True(await store.RevokeAgentAsync(least, cancellationToken));
+        Assert.True((await store.RevokeAgentAsync(least, cancellationToken)).Revoked);
 
         IReadOnlyList<OutpostAgent> agents = await store.ListAgentsAsync(cancellationToken);
 
@@ -109,7 +109,7 @@ public sealed class AgentListTests(PostgreSqlFixture postgres) : IClassFixture<P
         OutpostStore store = new(schema.ConnectionString, schema.Name, clock);
         StoreAgent agent = await StoreAgent.PairAsync(store, clock, cancellationToken);
         await agent.PollAsync([ReadAndWrite("accounting")], cancellationToken);
-        Assert.True(await store.RevokeAgentAsync(agent.Id, cancellationToken));
+        Assert.True((await store.RevokeAgentAsync(agent.Id, cancellationToken)).Revoked);
 
         IReadOnlyList<OutpostAgent> agents = await store.ListAgentsAsync(cancellationToken);
 

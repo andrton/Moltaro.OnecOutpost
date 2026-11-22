@@ -342,7 +342,7 @@ after it.
   | Caller key | 1 to 200 characters, each from U+0021 to U+007E (printable ASCII without the space); compared exactly |
   | Agent name | A display label: 1 to 100 characters of any kind but control characters, counted as UTF-16 code units (`string.Length`), with no white space at the start or the end, and no lone surrogate, a code unit from U+D800 to U+DFFF without its pair (Q2, Q6) |
   | Script | At least one character that is not white space, no U+0000, and no lone surrogate (Q6) |
-  | Parameters | No string in them, names included, holds U+0000, which PostgreSQL cannot store, or a lone surrogate, which UTF-8 cannot carry (Q6); they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
+  | Parameters | No string in them, names included, holds U+0000, which PostgreSQL cannot store, or a lone surrogate, which UTF-8 cannot carry (Q6); no object in them, at any depth, gives a name twice, the names compared after their escapes are read (S5); they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
   | Schema | 1 to 63 characters, each one of `a–z 0–9 _`, the first a letter |
   | Endpoint prefix | `/` followed by one or more segments of `A–Z a–z 0–9 - _ .` separated by `/`, not ending with `/`; no segment is `.` or `..` |
 - **Sizes.** Every size is counted on the bytes that the protocol carries: UTF-8, with
@@ -1132,7 +1132,7 @@ The contract and the wire
 The riskiest unknown: a script in a real 1C
   L1 lab check ── S9 executor, COM worker
 The tunnel, with a fake in place of the worker
-  S3 store ── S4 pairing ── S5 commands ── S6 agent ── S7 nodes, losses
+  S3 store ── S4 pairing ── S5a commands in the store ── S5b calls ── S6 agent ── S7 nodes, losses
   S8 refactoring
 The agent with 1C, and the tools
   S9b the agent runs the workers ── S10 console ── S11 shell
@@ -1159,6 +1159,10 @@ The release
 - **S4, pairing, apart from S5, commands.** Pairing, authentication, leases and base keys
   are needed by commands but not the other way round. Splitting them keeps each review to
   one mechanism.
+- **S5a, commands in the store, apart from S5b, the calls** (the planner, 22 November
+  2026). Ten store operations with their races, and the calls, the hand-out and the
+  signals, all in strict zones, are too much for one review; a review of the store alone
+  can be exhaustive.
 - **S6, the agent, after the server.** Its tests run against the real server of S5 over
   loopback, so the first end-to-end test exists at the end of S6.
 - **S7, several nodes and lost messages,** on its own, because it needs a test proxy that
@@ -1184,7 +1188,8 @@ The release
 | S2 | The protocol, its signatures and the pairing proof | Full | Done, 21 November 2026: the codec, the signatures and the pairing proof with their tests; the code review closed in two rounds, after the ten rounds of `docs/protocol.md`. What it changed in the public contract is listed in its brief for the owner |
 | S3 | The store | Full | Done, 21 November 2026: the store on PostgreSQL in the schema the application chooses, its first migration, `OutpostMigrations` with `MigrateAsync` and `GetScripts`, and the pairing tokens with their pending agents: created, found, redeemed once and purged, which no endpoint uses yet. The internal contract was reviewed in two rounds; the code review took three, and its last finding, a word of the XML documentation of `MigrateAsync`, was fixed on the owner's decision without a fourth round. What it changed in the public contract is listed in its brief for the owner |
 | S4 | Pairing and agents on the server | Full | Done, 22 November 2026: the store's polls, leases and base keys with their second migration; the endpoints `pair` and `poll`, with the unsigned answers of §9 before the body and the hold of a poll; `AddOutpostServer` in full, `CreatePairingTokenAsync`, `GetAgentsAsync`, `RevokeAgentAsync`, `ReleaseBaseAsync` and the purge. Read, Write and `outcome` still refuse. The internal contract was reviewed in two rounds; the code review closed in one, with four P4 left for the coordinator; the documents were reviewed once. What it changed in the public contract is listed in its brief for the owner |
-| S5 | Commands on the server | Full | Not started |
+| S5a | Commands in the store | Full | Done, 22 November 2026: the commands table with the third migration `Commands`, the store operations of commands and outcomes with their tests and races against PostgreSQL, revocation ending the agent's commands in its transaction, and parameters with a name twice refused at the call. Read, Write and `outcome` still refuse. The study read actions/runner and Halibut; the internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds and left P4s, listed for S5b in its brief. Of the drafts of the public contract that the S5 brief lists for the owner, S5a makes two: parameters with a name twice refused, and a store database in UTF8 |
+| S5b | The calls, the hand-out, `outcome` and the signals | Full | Not started |
 | S6 | The agent | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
 | S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
@@ -2342,7 +2347,34 @@ approval of this plan.
 
 ### S5 · Commands on the server
 
-**Track:** full · **Branch:** `epic-1/sprint-05-commands` · **Needs:** S4.
+**Track:** full · **Needs:** S4. One brief, run as two sprints (the planner, 22 November
+2026):
+
+- **S5a, commands in the store.** Branch `epic-1/sprint-05-commands`. The commands table
+  and its migration, the store operations of commands and outcomes, their tests against
+  PostgreSQL with the races of the Acceptance, and revocation ending the agent's commands
+  in its transaction. `ReadAsync`, `WriteAsync` and `outcome` still refuse. It closes with
+  its own code review, pull request and merge under PQ1.
+- **S5b, the calls.** Branch `epic-1/sprint-05b-calls`, cut from `main` after S5a merges.
+  The calls, the hand-out in the poll, the `outcome` request and the signals over loopback
+  HTTP, and the documents step that says commands work. The internal contract stays as
+  approved; the steps from the tests on run again for it.
+
+The Acceptance "Against PostgreSQL, without HTTP" is S5a's; every other line of it is
+S5b's.
+
+**Left for S5b by S5a's review** (P4, the coordinator, 22 November 2026). S5b looks at
+each where its own code meets it:
+
+- a take skips a Waiting command whose row a create that found it holds, and nothing then
+  wakes the poll before its hold ends;
+- a number in the parameters that PostgreSQL's `numeric` cannot hold, such as `1e-20000`,
+  makes every call with a caller key fail in the store; the limitation is stated nowhere;
+- `PassCommandAsync` throws `InvalidOperationException` for a command the purge removed;
+- the room of a poll answer is not tested at its exact boundary;
+- deleting a Pending agent scans `commands` through its foreign key;
+- the comment on the order of locks in `OutpostStore` reads as if two creates for one
+  agent wait for each other, which `FOR SHARE` locks do not.
 
 - **Goal.** Read and Write work on the server, end to end against an agent that speaks
   the protocol:
@@ -2406,6 +2438,248 @@ approval of this plan.
     bytes kept; whether a command the server itself refuses is stored; and that duplicate
     names inside the parameters are refused at the call, since `jsonb` would compare
     another value than the one signed — a draft of the public contract.
+  - *Internal, after the study* (the contract author, 22 November 2026, from the study's
+    recommendations A–H as the coordinator took them; reviewed in two rounds and approved
+    by the coordinator under PQ2, 22 November 2026). Folders as in S4; the commands of
+    the store are in `Store`.
+
+    ```csharp
+    // Moltaro.OnecOutpost.Server.Store
+    internal enum CommandPhaseEnum { Waiting = 0, HandedOut, Received }
+
+    internal sealed class CommandRow
+    {
+        public Guid Id { get; set; }
+        public long Sequence { get; set; }
+        public Guid AgentId { get; set; }
+        public string BaseKey { get; set; }
+        public OutpostModeEnum Mode { get; set; }
+        public string? CallerKey { get; set; }
+        public byte[] Bytes { get; set; }
+        public byte[] Signature { get; set; }
+        public DateTimeOffset Deadline { get; set; }
+        public TimeSpan Skew { get; set; }
+        public int OutcomeLimit { get; set; }
+        public CommandPhaseEnum Phase { get; set; }
+        public TimeSpan? RunLimit { get; set; }
+        public OutpostOutcomeKindEnum? OutcomeKind { get; set; }
+        public string? OutcomeCode { get; set; }
+        public byte[]? Outcome { get; set; }
+        public DateTimeOffset? EndedAt { get; set; }
+    }
+
+    internal sealed record PollRecord(PollState State, IReadOnlyList<Guid> Expired);
+    internal sealed record PollTake(PollState State, IReadOnlyList<OutpostSignedCommand> Commands);
+    internal sealed record BaseHolder(Guid AgentId, bool Declared, bool WriteOpen, bool Connected);
+    internal sealed record CommandMatch(Guid Id, bool Created, bool Same);
+    internal sealed record CommandPass(OutpostOutcome? Outcome, DateTimeOffset Due);
+    internal sealed record CommandLimits(OutpostModeEnum Mode, int OutcomeLimit);
+    internal sealed record Revocation(bool Revoked, IReadOnlyList<Guid> Ended);
+
+    internal sealed class StoreContext // gains
+    {
+        public DbSet<CommandRow> Commands { get; }
+    }
+
+    internal sealed class OutpostStore // changes two operations of S4 and gains eight
+    {
+        public Task<PollRecord> RecordPollAsync(Guid agentId, OutpostPollRequest poll, TimeSpan hold, TimeSpan leaseGrace, TimeSpan clockSkew, CancellationToken cancellationToken);
+        public Task<Revocation> RevokeAgentAsync(Guid agentId, CancellationToken cancellationToken);
+        public Task<PollTake> TakeCommandsAsync(Guid agentId, OutpostPollRequest poll, long room, CancellationToken cancellationToken);
+        public Task<CommandMatch?> FindCallerKeyAsync(string baseKey, string callerKey, OutpostModeEnum mode, string script, string parameters, CancellationToken cancellationToken);
+        public Task<BaseHolder?> FindBaseAsync(string baseKey, CancellationToken cancellationToken);
+        public Task<CommandMatch?> CreateCommandAsync(CommandRow command, CancellationToken cancellationToken);
+        public Task<CommandPass> PassCommandAsync(Guid commandId, CancellationToken cancellationToken);
+        public Task<CommandLimits?> FindCommandLimitsAsync(Guid commandId, CancellationToken cancellationToken);
+        public Task<bool> KeepOutcomeAsync(Guid agentId, Guid commandId, OutpostOutcomeMessage message, ReadOnlyMemory<byte> outcome, CancellationToken cancellationToken);
+        public Task<int> PurgeCommandsAsync(TimeSpan retention, CancellationToken cancellationToken);
+    }
+    ```
+
+    - **The model.** The third migration, `Commands`, creates `commands`: the key `id`,
+      `sequence` as `bigint` generated as identity, a foreign key to `agents` that deletes
+      with the agent, `bytes`, `signature` and `outcome` as `bytea`, `deadline` and
+      `ended_at` as `timestamptz`, `skew` and `run_limit` as `interval`, the enums as
+      integers. Its indexes: unique on `base_key` and `caller_key` where the caller key is
+      not null and the outcome is neither Expired nor Refused, the commands that hold their
+      key (rule 4); `agent_id` with `sequence` where there is no outcome, for the take; and
+      `ended_at`, for the purge. `StoreMigrationsAssembly` lists it and the snapshot
+      follows. A fourth index, `IX_commands_agent_id`, on `agent_id` over the commands whose
+      outcome is none or one the server set of the kind Unknown or Failed, serves the expiry
+      that a newest poll's list makes, which without it scans the whole table while the poll
+      holds its agent row (the coordinator, 22 November 2026, from S5a's review).
+    - **The facts of a command.** `Phase` only moves forward: Waiting, never handed out;
+      HandedOut, in at least one poll answer; Received, listed by a newest poll. An outcome
+      the agent sent does not change the phase, a departure from the study: a kept outcome
+      already keeps the command from the take and from Expired. The outcome is none
+      (`OutcomeKind` null), the agent's (`Outcome` holds its object as it came, §8), or one
+      the server set (`Outcome` null). Only an outcome the server set of the kind Unknown
+      or Failed is *replaceable* (rule 11). `RunLimit` is that of the mode in the poll
+      that last handed the command out. Each change is a conditional `UPDATE … WHERE …
+      RETURNING`; every change that sets an outcome sets `EndedAt` to its now.
+    - **The order of locks** is a pairing token, then an agent row, then claims, then
+      commands. An operation that changes several commands holds their agent row first,
+      as the record, the take and the revocation do, or skips locked rows, as the purge
+      does; every other changes one command and then waits for nothing.
+    - **`RecordPollAsync`** keeps S4's steps. When the poll is the newest, after its
+      claims, two statements reconcile `received` (rules 7, 10, 11): the agent's HandedOut
+      commands in the list become Received; those not in it whose outcome is none or
+      replaceable become Expired when `poll.Time` is later than `deadline + skew`. Ids of
+      no command of this agent are ignored. `Expired` lists what the second changed, and
+      is empty for an older poll.
+    - **`TakeCommandsAsync`** is one short transaction. It locks the agent row `FOR NO KEY
+      UPDATE` while the agent is Paired and `poll.Number` is its newest. Then one statement
+      picks, per base and mode of the poll with a `free` above 0, at most `free` commands
+      of the agent oldest first by `sequence`, `FOR UPDATE SKIP LOCKED`: Waiting or
+      HandedOut, with no outcome, a deadline later than now, a mode the poll declares, and
+      a key the agent holds (rule 14). It keeps them in `sequence` order while their
+      entries in the answer, the bytes in base64url with the signature, fit `room`, the
+      first always (§10), and makes those HandedOut with their `RunLimit`. It reads the
+      `PollState` in the same transaction, `Newest` as `ReadPollStateAsync` gives it, and
+      commits. When the lock found no row, it takes nothing and the state says why:
+      `Revoked`, or a `Newest` that is not `null`. Two takes of one agent wait on its row,
+      so the Acceptance's race "two takes of one command" is a take that finds the
+      command's row held by another transaction: it skips it and changes nothing.
+    - **`FindCallerKeyAsync`** is one short transaction: it makes the command that
+      holds the key Expired when it is Waiting with no outcome and its deadline has passed,
+      then reads the command that
+      holds the key. `Same` compares the mode, the script exactly, and the parameters as
+      `jsonb` (rule 4), the stored ones read from `bytes`. `null` when no command holds the
+      key.
+    - **`FindBaseAsync`** is one statement: the holder of the key's claim, whether its
+      newest poll declares the key and opens Write there, and `Connected` as
+      `ListAgentsAsync` judges it. `null` when no agent holds the key.
+    - **`CreateCommandAsync`** is one short transaction. It locks the agent row `FOR
+      SHARE` while the agent is Paired and its lease ends later than now, so that a
+      revocation ends every command made before it (rule 13) and none is made for an
+      agent not connected (rule 6): `null` otherwise. Then `INSERT … ON CONFLICT` on the
+      unique index `DO UPDATE … RETURNING` gives the command: `Created` when its id is the
+      new one, otherwise the one found, with `Same` as above.
+    - **`PassCommandAsync`** is one short transaction: one statement ends the command when
+      time made it due, Expired when it is Waiting with no outcome and its deadline has
+      passed, or, when it is taken with no outcome and now is at or after its agent's
+      `lease_ends_at` plus `RunLimit`, Unknown `disconnected` for a Write and Failed
+      `lost` for a Read (rule 11).
+      A second reads it. `Outcome` is the command's outcome, the agent's read with
+      `OutpostCodec.ReadOutcome` for its mode. `Due` is when time can next end it: the
+      deadline while Waiting, `lease_ends_at` plus `RunLimit` once taken.
+    - **`FindCommandLimitsAsync`** reads the mode and the outcome limit, or gives `null`.
+    - **`KeepOutcomeAsync`** is one statement: it keeps the outcome when the command is
+      this agent's, not Waiting, and its outcome is none or replaceable, and gives `true`
+      when it changed the row (rule 11).
+    - **`RevokeAgentAsync`** adds, after the claims, two statements: the agent's Waiting
+      commands with no outcome become Refused `revoked`, and its taken ones with no outcome
+      Unknown `revoked` for a Write and Failed `lost` for a Read (rule 13). `Ended` lists
+      them. They run only when the call revoked the agent.
+    - **`PurgeCommandsAsync`** deletes, in statements of at most 1 000 rows with `SKIP
+      LOCKED` until one deletes fewer, every command whose `EndedAt` is a retention ago or
+      more, and every one with no outcome whose end by time, as `PassCommandAsync` judges
+      it, was due that long ago: the same as ending it when due and removing it a
+      retention later, without an update. It gives the number deleted.
+    - Every operation is as S3 and S4 say, its now read once from the store's
+      `TimeProvider` (PQ3).
+    - **The signals.** The keys are `{SignalKeyPrefix}.{id}`, with the id of an agent or a
+      command in the form of §2. Every waiter subscribes with the group
+      `Guid.NewGuid().ToString("N")`, and disposes its subscription in a `finally`. A set
+      comes after the commit it announces; `Unavailable` is ignored. The agent's key is set
+      when a call created a command; a command's key when its outcome was kept, when a
+      poll's record made it Expired, and when a revocation ended it. A failure of the
+      signals is a failure of the poll, a 500, or of the call.
+    - **A call** (`ReadAsync`, `WriteAsync`), after its checks and its token:
+      1. with a caller key, `FindCallerKeyAsync`: a `Same` command is waited for, another
+         is Refused `caller-key-conflict` with no `CommandId`;
+      2. `FindBaseAsync`: `null` is Refused `unknown-base`; a key not declared, or Write
+         not open, `mode-closed`; not `Connected` is Unavailable;
+      3. it writes the command with `OutpostCodec.Write`: a new id, `issued` the now
+         truncated to the millisecond, `deadline` that plus `TakeTimeout` truncated alike,
+         `ClockSkew` and `OutcomeSizeLimit`. It signs the bytes once, with the new
+         `ServerSigningKey.SignCommand`, and `CreateCommandAsync` stores them as they are,
+         with the deadline that was signed. `null` is Unavailable; `Created` sets the agent's
+         key; otherwise it goes on as step 1 does. Before any Unavailable, a call with a
+         caller key runs `FindCallerKeyAsync` once more and follows it when it finds one;
+      4. the wait: subscribe to the command's key, then pass, wait, pass. A pass is
+         `PassCommandAsync`, which returns the outcome or the next `Due`. Each wait is
+         `WaitAsync(null, …)` on a linked token: the caller's, and a source on the options'
+         `TimeProvider` at the earlier of `Due` and `PollTimeout` after the wait starts,
+         the coordinator's choice for the study's Q2. After any wait the caller's token is
+         checked first (rule 12).
+    - **A poll**, after S4's checks: it subscribes to its agent's key before
+      `RecordPollAsync`, sets the keys of `Expired`, and starts the hold as S4 does. Then
+      it passes and waits until the hold ends. A pass is `TakeCommandsAsync`, with `room`
+      the limit of a poll answer (§10) less the length of the answer without commands:
+      `Revoked` gets the bare 403, a `Newest` the answer to an older poll, commands the
+      ordinary answer with them, and nothing another `WaitAsync(null, hold token)`. The
+      end of a hold is S4's.
+    - **`outcome`**, after its body: `ReadOutcomeRequest` with the signed refusals of §9;
+      `FindCommandLimitsAsync`, `OutcomeSizeLimit` and either mode for an unknown
+      command; an `outcome` larger than the limit gets the signed 413 `result-too-large`,
+      which `WriteRefusalAsync` gains; `ReadOutcome` with `form`; then `KeepOutcomeAsync`,
+      the command's key set when it kept, and the signed 200 with `confirmed`.
+    - **The purge** calls `PurgeCommandsAsync` with `OutcomeRetention` after the tokens,
+      in the same round. Its catch logs every failure but an `OperationCanceledException`
+      after the stop was requested, so that no failure leaves the loop to be logged
+      under the host's category (S4's review, P4 3).
+    - **Settled: the states of a hand-out** (as the study's A). A poll that takes anything
+      answers, so it takes once, and every HandedOut command that its later pass finds
+      was handed out by an older poll and missing from this one's list: it is handed out
+      again until its deadline by the node's clock (rule 11). A Received command is never
+      handed out again and never Expired: it reached the agent (rule 3), and Expired would
+      free a key whose Write may still run. A replaceable outcome is not handed out again;
+      it waits for the agent's outcome or for the poll that makes it Expired.
+      *Limitation.* A connected agent whose audit log was restored (§13 of
+      `docs/protocol.md`) may leave a Received command out of its lists; that command ends
+      only when the agent is revoked, as §13 has it.
+    - **Settled, as the study's B, C, D and F:** expiry stores the signed `deadline` and
+      `skew`, never the agent's time; the signed bytes are kept and handed out as they are;
+      a refusal of the server stores nothing; `free` is a parameter of the take,
+      `runLimitMs` is stored at each hand-out, `received` becomes the phase, and `agents`
+      gains no column.
+    - **Settled: duplicate names are refused at the call** (E): `CommandChecks` runs
+      `OutpostJsonReader.CheckText` on the written parameters after their depth, in place
+      of its check of U+0000, as `ArgumentException` for `Parameters`.
+    - **Settled: a change that time makes due sets no key**, a departure from the study:
+      every waiter of the command ends its own wait by that time, `Due` being read from
+      the same row, and every wait ends by `PollTimeout`.
+    - **Settled: the take hands out only for keys the agent holds**, so that a command
+      made before a release never reaches its agent after another claimed the key (rule
+      14). *Limitation.* A base, mode or claim that changes between `FindBaseAsync` and the
+      creation leaves a command that no poll takes, and it ends as Expired.
+    - **Settled: the body is read as S4 reads it** (S4's review, P4 1), a departure from
+      the study: `GetBuffer` saves one copy, but not the peak of the stream's growth, about
+      three times the body, which §9 leaves to rate limiting. `WriteBare` (P4 2) and
+      `HoldTests` (P4 4) are not touched and stay P4.
+    - **The contract step** is S5a's and puts into code all of this contract, for both
+      halves: `CommandPhaseEnum`, `CommandRow`, the seven records, the `DbSet`, the model,
+      the migration `Commands` and its snapshot, and the check of duplicate names with its
+      XML documentation, which then works and gets its test in S5a's tests step. The eight
+      new operations throw `NotSupportedException`; `RecordPollAsync` and
+      `RevokeAgentAsync` give their new records and keep working, with `Expired` and
+      `Ended` empty. S5a's implementer makes the store operations; the calls, the
+      handlers, `SignCommand` and the purge's call are S5b's.
+    - **Edits that state nothing new:**
+      - in the contract step, `PollHandler` reads `.State` of the `PollRecord`,
+        `OutpostServer.RevokeAgentAsync` gives `.Revoked` of the `Revocation`, and the
+        store tests of S4 and their helper `StoreAgent` read the same;
+      - the comment of `ArgumentChecks`, which names `NotSupportedException`, follows the
+        implementation;
+      - the argument tests of S1 and the outcome tests of `RequestCheckTests` stay green;
+        no test asserts that Read, Write or `outcome` refuse, and none is skipped;
+      - the documents step corrects `docs/work/README.md`, whose list of projects says
+        "the test projects of the first three", to the list of `AGENTS.md`.
+    - **Effort:** the test author and the implementer on `xhigh`, since the store and the
+      transport are strict zones.
+- **What S5 changes in the public contract, as a draft for the owner** (the contract
+  author, 22 November 2026). Each holds until the owner overturns it; whoever writes the
+  code writes its XML documentation:
+  - the parameters of `ReadAsync` and `WriteAsync` with a name twice in one object, at any
+    depth, give `ArgumentException` for `Parameters`, and the rule of names says so;
+  - a key whose holder's newest poll no longer declares it opens neither mode: a call gets
+    Refused `mode-closed`;
+  - the store's database has the encoding UTF8, which the XML documentation of
+    `ConnectionString` and concept §5 state;
+  - a held poll whose agent was revoked gets the bare 403 of §9 also when it wakes, and
+    `PollTimeout` also bounds each wait of a call, which §9, its XML documentation and its
+    row in the options table say.
 - **Study.** Sources, for example: the message acknowledgement of the GitHub Actions
   runner service client (MIT); the polling queue of Halibut (Apache-2.0). Questions:
   1. How a message handed to a poll whose answer was lost is found and handed out again.

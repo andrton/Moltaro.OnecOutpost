@@ -202,7 +202,7 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
 
             Assert.True(await store.RedeemPairingTokenAsync(agentId, new byte[91], cancellationToken));
             await RecordAsync(store, agentId, first, cancellationToken);
-            Assert.True(await store.RevokeAgentAsync(agentId, cancellationToken));
+            Assert.True((await store.RevokeAgentAsync(agentId, cancellationToken)).Revoked);
         }
 
         clock.Advance(TimeSpan.FromMinutes(1));
@@ -267,25 +267,27 @@ public sealed class PollTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         OutpostStore store = new(schema.ConnectionString, schema.Name, clock);
         StoreAgent agent = await StoreAgent.PairAsync(store, clock, cancellationToken);
         await agent.PollAsync([ReadOnly("accounting")], cancellationToken);
-        Assert.True(await store.RevokeAgentAsync(agent.Id, cancellationToken));
+        Assert.True((await store.RevokeAgentAsync(agent.Id, cancellationToken)).Revoked);
 
         PollState state = await store.ReadPollStateAsync(agent.Id, agent.Number, cancellationToken);
 
         Assert.True(state.Revoked);
     }
 
-    private static Task<PollState> RecordAsync(
+    private static async Task<PollState> RecordAsync(
         OutpostStore store,
         Guid agentId,
         OutpostPollRequest poll,
         CancellationToken cancellationToken)
     {
-        return store.RecordPollAsync(
+        PollRecord recorded = await store.RecordPollAsync(
             agentId,
             poll,
             StoreAgent.Hold,
             StoreAgent.LeaseGrace,
             StoreAgent.ClockSkew,
             cancellationToken);
+
+        return recorded.State;
     }
 }

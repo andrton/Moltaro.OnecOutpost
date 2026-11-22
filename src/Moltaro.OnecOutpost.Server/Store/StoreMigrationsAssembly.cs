@@ -19,6 +19,7 @@ internal sealed class StoreMigrationsAssembly : IMigrationsAssembly
     {
         [AgentsAndPairingTokens.Id] = typeof(AgentsAndPairingTokens).GetTypeInfo(),
         [PollsAndBaseClaims.Id] = typeof(PollsAndBaseClaims).GetTypeInfo(),
+        [Commands.Id] = typeof(Commands).GetTypeInfo(),
     };
 
     private readonly string _schema;
@@ -53,6 +54,11 @@ internal sealed class StoreMigrationsAssembly : IMigrationsAssembly
         if (type == typeof(PollsAndBaseClaims))
         {
             return new PollsAndBaseClaims(_schema) { ActiveProvider = activeProvider };
+        }
+
+        if (type == typeof(Commands))
+        {
+            return new Commands(_schema) { ActiveProvider = activeProvider };
         }
 
         throw new ArgumentException("The type is not a migration of the store.", nameof(migrationClass));

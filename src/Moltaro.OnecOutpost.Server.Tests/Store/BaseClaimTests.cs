@@ -8,8 +8,9 @@ namespace Moltaro.OnecOutpost.Server.Tests.Store;
 // The base keys of the store against a real PostgreSQL (concept rule 14): a key belongs to the first agent that
 // declares it, until that agent is revoked or the key is released, and a release is refused while the newest poll of
 // the holder declares the key, whatever its lease. Of the keys the newest poll of an agent declared, the state of its
-// poll holds those whose claim names the agent and claims every other, both in ordinal order of the keys. Each test
-// works in a schema of its own.
+// poll holds those whose claim names the agent and claims every other, both in ordinal order of the keys. The holder
+// of a key is found for the checks of a call, with whether its newest poll declares the key and opens Write there and
+// whether it is connected (rule 6). Each test works in a schema of its own.
 [Trait("Requires", "PostgreSQL")]
 public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
@@ -158,6 +159,50 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
 
         Assert.Equal<string>(["accounting"], next.Held);
         Assert.Empty(next.Claimed);
+    }
+
+    // The holder declared a third key in an earlier poll only, and another agent declares the first key, which is
+    // claimed for it. The lease of the holder's newest poll ends at the last lookup.
+    [Fact]
+    public async Task FindBaseAsync_gives_the_holder_of_a_key_whether_its_newest_poll_declares_it_and_opens_Write_and_whether_it_is_connected()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        MigratedSchema schema = await MigratedSchema.CreateAsync(postgres, "base_holder_found", cancellationToken);
+        FakeClock clock = new();
+        OutpostStore store = new(schema.ConnectionString, schema.Name, clock);
+        StoreAgent holder = await StoreAgent.PairAsync(store, clock, cancellationToken);
+        StoreAgent other = await StoreAgent.PairAsync(store, clock, cancellationToken);
+        await holder.PollAsync([ReadAndWrite("accounting"), ReadOnly("warehouse"), ReadOnly("sales")], cancellationToken);
+        await holder.PollAsync([ReadAndWrite("accounting"), ReadOnly("warehouse")], cancellationToken);
+        await other.PollAsync([ReadAndWrite("accounting")], cancellationToken);
+
+        Assert.Equal(new BaseHolder(holder.Id, true, true, true), await store.FindBaseAsync("accounting", cancellationToken));
+        Assert.Equal(new BaseHolder(holder.Id, true, false, true), await store.FindBaseAsync("warehouse", cancellationToken));
+        Assert.Equal(new BaseHolder(holder.Id, false, false, true), await store.FindBaseAsync("sales", cancellationToken));
+
+        clock.Advance(StoreAgent.Hold + StoreAgent.LeaseGrace);
+
+        Assert.Equal(new BaseHolder(holder.Id, true, true, false), await store.FindBaseAsync("accounting", cancellationToken));
+    }
+
+    // The holder released the key, which the newest poll of another agent still declares as claimed: only the claim
+    // of a key names its holder.
+    [Fact]
+    public async Task FindBaseAsync_gives_null_for_a_key_that_no_agent_holds()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        MigratedSchema schema = await MigratedSchema.CreateAsync(postgres, "base_holder_none", cancellationToken);
+        FakeClock clock = new();
+        OutpostStore store = new(schema.ConnectionString, schema.Name, clock);
+        StoreAgent holder = await StoreAgent.PairAsync(store, clock, cancellationToken);
+        StoreAgent other = await StoreAgent.PairAsync(store, clock, cancellationToken);
+        await holder.PollAsync([ReadOnly("accounting")], cancellationToken);
+        await other.PollAsync([ReadOnly("accounting")], cancellationToken);
+        await holder.PollAsync([], cancellationToken);
+        Assert.Equal(OutpostReleaseResultEnum.Released, await store.ReleaseBaseAsync("accounting", cancellationToken));
+
+        Assert.Null(await store.FindBaseAsync("accounting", cancellationToken));
+        Assert.Null(await store.FindBaseAsync("warehouse", cancellationToken));
     }
 
     // The race of two claims of one key, driven to a known order as the race of two redemptions of S3 is: another

@@ -75,9 +75,10 @@ public sealed class OutpostWriteRequest
     /// They are read into 1C values as <see cref="OutpostReadRequest.Parameters"/> describes. No string in them, the
     /// name of a member included, holds U+0000, which PostgreSQL cannot store, or a lone surrogate, which UTF-8 cannot
     /// carry. A string inside another .NET value wrapped in a <see cref="JsonValue"/>, such as a <see cref="char"/> or an
-    /// array, is written as System.Text.Json writes it, with U+FFFD in place of a lone surrogate. They nest at most 64
-    /// levels, counted from their own outer value, the outer object being level 1: a fixed limit of the protocol. They
-    /// are written as JSON when the call is made: a later change of the object has no effect on the command.
+    /// array, is written as System.Text.Json writes it, with U+FFFD in place of a lone surrogate. No object in them has a
+    /// name twice, the names compared after unescaping. They nest at most 64 levels, counted from their own outer value,
+    /// the outer object being level 1: a fixed limit of the protocol. They are written as JSON when the call is made: a
+    /// later change of the object has no effect on the command.
     /// </remarks>
     public JsonObject? Parameters { get; init; }
 }

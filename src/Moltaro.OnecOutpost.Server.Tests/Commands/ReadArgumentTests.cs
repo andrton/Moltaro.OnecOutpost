@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Commands;
 
@@ -15,6 +16,14 @@ public sealed class ReadArgumentTests : IAsyncDisposable
         """{ "text": "a\u0000b" }""",
         """{ "lines": [ { "item": "a\u0000" } ] }""",
         """{ "na\u0000me": 1 }""",
+    ];
+
+    // In the JSON text of the third, \u0070 is an escape of the letter p.
+    public static TheoryData<string> ParametersWithANameTwice =>
+    [
+        """{ "period": "2026-11", "period": "2026-12" }""",
+        """{ "lines": [ { "item": 1, "item": 2 } ] }""",
+        "{ \"period\": \"2026-11\", \"\\u0070eriod\": \"2026-12\" }",
     ];
 
     private IOutpostServer Server => _services.GetRequiredService<IOutpostServer>();
@@ -92,6 +101,24 @@ public sealed class ReadArgumentTests : IAsyncDisposable
     [Theory]
     [MemberData(nameof(ParametersWithU0000))]
     public void Parameters_with_a_string_that_holds_U0000_are_refused_with_the_name_of_their_property(string parameters)
+    {
+        OutpostReadRequest request = new()
+        {
+            BaseKey = "accounting",
+            Script = "Result = 1;",
+            Parameters = JsonNode.Parse(parameters)!.AsObject(),
+        };
+
+        Assert.Throws<ArgumentException>(nameof(OutpostReadRequest.Parameters), () => Call(request));
+    }
+
+    // A JsonObject parsed from JSON text keeps that text until it is changed, so a name given twice reaches the call.
+    // jsonb keeps the last value of such a name, so a repeat would compare equal to parameters other than those signed
+    // (concept rule 4). The places are the outer object, an object nested in an array, and a name that is the same as
+    // the other only once its escape is read.
+    [Theory]
+    [MemberData(nameof(ParametersWithANameTwice))]
+    public void Parameters_with_a_name_twice_in_one_object_are_refused_with_the_name_of_their_property(string parameters)
     {
         OutpostReadRequest request = new()
         {

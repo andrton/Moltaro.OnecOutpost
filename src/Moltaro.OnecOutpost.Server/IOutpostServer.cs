@@ -186,7 +186,8 @@ public interface IOutpostServer
     /// Thrown by the call: a property of <paramref name="request"/> breaks its rule, a lone surrogate in its
     /// <see cref="OutpostReadRequest.Script"/> or in a string of its <see cref="OutpostReadRequest.Parameters"/>
     /// included; its <see cref="OutpostReadRequest.Parameters"/> cannot be written as JSON, such as a number that is
-    /// not finite, a value that System.Text.Json cannot write or a nesting deeper than 64 levels, which has the
+    /// not finite, a value that System.Text.Json cannot write, a nesting deeper than 64 levels or a name twice in one
+    /// object, which has the
     /// <see cref="ArgumentException.ParamName"/> <c>Parameters</c>; or the command is larger than
     /// <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the <see cref="ArgumentException.ParamName"/>
     /// <c>request</c>.
@@ -251,7 +252,8 @@ public interface IOutpostServer
     /// Thrown by the call: a property of <paramref name="request"/> breaks its rule, a lone surrogate in its
     /// <see cref="OutpostWriteRequest.Script"/> or in a string of its <see cref="OutpostWriteRequest.Parameters"/>
     /// included; its <see cref="OutpostWriteRequest.Parameters"/> cannot be written as JSON, such as a number that is
-    /// not finite, a value that System.Text.Json cannot write or a nesting deeper than 64 levels, which has the
+    /// not finite, a value that System.Text.Json cannot write, a nesting deeper than 64 levels or a name twice in one
+    /// object, which has the
     /// <see cref="ArgumentException.ParamName"/> <c>Parameters</c>; or the command is larger than
     /// <see cref="OutpostServerOptions.CommandSizeLimit"/>, which has the <see cref="ArgumentException.ParamName"/>
     /// <c>request</c>.
