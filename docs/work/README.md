@@ -10,9 +10,9 @@ delivered over several sprints.
 ## The repository as it is set up
 
 - `src` holds the build settings and the solution. Its projects are the protocol, the
-  server, the agent, the samples, the test support and the test projects of the first
-  three. The other projects that `AGENTS.md` plans are created by the sprints that first
-  need them.
+  server, the agent, the COM worker, the executor's sources, the samples, the test
+  support, the test projects of these four and the tests that need 1C. The other projects
+  that `AGENTS.md` plans are created by the sprints that first need them.
 - The tests run on xUnit.net v3 and Microsoft.Testing.Platform, which `src/global.json`
   names as the runner. A test that needs PostgreSQL has the trait `Requires=PostgreSQL`
   and starts it in Docker through Testcontainers; a test that needs Windows has the trait

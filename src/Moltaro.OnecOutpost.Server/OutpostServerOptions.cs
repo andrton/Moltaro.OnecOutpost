@@ -27,7 +27,9 @@ public sealed class OutpostServerOptions
     /// </summary>
     /// <remarks>
     /// The store is an EF Core context of the library on this connection, in <see cref="Schema"/>.
-    /// <see cref="OutpostMigrations"/> creates and updates its tables.
+    /// <see cref="OutpostMigrations"/> creates and updates its tables. The application gives it a database in the encoding
+    /// UTF8, which the library does not check, since the store compares the parameters of commands as <c>jsonb</c>, read
+    /// from their signed UTF-8 text.
     /// </remarks>
     public string? ConnectionString { get; set; }
 

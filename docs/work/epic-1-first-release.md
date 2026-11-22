@@ -1188,7 +1188,7 @@ The release
 | S2 | The protocol, its signatures and the pairing proof | Full | Done, 21 November 2026: the codec, the signatures and the pairing proof with their tests; the code review closed in two rounds, after the ten rounds of `docs/protocol.md`. What it changed in the public contract is listed in its brief for the owner |
 | S3 | The store | Full | Done, 21 November 2026: the store on PostgreSQL in the schema the application chooses, its first migration, `OutpostMigrations` with `MigrateAsync` and `GetScripts`, and the pairing tokens with their pending agents: created, found, redeemed once and purged, which no endpoint uses yet. The internal contract was reviewed in two rounds; the code review took three, and its last finding, a word of the XML documentation of `MigrateAsync`, was fixed on the owner's decision without a fourth round. What it changed in the public contract is listed in its brief for the owner |
 | S4 | Pairing and agents on the server | Full | Done, 22 November 2026: the store's polls, leases and base keys with their second migration; the endpoints `pair` and `poll`, with the unsigned answers of §9 before the body and the hold of a poll; `AddOutpostServer` in full, `CreatePairingTokenAsync`, `GetAgentsAsync`, `RevokeAgentAsync`, `ReleaseBaseAsync` and the purge. Read, Write and `outcome` still refuse. The internal contract was reviewed in two rounds; the code review closed in one, with four P4 left for the coordinator; the documents were reviewed once. What it changed in the public contract is listed in its brief for the owner |
-| S5a | Commands in the store | Full | In progress |
+| S5a | Commands in the store | Full | Done, 22 November 2026: the commands table with the third migration `Commands`, the store operations of commands and outcomes with their tests and races against PostgreSQL, revocation ending the agent's commands in its transaction, and parameters with a name twice refused at the call. Read, Write and `outcome` still refuse. The study read actions/runner and Halibut; the internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds and left P4s, listed for S5b in its brief. Of the drafts of the public contract that the S5 brief lists for the owner, S5a makes two: parameters with a name twice refused, and a store database in UTF8 |
 | S5b | The calls, the hand-out, `outcome` and the signals | Full | Not started |
 | S6 | The agent | Full | Not started |
 | S7 | Several nodes and lost messages | Full | Not started |
@@ -2362,6 +2362,19 @@ approval of this plan.
 
 The Acceptance "Against PostgreSQL, without HTTP" is S5a's; every other line of it is
 S5b's.
+
+**Left for S5b by S5a's review** (P4, the coordinator, 22 November 2026). S5b looks at
+each where its own code meets it:
+
+- a take skips a Waiting command whose row a create that found it holds, and nothing then
+  wakes the poll before its hold ends;
+- a number in the parameters that PostgreSQL's `numeric` cannot hold, such as `1e-20000`,
+  makes every call with a caller key fail in the store; the limitation is stated nowhere;
+- `PassCommandAsync` throws `InvalidOperationException` for a command the purge removed;
+- the room of a poll answer is not tested at its exact boundary;
+- deleting a Pending agent scans `commands` through its foreign key;
+- the comment on the order of locks in `OutpostStore` reads as if two creates for one
+  agent wait for each other, which `FOR SHARE` locks do not.
 
 - **Goal.** Read and Write work on the server, end to end against an agent that speaks
   the protocol:

@@ -398,9 +398,10 @@ endpoints of the agents under a prefix the application chooses. The application 
     the subscription limit of its Signals host for its agents and its concurrent calls.
 - **The PostgreSQL connection and the schema** of the library's store. The store is an EF
   Core context of the library. Its migrations ship as EF Core migrations, and as SQL
-  scripts for an application that applies migrations itself. Every node removes ended
-  commands after their retention, and pairing tokens when they expire; removing is
-  idempotent.
+  scripts for an application that applies migrations itself. The application gives
+  it a database in the encoding UTF8, since the store compares the parameters of commands as `jsonb`, read
+  from their signed UTF-8 text. Every node removes ended commands after their retention,
+  and pairing tokens when they expire; removing is idempotent.
 - **The signing key**, from the application's own secret storage. The store never holds
   it.
 - **The authorization of callers.** Who may call Read or Write is the application's
