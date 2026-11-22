@@ -10,6 +10,12 @@ internal sealed class StoreContext : DbContext
     private static readonly string CommandsHoldingTheirKey =
         $"caller_key IS NOT NULL AND (outcome_kind IS NULL OR outcome_kind NOT IN ({(int)OutpostOutcomeKindEnum.Refused}, {(int)OutpostOutcomeKindEnum.Expired}))";
 
+    // The filter of the index of the expiry by a poll's list, with the integers of the kinds Unknown and Failed: the
+    // commands that hold no outcome of their agent and whose outcome is none or one the server set that a later fact
+    // replaces (rule 11).
+    private static readonly string CommandsWithNoOutcomeOrAReplaceableOne =
+        $"outcome IS NULL AND (outcome_kind IS NULL OR outcome_kind IN ({(int)OutpostOutcomeKindEnum.Unknown}, {(int)OutpostOutcomeKindEnum.Failed}))";
+
     public StoreContext(DbContextOptions<StoreContext> options, string schema)
         : base(options)
     {
@@ -140,6 +146,12 @@ internal sealed class StoreContext : DbContext
             // The commands of an agent without an outcome, oldest first, for the take.
             command.HasIndex(row => new { row.AgentId, row.Sequence })
                 .HasFilter("outcome_kind IS NULL");
+
+            // The commands of an agent whose outcome is none or replaceable, for the expiry by the list of a newest
+            // poll: with the index of the take, it finds both without a scan of the table, which holds every command
+            // for its retention.
+            command.HasIndex(row => row.AgentId)
+                .HasFilter(CommandsWithNoOutcomeOrAReplaceableOne);
 
             // The ended commands by the moment they ended, for the purge.
             command.HasIndex(row => row.EndedAt);

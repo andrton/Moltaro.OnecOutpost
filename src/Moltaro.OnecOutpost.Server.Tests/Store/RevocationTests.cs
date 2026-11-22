@@ -126,6 +126,37 @@ public sealed class RevocationTests(PostgreSqlFixture postgres) : IClassFixture<
         Assert.Equal(OutpostCodes.Revoked, refused.Code);
     }
 
+    // Concept rules 6 and 13: the race of a create and a revocation, driven to a known order as the race of two claims
+    // of a key is. Another connection makes the agent Revoked, as a revocation does before it ends the agent's
+    // commands, and holds that change open until the create is seen waiting for it; then it commits. A create that read
+    // the agent without waiting for it would make a command that the revocation, already past its commands, never ends.
+    [Fact]
+    public async Task A_create_that_meets_a_revocation_waits_for_it_and_then_creates_nothing()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        MigratedSchema schema = await MigratedSchema.CreateAsync(postgres, "create_against_revoke", cancellationToken);
+        FakeClock clock = new();
+        OutpostStore store = new(schema.ConnectionString, schema.Name, clock);
+        StoreAgent agent = await StoreAgent.PairAsync(store, clock, cancellationToken);
+        await agent.RecordAsync(agent.NextPoll([Serving("accounting", 1, 1)], []), cancellationToken);
+        CommandRow command = Create(agent, "accounting", OutpostModeEnum.Write, "invoice-42", clock.GetUtcNow());
+        Task<CommandMatch?> create;
+
+        await using (HeldLock revocation = await HeldLock.TakeAsync(
+            schema.ConnectionString,
+            $"UPDATE {schema.Name}.agents SET state = {(int)OutpostAgentStateEnum.Revoked} WHERE id = '{agent.Id}'",
+            cancellationToken))
+        {
+            create = store.CreateCommandAsync(command, cancellationToken);
+
+            await revocation.WaitForAsync([create], cancellationToken);
+            await revocation.CommitAsync(cancellationToken);
+        }
+
+        Assert.Null(await create);
+        Assert.Empty(await schema.ListCommandsAsync(cancellationToken));
+    }
+
     // The public contract: revoking a pending agent ends its token, which then pairs nothing.
     [Fact]
     public async Task Revoking_a_pending_agent_ends_its_token()

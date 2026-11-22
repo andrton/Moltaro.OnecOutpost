@@ -222,9 +222,10 @@ internal sealed class OutpostStore
     // changes nothing (rule 10) and gets the recorded number with the lists of the newest poll, and no Expired.
     //
     // The order of locks is a pairing token, then an agent row, then claims, then commands, in every operation. The
-    // update of the agent row holds that row until the commit, so the polls of one agent, its takes, its revocation and
-    // the releases of its keys wait for each other on it. The claims are inserted in ordinal order of their keys, so
-    // two polls that claim the same keys never wait for each other in a cycle.
+    // update of the agent row holds that row until the commit, so the polls of one agent, its takes, its revocation,
+    // the releases of its keys and the creates of its commands, which hold the row FOR SHARE, wait for each other on
+    // it. The claims are inserted in ordinal order of their keys, so two polls that claim the same keys never wait for
+    // each other in a cycle.
     public async Task<PollRecord> RecordPollAsync(
         Guid agentId,
         OutpostPollRequest poll,
@@ -462,9 +463,11 @@ internal sealed class OutpostStore
     // Frees a key whose holder's newest poll no longer declares it, in one short transaction (rule 14).
     //
     // The holder's agent row is locked before its bases are read, so that a poll of the holder that is committing is
-    // seen whole. FOR NO KEY UPDATE conflicts with the update of a poll, and not with the key-share locks of the rows that
-    // refer to the agent. Another agent may claim the key between the read of the holder and the lock, after a release or
-    // a revocation; the call then answers StillDeclared and changes nothing, and the next call decides.
+    // seen whole. FOR NO KEY UPDATE conflicts with the update of a poll and with the FOR SHARE of a create of the
+    // holder's commands, so a release and those wait for each other; it does not conflict with the key-share locks that
+    // the inserts of rows that refer to the agent take. Another agent may claim the key between the read of the holder
+    // and the lock, after a release or a revocation; the call then answers StillDeclared and changes nothing, and the
+    // next call decides.
     public async Task<OutpostReleaseResultEnum> ReleaseBaseAsync(string baseKey, CancellationToken cancellationToken)
     {
         await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
@@ -1084,7 +1087,8 @@ internal sealed class OutpostStore
     // outcome is none or replaceable and the poll's signed time is later than their deadline plus their skew: from then
     // on the agent refuses them by its own clock, so they never run. Identities of no command of this agent change
     // nothing. Each statement waits for a row that an outcome holds, and then finds that outcome: the first to commit
-    // wins.
+    // wins. The second finds its commands through the two partial indexes on the agent: that of the take, for no
+    // outcome, and that of the expiry, for an outcome that is none or replaceable.
     private static async Task<IReadOnlyList<Guid>> ReconcileReceivedAsync(
         StoreContext context,
         Guid agentId,

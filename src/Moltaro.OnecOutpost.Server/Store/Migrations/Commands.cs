@@ -5,9 +5,9 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Moltaro.OnecOutpost.Server.Store.Migrations;
 
 // The third migration of the store: the commands, with the index that holds one command per base and caller key, the
-// index of the take and that of the purge. Written in the form the EF Core tools scaffold for one schema, with the
-// schema a parameter, as in the first migration, so that it serves the schema it is created with. Its target model is
-// the model of the store as this migration leaves it.
+// index of the take, that of the expiry by a poll's list and that of the purge. Written in the form the EF Core tools
+// scaffold for one schema, with the schema a parameter, as in the first migration, so that it serves the schema it is
+// created with. Its target model is the model of the store as this migration leaves it.
 [Migration(Id)]
 internal sealed class Commands : Migration
 {
@@ -57,6 +57,13 @@ internal sealed class Commands : Migration
                     principalColumn: "id",
                     onDelete: ReferentialAction.Cascade);
             });
+
+        migrationBuilder.CreateIndex(
+            name: "IX_commands_agent_id",
+            schema: _schema,
+            table: "commands",
+            column: "agent_id",
+            filter: "outcome IS NULL AND (outcome_kind IS NULL OR outcome_kind IN (0, 2))");
 
         migrationBuilder.CreateIndex(
             name: "IX_commands_agent_id_sequence",
@@ -252,6 +259,9 @@ internal sealed class Commands : Migration
             command.HasKey("Id");
 
             command.HasIndex("EndedAt");
+
+            command.HasIndex("AgentId")
+                .HasFilter("outcome IS NULL AND (outcome_kind IS NULL OR outcome_kind IN (0, 2))");
 
             command.HasIndex("AgentId", "Sequence")
                 .HasFilter("outcome_kind IS NULL");

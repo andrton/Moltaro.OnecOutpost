@@ -342,7 +342,7 @@ after it.
   | Caller key | 1 to 200 characters, each from U+0021 to U+007E (printable ASCII without the space); compared exactly |
   | Agent name | A display label: 1 to 100 characters of any kind but control characters, counted as UTF-16 code units (`string.Length`), with no white space at the start or the end, and no lone surrogate, a code unit from U+D800 to U+DFFF without its pair (Q2, Q6) |
   | Script | At least one character that is not white space, no U+0000, and no lone surrogate (Q6) |
-  | Parameters | No string in them, names included, holds U+0000, which PostgreSQL cannot store, or a lone surrogate, which UTF-8 cannot carry (Q6); they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
+  | Parameters | No string in them, names included, holds U+0000, which PostgreSQL cannot store, or a lone surrogate, which UTF-8 cannot carry (Q6); no object in them, at any depth, gives a name twice, the names compared after their escapes are read (S5); they nest at most 64 levels, the outer object being level 1, a limit of the protocol (Q5) |
   | Schema | 1 to 63 characters, each one of `a–z 0–9 _`, the first a letter |
   | Endpoint prefix | `/` followed by one or more segments of `A–Z a–z 0–9 - _ .` separated by `/`, not ending with `/`; no segment is `.` or `..` |
 - **Sizes.** Every size is counted on the bytes that the protocol carries: UTF-8, with
@@ -2491,7 +2491,10 @@ S5b's.
       not null and the outcome is neither Expired nor Refused, the commands that hold their
       key (rule 4); `agent_id` with `sequence` where there is no outcome, for the take; and
       `ended_at`, for the purge. `StoreMigrationsAssembly` lists it and the snapshot
-      follows.
+      follows. A fourth index, `IX_commands_agent_id`, on `agent_id` over the commands whose
+      outcome is none or one the server set of the kind Unknown or Failed, serves the expiry
+      that a newest poll's list makes, which without it scans the whole table while the poll
+      holds its agent row (the coordinator, 22 November 2026, from S5a's review).
     - **The facts of a command.** `Phase` only moves forward: Waiting, never handed out;
       HandedOut, in at least one poll answer; Received, listed by a newest poll. An outcome
       the agent sent does not change the phase, a departure from the study: a kept outcome

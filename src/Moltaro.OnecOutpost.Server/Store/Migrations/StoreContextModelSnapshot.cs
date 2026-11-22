@@ -188,6 +188,9 @@ internal sealed class StoreContextModelSnapshot : ModelSnapshot
 
             command.HasIndex("EndedAt");
 
+            command.HasIndex("AgentId")
+                .HasFilter("outcome IS NULL AND (outcome_kind IS NULL OR outcome_kind IN (0, 2))");
+
             command.HasIndex("AgentId", "Sequence")
                 .HasFilter("outcome_kind IS NULL");
 
