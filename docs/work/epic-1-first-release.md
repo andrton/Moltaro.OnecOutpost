@@ -882,7 +882,11 @@ Each line is one JSON object in UTF-8, written and flushed before the agent goes
     than `auditRetentionDays` plus a day, so that with that day of tolerance it is still
     older than `auditRetentionDays` by the server's clock;
   - *(S6)* no file is removed while it holds an entry of a command whose outcome is not
-    confirmed, or the highest `reservation` of the agent's identity;
+    confirmed, or the highest `reservation` of the agent's identity, nor while it holds
+    the `confirmed` of a command whose other entries are in a file that stays. So a file
+    is kept past `auditRetentionDays` while such a command stays unconfirmed, and, after
+    the clock was set back, two files whose entries confirm each other's commands are
+    kept for good;
   - *(S6)* retention runs only right after a verified poll answer of the current run, and
     only when the agent's clock is within a day of that answer's `time`. An agent that has
     had no such answer since it started, or whose clock is further off, removes nothing,
@@ -3167,12 +3171,11 @@ end, the clock set behind the server's newest number, and the documents step.
         `time` is more than `retentionDays` plus a day before the clock, and every file
         that holds no entry, except a file that holds an entry of a command `Unconfirmed`
         gives, and the file that holds the highest reservation of `agent`;
-      - the files that hold the entries of one command go together, so that no command is
-        left with its `received` or `ended` and without its `confirmed`: a file stays while
-        a file that stays holds an entry of one of its commands, a file that holds a
-        `confirmed` is deleted after the other files of that command, and a file it cannot
-        delete keeps every file not yet deleted that shares a command with it (the
-        coordinator, 22 November 2026, from S6a's code review, round 1);
+      - no command is left with its `received` or `ended` and without its `confirmed`: a
+        file stays while it holds the `confirmed` of a command that has an entry in a file
+        that stays, so a `confirmed` is deleted after the other entries of its command; a
+        `received` or `ended` may go while its `confirmed` stays (the coordinator, 22
+        November 2026, from S6a's code review, rounds 1 and 2);
       - a file it cannot delete stays until a later call, and nothing is recorded;
       - afterwards `Find` no longer knows a command none of whose entries is left.
     - **`Outbox.Open`** deletes every file whose name ends with `.tmp`, torn or left by a
