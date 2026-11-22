@@ -21,10 +21,11 @@ namespace Moltaro.OnecOutpost.Server;
 // the agent learns of a new command on the key of the agent. Each set comes after the commit it announces. A set that
 // the Signals host did not confirm is ignored: every waiter reads the store again by a deadline of its own.
 //
-// A set after a commit is never cancelled, here or in the endpoints: the commit happened, so a caller that cancels or
-// an agent that goes away must not skip the wake, and a revocation that committed is not reported as cancelled. Its
-// wait is still finite: in-process a set completes at once, and a client of a Signals host waits for the host's answer
-// at most until it declares the connection dead, by its DeadPeerTimeout.
+// A set after a commit, here or in the endpoints, is started without a token: the commit happened, so a caller that
+// cancels or an agent that goes away must not skip the wake. Whoever waits for the set waits with its own token, so a
+// cancellation releases it at once (principle 10), and the set left behind ends on its own: in-process at once, and on
+// a client of a Signals host with the host's answer, or at the latest when the client declares the connection dead,
+// by its DeadPeerTimeout. SignalSets.SetAfterCommitAsync does both.
 internal sealed class OutpostServer : IOutpostServer
 {
     // The secret of a pairing token: 16 random bytes, 128 bits (§5 of docs/protocol.md).
@@ -75,7 +76,7 @@ internal sealed class OutpostServer : IOutpostServer
 
         foreach (Guid commandId in revocation.Ended)
         {
-            await _signals.SetAsync(_options.SignalKey(commandId), CancellationToken.None);
+            await _signals.SetAfterCommitAsync(_options.SignalKey(commandId), cancellationToken);
         }
 
         return revocation.Revoked;
@@ -308,7 +309,7 @@ internal sealed class OutpostServer : IOutpostServer
         // The held poll of the agent takes the new command once it is woken.
         if (match is { Created: true })
         {
-            await _signals.SetAsync(_options.SignalKey(agentId), CancellationToken.None);
+            await _signals.SetAfterCommitAsync(_options.SignalKey(agentId), cancellationToken);
         }
 
         return match;

@@ -402,8 +402,7 @@ internal static class OutpostCodec
 
     // Reads the body of an `outcome` request (§6.3), after it verified the signature with the agent's key. It reads
     // the whole body by §2, the `outcome` member included (step 1 of §6.3), and keeps that member as a slice of
-    // `body`, without a copy. It throws `signature`, then `form`. The check of the size and ReadOutcome follow it, in
-    // the order of §6.3, and are the caller's.
+    // `body`, without a copy. It throws `signature`, then `form`. The server reads with the overload below instead.
     public static OutpostOutcomeRequest ReadOutcomeRequest(
         ECDsa agentKey,
         Guid agent,

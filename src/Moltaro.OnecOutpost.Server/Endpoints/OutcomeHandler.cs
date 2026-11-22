@@ -119,10 +119,10 @@ internal sealed class OutcomeHandler
                 request.Outcome,
                 context.RequestAborted);
 
-            // A set after a commit is not cancelled, as OutpostServer says.
+            // The set goes out even when the agent goes away meanwhile, as OutpostServer says.
             if (kept)
             {
-                await _signals.SetAsync(_options.SignalKey(request.Command), CancellationToken.None);
+                await _signals.SetAfterCommitAsync(_options.SignalKey(request.Command), context.RequestAborted);
             }
         }
 

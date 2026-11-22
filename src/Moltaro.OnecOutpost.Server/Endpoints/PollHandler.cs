@@ -122,11 +122,11 @@ internal sealed class PollHandler
         // hold ends within the lease that the poll recorded, however long the sets below take.
         using CancellationTokenSource holdEnds = new(hold, _options.TimeProvider);
 
-        // The calls that wait for the commands that the list made Expired learn of it once it is committed. A set
-        // after a commit is not cancelled, as OutpostServer says.
+        // The calls that wait for the commands that the list made Expired learn of it once it is committed. Each set
+        // goes out even when the agent goes away meanwhile, as OutpostServer says.
         foreach (Guid expired in record.Expired)
         {
-            await _signals.SetAsync(_options.SignalKey(expired), CancellationToken.None);
+            await _signals.SetAfterCommitAsync(_options.SignalKey(expired), context.RequestAborted);
         }
 
         // The room of the commands in the answer is the limit of §10 less the answer without them. The time has a
