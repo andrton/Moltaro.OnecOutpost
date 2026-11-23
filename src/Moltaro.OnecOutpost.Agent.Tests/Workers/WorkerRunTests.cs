@@ -92,12 +92,12 @@ public sealed class WorkerRunTests
 
         Task<WorkerRun> run = test.Pool.RunAsync(command, cancellationToken);
         await test.WaitForTimerAsync(start + limit);
-        test.Clock.Advance(limit - TestPool.Millisecond);
+        test.Clock.Advance(limit - TestTimes.Millisecond);
 
         Assert.False(worker.IsKilled);
         Assert.False(run.IsCompleted);
 
-        test.Clock.Advance(TestPool.Millisecond);
+        test.Clock.Advance(TestTimes.Millisecond);
         WorkerRun ended = await run.WaitAsync(TestTimes.Deadline, cancellationToken);
 
         Assert.True(worker.IsKilled);

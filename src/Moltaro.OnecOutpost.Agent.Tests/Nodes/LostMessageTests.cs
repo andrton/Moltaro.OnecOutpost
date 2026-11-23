@@ -17,8 +17,6 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Nodes;
 [Trait("Requires", "PostgreSQL")]
 public sealed class LostMessageTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    private static readonly TimeSpan Millisecond = TimeSpan.FromMilliseconds(1);
-
     // The proxy drops the answer of the first poll, on the first node, which handed out the Write of a call on the
     // second: the agent never received it. After its first delay the agent polls the second node. That poll is newer
     // and does not list the Write, so it hands it out again (rule 11), and the agent runs it once.
@@ -204,7 +202,7 @@ public sealed class LostMessageTests(PostgreSqlFixture postgres) : IClassFixture
 
         nodes.Clock.Advance(command.Deadline - nodes.Clock.GetUtcNow());
         await nodes.Second.WaitForTimerAsync(command.Deadline + pollTimeout, cancellationToken);
-        nodes.Clock.Advance(lastAccepted + Millisecond - nodes.Clock.GetUtcNow());
+        nodes.Clock.Advance(lastAccepted + TestTimes.Millisecond - nodes.Clock.GetUtcNow());
         Task<OutpostOutcome> repeat = TestCalls.CallAsync(nodes.First.Server, "write", "invoice-17", cancellationToken);
 
         // Two timers are due by the end of the repeat's wait: the call's next wait and that wait, armed once it waits.

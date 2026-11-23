@@ -29,8 +29,6 @@ internal sealed class TestChecks : IDisposable
 
     public static readonly TimeSpan TakeTimeout = TimeSpan.FromSeconds(30);
 
-    public static readonly TimeSpan Millisecond = TimeSpan.FromMilliseconds(1);
-
     private readonly ECDsa _serverKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 
     // The agent holds only the public key it pinned.

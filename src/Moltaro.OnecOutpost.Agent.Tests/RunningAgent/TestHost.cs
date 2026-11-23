@@ -18,8 +18,6 @@ internal sealed class TestHost : IAsyncDisposable
 {
     public const string Executor = @"C:\Program Files\Moltaro Outpost\OutpostExecutor.epf";
 
-    public static readonly TimeSpan Millisecond = TimeSpan.FromMilliseconds(1);
-
     private readonly ECDsa _serverKey;
 
     private readonly ECDsa _agentKey;
@@ -82,9 +80,7 @@ internal sealed class TestHost : IAsyncDisposable
     // Completes once the agent has armed a timer due at or before dueBy.
     public Task WaitForTimerAsync(DateTimeOffset dueBy)
     {
-        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-
-        return Clock.WaitForTimerAsync(dueBy, cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
+        return TestTimes.WaitForTimerAsync(Clock, dueBy);
     }
 
     // Waits until the agent has armed a timer due by the delay from now, such as a delay before its next request, and
@@ -96,14 +92,9 @@ internal sealed class TestHost : IAsyncDisposable
     }
 
     // The same, and states that the timer is due exactly then: none is due a millisecond earlier.
-    public async Task PassExactlyAsync(TimeSpan delay)
+    public Task PassExactlyAsync(TimeSpan delay)
     {
-        DateTimeOffset now = Clock.GetUtcNow();
-
-        await WaitForTimerAsync(now + delay);
-        Assert.False(Clock.HasTimerDueBy(now + delay - Millisecond), $"The agent waits less than {delay}.");
-
-        Clock.Advance(delay);
+        return TestTimes.PassExactlyAsync(Clock, delay, "agent");
     }
 
     // The exit code, once the agent ends by itself.

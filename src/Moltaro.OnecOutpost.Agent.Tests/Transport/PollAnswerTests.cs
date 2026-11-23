@@ -32,7 +32,7 @@ public sealed class PollAnswerTests
 
         Task<PollResult> result = test.PollAsync(test.Poll());
         (await test.Server.NextPollAsync()).AnswerPoll(sent);
-        PollResult answer = await EndOf(result);
+        PollResult answer = await TestTimes.EndOf(result);
 
         Assert.Null(answer.Reason);
         OutpostPollAnswer read = Assert.IsType<OutpostPollAnswer>(answer.Answer);
@@ -75,7 +75,7 @@ public sealed class PollAnswerTests
 
         Task<PollResult> result = test.PollAsync(test.Poll());
         Give(test, await test.Server.NextPollAsync(), answer);
-        PollResult lost = await EndOf(result);
+        PollResult lost = await TestTimes.EndOf(result);
 
         Assert.Null(lost.Answer);
         Assert.Equal(reason, lost.Reason);
@@ -89,7 +89,7 @@ public sealed class PollAnswerTests
         Task<PollResult> result = test.PollAsync(test.Poll());
         await test.Server.NextPollAsync();
         await test.PassExactlyAsync(FakeServer.PollTimeout + FakeServer.LeaseGrace);
-        PollResult lost = await EndOf(result);
+        PollResult lost = await TestTimes.EndOf(result);
 
         Assert.Null(lost.Answer);
         Assert.Equal("unreachable", lost.Reason);
@@ -110,7 +110,7 @@ public sealed class PollAnswerTests
         byte[] body = OutpostCodec.Write(test.Server.Ordinary());
         exchange.AnswerStalled(body);
         await test.PassExactlyAsync(RequestTimeout);
-        PollResult lost = await EndOf(result);
+        PollResult lost = await TestTimes.EndOf(result);
 
         Assert.Null(lost.Answer);
         Assert.Equal("status-200", lost.Reason);
@@ -128,7 +128,7 @@ public sealed class PollAnswerTests
 
         Task<PollResult> result = test.PollAsync(test.Poll());
         (await test.Server.NextPollAsync()).AnswerSigned(200, body);
-        PollResult answer = await EndOf(result);
+        PollResult answer = await TestTimes.EndOf(result);
 
         Assert.NotNull(answer.Answer);
     }
@@ -142,7 +142,7 @@ public sealed class PollAnswerTests
         Task<PollResult> result = test.PollAsync(test.Poll());
         ServerExchange exchange = await test.Server.NextPollAsync();
         exchange.AnswerStreamed(body, declared: true);
-        PollResult lost = await EndOf(result);
+        PollResult lost = await TestTimes.EndOf(result);
 
         Assert.Null(lost.Answer);
         Assert.Equal("status-200", lost.Reason);
@@ -158,7 +158,7 @@ public sealed class PollAnswerTests
         Task<PollResult> result = test.PollAsync(test.Poll());
         ServerExchange exchange = await test.Server.NextPollAsync();
         exchange.AnswerStreamed(body, declared: false);
-        PollResult lost = await EndOf(result);
+        PollResult lost = await TestTimes.EndOf(result);
 
         Assert.Null(lost.Answer);
         Assert.Equal("status-200", lost.Reason);
