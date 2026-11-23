@@ -131,7 +131,21 @@ not committed. S12 moves the final figures into `README.md`.
 
 | Sprint | Scenario | Figure | Target | Machine | Date |
 | --- | --- | --- | --- | --- | --- |
-| — | — | — | — | — | — |
+| S7b | One node, `PollTimeout` 25 s, call → waiting poll | p50 15.4 ms, p95 30.6 ms, max 189.3 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S7b | One node, `PollTimeout` 25 s, outcome → waiting caller | p50 13.3 ms, p95 29.1 ms, max 229.4 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S7b | Two nodes, `PollTimeout` 25 s, call → waiting poll | p50 14.6 ms, p95 23.7 ms, max 52.1 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S7b | Two nodes, `PollTimeout` 25 s, outcome → waiting caller | p50 12.5 ms, p95 21.9 ms, max 244.7 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S7b | One node, `PollTimeout` 5 min, call → waiting poll | p50 15.0 ms, p95 24.8 ms, max 41.3 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S7b | One node, `PollTimeout` 5 min, outcome → waiting caller | p50 12.8 ms, p95 21.1 ms, max 29.5 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S7b | Two nodes, `PollTimeout` 5 min, call → waiting poll | p50 15.1 ms, p95 25.0 ms, max 35.1 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S7b | Two nodes, `PollTimeout` 5 min, outcome → waiting caller | p50 12.5 ms, p95 21.0 ms, max 33.8 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+
+On loopback without 1C, 500 Reads per case after 50 of warm-up, with a test agent that
+flushes nothing to the disk, the server's nodes on the fake clock of the tests, which never
+moves: every round of every case ended with that clock standing still, which shows that no
+hop waits for a fixed interval. Two earlier runs the same day, on the machine loaded by
+other builds and tests, gave the same p50 and a p95 of up to 131 ms in one case each time,
+a different case each run; the figures above are of a run on the quiet machine.
 
 ## Open questions
 
@@ -1264,7 +1278,7 @@ The release
 | S6b | The agent's checks of commands and poll answers, its workers and run limits | Full | Done, 22 November 2026: `CommandChecks` with the checks of rule 1 in the order of §7 and the checks of a poll answer, the worker boundary with its fake, and `WorkerPool` with workers, the deadline to open, run limits, the size comparison of S9 and the executor's object; no HTTP, and the agent program still runs nothing. The contract of S6b and S6c was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P3 on what `Kill` promises, fixed), with P4s left in the S6 brief |
 | S6c | The agent's loop: the transport, pairing, polls, outcomes, the host and the service | Full | Done, 22 November 2026: the transport with the addresses of §11, the waits and read limits, pairing, numbered polls through the proxy, the loop that records every command before it runs and sends outcomes until confirmed, the replacement for size, `connection` and `bases`, retention and the reservation called after verified answers, the in-process host and the Windows service by the `service` argument; end to end against the server of S5 over loopback with a fake in place of the COM worker, through a test proxy. The code review took two rounds (three P3s of round 1 fixed). The manual acceptance of the service is the owner's, on a lab or test machine. What it changes in the public contract is listed in the S6 brief for the owner |
 | S7a | Several nodes and lost messages | Full | Done, 23 November 2026, merged before S9c, which waits for its lab run (the planner, 23 November 2026): the proxy that drops and holds requests and answers and the host of two nodes in TestSupport, and a test of every line under "With two server nodes", all of which passed against the code as it was, so no implementation step; the code review closed in one round, with P4s left in the S7 brief |
-| S7b | The measurements and the explanations E1 and E2 | Full | Not started |
+| S7b | The measurements and the explanations E1 and E2 | Full | Done, 23 November 2026: the program `Moltaro.OnecOutpost.Measurements`, run by hand, with the figures under Measured results (every p95 within 100 ms); explanations E1 "The path of a command" and E2 "Why a command never runs twice", animated, each as Markdown and HTML. The code review took two rounds (three P3s of documents, fixed) |
 | S8 | Refactoring of the code base after S7 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Done, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. The code review took three rounds, and its last finding, confirmed on the lab, was fixed by a query of the executor before the commit of a Write, reviewed once more. On the lab, 1C:Enterprise 8.3.17.1851, the first run gave 43 of 44 tests that need 1C passed; the failed one, `A_write_whose_commit_raises_gives_unknown_transaction_ended`, was removed, since 8.3.17 gave no way to provoke the case. The second run, with the `.epf` rebuilt after the fix, gave 45 of 45 passed, on the test base and one copy of a typical base, which ran with one account for both modes. No manual scenario, since every line of the Acceptance has a test. What it changed in the public contract is listed in its brief for the owner |
