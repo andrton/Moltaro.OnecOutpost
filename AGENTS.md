@@ -445,10 +445,11 @@ dotnet test --project Moltaro.OnecOutpost.OneC.Tests
   when the owner tells you to, for that version.
 - Commit messages carry no agent attribution: no `Co-Authored-By` line and no "generated
   with" line. This overrides the default of any tool.
-- Planning an epic, coordinating its sprints, reviewing a sprint or refactoring follows
-  the [development process](docs/work/process.md). Read it before taking one of those
-  roles.
-- Technical debt is removed by the refactorer in the refactoring sprint of every epic, as
-  the development process describes. Its measure is this file.
+- Planning an epic, coordinating its sprints, reviewing a sprint, the architect's review
+  or refactoring follows the [development process](docs/work/process.md). Read it before
+  taking one of those roles.
+- Technical debt is found by the architect's review after every merged sprint and removed
+  in the refactoring sprint that follows it, as the development process describes. Its
+  measure is this file.
 - Finish by reporting what changed, which checks ran and what is not done. When the task
   leaves changes in Git, suggest a commit message.

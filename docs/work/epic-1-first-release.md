@@ -1096,6 +1096,11 @@ The concept fixes the principles; S2 fixes the bytes.
 
 - **Tracks.** The [development process](process.md) applies.
   - S8 is on the refactoring track.
+  - After each of S10a, S10b, S11 and S12 is merged, the architect reviews what the
+    system has become, as the [development process](process.md#the-architects-review)
+    says; a refactoring sprint S10aR, S10bR, S11R or S12R follows only when an entry of
+    its list is taken (the owner, 23 November 2026). The first architect's review reads
+    the whole code base after S8, alongside S10a.
   - L1 and S12 are on the light track.
   - Every other sprint is on the full track, because each delivers behavior of the
     contract: contract, then tests by another agent, then implementation, each its own
@@ -1218,9 +1223,9 @@ The agent with 1C
 Several nodes, and the refactoring
   S7a nodes, losses ── S7b measurements, explanations ── S8 refactoring ── lab
 The tools
-  S10a console setup ── S10b console check ── lab ── S11 shell
+  S10a console setup ── architect ── S10b console check ── lab ── architect ── S11 shell ── architect
 The release
-  S12 documents, packages, archive
+  S12 documents, packages, archive ── architect
 ```
 
 - **1C first** (the owner, 21 November 2026). Everything rests on a script that runs in a
@@ -4084,7 +4089,7 @@ request and merge under PQ1:
 - **Goal.** The code base after S7 has no technical debt worth removing before the console
   and the shell build on the agent.
 - **Contract.** None; nothing public or asserted changes.
-- **To read.** `AGENTS.md`; the [development process](process.md#a-refactoring-sprint), "A
+- **To read.** `AGENTS.md`; the [development process](process.md) as it stood for S8, "A
   refactoring sprint"; the whole code base; the briefs of S9–S12.
 - **Acceptance.** Build, format and every test green after every commit. No public member
   and no assertion changed. Each change makes the code simpler to read or to change. The

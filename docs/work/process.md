@@ -2,7 +2,8 @@
 
 How an epic goes from a plan to finished code when the work is done by agents. The rules
 every agent follows in every task are in [AGENTS.md](../../AGENTS.md); this document is for
-whoever plans an epic, coordinates its sprints, reviews a sprint or refactors.
+whoever plans an epic, coordinates its sprints, reviews a sprint, reviews the architecture
+or refactors.
 
 This is the process of Moltaro.Lattice and Moltaro.Signals, carried over on 20 November
 2026. The owner's rules quoted below with their dates were made there and hold here as
@@ -15,7 +16,7 @@ record of its own in `docs/decisions`, created when the first such decision is.
 | Track | For | How |
 | --- | --- | --- |
 | **Full** | Changes to the core library and to the public contract | Everything below |
-| **Refactoring** | The refactoring sprint of an epic, or one while no epic is open: the whole code base, with no change of behavior | [A refactoring sprint](#a-refactoring-sprint) |
+| **Refactoring** | The refactoring sprint that follows a merged sprint: the entries of the architect's list that were taken, with no change of behavior | [The architect's review](#the-architects-review) and [the refactoring sprint](#the-refactoring-sprint) |
 | **Light** | Documentation, samples, build files, small fixes that change no behavior | One agent, the usual checks, and an independent review |
 
 The coordinator picks the track for each sprint and the plan records it. When in doubt, full.
@@ -37,7 +38,8 @@ One agent holds one role in a sprint. The separation is the point: nobody checks
 | **Test author** | Writes the tests of a sprint from its brief and contract, before the implementation | Implement that sprint |
 | **Implementer** | Makes the tests of the sprint pass | Change what the tests assert; change the contract |
 | **Independent reviewer** | Reviews the result against the brief, with no part in producing it | Fix what it finds |
-| **Refactorer** | In the refactoring sprint, looks at the whole code base — libraries, tests, samples — not at the changes of one sprint, finds the technical debt and removes it: duplication, unclear names, logic in the wrong place, needless complexity, dead code | Change behavior, the public contract or what a test asserts; build for a future need; decide what needs the owner |
+| **Architect** | After every merged sprint, reads what the system has become: the code the sprint touched and what it leans on, two or three sprints back, and once per stage the whole code base; returns a short list of what to simplify | Write code; propose a change of behavior or of the public contract |
+| **Refactorer** | Carries out, in the refactoring sprint that follows a sprint, the entries of the architect's list that were taken | Change behavior, the public contract or what a test asserts; build for a future need; decide what needs the owner |
 
 **The model and the effort of each role** (the owner, 21 November 2026, after a run that
 spent its weekly limit in the middle of a sprint). Every agent of a sprint runs on Opus
@@ -48,9 +50,10 @@ used (the owner, 23 November 2026).
 
 | Role | Effort |
 | --- | --- |
-| Independent reviewer, of code and of a document | `xhigh`, always |
+| Independent reviewer, of code, of a document and of a refactoring sprint | `xhigh`, always |
+| Architect | `xhigh` |
 | Test author and implementer of a sprint whose zone is first or second in the table of `AGENTS.md`, "Quality Priorities": command checks, pairing, the local policy, the audit log, secrets, the protocol, the transport, the store | `xhigh` |
-| Coordinator; contract author; the study; fixes after a review; documents and explanations; every role of the light track; test author and implementer of any other zone | `high` |
+| Coordinator; contract author; refactorer; the study; fixes after a review; documents and explanations; every role of the light track; test author and implementer of any other zone | `high` |
 
 The planner names the effort of the test author and of the implementer in the brief of
 each sprint, with its track. When reviews start to take more rounds or to find more P1
@@ -71,10 +74,12 @@ with one brief per sprint. A brief has to be enough for an agent that knows noth
 - **Out of scope** — what the sprint deliberately leaves alone.
 - **Track** — full, refactoring or light.
 
-**Every epic has a refactoring sprint in its middle**, where the plan finds enough code
-that later sprints build on. A long epic may have more than one. Technical debt grows
-however carefully each sprint is done; a sprint of its own removes it without mixing it
-into a change of behavior.
+**Technical debt is looked for after every merged sprint.** It grows however carefully
+each sprint is done, so the [architect's review](#the-architects-review) reads what the
+system has become after each sprint is merged, and a
+[refactoring sprint](#the-refactoring-sprint) of its own removes what was taken, without
+mixing it into a change of behavior. The plan names an architect's review after each
+sprint; a refactoring sprint exists only when something was taken.
 
 **The first sprints make one command work end to end.** The plan orders the sprints so
 that the thinnest path through the whole product runs as early as possible: an agent
@@ -215,24 +220,58 @@ it still pass; this is the one case in which a member of a contract commit does 
 than refuse. Such an edit never changes what a test asserts. The brief names each such
 edit, and the reviewers check that nothing else was changed under this rule.
 
-## A refactoring sprint
+## The architect's review
 
-1. **Refactoring.** The refactorer reads the whole code base and the briefs of the sprints
-   that follow, and removes the technical debt it finds: what makes the code hard to read,
-   to change or to keep. It changes no behavior, no public member and no assertion of a
-   test; it may make a test clearer. Each step is its own commit, with the build and every
-   test green after it. A finding that needs a change of the contract or of a decision is
-   reported, not made.
+The owner's rule of 23 November 2026, taken from Moltaro.Lattice.
+
+- **Who.** The architect, an agent with no part in any sprint, read only. The coordinator
+  of the next sprint starts it as its first task, once the previous sprint is merged.
+- **What it looks at.** What the system has become, not a change: the code the merged
+  sprint touched and what that code leans on, two or three sprints back, and once per
+  stage the whole code base. It gets `AGENTS.md`, the concept, `docs/protocol.md`, the
+  epic document and the code, not the coordinators' reports. Reviewers look for defects
+  in a change; the architect looks for what keeps the code from staying clean,
+  understandable, easy to extend and free of duplicates.
+- **What it asks.** What could be removed, merged or written more plainly without losing
+  a guarantee or a measured figure; where one type or file has taken several
+  responsibilities; where two places do the same thing; where the direction of
+  dependencies between folders or projects is bent (principle 12); what a later sprint of
+  the plan will find hard to extend, named with that sprint; where the code, the concept,
+  `docs/protocol.md` and `README.md` disagree; what a reader without the history cannot
+  follow, and why.
+- **KISS holds for a refactoring as for any change.** A refactoring that adds a type, an
+  interface or a level of indirection has to remove more than it adds; one that only
+  moves code around, or that a reader would not thank it for, is not proposed.
+- **What it returns.** A short list, the most valuable first: the place, what is wrong in
+  one sentence, the simpler form, what the change costs (files, risk, the tests that
+  cover it), and which guarantee or measurement must be shown unchanged; then what it
+  looked at and found sound. It proposes no change of behavior and none of the public
+  contract; such an idea is a question for the planner.
+- **What becomes of it.** The coordinator gives the planner the list as it is, with its
+  view of each entry. The planner goes through it with the coordinator: each entry is
+  taken, joined to a coming sprint that changes the same code, or refused with its
+  reason.
+
+## The refactoring sprint
+
+After a sprint is merged and the architect's list is gone through, the entries that were
+taken are carried out as a sprint of their own, before the next sprint of the plan, named
+after the sprint it follows: S10aR after S10a. When nothing is taken, there is no
+refactoring sprint.
+
+1. **Refactoring.** The refactorer carries out the taken entries and nothing else: no new
+   behavior and no fix of a defect. It changes no public member and no assertion of a
+   test, and removes no test; it may make a test clearer. Each entry is its own commit,
+   with the build and every test green after it. Where an entry touches a path with a
+   measured figure, the figure is measured again and does not fall. An entry that turns
+   out to need a change of the contract or of a decision is reported, not made.
 2. **Verification, review, fixes, documents and close** as in a sprint on the full track,
    steps 4 to 8, with the refactorer in the implementer's place: it fixes the findings and
-   may contest them. Its commits are the refactoring steps, then the fixes. The reviewer
-   checks in addition that behavior, the contract and the assertions are unchanged, and
-   that every change makes the code simpler to read or to change.
+   may contest them. Its one reviewer, an independent reviewer, answers one question: is
+   the code simpler to read, and is everything it guaranteed still guaranteed.
 
 The brief of a refactoring sprint always says to the refactorer: KISS (`AGENTS.md`, "Keep
-It Simple") holds here as everywhere. The task is to remove technical debt where it is
-worth it, so that the code stays clean, easy to understand, easy to change and free of
-duplication. It is always a balance: a change that makes the code larger, more abstract or
+It Simple") holds here as everywhere. A change that makes the code larger, more abstract or
 more general than today's case needs is not a refactoring.
 
 ## Review
