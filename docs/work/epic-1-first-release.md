@@ -3898,6 +3898,12 @@ request and merge under PQ1:
 
 - **S7a, several nodes and lost messages.** Branch `epic-1/sprint-07a-nodes`. The proxy of
   the contract step and every line of the Acceptance under "With two server nodes".
+- **Left by S7a's review** (P4, the coordinator, 23 November 2026), for S7b or S8: the
+  proxy answers `100 Continue` itself, so the refusal for size before the body no longer
+  runs end to end through it; its comment's reason for `Connection: close` is not what .NET
+  10 does; two signature lines make it throw; the `RestartAsync` branch for the second node
+  and some hop headers are unused; `FirstDelay` and a wait on the signals' state are
+  duplicated.
 - **S7b, the measurements and the explanations.** Branch `epic-1/sprint-07b-measurements`,
   cut from `main` after S7a merges. The program `Moltaro.OnecOutpost.Measurements` and the
   lines *Reported*, explanations E1 and E2, and the documents step with the figures.
