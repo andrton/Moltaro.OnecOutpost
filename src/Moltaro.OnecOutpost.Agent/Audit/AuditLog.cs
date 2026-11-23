@@ -314,13 +314,11 @@ internal sealed class AuditLog : IDisposable
             }
         }
 
-        KeepConfirmed(deletable);
-
         bool removed = false;
 
         // The first file in the order of names that waits for no other: a file that holds a confirmed goes after the
-        // other files of that command, so that a stop or a failed delete never leaves a command with its received or
-        // ended and without its confirmed.
+        // other files of that command, and so stays while one of them stays, so that a stop or a failed delete never
+        // leaves a command with its received or ended and without its confirmed.
         while (true)
         {
             AuditFile? next = _files.Values.FirstOrDefault(file => deletable.Contains(file) && !WaitsForOthers(file));
@@ -338,8 +336,8 @@ internal sealed class AuditLog : IDisposable
             }
             catch (IOException)
             {
-                // The file stays until a later call, and with it the file of the confirmed of each of its commands.
-                KeepConfirmed(deletable);
+                // The file stays until a later call, and with it the file of the confirmed of each of its commands,
+                // which waits for it.
                 continue;
             }
 
@@ -937,42 +935,9 @@ internal sealed class AuditLog : IDisposable
         }
     }
 
-    // Takes out of the files to delete every one that holds the confirmed of a command with an entry in a file that
-    // stays, until none does, so that no command is left with its received or ended and without its confirmed. Only
-    // that direction keeps a file: a received or an ended may go while its confirmed stays, so a file that is never past
-    // the retention keeps no older one.
-    private void KeepConfirmed(HashSet<AuditFile> deletable)
-    {
-        HashSet<Guid> staying = [];
-
-        foreach (AuditFile file in _files.Values.Where(file => !deletable.Contains(file)))
-        {
-            staying.UnionWith(file.Commands.Keys);
-        }
-
-        bool kept = true;
-
-        while (kept)
-        {
-            List<AuditFile> sharing = [.. deletable.Where(file => ConfirmsAny(file, staying))];
-
-            foreach (AuditFile file in sharing)
-            {
-                deletable.Remove(file);
-                staying.UnionWith(file.Commands.Keys);
-            }
-
-            kept = sharing.Count > 0;
-        }
-    }
-
-    // True when the file holds the confirmed of one of these commands.
-    private static bool ConfirmsAny(AuditFile file, HashSet<Guid> commands)
-    {
-        return file.Commands.Values.Any(facts => facts.Confirmed && commands.Contains(facts.Id));
-    }
-
-    // True while another file that is left holds an entry of a command whose confirmed this file holds.
+    // True while another file that is left holds an entry of a command whose confirmed this file holds. Only that
+    // direction keeps a file: a received or an ended may go while its confirmed stays, so a file that is never past the
+    // retention keeps no older one.
     private bool WaitsForOthers(AuditFile file)
     {
         foreach (AuditCommand facts in file.Commands.Values.Where(facts => facts.Confirmed))
