@@ -311,7 +311,7 @@ internal sealed class OutpostStore
     }
 
     // Every agent, by its creation and identity, with the bases of its newest poll by key and whether it holds each, in
-    // one statement. An agent is connected while it is Paired and its lease ends later than the store's now.
+    // one statement, and whether it is connected (IsConnected).
     public async Task<IReadOnlyList<OutpostAgent>> ListAgentsAsync(CancellationToken cancellationToken)
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
@@ -357,7 +357,7 @@ internal sealed class OutpostStore
                     .OrderBy(agentBase => agentBase.Key, StringComparer.Ordinal),
             ];
 
-            bool connected = agent.State == OutpostAgentStateEnum.Paired && agent.LeaseEndsAt > now;
+            bool connected = IsConnected(agent.State, agent.LeaseEndsAt, now);
 
             agents.Add(new OutpostAgent(
                 agent.Id,
@@ -713,8 +713,7 @@ internal sealed class OutpostStore
     }
 
     // The holder of a base key, in one statement; null when no agent holds it. Declared and WriteOpen are those of the
-    // holder's newest poll, and the holder is connected as ListAgentsAsync judges it: Paired, with a lease that ends
-    // later than the store's now.
+    // holder's newest poll, and whether the holder is connected is judged as for ListAgentsAsync (IsConnected).
     public async Task<BaseHolder?> FindBaseAsync(string baseKey, CancellationToken cancellationToken)
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
@@ -748,7 +747,7 @@ internal sealed class OutpostStore
             return null;
         }
 
-        bool connected = holder.State == OutpostAgentStateEnum.Paired && holder.LeaseEndsAt > now;
+        bool connected = IsConnected(holder.State, holder.LeaseEndsAt, now);
 
         return new BaseHolder(holder.AgentId, holder.Declared, holder.WriteOpen, connected);
     }
@@ -1151,6 +1150,13 @@ internal sealed class OutpostStore
     private static string HoldingTheirKey(StoreContext context)
     {
         return context.Commands.EntityType.GetIndexes().Single(index => index.IsUnique).GetFilter()!;
+    }
+
+    // An agent is connected while it is Paired and its lease ends later than the store's now. The lock of
+    // CreateCommandAsync states the same condition in its SQL.
+    private static bool IsConnected(OutpostAgentStateEnum state, DateTimeOffset? leaseEndsAt, DateTimeOffset now)
+    {
+        return state == OutpostAgentStateEnum.Paired && leaseEndsAt > now;
     }
 
     // The outcome of a command as a call returns it: null while it has none; the agent's, read from its object for the
