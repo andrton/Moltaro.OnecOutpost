@@ -1,7 +1,6 @@
 using Moltaro.OnecOutpost.Agent.Connector;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.ConnectorRegister;
@@ -17,7 +16,7 @@ public sealed class ConnectorRegisterTests
 {
     private readonly TestMachine _machine = new();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_connector_registered_for_each_bitness_is_said_to_be_and_nothing_is_run()
     {
         ConnectorFile x64 = _machine.Connectors.Registered(ConnectorBitnessEnum.X64, "8.3.27.1859");
@@ -32,7 +31,7 @@ public sealed class ConnectorRegisterTests
         Assert.Contains($"32-bit: {x86.Path}, 8.3.27.1859, is registered.", lines);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_one_copy_installed_for_a_bitness_without_a_registration_is_registered_by_regsvr32_and_found_again()
     {
         ConnectorFile x64 = _machine.Connectors.Installed(ConnectorBitnessEnum.X64, "8.3.27.1859");
@@ -47,7 +46,7 @@ public sealed class ConnectorRegisterTests
             line.StartsWith("32-bit: ", StringComparison.Ordinal) && line.Contains("none is registered or installed", StringComparison.Ordinal));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Several_copies_of_a_bitness_are_named_with_the_command_that_registers_each_and_none_is_registered()
     {
         ConnectorFile older = _machine.Connectors.Installed(ConnectorBitnessEnum.X64, "8.3.24.1691");
@@ -67,7 +66,7 @@ public sealed class ConnectorRegisterTests
         Assert.Contains($"8.3.27.1859: {_machine.Registration.CommandOf(ConnectorBitnessEnum.X64, newer.Path)}", lines);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_machine_without_a_connector_ends_with_ConnectorNotRegistered()
     {
         CommandAppResult result = await _machine.RunAsync("connector", "register");
@@ -84,7 +83,7 @@ public sealed class ConnectorRegisterTests
     }
 
     // The exit codes of regsvr32 /s, by their kinds, said as the brief says the end of a run with 0 that registers nothing.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(1, "arguments")]
     [InlineData(2, "OleInitialize")]
     [InlineData(3, "loading the DLL")]
@@ -104,7 +103,7 @@ public sealed class ConnectorRegisterTests
         Assert.Equal(["find", $"regsvr32 X64 {x64.Path}"], _machine.Operations.Take(2));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_run_of_regsvr32_that_ends_with_0_without_a_registration_in_HKLM_ends_with_RegistrationFailed()
     {
         _machine.Connectors.Installed(ConnectorBitnessEnum.X64, "8.3.27.1859");
@@ -118,7 +117,7 @@ public sealed class ConnectorRegisterTests
     }
 
     // A failed run decides the exit, though the other bitness has its connector registered.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_failed_run_of_regsvr32_ends_with_RegistrationFailed_whatever_the_other_bitness_has()
     {
         _machine.Connectors.Installed(ConnectorBitnessEnum.X64, "8.3.27.1859");

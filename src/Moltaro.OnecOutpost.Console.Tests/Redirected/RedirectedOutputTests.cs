@@ -1,7 +1,6 @@
 using System.Runtime.Versioning;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Programs;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Redirected;
@@ -24,11 +23,11 @@ public sealed class RedirectedOutputTests
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
         "Moltaro.OnecOutpost");
 
-    // The help of install and uninstall describes --stop-timeout with [d.]hh:mm:ss, which Spectre reads as markup and
-    // refuses; their cases wait for the description to be escaped.
+    // The help of install and uninstall describes --stop-timeout with [d.]hh:mm:ss, which Spectre reads as markup, so
+    // the description escapes it.
     [Theory]
-    [InlineData("install", Skip = SkipReason.NotImplemented)]
-    [InlineData("uninstall", Skip = SkipReason.NotImplemented)]
+    [InlineData("install")]
+    [InlineData("uninstall")]
     [InlineData("pair")]
     [InlineData("secret")]
     [InlineData("connector", "register")]
@@ -66,5 +65,18 @@ public sealed class RedirectedOutputTests
         Assert.DoesNotContain(Escape, end.Output, StringComparison.Ordinal);
         Assert.DoesNotContain(Escape, end.Error, StringComparison.Ordinal);
         Assert.Equal(before, BuiltProgram.Describe(DataFolder));
+    }
+
+    // Plain text for a script keeps each line whole, though it is longer than the 80 columns that Spectre assumes
+    // without a terminal, and is UTF-8 whatever the code page of the console, which would lose the § of this line.
+    [Fact]
+    public async Task A_line_is_written_whole_and_in_UTF_8()
+    {
+        ProgramEnd end = await BuiltProgram.RunAsync(ConsoleFile, "pair", "outpost.example.com", TestMachine.Token);
+
+        Assert.Equal(ConsoleExitCodes.Usage, end.ExitCode);
+        Assert.Equal(
+            ["Usage (2): <SERVER>: expected an https address, or an http one on loopback (§11 of the protocol)"],
+            end.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
 }

@@ -1,6 +1,5 @@
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Arguments;
@@ -37,11 +36,11 @@ public sealed class StopTimeoutTests
     }
 
     // Below and beyond the range, and a time that is not in the constant form. Spectre's error for a value that the
-    // converter refuses quotes the value and not the rule, so the case of 1:00 waits for its error to give the rule.
+    // converter refuses quotes the value and not the rule, so the console gives the converter's own, which names it.
     [Theory]
     [InlineData("install", "00:00:00")]
     [InlineData("uninstall", "01:00:01")]
-    [InlineData("install", "1:00", Skip = SkipReason.NotImplemented)]
+    [InlineData("install", "1:00")]
     public async Task A_stop_timeout_out_of_its_range_or_form_ends_the_command_with_Usage_naming_the_rule_and_not_the_value(
         string command,
         string value)
@@ -53,7 +52,7 @@ public sealed class StopTimeoutTests
         Assert.Empty(_machine.Operations);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("install")]
     [InlineData("uninstall")]
     public async Task A_command_waits_for_the_service_to_stop_as_long_as_the_stop_timeout_given(string command)

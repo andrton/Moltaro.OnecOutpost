@@ -12,6 +12,7 @@ using Moltaro.OnecOutpost.Console.Connector;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Rights;
 using Moltaro.OnecOutpost.Console.Service;
+using Spectre.Console;
 using Spectre.Console.Cli;
 
 namespace Moltaro.OnecOutpost.Console;
@@ -19,7 +20,8 @@ namespace Moltaro.OnecOutpost.Console;
 // The console of the agent machine. It gives NotWindows elsewhere, and otherwise runs the commands on Spectre's own
 // console, whose detection decides colour, animation and prompts, with the parts of the machine. Ctrl+C cancels the
 // token of the run, Cancel being set so that the process is not ended at once; each command checks the token before
-// each of its steps.
+// each of its steps. Its output, when redirected, is for a script: UTF-8, whatever the code page of the console, and
+// each line whole, never wrapped at the width that Spectre assumes without a terminal.
 internal static class Program
 {
     // The service of the agent, whose virtual account is NT SERVICE\MoltaroOnecOutpost.
@@ -55,8 +57,13 @@ internal static class Program
         {
             CommandApp app = new();
             ConsoleParts parts = MachineParts();
+            IAnsiConsole console = MachineConsole();
 
-            app.Configure(config => ConsoleApp.Configure(config, parts));
+            app.Configure(config =>
+            {
+                ConsoleApp.Configure(config, parts);
+                config.ConfigureConsole(console);
+            });
 
             return await app.RunAsync(arguments, cancellation.Token);
         }
@@ -89,6 +96,35 @@ internal static class Program
             RedirectedInput(),
             TimeProvider.System,
             Version());
+    }
+
+    // Spectre's console on the standard output. A redirected output gets a writer of UTF-8 in the place of the one of
+    // the console's code page, which loses every character the code page lacks, such as §; the writer stays
+    // Console.Out, so that Spectre still sees the output as the redirected standard output and writes neither colour
+    // nor animation. The code page of the console itself is not changed, since a console that the shell shares would
+    // keep it after the run.
+    private static IAnsiConsole MachineConsole()
+    {
+        bool redirected = System.Console.IsOutputRedirected;
+
+        if (redirected)
+        {
+            StreamWriter output = new(System.Console.OpenStandardOutput(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false))
+            {
+                AutoFlush = true,
+            };
+
+            System.Console.SetOut(output);
+        }
+
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings());
+
+        if (redirected)
+        {
+            console.Profile.Width = int.MaxValue;
+        }
+
+        return console;
     }
 
     // True for an elevated token only: UAC's filtered token holds Administrators as deny-only.

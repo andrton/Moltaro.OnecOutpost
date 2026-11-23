@@ -36,7 +36,7 @@ public sealed class PairRefusalTests : IDisposable
     }
 
     // An empty reason is one that §6.1 leaves to the console's own words.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("a bare 403 with a page", 403, "a bare 403: the server answers so to any failure of pairing, and so can anything on the path")]
     [InlineData("the unsigned answer of a version not spoken", 400, "an unsigned answer in the form the server uses for a protocol version it does not speak")]
     [InlineData("an answer with another server key", 200, "the server's key does not match the fingerprint in the token")]
@@ -59,7 +59,7 @@ public sealed class PairRefusalTests : IDisposable
         AssertNothingWritten();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_pairing_whose_connection_fails_ends_with_PairingFailed_without_a_status()
     {
         Task<CommandAppResult> run = StartPair();
@@ -71,7 +71,7 @@ public sealed class PairRefusalTests : IDisposable
         AssertNothingWritten();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_pairing_without_an_answer_within_the_request_timeout_of_the_policy_ends_with_PairingFailed_without_a_status()
     {
         Task<CommandAppResult> run = StartPair();

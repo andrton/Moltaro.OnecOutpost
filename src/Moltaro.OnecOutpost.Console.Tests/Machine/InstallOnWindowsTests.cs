@@ -26,7 +26,7 @@ namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 [SupportedOSPlatform("windows")]
 public sealed class InstallOnWindowsTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Install_then_uninstall_register_and_remove_the_service_under_its_virtual_account_and_leave_its_folders()
     {
         TestService service = new();

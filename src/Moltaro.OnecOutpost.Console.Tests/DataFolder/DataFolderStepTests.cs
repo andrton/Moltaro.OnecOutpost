@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.DataFolder;
@@ -23,7 +22,7 @@ public sealed class DataFolderStepTests
         _machine.Input = new FakeInput(_machine.Data, "a password\n");
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("pair")]
     [InlineData("secret")]
     public async Task A_data_folder_that_is_absent_ends_the_command_with_NotInstalled(string command)
@@ -38,7 +37,7 @@ public sealed class DataFolderStepTests
     }
 
     // A junction in the place of the data folder would lead the secrets into a folder that nobody judged.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("pair")]
     [InlineData("secret")]
     public async Task A_data_folder_that_is_a_reparse_point_ends_the_command_with_DataFolderAdmitsOthers(string command)
@@ -54,7 +53,7 @@ public sealed class DataFolderStepTests
         Assert.Empty(_machine.Routes);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("pair")]
     [InlineData("secret")]
     public async Task A_data_folder_whose_access_list_admits_anyone_else_ends_the_command_with_DataFolderAdmitsOthers_naming_them(string command)
@@ -73,7 +72,7 @@ public sealed class DataFolderStepTests
         Assert.Empty(_machine.Routes);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("pair")]
     [InlineData("secret")]
     public async Task A_policy_that_is_absent_ends_the_command_with_PolicyInvalid(string command)
@@ -91,7 +90,7 @@ public sealed class DataFolderStepTests
     }
 
     // A policy without a base, which the agent would refuse at its start with the same reason.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("pair")]
     [InlineData("secret")]
     public async Task A_policy_that_is_invalid_ends_the_command_with_PolicyInvalid_and_the_reason_of_the_agent(string command)

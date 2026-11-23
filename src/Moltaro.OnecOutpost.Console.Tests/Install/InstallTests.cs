@@ -1,6 +1,5 @@
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Install;
@@ -18,7 +17,7 @@ public sealed class InstallTests
 
     private readonly TestMachine _machine = new();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Install_on_a_fresh_machine_copies_the_program_registers_the_service_grants_its_rights_and_creates_the_data_folder()
     {
         CommandAppResult result = await _machine.RunAsync("install");
@@ -52,7 +51,7 @@ public sealed class InstallTests
 
     // An update: the service exists and is stopped first, the data folder exists with what install, pair and secret
     // wrote, and the files in it are not touched.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Install_over_an_installed_agent_reconfigures_the_service_and_sets_the_access_lists_of_the_data_folder_again()
     {
         _machine.HasService();
@@ -83,7 +82,7 @@ public sealed class InstallTests
     // As after the program folder was unpacked by hand, or install is run again from the copy it made: the console runs
     // from the program folder, named as a short name and with an ending separator as AppContext.BaseDirectory has it,
     // which the final path makes the same folder. Nothing is copied; the lists alone are set.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Install_run_from_the_program_folder_sets_its_access_lists_without_copying_it()
     {
         string shortName = Path.Combine(TestMachine.Root, "PROGRA~1", "MOLTAR~1");
@@ -99,7 +98,7 @@ public sealed class InstallTests
     }
 
     // A folder whose name begins with that of the program folder is beside it, not inside it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Install_run_from_a_folder_beside_the_program_folder_copies_from_it()
     {
         _machine.Source = TestMachine.ProgramFolder + "-0.1.0";

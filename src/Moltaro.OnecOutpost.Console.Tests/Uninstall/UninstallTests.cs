@@ -2,7 +2,6 @@ using System.ComponentModel;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Service;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Uninstall;
@@ -27,7 +26,7 @@ public sealed class UninstallTests
         _machine.Installed();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Uninstall_stops_the_service_takes_the_two_rights_of_its_account_and_deletes_it_leaving_both_folders()
     {
         CommandAppResult result = await _machine.RunAsync("uninstall");
@@ -42,7 +41,7 @@ public sealed class UninstallTests
         Assert.EndsWith(", with the audit log; the worker accounts keep \"Log on as a batch job\".", line);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Uninstall_without_the_service_ends_with_NotInstalled_and_changes_nothing()
     {
         _machine.Services.Exists = false;
@@ -56,7 +55,7 @@ public sealed class UninstallTests
         Assert.Equal([Stop], _machine.Operations);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_service_that_does_not_stop_within_the_stop_timeout_ends_uninstall_with_StopTimedOut()
     {
         _machine.Services.StopResult = ServiceStopEnum.TimedOut;
@@ -68,7 +67,7 @@ public sealed class UninstallTests
         Assert.Equal([Stop], _machine.Operations);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Rights_that_LSA_refuses_to_take_end_uninstall_with_Failure_and_the_service_stays()
     {
         _machine.Rights.RevokeFailure = new Win32Exception(5, "the fake LSA refused");
@@ -81,7 +80,7 @@ public sealed class UninstallTests
         Assert.Equal([Stop, Revoke], _machine.Operations);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_service_that_Windows_does_not_delete_ends_uninstall_with_Failure()
     {
         _machine.Services.DeleteFailure = new Win32Exception(5, "the fake service controller refused");

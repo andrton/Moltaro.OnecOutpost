@@ -42,11 +42,11 @@ public sealed class RunEndTests
         Assert.Empty(_machine.Operations);
     }
 
-    // The help of install and uninstall describes --stop-timeout with [d.]hh:mm:ss, which Spectre reads as markup and
-    // refuses; their cases wait for the description to be escaped.
+    // The help of install and uninstall describes --stop-timeout with [d.]hh:mm:ss, which Spectre reads as markup, so
+    // the description escapes it.
     [Theory]
-    [InlineData("install", Skip = SkipReason.NotImplemented)]
-    [InlineData("uninstall", Skip = SkipReason.NotImplemented)]
+    [InlineData("install")]
+    [InlineData("uninstall")]
     [InlineData("pair")]
     [InlineData("secret")]
     [InlineData("connector", "register")]
@@ -59,8 +59,32 @@ public sealed class RunEndTests
         Assert.Empty(_machine.Operations);
     }
 
+    // A branch runs only its commands, so connector alone is a usage error, as a missing argument is; Spectre would show
+    // the help of the branch and end with 1, the code of Failure.
+    [Fact]
+    public async Task Connector_without_its_command_ends_with_Usage_and_changes_nothing()
+    {
+        CommandAppResult result = await _machine.RunAsync("connector");
+
+        Assert.Equal(ConsoleExitCodes.Usage, result.ExitCode);
+        Assert.StartsWith("Usage (2): ", result.Output);
+        Assert.Contains("connector register", result.Output);
+        Assert.Empty(_machine.Operations);
+    }
+
+    [Fact]
+    public async Task The_help_of_connector_ends_with_Success_and_names_its_command()
+    {
+        CommandAppResult result = await _machine.RunAsync("connector", "--help");
+
+        Assert.Equal(ConsoleExitCodes.Success, result.ExitCode);
+        Assert.Contains("USAGE:", result.Output);
+        Assert.Contains("register", result.Output);
+        Assert.Empty(_machine.Operations);
+    }
+
     // An exception that no step expects, such as one of a boundary that breaks its own contract.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_unexpected_exception_ends_the_command_with_Failure_and_its_message_and_nothing_after()
     {
         _machine.Services.StopFailure = new InvalidOperationException("the fake service controller broke");
@@ -75,7 +99,7 @@ public sealed class RunEndTests
 
     // A token cancelled before the run, as by Ctrl+C before the first step, on a machine where every step would change
     // something.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("install")]
     [InlineData("uninstall")]
     [InlineData("pair")]

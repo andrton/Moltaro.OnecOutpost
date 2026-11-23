@@ -3,7 +3,6 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Console.Folders;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 
@@ -31,7 +30,7 @@ public sealed class WindowsFolderSetupTests
 
     private readonly WindowsFolderSetup _folders = new();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_program_folder_gets_the_content_of_the_source_its_lists_and_Administrators_as_the_owner_of_every_entry()
     {
         TestService service = new();
@@ -55,7 +54,7 @@ public sealed class WindowsFolderSetupTests
     }
 
     // An update empties the program folder before it copies, so a file that the new archive no longer has goes.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_program_folder_applied_with_a_source_holds_only_its_content_and_without_one_keeps_what_it_holds()
     {
         TestService service = new();
@@ -80,7 +79,7 @@ public sealed class WindowsFolderSetupTests
         }
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_data_folder_created_admits_Administrators_SYSTEM_and_the_agent_which_may_modify_only_audit_and_outcomes()
     {
         TestService service = new();
@@ -98,7 +97,7 @@ public sealed class WindowsFolderSetupTests
     }
 
     // A folder that a local user made under %ProgramData% before install, which install judged by the agent's rule.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_data_folder_that_exists_gets_its_lists_again()
     {
         TestService service = new();
@@ -118,7 +117,7 @@ public sealed class WindowsFolderSetupTests
     }
 
     // 183: only a folder that was judged is ever given the lists.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_data_folder_is_not_created_where_one_exists()
     {
         TestService service = new();
@@ -136,7 +135,7 @@ public sealed class WindowsFolderSetupTests
     }
 
     // Q14: a file whose owner is somebody else stops the agent, since its owner can always change its list.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_the_console_writes_gets_Administrators_as_its_owner()
     {
         TestService service = new();
@@ -162,7 +161,7 @@ public sealed class WindowsFolderSetupTests
     }
 
     // A symbolic link to a folder is a reparse point, as a junction is.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Kind_tells_a_folder_from_a_reparse_point_and_from_nothing()
     {
         TestService service = new();

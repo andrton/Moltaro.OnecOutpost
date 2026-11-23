@@ -1,6 +1,5 @@
 using System.Runtime.Versioning;
 using Moltaro.OnecOutpost.Console.Rights;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 
@@ -16,7 +15,7 @@ public sealed class WindowsAccountRightsTests
 {
     private readonly WindowsAccountRights _rights = new();
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Grant_and_Revoke_change_the_rights_that_Held_reads_and_neither_fails_when_it_changes_nothing()
     {
         TestService service = new();

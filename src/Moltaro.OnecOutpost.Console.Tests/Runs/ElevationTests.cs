@@ -1,7 +1,6 @@
 using Moltaro.OnecOutpost.Agent.Connector;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Runs;
@@ -11,7 +10,7 @@ namespace Moltaro.OnecOutpost.Console.Tests.Runs;
 // asked of the machine, on a machine where every step would change something.
 public sealed class ElevationTests
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("install")]
     [InlineData("uninstall")]
     [InlineData("pair")]

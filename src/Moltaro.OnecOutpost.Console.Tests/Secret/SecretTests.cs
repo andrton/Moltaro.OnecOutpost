@@ -1,7 +1,6 @@
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 using Spectre.Console.Testing;
 
@@ -27,7 +26,7 @@ public sealed class SecretTests
     private static string SecretsPath => Path.Combine(TestMachine.DataFolder, "secrets.dat");
 
     // The batch right comes first, before the password is read.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     [InlineData("worker")]
@@ -60,7 +59,7 @@ public sealed class SecretTests
             && line.EndsWith("; the service uses it from its next start.", StringComparison.Ordinal));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read", "outpost-read for the read mode")]
     [InlineData("write", "outpost-write for the write mode")]
     [InlineData("worker", "outpost-worker for the workers")]
@@ -90,7 +89,7 @@ public sealed class SecretTests
     }
 
     // A real case of 1C: an account without a password.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task An_empty_line_is_the_password_of_a_1C_account(string kind)

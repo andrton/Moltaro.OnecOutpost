@@ -39,7 +39,7 @@ public sealed class PairTests : IDisposable
         _server.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_verified_200_writes_secrets_dat_with_the_new_key_alone_and_then_agent_json_each_owned_by_Administrators()
     {
         Task<CommandAppResult> run = StartPair();
@@ -70,7 +70,7 @@ public sealed class PairTests : IDisposable
     }
 
     // The proof binds the key sent to the token's secret, so the console paired with the token it was given.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Pair_sends_the_version_of_the_console_with_the_proof_of_the_token_through_the_proxy_of_the_policy()
     {
         Task<CommandAppResult> run = StartPair();
@@ -86,7 +86,7 @@ public sealed class PairTests : IDisposable
 
     // As after a pairing whose agent.json could not be written: secrets.dat holds the key of that pairing and passwords
     // written since, and agent.json is absent.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Pairing_replaces_a_secrets_dat_that_a_failed_pairing_left_with_the_new_key_alone()
     {
         using ECDsa earlier = ECDsa.Create(ECCurve.NamedCurves.nistP256);
@@ -109,7 +109,7 @@ public sealed class PairTests : IDisposable
         Assert.Empty(secrets.WorkerPasswords);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_agent_that_is_paired_ends_pair_with_AlreadyPaired_before_anything_is_sent()
     {
         _machine.Data.Root.Seed("agent.json", "{}");
@@ -128,7 +128,7 @@ public sealed class PairTests : IDisposable
 
     // What the first file holds is written before the second: a secrets.dat that fails leaves no agent.json, and an
     // agent.json that fails leaves the agent unpaired on its machine, its new key in secrets.dat.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("secrets.dat")]
     [InlineData("agent.json")]
     public async Task A_file_that_cannot_be_written_after_the_verified_200_ends_pair_with_Failure_and_the_remedy(string file)

@@ -62,7 +62,7 @@ public sealed class ConnectorFinderTests : IDisposable
         Assert.Null(findings[1].Registered);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_registration_carries_the_FileVersion_of_its_file()
     {
         string file = Copy(Program32, @"8.3.25.1000\bin");
@@ -76,7 +76,7 @@ public sealed class ConnectorFinderTests : IDisposable
 
     // The agent's behavior changes here (the S10 brief, a draft for the owner): a registration whose file is gone no
     // longer picks that bitness.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_registration_whose_file_is_gone_is_not_Registered()
     {
         string gone = Copy(Program64, @"8.3.27.1859\bin");
@@ -88,7 +88,7 @@ public sealed class ConnectorFinderTests : IDisposable
 
     // A copy outside a bin folder is not a copy of the platform, and a folder of the platform that does not exist, as
     // Program Files (x86) on a machine without a 32-bit platform, gives nothing.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Unregistered_holds_each_other_copy_in_a_bin_folder_of_the_platform_by_the_bitness_of_its_header_and_by_ordinal_path()
     {
         string registered = Copy(Program64, @"8.3.27.1859\bin");

@@ -67,7 +67,7 @@ public sealed class WorkerBitnessTests : IDisposable
 
     // The registration of 64 bits names a file that is gone, as after the platform of that bitness was removed without
     // its registration, so the worker runs the program of 32 bits, whose registration names a file that exists.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_registration_whose_file_is_gone_does_not_pick_its_bitness()
     {
         string x64 = TestProgram.CopyInto(_folder.PathOf("x64"));

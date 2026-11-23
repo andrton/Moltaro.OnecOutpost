@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Secret;
@@ -21,7 +20,7 @@ public sealed class SecretRefusalTests
         _machine.Input = new FakeInput(_machine.Data, "new-password\n");
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_secrets_dat_that_is_absent_ends_secret_with_NotPaired()
     {
         _machine.Data.Root.Unseed("secrets.dat");
@@ -35,7 +34,7 @@ public sealed class SecretRefusalTests
     }
 
     // As a secrets.dat copied from another machine.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_secrets_dat_that_does_not_decrypt_ends_secret_with_Failure()
     {
         _machine.Protection.Refuses = true;
@@ -47,7 +46,7 @@ public sealed class SecretRefusalTests
         Assert.Equal(["others \"\""], _machine.Operations);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("archive", "read", "names no base archive")]
     [InlineData("warehouse", "write", "does not let it be written")]
     [InlineData("warehouse", "worker", "names no worker account for it")]
@@ -64,7 +63,7 @@ public sealed class SecretRefusalTests
         Assert.Equal(["others \"\""], _machine.Operations);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_account_that_is_not_a_local_user_ends_secret_with_UnknownAccount_before_any_right_is_granted()
     {
         _machine.Rights.Users.Clear();
@@ -77,7 +76,7 @@ public sealed class SecretRefusalTests
         Assert.Equal(["others \"\"", $"look up {PairedMachine.WorkerAccount}"], _machine.Operations);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_batch_right_that_LSA_refuses_ends_secret_with_Failure_before_the_password_is_read()
     {
         _machine.Rights.GrantFailure = new Win32Exception(1332, "the fake LSA refused");
@@ -93,7 +92,7 @@ public sealed class SecretRefusalTests
     }
 
     // The input is the console, and the console of the test is not interactive, as one whose output is redirected.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_console_that_cannot_prompt_and_has_no_redirected_input_ends_secret_with_NotInteractive_reading_nothing()
     {
         _machine.Input = null;
@@ -108,7 +107,7 @@ public sealed class SecretRefusalTests
     }
 
     // Windows refuses a blank password outside its console (the coordinator, 23 November 2026).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_empty_password_of_a_worker_account_ends_secret_with_Usage()
     {
         _machine.Input = new FakeInput(_machine.Data, "\n");
@@ -121,7 +120,7 @@ public sealed class SecretRefusalTests
         Assert.Equal(PairedMachine.Earlier, PairedMachine.PasswordsOf(PairedMachine.SecretsOf(_machine)));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_end_of_the_input_before_a_line_ends_secret_with_Usage()
     {
         _machine.Input = new FakeInput(_machine.Data, "");
@@ -134,7 +133,7 @@ public sealed class SecretRefusalTests
         Assert.Equal(PairedMachine.Earlier, PairedMachine.PasswordsOf(PairedMachine.SecretsOf(_machine)));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_secrets_dat_that_cannot_be_written_ends_secret_with_Failure_and_keeps_what_it_held()
     {
         _machine.Data.Root.FailReplace("secrets.dat");

@@ -7,8 +7,9 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 internal static class ConsoleApp
 {
     // Registers the parts for the commands, parses strictly, and gives the exceptions that reach Spectre their codes:
-    // Cancelled for an OperationCanceledException whose token is cancelled, Usage for Spectre's parse and validation
-    // errors, Failure for any other, each written in red as {Kind} ({code}): {reason}.
+    // its own code for a CommandEndException, Cancelled for an OperationCanceledException whose token is cancelled,
+    // Usage for Spectre's parse and validation errors, Failure for any other, each written in red as
+    // {Kind} ({code}): {reason}.
     public static void Configure(IConfigurator config, ConsoleParts parts)
     {
         config.Settings.Registrar.RegisterInstance(parts);
@@ -27,6 +28,10 @@ internal static class ConsoleApp
         config.AddBranch("connector", connector =>
         {
             connector.SetDescription("The COM connector of 1C:Enterprise.");
+
+            // Spectre shows the help of a branch run without its command and ends with 1, the code of Failure; this
+            // command makes that run the usage error that it is.
+            connector.SetDefaultCommand<ConnectorCommand>();
             connector.AddCommand<ConnectorRegisterCommand>("register")
                 .WithDescription("Registers the COM connector that is installed, for each bitness that has none registered.");
         });
@@ -34,18 +39,47 @@ internal static class ConsoleApp
 
     private static int End(Exception exception, IAnsiConsole console)
     {
-        (string kind, int code, string reason) = exception switch
+        (int code, string reason) = exception switch
         {
+            CommandEndException end => (end.Code, end.Message),
             OperationCanceledException { CancellationToken.IsCancellationRequested: true } =>
-                (nameof(ConsoleExitCodes.Cancelled), ConsoleExitCodes.Cancelled, "the command was cancelled"),
-            CommandParseException or CommandRuntimeException =>
-                (nameof(ConsoleExitCodes.Usage), ConsoleExitCodes.Usage, exception.Message),
-            _ =>
-                (nameof(ConsoleExitCodes.Failure), ConsoleExitCodes.Failure, $"{exception.GetType().Name}: {exception.Message}"),
+                (ConsoleExitCodes.Cancelled, "the command was cancelled"),
+
+            // A value that a converter of the console refused: its message names the rule, where Spectre's own quotes
+            // the value given.
+            CommandRuntimeException { InnerException: FormatException refused } => (ConsoleExitCodes.Usage, refused.Message),
+            CommandParseException or CommandRuntimeException => (ConsoleExitCodes.Usage, exception.Message),
+            _ => (ConsoleExitCodes.Failure, $"{exception.GetType().Name}: {exception.Message}"),
         };
 
-        console.MarkupLineInterpolated($"[red]{kind} ({code}): {reason}[/]");
+        console.MarkupLineInterpolated($"[red]{KindOf(code)} ({code}): {reason}[/]");
 
         return code;
+    }
+
+    // The name that ConsoleExitCodes gives each code of an end other than Success.
+    private static string KindOf(int code)
+    {
+        return code switch
+        {
+            ConsoleExitCodes.Failure => nameof(ConsoleExitCodes.Failure),
+            ConsoleExitCodes.Usage => nameof(ConsoleExitCodes.Usage),
+            ConsoleExitCodes.NotElevated => nameof(ConsoleExitCodes.NotElevated),
+            ConsoleExitCodes.Cancelled => nameof(ConsoleExitCodes.Cancelled),
+            ConsoleExitCodes.NotInstalled => nameof(ConsoleExitCodes.NotInstalled),
+            ConsoleExitCodes.StopTimedOut => nameof(ConsoleExitCodes.StopTimedOut),
+            ConsoleExitCodes.ProgramFolderWriters => nameof(ConsoleExitCodes.ProgramFolderWriters),
+            ConsoleExitCodes.DataFolderAdmitsOthers => nameof(ConsoleExitCodes.DataFolderAdmitsOthers),
+            ConsoleExitCodes.PolicyInvalid => nameof(ConsoleExitCodes.PolicyInvalid),
+            ConsoleExitCodes.AlreadyPaired => nameof(ConsoleExitCodes.AlreadyPaired),
+            ConsoleExitCodes.PairingFailed => nameof(ConsoleExitCodes.PairingFailed),
+            ConsoleExitCodes.NotPaired => nameof(ConsoleExitCodes.NotPaired),
+            ConsoleExitCodes.NotInPolicy => nameof(ConsoleExitCodes.NotInPolicy),
+            ConsoleExitCodes.UnknownAccount => nameof(ConsoleExitCodes.UnknownAccount),
+            ConsoleExitCodes.NotInteractive => nameof(ConsoleExitCodes.NotInteractive),
+            ConsoleExitCodes.ConnectorNotRegistered => nameof(ConsoleExitCodes.ConnectorNotRegistered),
+            ConsoleExitCodes.RegistrationFailed => nameof(ConsoleExitCodes.RegistrationFailed),
+            _ => throw new ArgumentOutOfRangeException(nameof(code), code, "No end of a command has this code."),
+        };
     }
 }

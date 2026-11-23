@@ -4,6 +4,8 @@
     <OutputType>Exe</OutputType>
     <!-- A program of the agent archive, never a package. -->
     <IsPackable>false</IsPackable>
+    <!-- LibraryImport generates unsafe code for the calls to the service controller, LSA and the files of Windows. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using Xunit;
 
 namespace Moltaro.OnecOutpost.TestSupport.Programs;
@@ -6,8 +7,8 @@ namespace Moltaro.OnecOutpost.TestSupport.Programs;
 // A program of the repository as the reference to its project builds it and copies it beside the tests, such as the
 // agent or the console, run as a child process with its standard streams redirected, as a script or a service manager
 // runs it: no shell and no window, its input closed at once, and its output and its error read to their ends, so that
-// it never waits on a full pipe. And what a folder holds, read only, for a test that states that a run of a program
-// changed nothing there.
+// it never waits on a full pipe, as UTF-8, which a program of the repository writes for a script. And what a folder
+// holds, read only, for a test that states that a run of a program changed nothing there.
 internal static class BuiltProgram
 {
     // Runs the program, by its file name beside the tests, with the arguments to its end, which comes within the deadline
@@ -21,6 +22,8 @@ internal static class BuiltProgram
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
         };
 
         foreach (string argument in arguments)

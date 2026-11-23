@@ -24,7 +24,7 @@ public sealed class WindowsServiceControlTests
 
     private readonly WindowsServiceControl _services = new(new FakeClock(TestTimes.Start));
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Install_creates_the_service_as_the_agent_runs_and_again_reconfigures_it_keeping_its_failure_actions()
     {
         TestService service = new();
@@ -66,7 +66,7 @@ public sealed class WindowsServiceControlTests
     }
 
     // 1072: a handle that the test holds, as the Services console or Event Viewer holds one, keeps a deleted service.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_service_marked_for_deletion_counts_as_deleted_and_is_not_installed_again_until_it_is_gone()
     {
         TestService service = new();
@@ -91,7 +91,7 @@ public sealed class WindowsServiceControlTests
         }
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_stop_of_a_stopped_service_gives_Stopped_and_of_an_unknown_one_NotInstalled()
     {
         TestService service = new();
@@ -111,7 +111,7 @@ public sealed class WindowsServiceControlTests
     }
 
     // ServiceAccount.Sid computes the SID without Windows, before the service exists (the agent's tests).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Windows_translates_the_account_of_the_service_it_created_to_the_SID_of_ServiceAccount()
     {
         TestService service = new();

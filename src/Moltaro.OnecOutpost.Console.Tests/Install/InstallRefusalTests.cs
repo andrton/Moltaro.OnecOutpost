@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Service;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Install;
@@ -30,7 +29,7 @@ public sealed class InstallRefusalTests
     private readonly TestMachine _machine = new();
 
     // The archive unpacked into a folder of the program folder, whose content install would empty before it copied.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Install_run_from_inside_the_program_folder_ends_with_Usage_before_anything_changes()
     {
         _machine.Source = Path.Combine(TestMachine.ProgramFolder, "unpacked") + Path.DirectorySeparatorChar;
@@ -44,7 +43,7 @@ public sealed class InstallRefusalTests
         Assert.Empty(_machine.Operations);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_service_that_does_not_stop_within_the_stop_timeout_ends_install_with_StopTimedOut()
     {
         _machine.HasService();
@@ -60,7 +59,7 @@ public sealed class InstallRefusalTests
         Assert.Equal([Stop], _machine.Operations);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_stop_that_Windows_refuses_ends_install_with_Failure_naming_the_step_and_the_error()
     {
         _machine.Services.StopFailure = new Win32Exception(5, "the fake service controller refused");
@@ -72,7 +71,7 @@ public sealed class InstallRefusalTests
         Assert.Equal([Stop], _machine.Operations);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_program_folder_that_cannot_be_written_ends_install_with_Failure_naming_the_step()
     {
         _machine.Folders.ProgramFolderFailure = new IOException("the fake disk is full");
@@ -85,7 +84,7 @@ public sealed class InstallRefusalTests
     }
 
     // The agent's own rule of S9c, judged before any service exists that would run the code of that folder.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_program_folder_that_someone_else_may_change_ends_install_with_ProgramFolderWriters_and_a_table_of_the_entries()
     {
         string root = Path.GetPathRoot(TestMachine.ProgramFolder)!;
@@ -105,7 +104,7 @@ public sealed class InstallRefusalTests
         Assert.Equal([Stop, ApplyProgramFolder, Writers], _machine.Operations);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Access_lists_of_the_program_folder_that_cannot_be_read_end_install_with_Failure_naming_the_step()
     {
         _machine.Access.MakeProgramsUnreadable();
@@ -118,7 +117,7 @@ public sealed class InstallRefusalTests
     }
 
     // 1072: the service is marked for deletion, and a handle that the Services console or Event Viewer holds keeps it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_service_marked_for_deletion_ends_install_with_Failure_and_the_remedy()
     {
         _machine.Services.InstallFailure = new Win32Exception(1072, "The specified service has been marked for deletion.");
@@ -131,7 +130,7 @@ public sealed class InstallRefusalTests
         Assert.Equal([Stop, ApplyProgramFolder, Writers, Install], _machine.Operations);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Rights_that_LSA_refuses_end_install_with_Failure_naming_the_step_and_the_error()
     {
         _machine.Rights.GrantFailure = new Win32Exception(1332, "the fake LSA refused");
@@ -144,7 +143,7 @@ public sealed class InstallRefusalTests
     }
 
     // A junction in the place of the data folder, or of a folder in it, would lead what the agent writes elsewhere.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
     [InlineData("audit")]
     [InlineData("outcomes")]
@@ -164,7 +163,7 @@ public sealed class InstallRefusalTests
     }
 
     // %ProgramData% lets every local user create a folder, so one made before install may admit its maker.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
     [InlineData("audit")]
     [InlineData("outcomes")]
@@ -184,7 +183,7 @@ public sealed class InstallRefusalTests
     }
 
     // Such as 183 of CreateDirectoryW, when a folder appeared since its kind was read.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_data_folder_that_cannot_be_written_ends_install_with_Failure_naming_the_step()
     {
         _machine.Folders.DataFolderFailure = new IOException("the fake folder exists already");

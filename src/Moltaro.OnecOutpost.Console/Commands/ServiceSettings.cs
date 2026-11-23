@@ -16,8 +16,9 @@ internal sealed class ServiceSettings : CommandSettings
 
     private static readonly TimeSpan MaxStopTimeout = TimeSpan.FromHours(1);
 
+    // The help reads a description as markup, so its brackets are doubled.
     [CommandOption("--stop-timeout <TIME>")]
-    [Description("How long to wait for the service to stop, of the form [d.]hh:mm:ss, from 00:00:01 to 01:00:00.")]
+    [Description("How long to wait for the service to stop, of the form [[d.]]hh:mm:ss, from 00:00:01 to 01:00:00.")]
     [TypeConverter(typeof(StopTimeoutConverter))]
     [DefaultValue(typeof(TimeSpan), "00:01:00")]
     public TimeSpan StopTimeout { get; init; }
