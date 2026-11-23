@@ -96,6 +96,15 @@ internal sealed class PairedFolder
         return Policy.Replace("\"bases\":", members + ", \"bases\":", StringComparison.Ordinal);
     }
 
+    // The policy with the Writes of accounting out of safe mode under the worker account (the S9c brief).
+    public static string PolicyWithWorkerAccount(string account)
+    {
+        return Policy.Replace(
+            "\"write\": { \"account\": \"outpost-write\" }",
+            $"\"write\": {{ \"account\": \"outpost-write\", \"safeMode\": false, \"workerAccount\": \"{account}\" }}",
+            StringComparison.Ordinal);
+    }
+
     public static PairedFolder Create()
     {
         using ECDsa server = ECDsa.Create(ECCurve.NamedCurves.nistP256);

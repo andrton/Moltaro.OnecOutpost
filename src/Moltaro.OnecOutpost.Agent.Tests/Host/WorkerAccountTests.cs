@@ -19,24 +19,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Host;
 public sealed class WorkerAccountTests
 {
     // PairedFolder's policy, with the Writes of accounting out of safe mode under the account outpost-worker.
-    private const string Policy = """
-        {
-          "bases": [
-            {
-              "key": "accounting",
-              "server": "srv-1c:1541",
-              "database": "accounting",
-              "read": { "account": "outpost-read" },
-              "write": { "account": "outpost-write", "safeMode": false, "workerAccount": "outpost-worker" }
-            },
-            {
-              "key": "warehouse",
-              "file": "D:\\1C\\Warehouse",
-              "read": { "account": "outpost-read" }
-            }
-          ]
-        }
-        """;
+    private static readonly string Policy = PairedFolder.PolicyWithWorkerAccount("outpost-worker");
 
     private readonly PairedFolder _folder = PairedFolder.Create();
 

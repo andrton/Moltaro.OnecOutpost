@@ -60,7 +60,7 @@ public sealed class WorkerLogOnTests : IDisposable
     [Fact]
     public async Task A_start_whose_worker_account_cannot_log_on_stops_the_agent_recorded_and_no_data_file_holds_the_password()
     {
-        string policy = PolicyWithWorkerAccount(_account);
+        string policy = PairedFolder.PolicyWithWorkerAccount(_account);
         Assert.Contains(_account, policy, StringComparison.Ordinal);
         _data.WriteFiles(policy, ("accounting", _password));
         FakeClock clock = new(TestTimes.Start);
@@ -96,14 +96,5 @@ public sealed class WorkerLogOnTests : IDisposable
             Assert.True(bytes.AsSpan().IndexOf(Encoding.UTF8.GetBytes(_password)) < 0, $"{path} holds the password.");
             Assert.True(bytes.AsSpan().IndexOf(Encoding.Unicode.GetBytes(_password)) < 0, $"{path} holds the password.");
         }
-    }
-
-    // PairedFolder's policy, with the Writes of accounting out of safe mode under the account.
-    private static string PolicyWithWorkerAccount(string account)
-    {
-        return PairedFolder.Policy.Replace(
-            "\"write\": { \"account\": \"outpost-write\" }",
-            $"\"write\": {{ \"account\": \"outpost-write\", \"safeMode\": false, \"workerAccount\": \"{account}\" }}",
-            StringComparison.Ordinal);
     }
 }
