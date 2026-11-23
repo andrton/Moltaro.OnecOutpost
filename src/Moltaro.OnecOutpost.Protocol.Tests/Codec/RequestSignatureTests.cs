@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Signing;
 
@@ -126,7 +127,8 @@ public sealed class RequestSignatureTests : IDisposable
         }
         else
         {
-            OutpostCodec.ReadOutcomeRequest(_agentKey, agent, body, signature);
+            OutpostCodec.ReadOutcomeRequest(_agentKey, agent, body, signature, out JsonDocument document);
+            document.Dispose();
         }
     }
 }

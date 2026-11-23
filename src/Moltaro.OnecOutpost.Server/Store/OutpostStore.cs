@@ -10,13 +10,12 @@ using Npgsql;
 
 namespace Moltaro.OnecOutpost.Server.Store;
 
-// The operations of the store on PostgreSQL. Each opens a context of its own, runs under ReadCommitted and holds no lock
-// while it waits for anything. Every time it writes or compares comes from its TimeProvider in UTC, never from the
-// clock of the database (PQ3).
+// The operations of the store on PostgreSQL. Each runs in a context of its own as one transaction (InTransactionAsync)
+// and holds no lock while it waits for anything. Every time it writes or compares comes from its TimeProvider in UTC,
+// never from the clock of the database (PQ3).
 //
-// Each operation is one transaction whose isolation it sets itself, so that it does not depend on the default of the
-// database. Under ReadCommitted, a statement that waited for a row another transaction changed reads that row again as
-// committed and checks its conditions anew; the statements below rely on that to give the one change to one caller.
+// Under ReadCommitted, a statement that waited for a row another transaction changed reads that row again as committed
+// and checks its conditions anew; the statements below rely on that to give the one change to one caller.
 internal sealed class OutpostStore
 {
     // The moment at which time ends a command with no outcome (rules 7, 11), over the aliases command and agent and
@@ -42,11 +41,33 @@ internal sealed class OutpostStore
 
     private readonly TimeProvider _timeProvider;
 
+    // The tables of the model, with the schema, delimited for raw SQL.
+    private readonly string _agents;
+
+    private readonly string _tokens;
+
+    private readonly string _claims;
+
+    private readonly string _commands;
+
+    // The filter of the unique index of base and caller key, as the model has it: the commands that hold their key,
+    // every one but those that ended as Expired or Refused (rule 4).
+    private readonly string _holdingTheirKey;
+
     public OutpostStore(string connectionString, string schema, TimeProvider timeProvider)
     {
         _connectionString = connectionString;
         _schema = schema;
         _timeProvider = timeProvider;
+
+        // The names come from the model, which a context without a connection gives as GetScripts uses it.
+        using StoreContext model = StoreContextFactory.Create(null, schema);
+
+        _agents = TableName(model, model.Agents.EntityType);
+        _tokens = TableName(model, model.PairingTokens.EntityType);
+        _claims = TableName(model, model.BaseClaims.EntityType);
+        _commands = TableName(model, model.Commands.EntityType);
+        _holdingTheirKey = model.Commands.EntityType.GetIndexes().Single(index => index.IsUnique).GetFilter()!;
     }
 
     // Writes the agent as Pending, with its name and the node's time, and its token with the secret and the expiry, in
@@ -58,29 +79,27 @@ internal sealed class OutpostStore
         DateTimeOffset expiresAt,
         CancellationToken cancellationToken)
     {
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+        await InTransactionAsync(
+            context =>
+            {
+                context.Agents.Add(new AgentRow
+                {
+                    Id = agentId,
+                    Name = agentName,
+                    State = OutpostAgentStateEnum.Pending,
+                    CreatedAt = _timeProvider.GetUtcNow(),
+                });
 
-        context.Agents.Add(new AgentRow
-        {
-            Id = agentId,
-            Name = agentName,
-            State = OutpostAgentStateEnum.Pending,
-            CreatedAt = _timeProvider.GetUtcNow(),
-        });
+                context.PairingTokens.Add(new PairingTokenRow
+                {
+                    AgentId = agentId,
+                    Secret = secret,
+                    ExpiresAt = expiresAt,
+                });
 
-        context.PairingTokens.Add(new PairingTokenRow
-        {
-            AgentId = agentId,
-            Secret = secret,
-            ExpiresAt = expiresAt,
-        });
-
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        await context.SaveChangesAsync(cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
+                return context.SaveChangesAsync(cancellationToken);
+            },
+            cancellationToken);
     }
 
     // The secret of the agent's token when the token has not expired and the agent is Pending; null otherwise. A token is
@@ -89,23 +108,16 @@ internal sealed class OutpostStore
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        byte[]? secret = await (
-            from token in context.PairingTokens
-            join agent in context.Agents on token.AgentId equals agent.Id
-            where token.AgentId == agentId
-                && token.ExpiresAt > now
-                && agent.State == OutpostAgentStateEnum.Pending
-            select token.Secret)
-            .SingleOrDefaultAsync(cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
-
-        return secret;
+        return await InTransactionAsync(
+            context => (
+                from token in context.PairingTokens
+                join agent in context.Agents on token.AgentId equals agent.Id
+                where token.AgentId == agentId
+                    && token.ExpiresAt > now
+                    && agent.State == OutpostAgentStateEnum.Pending
+                select token.Secret)
+                .SingleOrDefaultAsync(cancellationToken),
+            cancellationToken);
     }
 
     // In one statement: deletes the token when it has not expired and makes its agent, while Pending, Paired with the key
@@ -117,18 +129,13 @@ internal sealed class OutpostStore
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        string agents = TableName(context, context.Agents.EntityType);
-        string tokens = TableName(context, context.PairingTokens.EntityType);
-
         string sql = $"""
             WITH redeemed AS (
-                DELETE FROM {tokens}
+                DELETE FROM {_tokens}
                 WHERE agent_id = @agent_id AND expires_at > @now
                 RETURNING agent_id
             )
-            UPDATE {agents} AS agent
+            UPDATE {_agents} AS agent
             SET state = @paired, public_key = @public_key, paired_at = @now
             FROM redeemed
             WHERE agent.id = redeemed.agent_id AND agent.state = @pending
@@ -143,12 +150,9 @@ internal sealed class OutpostStore
             new NpgsqlParameter<int>("pending", (int)OutpostAgentStateEnum.Pending),
         ];
 
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        int paired = await context.Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
+        int paired = await InTransactionAsync(
+            context => context.Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken),
+            cancellationToken);
 
         return paired == 1;
     }
@@ -162,21 +166,16 @@ internal sealed class OutpostStore
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        string agents = TableName(context, context.Agents.EntityType);
-        string tokens = TableName(context, context.PairingTokens.EntityType);
-
         // EF Core reads the count from the column Value. The statement is sent as it is: PostgreSQL allows a WITH that
         // changes rows only at the top of a statement, so nothing may be composed on it.
         string sql = $"""
             WITH expired AS (
-                DELETE FROM {tokens}
+                DELETE FROM {_tokens}
                 WHERE expires_at <= @now
                 RETURNING agent_id
             ),
             removed AS (
-                DELETE FROM {agents}
+                DELETE FROM {_agents}
                 WHERE id IN (SELECT agent_id FROM expired) AND state = @pending
             )
             SELECT count(*)::integer AS "Value" FROM expired
@@ -188,12 +187,9 @@ internal sealed class OutpostStore
             new NpgsqlParameter<int>("pending", (int)OutpostAgentStateEnum.Pending),
         ];
 
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        List<int> purged = await context.Database.SqlQueryRaw<int>(sql, parameters).ToListAsync(cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
+        List<int> purged = await InTransactionAsync(
+            context => context.Database.SqlQueryRaw<int>(sql, parameters).ToListAsync(cancellationToken),
+            cancellationToken);
 
         return purged.Single();
     }
@@ -201,18 +197,11 @@ internal sealed class OutpostStore
     // The row of the agent, or null when there is none.
     public async Task<AgentRow?> FindAgentAsync(Guid agentId, CancellationToken cancellationToken)
     {
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        AgentRow? agent = await context.Agents
-            .AsNoTracking()
-            .SingleOrDefaultAsync(row => row.Id == agentId, cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
-
-        return agent;
+        return await InTransactionAsync(
+            context => context.Agents
+                .AsNoTracking()
+                .SingleOrDefaultAsync(row => row.Id == agentId, cancellationToken),
+            cancellationToken);
     }
 
     // Records a poll that is newer than the newest recorded, while the agent is Paired, in one short transaction: its
@@ -243,69 +232,64 @@ internal sealed class OutpostStore
         DateTimeOffset leaseFrom = poll.Time < now - clockSkew ? poll.Time + clockSkew : now;
         DateTimeOffset leaseEndsAt = leaseFrom + hold + leaseGrace;
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+        return await InTransactionAsync(
+            async context =>
+            {
+                // Rule 10: a poll whose number is not above the newest recorded is older, an exact replay included.
+                int recorded = await context.Agents
+                    .Where(agent => agent.Id == agentId
+                        && agent.State == OutpostAgentStateEnum.Paired
+                        && (agent.NewestPoll == null || agent.NewestPoll < poll.Number))
+                    .ExecuteUpdateAsync(
+                        setters => setters
+                            .SetProperty(agent => agent.NewestPoll, poll.Number)
+                            .SetProperty(agent => agent.LastPollAt, now)
+                            .SetProperty(agent => agent.LeaseEndsAt, leaseEndsAt)
+                            .SetProperty(agent => agent.AgentVersion, poll.AgentVersion),
+                        cancellationToken);
 
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+                if (recorded == 0)
+                {
+                    PollState older = await ReadStateAsync(context, agentId, cancellationToken);
 
-        // Rule 10: a poll whose number is not above the newest recorded is older, an exact replay included.
-        int recorded = await context.Agents
-            .Where(agent => agent.Id == agentId
-                && agent.State == OutpostAgentStateEnum.Paired
-                && (agent.NewestPoll == null || agent.NewestPoll < poll.Number))
-            .ExecuteUpdateAsync(
-                setters => setters
-                    .SetProperty(agent => agent.NewestPoll, poll.Number)
-                    .SetProperty(agent => agent.LastPollAt, now)
-                    .SetProperty(agent => agent.LeaseEndsAt, leaseEndsAt)
-                    .SetProperty(agent => agent.AgentVersion, poll.AgentVersion),
-                cancellationToken);
+                    return new PollRecord(older, []);
+                }
 
-        if (recorded == 0)
-        {
-            PollState older = await ReadStateAsync(context, agentId, cancellationToken);
+                await context.AgentBases
+                    .Where(agentBase => agentBase.AgentId == agentId)
+                    .ExecuteDeleteAsync(cancellationToken);
 
-            await transaction.CommitAsync(cancellationToken);
+                // Every declared base opens Read in v1; Write is open when the poll declares it (§6.2).
+                context.AgentBases.AddRange(poll.Bases.Select(pollBase => new AgentBaseRow
+                {
+                    AgentId = agentId,
+                    Key = pollBase.Key,
+                    WriteOpen = pollBase.Write is not null,
+                }));
 
-            return new PollRecord(older, []);
-        }
+                await context.SaveChangesAsync(cancellationToken);
 
-        await context.AgentBases.Where(agentBase => agentBase.AgentId == agentId).ExecuteDeleteAsync(cancellationToken);
+                await ClaimAsync(context, agentId, poll.Bases.Select(pollBase => pollBase.Key), cancellationToken);
 
-        // Every declared base opens Read in v1; Write is open when the poll declares it (§6.2).
-        context.AgentBases.AddRange(poll.Bases.Select(pollBase => new AgentBaseRow
-        {
-            AgentId = agentId,
-            Key = pollBase.Key,
-            WriteOpen = pollBase.Write is not null,
-        }));
+                IReadOnlyList<Guid> expired =
+                    await ReconcileReceivedAsync(context, agentId, poll, now, cancellationToken);
 
-        await context.SaveChangesAsync(cancellationToken);
+                // A statement of its own, so that it sees a claim that another poll committed while this one waited for
+                // it.
+                PollState newest = await ReadStateAsync(context, agentId, cancellationToken);
 
-        await ClaimAsync(context, agentId, poll.Bases.Select(pollBase => pollBase.Key), cancellationToken);
-
-        IReadOnlyList<Guid> expired = await ReconcileReceivedAsync(context, agentId, poll, now, cancellationToken);
-
-        // A statement of its own, so that it sees a claim that another poll committed while this one waited for it.
-        PollState newest = await ReadStateAsync(context, agentId, cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
-
-        return new PollRecord(newest with { Newest = null }, expired);
+                return new PollRecord(newest with { Newest = null }, expired);
+            },
+            cancellationToken);
     }
 
     // The state of the agent for the answer to its poll of this number, in one statement that changes nothing and takes
     // no lock. Newest is the recorded number when it is not this one, and null when it is.
     public async Task<PollState> ReadPollStateAsync(Guid agentId, long number, CancellationToken cancellationToken)
     {
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        PollState state = await ReadStateAsync(context, agentId, cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
+        PollState state = await InTransactionAsync(
+            context => ReadStateAsync(context, agentId, cancellationToken),
+            cancellationToken);
 
         return ForPoll(state, number);
     }
@@ -316,31 +300,26 @@ internal sealed class OutpostStore
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
         // One row per base of each agent, with the holder of its key, or one row without a base for an agent that
         // declared none. The rows of an agent come together, in the order of the list.
-        var rows = await (
-            from agent in context.Agents
-            join agentBase in context.AgentBases on agent.Id equals agentBase.AgentId into agentBases
-            from agentBase in agentBases.DefaultIfEmpty()
-            join claim in context.BaseClaims on agentBase!.Key equals claim.Key into claims
-            from claim in claims.DefaultIfEmpty()
-            orderby agent.CreatedAt, agent.Id
-            select new
-            {
-                Agent = agent,
-                Key = agentBase != null ? agentBase.Key : null,
-                WriteOpen = agentBase != null && agentBase.WriteOpen,
-                Holder = claim != null ? claim.AgentId : (Guid?)null,
-            })
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
+        var rows = await InTransactionAsync(
+            context => (
+                from agent in context.Agents
+                join agentBase in context.AgentBases on agent.Id equals agentBase.AgentId into agentBases
+                from agentBase in agentBases.DefaultIfEmpty()
+                join claim in context.BaseClaims on agentBase!.Key equals claim.Key into claims
+                from claim in claims.DefaultIfEmpty()
+                orderby agent.CreatedAt, agent.Id
+                select new
+                {
+                    Agent = agent,
+                    Key = agentBase != null ? agentBase.Key : null,
+                    WriteOpen = agentBase != null && agentBase.WriteOpen,
+                    Holder = claim != null ? claim.AgentId : (Guid?)null,
+                })
+                .AsNoTracking()
+                .ToListAsync(cancellationToken),
+            cancellationToken);
 
         List<OutpostAgent> agents = [];
 
@@ -387,19 +366,15 @@ internal sealed class OutpostStore
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        string commands = TableName(context, context.Commands.EntityType);
-
         string refuseWaiting = $"""
-            UPDATE {commands}
+            UPDATE {_commands}
             SET outcome_kind = @refused, outcome_code = @revoked, ended_at = @now
             WHERE agent_id = @agent_id AND phase = @waiting AND outcome_kind IS NULL
             RETURNING id AS "Value"
             """;
 
         string endTaken = $"""
-            UPDATE {commands}
+            UPDATE {_commands}
             SET outcome_kind = CASE WHEN mode = @write THEN @unknown ELSE @failed END,
                 outcome_code = CASE WHEN mode = @write THEN @revoked ELSE @lost END,
                 ended_at = @now
@@ -428,37 +403,39 @@ internal sealed class OutpostStore
             new NpgsqlParameter<string>("lost", OutpostOutcomeCodes.Lost),
         ];
 
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        return await InTransactionAsync(
+            async context =>
+            {
+                await context.PairingTokens
+                    .Where(token => token.AgentId == agentId)
+                    .ExecuteDeleteAsync(cancellationToken);
 
-        await context.PairingTokens.Where(token => token.AgentId == agentId).ExecuteDeleteAsync(cancellationToken);
+                int revoked = await context.Agents
+                    .Where(agent => agent.Id == agentId && agent.State != OutpostAgentStateEnum.Revoked)
+                    .ExecuteUpdateAsync(
+                        setters => setters.SetProperty(agent => agent.State, OutpostAgentStateEnum.Revoked),
+                        cancellationToken);
 
-        int revoked = await context.Agents
-            .Where(agent => agent.Id == agentId && agent.State != OutpostAgentStateEnum.Revoked)
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(agent => agent.State, OutpostAgentStateEnum.Revoked),
-                cancellationToken);
+                await context.BaseClaims
+                    .Where(claim => claim.AgentId == agentId)
+                    .ExecuteDeleteAsync(cancellationToken);
 
-        await context.BaseClaims.Where(claim => claim.AgentId == agentId).ExecuteDeleteAsync(cancellationToken);
+                if (revoked == 0)
+                {
+                    return new Revocation(false, []);
+                }
 
-        if (revoked == 0)
-        {
-            await transaction.CommitAsync(cancellationToken);
+                List<Guid> refused = await context.Database
+                    .SqlQueryRaw<Guid>(refuseWaiting, refuseParameters)
+                    .ToListAsync(cancellationToken);
 
-            return new Revocation(false, []);
-        }
+                List<Guid> ended = await context.Database
+                    .SqlQueryRaw<Guid>(endTaken, endParameters)
+                    .ToListAsync(cancellationToken);
 
-        List<Guid> refused = await context.Database
-            .SqlQueryRaw<Guid>(refuseWaiting, refuseParameters)
-            .ToListAsync(cancellationToken);
-
-        List<Guid> ended = await context.Database
-            .SqlQueryRaw<Guid>(endTaken, endParameters)
-            .ToListAsync(cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
-
-        return new Revocation(true, [.. refused, .. ended]);
+                return new Revocation(true, [.. refused, .. ended]);
+            },
+            cancellationToken);
     }
 
     // Frees a key whose holder's newest poll no longer declares it, in one short transaction (rule 14).
@@ -471,48 +448,44 @@ internal sealed class OutpostStore
     // next call decides.
     public async Task<OutpostReleaseResultEnum> ReleaseBaseAsync(string baseKey, CancellationToken cancellationToken)
     {
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+        string lockHolder = $"SELECT id FROM {_agents} WHERE id = @agent_id FOR NO KEY UPDATE";
 
-        string agents = TableName(context, context.Agents.EntityType);
-        string lockHolder = $"SELECT id FROM {agents} WHERE id = @agent_id FOR NO KEY UPDATE";
+        return await InTransactionAsync(
+            async context =>
+            {
+                Guid? holder = await context.BaseClaims
+                    .Where(claim => claim.Key == baseKey)
+                    .Select(claim => (Guid?)claim.AgentId)
+                    .SingleOrDefaultAsync(cancellationToken);
 
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+                if (holder is not Guid holderId)
+                {
+                    return OutpostReleaseResultEnum.NotHeld;
+                }
 
-        Guid? holder = await context.BaseClaims
-            .Where(claim => claim.Key == baseKey)
-            .Select(claim => (Guid?)claim.AgentId)
-            .SingleOrDefaultAsync(cancellationToken);
+                await context.Database.ExecuteSqlRawAsync(
+                    lockHolder,
+                    [new NpgsqlParameter<Guid>("agent_id", holderId)],
+                    cancellationToken);
 
-        if (holder is not Guid holderId)
-        {
-            await transaction.CommitAsync(cancellationToken);
+                int released = await context.BaseClaims
+                    .Where(claim => claim.Key == baseKey
+                        && claim.AgentId == holderId
+                        && !context.AgentBases.Any(agentBase => agentBase.AgentId == holderId
+                            && agentBase.Key == baseKey))
+                    .ExecuteDeleteAsync(cancellationToken);
 
-            return OutpostReleaseResultEnum.NotHeld;
-        }
+                bool stillClaimed = released == 0
+                    && await context.BaseClaims.AnyAsync(claim => claim.Key == baseKey, cancellationToken);
 
-        await context.Database.ExecuteSqlRawAsync(
-            lockHolder,
-            [new NpgsqlParameter<Guid>("agent_id", holderId)],
+                if (released == 1)
+                {
+                    return OutpostReleaseResultEnum.Released;
+                }
+
+                return stillClaimed ? OutpostReleaseResultEnum.StillDeclared : OutpostReleaseResultEnum.NotHeld;
+            },
             cancellationToken);
-
-        int released = await context.BaseClaims
-            .Where(claim => claim.Key == baseKey
-                && claim.AgentId == holderId
-                && !context.AgentBases.Any(agentBase => agentBase.AgentId == holderId && agentBase.Key == baseKey))
-            .ExecuteDeleteAsync(cancellationToken);
-
-        bool stillClaimed = released == 0
-            && await context.BaseClaims.AnyAsync(claim => claim.Key == baseKey, cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
-
-        if (released == 1)
-        {
-            return OutpostReleaseResultEnum.Released;
-        }
-
-        return stillClaimed ? OutpostReleaseResultEnum.StillDeclared : OutpostReleaseResultEnum.NotHeld;
     }
 
     // The take of a poll, in one short transaction: while the agent is Paired and the poll its newest, under the lock of
@@ -548,14 +521,8 @@ internal sealed class OutpostStore
             }
         }
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        string agents = TableName(context, context.Agents.EntityType);
-        string claims = TableName(context, context.BaseClaims.EntityType);
-        string commands = TableName(context, context.Commands.EntityType);
-
         string lockAgent = $"""
-            SELECT id AS "Value" FROM {agents}
+            SELECT id AS "Value" FROM {_agents}
             WHERE id = @agent_id AND state = @paired AND newest_poll = @number
             FOR NO KEY UPDATE
             """;
@@ -567,13 +534,13 @@ internal sealed class OutpostStore
             WITH picked AS (
                 SELECT command.id, command.sequence, command.entry_length, wanted.run_limit
                 FROM unnest(@keys, @modes, @frees, @run_limits) AS wanted (base_key, mode, free, run_limit)
-                JOIN {claims} AS claim ON claim.key = wanted.base_key AND claim.agent_id = @agent_id
+                JOIN {_claims} AS claim ON claim.key = wanted.base_key AND claim.agent_id = @agent_id
                 CROSS JOIN LATERAL (
                     SELECT candidate.id, candidate.sequence,
                         (4 * octet_length(candidate.bytes)::bigint + 2) / 3
                             + (4 * octet_length(candidate.signature)::bigint + 2) / 3
                             + @entry_json AS entry_length
-                    FROM {commands} AS candidate
+                    FROM {_commands} AS candidate
                     WHERE candidate.agent_id = @agent_id
                         AND candidate.base_key = wanted.base_key
                         AND candidate.mode = wanted.mode
@@ -597,7 +564,7 @@ internal sealed class OutpostStore
                 WHERE position = 1 OR filled <= @room
             ),
             handed AS (
-                UPDATE {commands} AS command
+                UPDATE {_commands} AS command
                 SET phase = @handed_out, run_limit = kept.run_limit
                 FROM kept
                 WHERE command.id = kept.id
@@ -627,28 +594,28 @@ internal sealed class OutpostStore
             new NpgsqlParameter<TimeSpan[]>("run_limits", [.. modes.Select(mode => mode.Workers.RunLimit)]),
         ];
 
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        return await InTransactionAsync(
+            async context =>
+            {
+                List<Guid> locked = await context.Database
+                    .SqlQueryRaw<Guid>(lockAgent, lockParameters)
+                    .ToListAsync(cancellationToken);
 
-        List<Guid> locked = await context.Database
-            .SqlQueryRaw<Guid>(lockAgent, lockParameters)
-            .ToListAsync(cancellationToken);
+                List<OutpostSignedCommand> handed = [];
 
-        List<OutpostSignedCommand> handed = [];
+                if (locked.Count == 1)
+                {
+                    handed = await context.Database
+                        .SqlQueryRaw<OutpostSignedCommand>(take, takeParameters)
+                        .ToListAsync(cancellationToken);
+                }
 
-        if (locked.Count == 1)
-        {
-            handed = await context.Database
-                .SqlQueryRaw<OutpostSignedCommand>(take, takeParameters)
-                .ToListAsync(cancellationToken);
-        }
+                // Revoked, or a Newest that is not null, says why a take that found no row took nothing.
+                PollState state = await ReadStateAsync(context, agentId, cancellationToken);
 
-        // Revoked, or a Newest that is not null, says why a take that found no row took nothing.
-        PollState state = await ReadStateAsync(context, agentId, cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
-
-        return new PollTake(ForPoll(state, poll.Number), handed);
+                return new PollTake(ForPoll(state, poll.Number), handed);
+            },
+            cancellationToken);
     }
 
     // The command that holds the base and caller key, in one short transaction that first makes it Expired when it is
@@ -666,14 +633,10 @@ internal sealed class OutpostStore
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        string commands = TableName(context, context.Commands.EntityType);
-
         string find = $"""
             SELECT id AS "Id", false AS "Created", {SameCommand("@script", "@parameters::jsonb")} AS "Same"
-            FROM {commands}
-            WHERE base_key = @base_key AND caller_key = @caller_key AND {HoldingTheirKey(context)}
+            FROM {_commands}
+            WHERE base_key = @base_key AND caller_key = @caller_key AND {_holdingTheirKey}
             """;
 
         NpgsqlParameter[] findParameters =
@@ -685,29 +648,29 @@ internal sealed class OutpostStore
             new NpgsqlParameter<string>("parameters", parameters),
         ];
 
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        List<CommandMatch> found = await InTransactionAsync(
+            async context =>
+            {
+                // Rule 7: a command that no poll took ends at its deadline, by the node's clock, which frees its key.
+                // Of a take and this change, the first to commit wins: this statement waits for a take that holds the
+                // row, and then finds the command HandedOut.
+                await context.Commands
+                    .Where(command => command.BaseKey == baseKey
+                        && command.CallerKey == callerKey
+                        && command.Phase == CommandPhaseEnum.Waiting
+                        && command.OutcomeKind == null
+                        && command.Deadline <= now)
+                    .ExecuteUpdateAsync(
+                        setters => setters
+                            .SetProperty(command => command.OutcomeKind, OutpostOutcomeKindEnum.Expired)
+                            .SetProperty(command => command.EndedAt, now),
+                        cancellationToken);
 
-        // Rule 7: a command that no poll took ends at its deadline, by the node's clock, which frees its key. Of a take
-        // and this change, the first to commit wins: this statement waits for a take that holds the row, and then finds
-        // the command HandedOut.
-        await context.Commands
-            .Where(command => command.BaseKey == baseKey
-                && command.CallerKey == callerKey
-                && command.Phase == CommandPhaseEnum.Waiting
-                && command.OutcomeKind == null
-                && command.Deadline <= now)
-            .ExecuteUpdateAsync(
-                setters => setters
-                    .SetProperty(command => command.OutcomeKind, OutpostOutcomeKindEnum.Expired)
-                    .SetProperty(command => command.EndedAt, now),
-                cancellationToken);
-
-        List<CommandMatch> found = await context.Database
-            .SqlQueryRaw<CommandMatch>(find, findParameters)
-            .ToListAsync(cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
+                return await context.Database
+                    .SqlQueryRaw<CommandMatch>(find, findParameters)
+                    .ToListAsync(cancellationToken);
+            },
+            cancellationToken);
 
         return found.SingleOrDefault();
     }
@@ -718,29 +681,24 @@ internal sealed class OutpostStore
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        var holder = await (
-            from claim in context.BaseClaims
-            join agent in context.Agents on claim.AgentId equals agent.Id
-            join agentBase in context.AgentBases
-                on new { claim.AgentId, claim.Key } equals new { agentBase.AgentId, agentBase.Key } into declared
-            from agentBase in declared.DefaultIfEmpty()
-            where claim.Key == baseKey
-            select new
-            {
-                claim.AgentId,
-                Declared = agentBase != null,
-                WriteOpen = agentBase != null && agentBase.WriteOpen,
-                agent.State,
-                agent.LeaseEndsAt,
-            })
-            .SingleOrDefaultAsync(cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
+        var holder = await InTransactionAsync(
+            context => (
+                from claim in context.BaseClaims
+                join agent in context.Agents on claim.AgentId equals agent.Id
+                join agentBase in context.AgentBases
+                    on new { claim.AgentId, claim.Key } equals new { agentBase.AgentId, agentBase.Key } into declared
+                from agentBase in declared.DefaultIfEmpty()
+                where claim.Key == baseKey
+                select new
+                {
+                    claim.AgentId,
+                    Declared = agentBase != null,
+                    WriteOpen = agentBase != null && agentBase.WriteOpen,
+                    agent.State,
+                    agent.LeaseEndsAt,
+                })
+                .SingleOrDefaultAsync(cancellationToken),
+            cancellationToken);
 
         if (holder is null)
         {
@@ -764,13 +722,8 @@ internal sealed class OutpostStore
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        string agents = TableName(context, context.Agents.EntityType);
-        string commands = TableName(context, context.Commands.EntityType);
-
         string lockAgent = $"""
-            SELECT id AS "Value" FROM {agents}
+            SELECT id AS "Value" FROM {_agents}
             WHERE id = @agent_id AND state = @paired AND lease_ends_at > @now
             FOR SHARE
             """;
@@ -780,12 +733,12 @@ internal sealed class OutpostStore
             "convert_from(@bytes, 'UTF8')::jsonb -> 'parameters'");
 
         string create = $"""
-            INSERT INTO {commands} AS command
+            INSERT INTO {_commands} AS command
                 (id, agent_id, base_key, mode, caller_key, bytes, signature, deadline, skew, outcome_limit, phase)
             VALUES
                 (@id, @agent_id, @base_key, @mode, @caller_key, @bytes, @signature, @deadline, @skew, @outcome_limit,
                  @waiting)
-            ON CONFLICT (base_key, caller_key) WHERE {HoldingTheirKey(context)}
+            ON CONFLICT (base_key, caller_key) WHERE {_holdingTheirKey}
             DO UPDATE SET phase = command.phase
             RETURNING
                 command.id AS "Id",
@@ -815,27 +768,26 @@ internal sealed class OutpostStore
             new NpgsqlParameter<int>("waiting", (int)CommandPhaseEnum.Waiting),
         ];
 
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        // Null when the agent row was not locked.
+        List<CommandMatch>? match = await InTransactionAsync(
+            async context =>
+            {
+                List<Guid> locked = await context.Database
+                    .SqlQueryRaw<Guid>(lockAgent, lockParameters)
+                    .ToListAsync(cancellationToken);
 
-        List<Guid> locked = await context.Database
-            .SqlQueryRaw<Guid>(lockAgent, lockParameters)
-            .ToListAsync(cancellationToken);
+                if (locked.Count == 0)
+                {
+                    return null;
+                }
 
-        if (locked.Count == 0)
-        {
-            await transaction.CommitAsync(cancellationToken);
+                return await context.Database
+                    .SqlQueryRaw<CommandMatch>(create, createParameters)
+                    .ToListAsync(cancellationToken);
+            },
+            cancellationToken);
 
-            return null;
-        }
-
-        List<CommandMatch> match = await context.Database
-            .SqlQueryRaw<CommandMatch>(create, createParameters)
-            .ToListAsync(cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
-
-        return match.Single();
+        return match?.Single();
     }
 
     // Ends the command when time made its end due, then reads it, in one short transaction (rules 7, 11): Expired when
@@ -849,13 +801,8 @@ internal sealed class OutpostStore
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        string agents = TableName(context, context.Agents.EntityType);
-        string commands = TableName(context, context.Commands.EntityType);
-
         string end = $"""
-            UPDATE {commands} AS command
+            UPDATE {_commands} AS command
             SET outcome_kind = CASE
                     WHEN command.phase = @waiting THEN @expired
                     WHEN command.mode = @write THEN @unknown
@@ -867,7 +814,7 @@ internal sealed class OutpostStore
                     ELSE @lost
                 END,
                 ended_at = @now
-            FROM {agents} AS agent
+            FROM {_agents} AS agent
             WHERE command.id = @command_id
                 AND agent.id = command.agent_id
                 AND command.outcome_kind IS NULL
@@ -887,29 +834,29 @@ internal sealed class OutpostStore
             new NpgsqlParameter<string>("lost", OutpostOutcomeCodes.Lost),
         ];
 
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        await context.Database.ExecuteSqlRawAsync(end, endParameters, cancellationToken);
-
-        var row = await (
-            from command in context.Commands
-            join agent in context.Agents on command.AgentId equals agent.Id
-            where command.Id == commandId
-            select new
+        var row = await InTransactionAsync(
+            async context =>
             {
-                command.Mode,
-                command.Phase,
-                command.Deadline,
-                command.RunLimit,
-                command.OutcomeKind,
-                command.OutcomeCode,
-                command.Outcome,
-                agent.LeaseEndsAt,
-            })
-            .SingleAsync(cancellationToken);
+                await context.Database.ExecuteSqlRawAsync(end, endParameters, cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
+                return await (
+                    from command in context.Commands
+                    join agent in context.Agents on command.AgentId equals agent.Id
+                    where command.Id == commandId
+                    select new
+                    {
+                        command.Mode,
+                        command.Phase,
+                        command.Deadline,
+                        command.RunLimit,
+                        command.OutcomeKind,
+                        command.OutcomeCode,
+                        command.Outcome,
+                        agent.LeaseEndsAt,
+                    })
+                    .SingleAsync(cancellationToken);
+            },
+            cancellationToken);
 
         // As DueAt: a command that a poll took has a run limit, and its agent a lease.
         DateTimeOffset due = row.Phase == CommandPhaseEnum.Waiting
@@ -924,19 +871,12 @@ internal sealed class OutpostStore
     // The mode and the outcome limit of a command; null when there is none of that identity.
     public async Task<CommandLimits?> FindCommandLimitsAsync(Guid commandId, CancellationToken cancellationToken)
     {
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        CommandLimits? limits = await context.Commands
-            .Where(command => command.Id == commandId)
-            .Select(command => new CommandLimits(command.Mode, command.OutcomeLimit))
-            .SingleOrDefaultAsync(cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
-
-        return limits;
+        return await InTransactionAsync(
+            context => context.Commands
+                .Where(command => command.Id == commandId)
+                .Select(command => new CommandLimits(command.Mode, command.OutcomeLimit))
+                .SingleOrDefaultAsync(cancellationToken),
+            cancellationToken);
     }
 
     // Keeps the outcome of the agent, in one statement, when the command is the agent's, not Waiting, and has no outcome
@@ -963,12 +903,8 @@ internal sealed class OutpostStore
             _ => throw new ArgumentOutOfRangeException(nameof(message)),
         };
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        string commands = TableName(context, context.Commands.EntityType);
-
         string keep = $"""
-            UPDATE {commands}
+            UPDATE {_commands}
             SET outcome_kind = @kind, outcome_code = @code, outcome = @outcome, ended_at = @now
             WHERE id = @command_id
                 AND agent_id = @agent_id
@@ -989,12 +925,9 @@ internal sealed class OutpostStore
             new NpgsqlParameter<int>("failed", (int)OutpostOutcomeKindEnum.Failed),
         ];
 
-        await using IDbContextTransaction transaction =
-            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        int kept = await context.Database.ExecuteSqlRawAsync(keep, parameters, cancellationToken);
-
-        await transaction.CommitAsync(cancellationToken);
+        int kept = await InTransactionAsync(
+            context => context.Database.ExecuteSqlRawAsync(keep, parameters, cancellationToken),
+            cancellationToken);
 
         return kept == 1;
     }
@@ -1009,17 +942,12 @@ internal sealed class OutpostStore
     {
         DateTimeOffset cutoff = _timeProvider.GetUtcNow() - retention;
 
-        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
-
-        string agents = TableName(context, context.Agents.EntityType);
-        string commands = TableName(context, context.Commands.EntityType);
-
         string purge = $"""
-            DELETE FROM {commands}
+            DELETE FROM {_commands}
             WHERE id IN (
                 SELECT command.id
-                FROM {commands} AS command
-                JOIN {agents} AS agent ON agent.id = command.agent_id
+                FROM {_commands} AS command
+                JOIN {_agents} AS agent ON agent.id = command.agent_id
                 WHERE command.ended_at <= @cutoff OR (command.outcome_kind IS NULL AND {DueAt} <= @cutoff)
                 LIMIT @batch
                 FOR UPDATE OF command SKIP LOCKED)
@@ -1037,12 +965,9 @@ internal sealed class OutpostStore
                 new NpgsqlParameter<int>("batch", PurgeBatch),
             ];
 
-            await using IDbContextTransaction transaction =
-                await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-            deleted = await context.Database.ExecuteSqlRawAsync(purge, parameters, cancellationToken);
-
-            await transaction.CommitAsync(cancellationToken);
+            deleted = await InTransactionAsync(
+                context => context.Database.ExecuteSqlRawAsync(purge, parameters, cancellationToken),
+                cancellationToken);
 
             purged += deleted;
         }
@@ -1051,18 +976,35 @@ internal sealed class OutpostStore
         return purged;
     }
 
+    // Runs one operation in a context of its own as one transaction under ReadCommitted, which it sets itself so that it
+    // does not depend on the default of the database, and commits it when the operation returns. An exception rolls it
+    // back.
+    private async Task<T> InTransactionAsync<T>(
+        Func<StoreContext, Task<T>> operation,
+        CancellationToken cancellationToken)
+    {
+        await using StoreContext context = StoreContextFactory.Create(_connectionString, _schema);
+
+        await using IDbContextTransaction transaction =
+            await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        T result = await operation(context);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return result;
+    }
+
     // Claims each key that no agent holds for the agent, in one statement, in ordinal order of the keys (rule 14). Of two
     // polls that claim one key at once, the second waits for the first and then claims nothing.
-    private static async Task ClaimAsync(
+    private async Task ClaimAsync(
         StoreContext context,
         Guid agentId,
         IEnumerable<string> keys,
         CancellationToken cancellationToken)
     {
-        string claims = TableName(context, context.BaseClaims.EntityType);
-
         string sql = $"""
-            INSERT INTO {claims} (key, agent_id)
+            INSERT INTO {_claims} (key, agent_id)
             SELECT declared.key, @agent_id
             FROM unnest(@keys) AS declared (key)
             ORDER BY declared.key COLLATE "C"
@@ -1089,17 +1031,15 @@ internal sealed class OutpostStore
     // nothing. Each statement waits for a row that an outcome holds, and then finds that outcome: the first to commit
     // wins. The second finds its commands through the two partial indexes on the agent: that of the take, for no
     // outcome, and that of the expiry, for an outcome that is none or replaceable.
-    private static async Task<IReadOnlyList<Guid>> ReconcileReceivedAsync(
+    private async Task<IReadOnlyList<Guid>> ReconcileReceivedAsync(
         StoreContext context,
         Guid agentId,
         OutpostPollRequest poll,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        string commands = TableName(context, context.Commands.EntityType);
-
         string expire = $"""
-            UPDATE {commands}
+            UPDATE {_commands}
             SET outcome_kind = @expired, outcome_code = NULL, outcome = NULL, ended_at = @now
             WHERE agent_id = @agent_id
                 AND phase = @handed_out
@@ -1143,13 +1083,6 @@ internal sealed class OutpostStore
                 AND convert_from(bytes, 'UTF8')::jsonb ->> 'script' = {script}
                 AND convert_from(bytes, 'UTF8')::jsonb -> 'parameters' = {parameters})
             """;
-    }
-
-    // The filter of the unique index of base and caller key, as the model has it: the commands that hold their key,
-    // every one but those that ended as Expired or Refused (rule 4).
-    private static string HoldingTheirKey(StoreContext context)
-    {
-        return context.Commands.EntityType.GetIndexes().Single(index => index.IsUnique).GetFilter()!;
     }
 
     // An agent is connected while it is Paired and its lease ends later than the store's now. The lock of

@@ -193,13 +193,6 @@ internal sealed class AgentLoop
         return then;
     }
 
-    private TimeSpan Doubled(TimeSpan delay)
-    {
-        TimeSpan doubled = delay * 2;
-
-        return doubled < _run.Policy.RetryDelayMax ? doubled : _run.Policy.RetryDelayMax;
-    }
-
     // Opens the next poll: its number, which records a reservation first when it needs one (§6.2), the agent's time and
     // version, the poll timeout last learnt, the bases, and every command not confirmed as received (rule 11).
     private void OpenPoll()
@@ -288,7 +281,7 @@ internal sealed class AgentLoop
         }
 
         _poll = WaitAsync(_pollDelay, OpenPoll);
-        _pollDelay = Doubled(_pollDelay);
+        _pollDelay = _run.Policy.NextRetryDelay(_pollDelay);
     }
 
     private void TakeAnswer(OutpostPollAnswer answer, IReadOnlyList<CommandCheck> checks)
@@ -424,7 +417,7 @@ internal sealed class AgentLoop
         // Lost: the same bytes go again in their turn, after a growing delay of the outcomes' own.
         _outcomes.Enqueue(command);
         _outcome = WaitAsync(_outcomeDelay, SendNextOutcome);
-        _outcomeDelay = Doubled(_outcomeDelay);
+        _outcomeDelay = _run.Policy.NextRetryDelay(_outcomeDelay);
     }
 
     // An outcome of kind succeeded or failed is replaced once for its size; one of kind refused or unknown never is, and

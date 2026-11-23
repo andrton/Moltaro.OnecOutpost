@@ -216,7 +216,15 @@ internal sealed class LabServer : HttpMessageHandler
 
     private HttpResponseMessage Outcome(byte[] body, byte[] signature)
     {
-        OutpostOutcomeRequest request = Read(() => OutpostCodec.ReadOutcomeRequest(_agentKey, _agent, body, signature));
+        OutpostOutcomeRequest request = Read(() =>
+        {
+            OutpostOutcomeRequest read =
+                OutpostCodec.ReadOutcomeRequest(_agentKey, _agent, body, signature, out JsonDocument document);
+
+            document.Dispose();
+
+            return read;
+        });
         OutpostOutcomeMessage outcome = Read(() => OutpostCodec.ReadOutcome(null, request.Outcome.Span));
 
         Event(_outcomes, request.Command).TrySetResult(outcome);

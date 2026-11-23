@@ -56,7 +56,13 @@ internal static class Program
         try
         {
             CommandApp app = new();
-            ConsoleParts parts = MachineParts();
+
+            ConsoleParts parts = MachineParts(
+                ServiceName,
+                AppContext.BaseDirectory,
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), FolderName),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), FolderName));
+
             IAnsiConsole console = MachineConsole();
 
             app.Configure(config =>
@@ -73,22 +79,22 @@ internal static class Program
         }
     }
 
+    // The parts of the machine for the service of this name, the folder the console runs from, the program folder and
+    // the data folder: Main gives those of the agent, and the test of install on Windows those of a service of its own.
     [SupportedOSPlatform("windows")]
-    private static ConsoleParts MachineParts()
+    internal static ConsoleParts MachineParts(string serviceName, string source, string programFolder, string dataFolder)
     {
-        string data = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), FolderName);
-
         return new ConsoleParts(
             IsElevated(),
-            ServiceName,
-            AppContext.BaseDirectory,
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), FolderName),
-            data,
-            new DiskFolder(data),
+            serviceName,
+            source,
+            programFolder,
+            dataFolder,
+            new DiskFolder(dataFolder),
             new WindowsServiceControl(TimeProvider.System),
             new WindowsAccountRights(),
             new WindowsFolderSetup(),
-            sid => new WindowsAccessLists(data, new SecurityIdentifier(sid)),
+            sid => new WindowsAccessLists(dataFolder, new SecurityIdentifier(sid)),
             new MachineDpapi(),
             ConnectorFinder.Machine(),
             new RegSvr32Registration(),

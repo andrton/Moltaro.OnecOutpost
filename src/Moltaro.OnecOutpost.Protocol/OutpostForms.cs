@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Protocol;
@@ -78,6 +79,30 @@ internal static class OutpostForms
         }
 
         return Guid.TryParseExact(text, "D", out id);
+    }
+
+    // Reads a time of §2. False, without an exception, for any text but UTC in exactly TimeFormat, and for a time that
+    // the calendar does not hold.
+    public static bool TryReadTime(string text, out DateTimeOffset time)
+    {
+        return DateTimeOffset.TryParseExact(
+            text,
+            TimeFormat,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal,
+            out time);
+    }
+
+    // A time truncated to the millisecond, the precision in which §2 writes it.
+    public static DateTimeOffset ToMilliseconds(DateTimeOffset time)
+    {
+        return time.AddTicks(-(time.Ticks % TimeSpan.TicksPerMillisecond));
+    }
+
+    // A duration truncated to the millisecond, the precision in which §2 writes it.
+    public static TimeSpan ToMilliseconds(TimeSpan duration)
+    {
+        return duration - TimeSpan.FromTicks(duration.Ticks % TimeSpan.TicksPerMillisecond);
     }
 
     // Writes the name of a request, as its path (§1) and its signing inputs (§3) carry it: pair, poll or outcome.

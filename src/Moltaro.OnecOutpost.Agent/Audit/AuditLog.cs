@@ -474,20 +474,15 @@ internal sealed class AuditLog : IDisposable
     {
         time = default;
 
-        return TryReadText(entry, "time", out string? text)
-            && DateTimeOffset.TryParseExact(
-                text,
-                OutpostForms.TimeFormat,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal,
-                out time);
+        return TryReadText(entry, "time", out string? text) && OutpostForms.TryReadTime(text, out time);
     }
 
     private static bool TryReadText(JsonElement entry, string name, [NotNullWhen(true)] out string? text)
     {
         text = null;
 
-        return OutpostJsonReader.TryGetMember(entry, name, out JsonElement value) && TryText(value, out text);
+        return OutpostJsonReader.TryGetMember(entry, name, out JsonElement value)
+            && OutpostJsonReader.TryReadText(value, out text);
     }
 
     private static bool TryReadNullableText(JsonElement entry, string name, out string? text)
@@ -499,7 +494,7 @@ internal sealed class AuditLog : IDisposable
             return false;
         }
 
-        return value.ValueKind == JsonValueKind.Null || TryText(value, out text);
+        return value.ValueKind == JsonValueKind.Null || OutpostJsonReader.TryReadText(value, out text);
     }
 
     private static bool TryReadId(JsonElement entry, string name, out Guid id)
@@ -588,29 +583,6 @@ internal sealed class AuditLog : IDisposable
 
         return OutpostJsonReader.TryGetMember(entry, name, out JsonElement value)
             && OutpostJsonReader.TryReadInteger(value, out integer);
-    }
-
-    // The text of a string, false for any other value and for a string that holds a lone surrogate, which GetString
-    // refuses.
-    private static bool TryText(JsonElement value, [NotNullWhen(true)] out string? text)
-    {
-        text = null;
-
-        if (value.ValueKind != JsonValueKind.String)
-        {
-            return false;
-        }
-
-        try
-        {
-            text = value.GetString()!;
-
-            return true;
-        }
-        catch (InvalidOperationException)
-        {
-            return false;
-        }
     }
 
     private void ReadFiles()
@@ -785,8 +757,7 @@ internal sealed class AuditLog : IDisposable
             throw new AgentStopException(_fault!);
         }
 
-        long ticks = _clock.GetUtcNow().UtcTicks;
-        DateTimeOffset time = new(ticks - (ticks % TimeSpan.TicksPerMillisecond), TimeSpan.Zero);
+        DateTimeOffset time = OutpostForms.ToMilliseconds(_clock.GetUtcNow());
 
         OutpostJsonWriter writer = new();
         writer.StartObject();
