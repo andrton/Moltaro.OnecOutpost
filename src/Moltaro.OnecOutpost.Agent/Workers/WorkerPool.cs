@@ -1,3 +1,4 @@
+using Moltaro.OnecOutpost.Agent.Outcomes;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Protocol;
@@ -111,7 +112,9 @@ internal sealed partial class WorkerPool : IAsyncDisposable
 
         if (worker is null)
         {
-            byte[] unreachable = Own(OutpostAgentOutcomeKindEnum.Failed, OutpostOutcomeCodes.BaseUnreachable);
+            byte[] unreachable = OwnOutcome.Write(
+                OutpostAgentOutcomeKindEnum.Failed,
+                OutpostOutcomeCodes.BaseUnreachable);
 
             return Task.FromResult(new WorkerRun(unreachable, ElapsedMs(started)));
         }
@@ -154,24 +157,6 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         stop.Dispose();
     }
 
-    // An outcome that the agent writes itself, as CommandRecords writes its own: no result, no error text and no
-    // messages.
-    private static byte[] Own(OutpostAgentOutcomeKindEnum kind, string code)
-    {
-        return OutpostCodec.Write(new OutpostOutcomeMessage(kind, code, null, null, [], false));
-    }
-
-    // The outcome that the agent writes itself for a command that may have run: Failed for a Read, and Unknown for a
-    // Write, whose script may have committed (rule 5).
-    private static byte[] OwnAfterStart(OutpostModeEnum mode, string code)
-    {
-        OutpostAgentOutcomeKindEnum kind = mode == OutpostModeEnum.Write
-            ? OutpostAgentOutcomeKindEnum.Unknown
-            : OutpostAgentOutcomeKindEnum.Failed;
-
-        return Own(kind, code);
-    }
-
     // The object of §8 that the bytes hold for the mode, or null when ReadOutcome refuses them.
     private static OutpostOutcomeMessage? ReadOrNull(OutpostModeEnum mode, byte[] outcome)
     {
@@ -195,7 +180,7 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         {
             worker.Drop();
 
-            return OwnAfterStart(mode, OutpostOutcomeCodes.ConnectionLost);
+            return OwnOutcome.AfterStart(mode, OutpostOutcomeCodes.ConnectionLost);
         }
 
         OutpostOutcomeMessage? message = ReadOrNull(mode, outcome);
@@ -210,7 +195,7 @@ internal sealed partial class WorkerPool : IAsyncDisposable
             && message is not null
             && OutpostOutcomeCodes.IsComWorkerOutcome(mode, message.Kind, message.Code);
 
-        return accepted ? outcome : OwnAfterStart(mode, OutpostOutcomeCodes.ResultType);
+        return accepted ? outcome : OwnOutcome.AfterStart(mode, OutpostOutcomeCodes.ResultType);
     }
 
     // The base as S9's worker completes it into a 1C connection string: Srvr and Ref for a cluster, File for a folder,
@@ -409,7 +394,9 @@ internal sealed partial class WorkerPool : IAsyncDisposable
 
             if (first == limit && limit.IsCompletedSuccessfully)
             {
-                return new WorkerRun(OwnAfterStart(command.Mode, OutpostOutcomeCodes.RunLimit), ElapsedMs(started));
+                return new WorkerRun(
+                    OwnOutcome.AfterStart(command.Mode, OutpostOutcomeCodes.RunLimit),
+                    ElapsedMs(started));
             }
 
             throw new OperationCanceledException(cancellationToken);
