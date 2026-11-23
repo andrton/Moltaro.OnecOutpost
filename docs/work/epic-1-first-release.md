@@ -3906,6 +3906,85 @@ request and merge under PQ1:
   held, and when a node or the signals host stops. The latency target is measured.
 - **Contract.** No public change. In `Moltaro.OnecOutpost.TestSupport`, a loopback proxy
   that can drop or hold a chosen request or answer, written in the contract step.
+  - *Internal* (the contract author, 23 November 2026). In folder and namespace
+    `Moltaro.OnecOutpost.TestSupport.Loopback`, every type `internal`, working from this
+    step, with no tests of its own (`AGENTS.md`). S6c's `TestProxy` grows into the proxy,
+    and a second node starts from `LoopbackServer`; no interface is added.
+
+    ```csharp
+    internal sealed partial class TestProxy // its CONNECT, 407 and TLS for outpost.test unchanged
+    {
+        public LoopbackServer? Node { get; set; }               // where each request read from then on goes; null: the port of the CONNECT
+        public IReadOnlyList<ProxiedRequest> Requests { get; }  // every request read, in order, whatever was done with it
+        public Task<ProxiedRequest> DropNextRequestAsync(Func<ProxiedRequest, bool> match, CancellationToken cancellationToken);
+        public Task<AgentAnswer> DropNextAnswerAsync(Func<ProxiedRequest, bool> match, CancellationToken cancellationToken);
+        public Task<HeldRequest> HoldNextAsync(Func<ProxiedRequest, bool> match, CancellationToken cancellationToken);
+        public Task<AgentAnswer> ReplayAsync(ProxiedRequest request, LoopbackServer node, CancellationToken cancellationToken);
+    }
+    internal sealed record ProxiedRequest(OutpostRequestKindEnum Kind, string Path, IReadOnlyList<(string Name, string Value)> Headers, byte[] Body)
+    {
+        public byte[] Signature { get; } // of its Outpost-Signature; empty for none
+    }
+    internal sealed class HeldRequest
+    {
+        public ProxiedRequest Request { get; }
+        public Task<AgentAnswer> ReleaseAsync(LoopbackServer node, CancellationToken cancellationToken);
+    }
+    internal sealed class TwoNodes : IAsyncDisposable
+    {
+        public static Task<TwoNodes> StartAsync(PostgreSqlFixture postgres, string schemaName, Action<OutpostServerOptions> configure, CancellationToken cancellationToken);
+        public LoopbackServer First { get; }  // embeds the Signals host
+        public LoopbackServer Second { get; } // a SignalClient of that host
+        public FakeClock Clock { get; }       // of both
+        public Task StopAsync(LoopbackServer node, CancellationToken cancellationToken);
+        public Task<LoopbackServer> RestartAsync(LoopbackServer node, CancellationToken cancellationToken);
+    }
+    // LoopbackServer: + StartAnotherAsync(ISignals signals, CancellationToken cancellationToken); its overload with
+    // RemoteSignals takes an ISignals. RemoteSignals: + SignalHost? Host, the host that runs.
+    ```
+
+    - **The relay.** Inside the tunnel the proxy reads each request whole, its head and
+      its body by `Content-Length`, and answers `Expect: 100-continue` with `100 Continue`
+      itself, as a hop that reads a body before it forwards it does. It forwards the
+      request over HTTP to the node with its header lines, less those of one hop, and the
+      exact bytes of its body. It writes back what the agent reads of an answer: the
+      status, `Content-Type`, `Outpost-Signature` and body. Every answer carries
+      `Connection: close`, so each request comes on a tunnel of its own. On a reused
+      connection that closes unanswered, .NET can send a request again by itself, and a
+      dropped request would then reach a node after all. An agent that closes its
+      connection while its request is at the node ends that request there too, as the
+      byte pipe of S6c did.
+    - **Choosing a request.** Each of the three methods sets a rule at once and gives a
+      task that completes when the rule took effect, within `LoopbackServer.Deadline`.
+      The rule takes the next request read after it that `match` accepts, once. Rules are
+      tried in the order they were set. A test chooses by `Kind`, `pair`, `poll` or
+      `outcome`, and by order: the next one, or the number or command it reads from
+      `Body`.
+    - **Drop the request:** it reaches no node, and the proxy closes the agent's connection
+      without an answer. The task gives the request.
+    - **Drop the answer:** the node handles the request, and the proxy closes the agent's
+      connection in place of the answer. The task gives the node's answer, and fails when
+      the node gave none.
+    - **Hold:** the request reaches no node, and the agent's connection stays open until
+      the agent closes it, as when its wait ends or it stops. `ReleaseAsync` sends it to
+      the node given and gives the answer. The answer also reaches the agent while the
+      agent still waits on that connection, and reaches only the test otherwise. A hold
+      never released never reaches a node.
+    - **Replay:** `ReplayAsync` sends a request of `Requests` again to a node, exact bytes
+      and headers, and gives the answer to the test alone. The poll that §13 captures
+      while the agent's clock is ahead is such a request. The newest poll replayed exactly
+      is one too.
+    - **Two nodes.** They share one schema, one signing key, the same options and one fake
+      clock, on which both arm their timers. The Signals host of `RemoteSignals` is the
+      `ISignals` of `First`, and its client that of `Second`, so a set on either node
+      wakes the other. `Node` of the proxy says which node takes each request; a call is
+      made on either node's `Server`. `StopAsync` stops a node as its host stops. For
+      `First` the Signals host stops with it, as when its process ends: `Second`'s client
+      loses the host and tries again by itself.
+      `RestartAsync` starts the node again, stopping it first if it runs. The new node is
+      a new `LoopbackServer` at a new port, which `First` or `Second` gives from then on.
+      For `First` a new host starts on the old port, which the client reaches on its next
+      attempt.
 - **To read.** The [concept](../concept.md), §3 rules 7, 10 and 11, §4 and §11 (20
   November 2026); this plan.
 - **Acceptance.**
