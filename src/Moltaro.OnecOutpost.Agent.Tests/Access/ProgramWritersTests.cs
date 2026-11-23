@@ -61,14 +61,14 @@ public sealed class ProgramWritersTests : IDisposable
         _temporary.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_program_folder_as_the_install_sets_it_that_users_may_read_and_run_lets_nobody_else_change_it()
     {
         Assert.Empty(Below(_outer, Writers()));
     }
 
     // Each right goes beyond reading and running, on a file two folders below the program folder.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(FileSystemRights.WriteData)]
     [InlineData(FileSystemRights.AppendData)]
     [InlineData(FileSystemRights.WriteExtendedAttributes)]
@@ -87,7 +87,7 @@ public sealed class ProgramWritersTests : IDisposable
 
     // A parent of the program folder that somebody else may delete, or whose list he may change, lets him put a folder
     // of his own in its place: the parent just above, and one further up.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("inner", FileSystemRights.Delete)]
     [InlineData("outer", FileSystemRights.Delete)]
     [InlineData("outer", FileSystemRights.DeleteSubdirectoriesAndFiles)]
@@ -105,7 +105,7 @@ public sealed class ProgramWritersTests : IDisposable
 
     // Windows maps the generic right of an entry that applies to the folder itself when it stores it, to full control,
     // so the parent is reported whether the right is judged as GenericAll or as what it stands for.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_parent_that_gives_somebody_else_GenericAll_is_reported()
     {
         AccessListEdits.AllowMask(_outer, AccessListEdits.Everyone, GenericAll);
@@ -114,7 +114,7 @@ public sealed class ProgramWritersTests : IDisposable
     }
 
     // C:\ lets Authenticated Users add a subfolder; a name planted so replaces nothing of the program folder.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_parent_on_which_somebody_else_may_add_a_folder_or_a_file_but_not_delete_is_not_judged_by_itself()
     {
         AccessListEdits.Allow(_outer, AccessListEdits.Everyone, FileSystemRights.Write | FileSystemRights.ReadAndExecute);
@@ -122,7 +122,7 @@ public sealed class ProgramWritersTests : IDisposable
         Assert.Empty(Below(_outer, Writers()));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Administrators_SYSTEM_TrustedInstaller_and_the_agents_account_may_change_the_program_folder()
     {
         using WindowsIdentity agent = WindowsIdentity.GetCurrent();
@@ -146,7 +146,7 @@ public sealed class ProgramWritersTests : IDisposable
 
     // An entry that applies only to what is created inside a folder gives nothing to the folder itself, and the folder
     // holds nothing it applies to.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_entry_that_applies_only_inside_an_empty_folder_gives_nothing()
     {
         string empty = Path.Combine(_programs, "empty");
@@ -159,7 +159,7 @@ public sealed class ProgramWritersTests : IDisposable
     // The junction's own list is the one it inherited from the program folder. Its target, outside the program
     // folder, lets everyone add a file, and holds a file that everyone may change: entering the junction, or judging
     // it by the list of its target, would report one of them.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_junction_in_the_program_folder_is_judged_by_its_own_list_and_not_entered()
     {
         string outside = _temporary.PathOf("outside");
@@ -189,7 +189,7 @@ public sealed class ProgramWritersTests : IDisposable
     // The owner of an entry may change its list, so an owner counts as much as an entry that gives a right. The lists
     // are made while the thread impersonates ANONYMOUS LOGON, which is then the agent's account, so that the account
     // that runs the tests is somebody else; the file gives it no right, and it is the file's owner.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_entry_that_an_account_other_than_the_agents_owns_is_reported_with_that_account()
     {
         using WindowsIdentity tests = WindowsIdentity.GetCurrent();
@@ -210,7 +210,7 @@ public sealed class ProgramWritersTests : IDisposable
 
     // The parents from the outer one down, then the program folder, a folder before its entries, and the entries of a
     // folder by ordinal name: Z.dll before a.dll, and a.dll before sub.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_entries_come_from_the_parents_down_and_in_the_program_folder_a_folder_before_its_entries_by_ordinal_name()
     {
         string upper = WriteFile("Z.dll");
@@ -230,7 +230,7 @@ public sealed class ProgramWritersTests : IDisposable
             Below(_outer, Writers()));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_lists_of_a_program_folder_that_does_not_exist_cannot_be_read_and_fail_with_IOException()
     {
         WindowsAccessLists access = new(_temporary.PathOf("data"));

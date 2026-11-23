@@ -17,8 +17,8 @@ namespace Moltaro.OnecOutpost.Agent.Workers;
 //
 // The pool calls OpenAsync and then RunAsync one at a time; Kill may run beside either, from any thread. A read from
 // the pipe of a process does not end on cancellation, so cancellation kills the process, which ends its output.
-// Limitation: .NET 10 opens the redirected pipes for synchronous I/O, so each open or run holds a pool thread while it
-// waits. It owns its streams and the handle of its process.
+// Limitation: Windows gives anonymous pipes no asynchronous I/O, so each open or run holds a pool thread while it waits.
+// It owns its streams and the handle of its process.
 [SupportedOSPlatform("windows")]
 internal sealed partial class ComWorkerProcess : IWorkerProcess
 {
@@ -48,7 +48,8 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
     // 1 once the first Kill ended the process: Kill is idempotent, and only the first one calls TerminateProcess.
     private int _killed;
 
-    // The process the launcher started, already in the job, with the agent's ends of its standard input and output.
+    // The process that the launcher created, which it puts into the job before the process runs, with the agent's ends
+    // of its standard input and output.
     public ComWorkerProcess(SafeProcessHandle process, Stream input, Stream output)
     {
         _process = process;

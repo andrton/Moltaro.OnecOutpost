@@ -65,7 +65,7 @@ public sealed class StartWorkerAccountTests
 
     private readonly FakeClock _clock = new(TestTimes.Start);
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_start_logs_on_the_worker_account_of_each_base_that_names_one_in_the_order_of_the_policy_before_started()
     {
         _folder.Data.Root.Seed("policy.json", FourBases);
@@ -86,7 +86,7 @@ public sealed class StartWorkerAccountTests
 
     // The console's secret writes the password of the worker account; a start without one would fail every worker of
     // the base.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_base_whose_worker_account_has_no_password_in_the_secrets_stops_the_start_naming_the_base()
     {
         _folder.Data.Root.Seed("policy.json", Policy);
@@ -101,7 +101,7 @@ public sealed class StartWorkerAccountTests
     }
 
     // The launcher's AgentStopException is the reason of the start; the first base that cannot log on ends the logons.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_logon_that_fails_stops_the_start_with_its_reason_and_no_later_base_is_logged_on()
     {
         const string Reason = "the worker account outpost-payroll of the base payroll cannot log on: refused by the test";
@@ -116,7 +116,7 @@ public sealed class StartWorkerAccountTests
         Assert.Equal([("payroll", "outpost-payroll", "payroll-pw")], _folder.Workers.LogOns);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_start_asks_whether_anybody_else_may_change_the_program_folder_it_is_given()
     {
         _folder.Start(_clock).Log.Dispose();
@@ -125,7 +125,7 @@ public sealed class StartWorkerAccountTests
     }
 
     // Somebody who could replace the code that the agent's account runs would get its secrets.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_program_folder_that_somebody_else_may_change_stops_the_start_naming_the_first_entry_and_its_accounts()
     {
         const string Worker = @"C:\Program Files\Moltaro Outpost\x64\Moltaro.OnecOutpost.ComWorker.exe";
@@ -141,7 +141,7 @@ public sealed class StartWorkerAccountTests
             StoppedStart.Error(entries));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Access_lists_of_the_program_folder_that_cannot_be_read_stop_the_start()
     {
         _folder.Access.MakeProgramsUnreadable();
@@ -153,7 +153,7 @@ public sealed class StartWorkerAccountTests
     }
 
     // The order of the steps: the data folder's lists come before the program folder's, and those before agent.json.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_program_folder_is_judged_after_the_data_folder_and_before_agent_json()
     {
         const string Worker = @"C:\Program Files\Moltaro Outpost\x64\Moltaro.OnecOutpost.ComWorker.exe";

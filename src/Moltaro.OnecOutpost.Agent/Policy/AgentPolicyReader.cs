@@ -34,12 +34,21 @@ internal static class AgentPolicyReader
 
     private const string ReadNames = "\"account\", \"workers\", \"runLimit\"";
 
-    private const string WriteNames = "\"account\", \"workers\", \"runLimit\", \"safeMode\"";
+    private const string WriteNames = "\"account\", \"workers\", \"runLimit\", \"safeMode\", \"workerAccount\"";
 
     private const string ReadObject = "an object with \"account\", and optionally \"workers\" and \"runLimit\"";
 
     private const string WriteObject =
-        "an object with \"account\", and optionally \"workers\", \"runLimit\" and \"safeMode\", or no \"write\" when the base may not be written";
+        "an object with \"account\", and optionally \"workers\", \"runLimit\" and \"safeMode\", with \"workerAccount\" when \"safeMode\" is false, or no \"write\" when the base may not be written";
+
+    private const string WorkerAccountNameRule =
+        "the name of a local Windows account that runs the workers of the base, 1 to 20 characters, none of \" / \\ [ ] : ; | = , + * ? < > @ or a control character, and not only periods and spaces, such as \"outpost-worker\"";
+
+    // The characters that the name of a local Windows account cannot hold, besides the control characters. \ and @ keep
+    // out a domain account and a UPN.
+    private const string NotInAccountName = "\"/\\[]:;|=,+*?<>@";
+
+    private const int MaxAccountNameLength = 20;
 
     // What the values of a base are expected to be, for the errors.
     private const string BaseKeyRule =
@@ -193,6 +202,10 @@ internal static class AgentPolicyReader
         List<AgentBasePolicy> bases = [];
         Dictionary<string, int> indexOfKey = new(StringComparer.Ordinal);
 
+        // Windows compares the names of accounts ignoring case. An account of its own for each base keeps the scripts of
+        // one base from the workers of another.
+        Dictionary<string, int> indexOfWorkerAccount = new(StringComparer.OrdinalIgnoreCase);
+
         foreach (JsonElement item in value.EnumerateArray())
         {
             string itemPath = $"{path}[{bases.Count}]";
@@ -203,6 +216,14 @@ internal static class AgentPolicyReader
                 throw new AgentPolicyException(
                     $"{itemPath}.key",
                     $"the key is already the key of {path}[{indexOfKey[basePolicy.Key]}]; expected a key that no other base has");
+            }
+
+            if (basePolicy.Write?.WorkerAccount is string workerAccount
+                && !indexOfWorkerAccount.TryAdd(workerAccount, bases.Count))
+            {
+                throw new AgentPolicyException(
+                    $"{itemPath}.write.workerAccount",
+                    $"the account of {path}[{indexOfWorkerAccount[workerAccount]}] again; expected an account of its own for each base");
             }
 
             bases.Add(basePolicy);
@@ -288,8 +309,9 @@ internal static class AgentPolicyReader
         return new AgentBasePolicy(key, server, database, file, read, write);
     }
 
-    // A mode of a base. safeMode belongs to write alone: a Read always runs in safe mode, so in read it is an unknown
-    // member, and a Write runs in safe mode unless its base turns it off (D12).
+    // A mode of a base. safeMode and workerAccount belong to write alone: a Read always runs in safe mode, so in read
+    // they are unknown members, and a Write runs in safe mode unless its base turns it off (D12), and then names the
+    // local Windows account that runs every COM worker of the base, Reads included.
     private static AgentModePolicy ReadMode(JsonElement value, string path, bool isWrite)
     {
         string exampleAccount = isWrite ? "outpost-write" : "outpost-read";
@@ -299,6 +321,7 @@ internal static class AgentPolicyReader
         int workers = DefaultWorkers;
         TimeSpan runLimit = DefaultRunLimit;
         bool safeMode = true;
+        string? workerAccount = null;
 
         foreach ((string name, JsonElement member, string memberPath) in Members(value, path, expectedObject))
         {
@@ -325,6 +348,10 @@ internal static class AgentPolicyReader
                     safeMode = ReadBoolean(member, memberPath);
                     break;
 
+                case "workerAccount" when isWrite:
+                    workerAccount = ReadWorkerAccount(member, memberPath);
+                    break;
+
                 default:
                     throw UnknownMember(memberPath, isWrite ? WriteNames : ReadNames);
             }
@@ -335,8 +362,40 @@ internal static class AgentPolicyReader
             throw MissingMember($"{path}.account", accountRule);
         }
 
-        // write.workerAccount is read by S9c's implementation; until then it is an unknown member, as in S6a.
-        return new AgentModePolicy(account, workers, runLimit, safeMode, WorkerAccount: null);
+        // The two members may come in any order, so they are judged together once the object is read.
+        if (!safeMode && workerAccount is null)
+        {
+            throw new AgentPolicyException(
+                path,
+                "\"safeMode\" is false without \"workerAccount\"; expected the name of a local Windows account that runs the workers of the base");
+        }
+
+        if (safeMode && workerAccount is not null)
+        {
+            throw new AgentPolicyException(
+                $"{path}.workerAccount",
+                "given while \"safeMode\" is true; remove it, or set \"safeMode\" to false");
+        }
+
+        return new AgentModePolicy(account, workers, runLimit, safeMode, workerAccount);
+    }
+
+    // The name of a local account, never of a domain account or a UPN; a name against the rule is named by the rule,
+    // never repeated.
+    private static string ReadWorkerAccount(JsonElement value, string path)
+    {
+        string name = ReadText(value, path, WorkerAccountNameRule);
+
+        bool valid = name.Length <= MaxAccountNameLength
+            && !name.Any(character => char.IsControl(character) || NotInAccountName.Contains(character))
+            && !name.All(character => character is '.' or ' ');
+
+        if (!valid)
+        {
+            throw new AgentPolicyException(path, $"the value is not the name of a local account; expected {WorkerAccountNameRule}");
+        }
+
+        return name;
     }
 
     // The members of an object, each with its path. A value that is not an object, or a member given twice, makes the

@@ -45,7 +45,7 @@ public sealed class WorkerCreationTests : IDisposable
 
     // S9b's limitation goes: a worker joins the job before it runs, so that no worker outlives an agent that ended
     // between its start and its join.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_is_in_the_job_before_its_program_runs()
     {
         using IWorkerProcess worker = await OpenAsync(Launcher());
@@ -58,7 +58,7 @@ public sealed class WorkerCreationTests : IDisposable
     // A handle of the agent's own that may be inherited, such as one that another part of the agent opened so, reaches
     // no worker. The control shows that the test program sees such a handle when it is inherited: a start as S9b's, by
     // Process.Start with its standard streams redirected, lets the process inherit every handle that may be inherited.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_inherits_no_handle_of_the_agent_besides_the_ends_of_its_two_pipes()
     {
         string name = $"inheritable-{Guid.NewGuid():N}.txt";

@@ -120,7 +120,7 @@ public sealed class StartPolicyTests
 
     // The owner's change of D12: started records which bases write without safe mode, in the order of the policy. Since
     // S9c each of them names its worker account, whose password the secrets hold.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Started_lists_the_bases_that_write_without_safe_mode_in_the_order_of_the_policy()
     {
         _folder.Data.Root.Seed(

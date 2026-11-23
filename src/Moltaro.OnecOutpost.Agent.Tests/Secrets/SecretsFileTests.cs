@@ -47,7 +47,7 @@ public sealed class SecretsFileTests
     }
 
     // The worker passwords of the bases come after the passwords of the 1C accounts.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_protection_is_given_the_secrets_in_the_form_of_the_file_written_by_the_writer_of_section_2()
     {
         AgentSecrets secrets = new(_key, new Dictionary<(string Base, OutpostModeEnum Mode), string>
@@ -67,7 +67,7 @@ public sealed class SecretsFileTests
     }
 
     // An empty password is a password, and a password may hold any text, for a worker account as for a 1C account.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_worker_passwords_read_back_as_they_were_written()
     {
         AgentSecrets secrets = new(_key, new Dictionary<(string Base, OutpostModeEnum Mode), string>
@@ -178,7 +178,7 @@ public sealed class SecretsFileTests
     }
 
     // workers is required in 0.x, even when no base names a worker account.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_file_without_workers_fails_with_FormatException()
     {
         string plain =

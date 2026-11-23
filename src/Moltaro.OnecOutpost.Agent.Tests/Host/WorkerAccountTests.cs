@@ -48,7 +48,7 @@ public sealed class WorkerAccountTests
             [("accounting", "worker-pw")]);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_base_whose_write_turns_safe_mode_off_declares_its_write_and_runs_a_write_without_safe_mode()
     {
         FakeWorkerLauncher workers = new(_folder.Data);
@@ -75,7 +75,7 @@ public sealed class WorkerAccountTests
     // The invariant of the launcher, seen through the fake: the start logs the base on before any worker starts, so
     // its Read workers run under the account as its Write workers do, and warehouse, which names none, runs under the
     // agent's own.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Every_worker_of_a_base_with_a_worker_account_runs_under_it_reads_included_and_no_other_base_does()
     {
         FakeWorkerLauncher workers = new(_folder.Data);
@@ -94,7 +94,7 @@ public sealed class WorkerAccountTests
         Operations.AssertInOrder(operations, "logon accounting outpost-worker", "start warehouse read 1");
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_logon_that_fails_stops_the_agent_recorded_before_any_worker_starts_and_polls_nothing()
     {
         const string Reason = "the worker account outpost-worker of the base accounting cannot log on: refused by the test";

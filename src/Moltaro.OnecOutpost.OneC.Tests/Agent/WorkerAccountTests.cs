@@ -37,7 +37,7 @@ public sealed class WorkerAccountTests
 
     // The probe of the profile: on each copy of a typical base whose Writes run without safe mode, its latest posted
     // document, posted again by a Write under the worker account, keeps its movements, as RepostingTests compares them.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task On_each_typical_base_without_safe_mode_a_document_posted_again_under_the_worker_account_keeps_its_movements()
     {
         LabFile lab = LabFile.Read();
@@ -59,7 +59,7 @@ public sealed class WorkerAccountTests
 
     // The control file lies beside the data folder, so that the account reaches both by the same path, and Users may
     // read it: the script reads files, and only the data folder's list keeps the account out.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_write_without_safe_mode_cannot_read_the_secrets_of_the_agent_and_reads_a_file_that_its_account_may_read()
     {
         LabFile lab = LabFile.Read();
@@ -78,7 +78,7 @@ public sealed class WorkerAccountTests
         Assert.Equal(AgentExitCodes.Stopped, await run.StopAsync());
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_write_without_safe_mode_runs_under_the_worker_account()
     {
         LabFile lab = LabFile.Read();
