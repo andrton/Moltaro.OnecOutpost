@@ -113,7 +113,10 @@ public sealed class NodeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         DateTimeOffset start = nodes.Clock.GetUtcNow();
         await nodes.Second.WaitForTimerAsync(start + pollTimeout, cancellationToken);
 
-        Task disconnected = WhenStateAsync(nodes.Second.Signals, SignalConnectionStateEnum.Disconnected, cancellationToken);
+        Task disconnected = RemoteSignals.WhenStateAsync(
+            nodes.Second.Signals,
+            SignalConnectionStateEnum.Disconnected,
+            cancellationToken);
         await nodes.StopAsync(nodes.First, cancellationToken);
         await disconnected;
 
@@ -135,7 +138,10 @@ public sealed class NodeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         await agent.Data.WaitForAsync(Operations.Is($"confirmed {outcome.CommandId}"));
         Assert.Single(agent.Workers.Processes.SelectMany(process => process.Commands));
 
-        Task connected = WhenStateAsync(nodes.Second.Signals, SignalConnectionStateEnum.Connected, cancellationToken);
+        Task connected = RemoteSignals.WhenStateAsync(
+            nodes.Second.Signals,
+            SignalConnectionStateEnum.Connected,
+            cancellationToken);
         LoopbackServer first = await nodes.RestartAsync(nodes.First, cancellationToken);
         await connected;
 
@@ -169,39 +175,5 @@ public sealed class NodeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         stop.Cancel();
 
         return await next;
-    }
-
-    // Completes once the Signals client of a node reports the state, within the deadline of every wait of a test. The
-    // handler is attached at once, before the change that the test then makes.
-    private static Task WhenStateAsync(
-        ISignals signals,
-        SignalConnectionStateEnum state,
-        CancellationToken cancellationToken)
-    {
-        TaskCompletionSource reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        void OnStateChanged(object? sender, SignalConnectionChangedEventArgs change)
-        {
-            if (change.State == state)
-            {
-                reached.TrySetResult();
-            }
-        }
-
-        signals.StateChanged += OnStateChanged;
-
-        return WaitAsync();
-
-        async Task WaitAsync()
-        {
-            try
-            {
-                await reached.Task.WaitAsync(LoopbackServer.Deadline, cancellationToken);
-            }
-            finally
-            {
-                signals.StateChanged -= OnStateChanged;
-            }
-        }
     }
 }

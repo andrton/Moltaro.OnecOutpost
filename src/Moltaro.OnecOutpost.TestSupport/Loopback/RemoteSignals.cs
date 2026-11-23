@@ -46,7 +46,7 @@ internal sealed class RemoteSignals : IAsyncDisposable
 
         try
         {
-            Task connected = WhenConnectedAsync(client, cancellationToken);
+            Task connected = WhenStateAsync(client, SignalConnectionStateEnum.Connected, cancellationToken);
             client.Start();
             await connected;
         }
@@ -95,32 +95,38 @@ internal sealed class RemoteSignals : IAsyncDisposable
         return new SignalHostOptions { ListenEndPoint = listenEndPoint, Token = Token };
     }
 
-    // Completes once the client is connected. The handler is attached before the state is read, so that no change is
-    // missed; the wait has the deadline of every wait of a test.
-    private static async Task WhenConnectedAsync(SignalClient client, CancellationToken cancellationToken)
+    // Completes once the Signals client of a node reports the state, within the deadline of every wait of a test. The
+    // handler is attached at once, before the change that the caller then makes, such as the start of a client or the
+    // stop of a host; a state the client is in already is not reported again.
+    public static Task WhenStateAsync(
+        ISignals signals,
+        SignalConnectionStateEnum state,
+        CancellationToken cancellationToken)
     {
-        TaskCompletionSource connected = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         void OnStateChanged(object? sender, SignalConnectionChangedEventArgs change)
         {
-            if (change.State == SignalConnectionStateEnum.Connected)
+            if (change.State == state)
             {
-                connected.TrySetResult();
+                reached.TrySetResult();
             }
         }
 
-        client.StateChanged += OnStateChanged;
+        signals.StateChanged += OnStateChanged;
 
-        try
+        return WaitAsync();
+
+        async Task WaitAsync()
         {
-            if (client.State != SignalConnectionStateEnum.Connected)
+            try
             {
-                await connected.Task.WaitAsync(LoopbackServer.Deadline, cancellationToken);
+                await reached.Task.WaitAsync(LoopbackServer.Deadline, cancellationToken);
             }
-        }
-        finally
-        {
-            client.StateChanged -= OnStateChanged;
+            finally
+            {
+                signals.StateChanged -= OnStateChanged;
+            }
         }
     }
 }
