@@ -87,7 +87,7 @@ internal static class SecretsFile
             writer.Name("base");
             writer.String(baseKey);
             writer.Name("mode");
-            writer.String(mode == OutpostModeEnum.Read ? "read" : "write");
+            writer.String(OutpostForms.WriteMode(mode));
             writer.Name("password");
             writer.String(password);
             writer.EndObject();
@@ -154,11 +154,7 @@ internal static class SecretsFile
 
     private static OutpostModeEnum ReadMode(JsonElement entry)
     {
-        return OutpostJsonReader.ReadString(entry, "mode") switch
-        {
-            "read" => OutpostModeEnum.Read,
-            "write" => OutpostModeEnum.Write,
-            _ => throw OutpostJsonReader.Form("A mode is not read or write."),
-        };
+        return OutpostForms.ReadMode(OutpostJsonReader.ReadString(entry, "mode"))
+            ?? throw OutpostJsonReader.Form("A mode is not read or write.");
     }
 }

@@ -176,7 +176,7 @@ internal static class OutpostCodec
         writer.Name("base");
         writer.String(message.Base);
         writer.Name("mode");
-        writer.String(ModeWord(message.Mode));
+        writer.String(OutpostForms.WriteMode(message.Mode));
         writer.Name("callerKey");
         writer.NullableString(message.CallerKey);
 
@@ -207,7 +207,7 @@ internal static class OutpostCodec
 
         writer.StartObject();
         writer.Name("kind");
-        writer.String(KindWord(message.Kind));
+        writer.String(OutpostForms.WriteOutcomeKind(message.Kind));
         writer.Name("code");
         writer.NullableString(message.Code);
         writer.Name("result");
@@ -1054,49 +1054,16 @@ internal static class OutpostCodec
         return result;
     }
 
-    private static string ModeWord(OutpostModeEnum mode)
-    {
-        return mode switch
-        {
-            OutpostModeEnum.Read => "read",
-            OutpostModeEnum.Write => "write",
-            _ => throw new ArgumentOutOfRangeException(nameof(mode)),
-        };
-    }
-
     private static OutpostModeEnum ReadMode(JsonElement command)
     {
-        return ReadString(command, "mode") switch
-        {
-            "read" => OutpostModeEnum.Read,
-            "write" => OutpostModeEnum.Write,
-            _ => throw Form("The mode is not read or write."),
-        };
-    }
-
-    private static string KindWord(OutpostAgentOutcomeKindEnum kind)
-    {
-        return kind switch
-        {
-            OutpostAgentOutcomeKindEnum.Succeeded => "succeeded",
-            OutpostAgentOutcomeKindEnum.Failed => "failed",
-            OutpostAgentOutcomeKindEnum.Refused => "refused",
-            OutpostAgentOutcomeKindEnum.Unknown => "unknown",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-        };
+        return OutpostForms.ReadMode(ReadString(command, "mode")) ?? throw Form("The mode is not read or write.");
     }
 
     // Only the server sets Expired and Unavailable, so an outcome object never holds them.
     private static OutpostAgentOutcomeKindEnum ReadKind(JsonElement message)
     {
-        return ReadString(message, "kind") switch
-        {
-            "succeeded" => OutpostAgentOutcomeKindEnum.Succeeded,
-            "failed" => OutpostAgentOutcomeKindEnum.Failed,
-            "refused" => OutpostAgentOutcomeKindEnum.Refused,
-            "unknown" => OutpostAgentOutcomeKindEnum.Unknown,
-            _ => throw Form("The kind is not succeeded, failed, refused or unknown."),
-        };
+        return OutpostForms.ReadOutcomeKind(ReadString(message, "kind"))
+            ?? throw Form("The kind is not succeeded, failed, refused or unknown.");
     }
 
     private static OutpostProtocolException NotVerified(string reason)

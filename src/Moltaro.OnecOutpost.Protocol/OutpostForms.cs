@@ -1,13 +1,15 @@
 using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
+using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Protocol;
 
 // The forms of §2 of docs/protocol.md that the headers, the pairing token, the codec and the audit log need: canonical
-// base64url, the 36-character lowercase identity and the form of a time; and the name of a request, which its path
-// (§1) and its signing inputs (§3) carry. They live here once, in the root, so that neither the signing types nor the
-// codec needs the other for them.
+// base64url, the 36-character lowercase identity and the form of a time; the name of a request, which its path (§1)
+// and its signing inputs (§3) carry; and the words of a mode (§7) and of the kind of an agent's outcome (§8), which
+// the agent's files and the command line of a worker carry too. They live here once, in the root, so that neither the
+// signing types nor the codec needs the other for them.
 internal static class OutpostForms
 {
     // The one form of a time of §2, UTC as yyyy-MM-ddTHH:mm:ss.fffZ, which times are written and read in.
@@ -108,5 +110,54 @@ internal static class OutpostForms
                 kind = default;
                 return false;
         }
+    }
+
+    // Writes a mode as §7 says: read or write.
+    public static string WriteMode(OutpostModeEnum mode)
+    {
+        return mode switch
+        {
+            OutpostModeEnum.Read => "read",
+            OutpostModeEnum.Write => "write",
+            _ => throw new ArgumentOutOfRangeException(nameof(mode)),
+        };
+    }
+
+    // Reads a mode that WriteMode writes; null for any other text, or none.
+    public static OutpostModeEnum? ReadMode(string? word)
+    {
+        return word switch
+        {
+            "read" => OutpostModeEnum.Read,
+            "write" => OutpostModeEnum.Write,
+            _ => null,
+        };
+    }
+
+    // Writes the kind of an agent's outcome as §8 says: succeeded, failed, refused or unknown.
+    public static string WriteOutcomeKind(OutpostAgentOutcomeKindEnum kind)
+    {
+        return kind switch
+        {
+            OutpostAgentOutcomeKindEnum.Succeeded => "succeeded",
+            OutpostAgentOutcomeKindEnum.Failed => "failed",
+            OutpostAgentOutcomeKindEnum.Refused => "refused",
+            OutpostAgentOutcomeKindEnum.Unknown => "unknown",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+    }
+
+    // Reads a kind that WriteOutcomeKind writes; null for any other text, expired and unavailable included, since only
+    // the server sets them.
+    public static OutpostAgentOutcomeKindEnum? ReadOutcomeKind(string word)
+    {
+        return word switch
+        {
+            "succeeded" => OutpostAgentOutcomeKindEnum.Succeeded,
+            "failed" => OutpostAgentOutcomeKindEnum.Failed,
+            "refused" => OutpostAgentOutcomeKindEnum.Refused,
+            "unknown" => OutpostAgentOutcomeKindEnum.Unknown,
+            _ => null,
+        };
     }
 }

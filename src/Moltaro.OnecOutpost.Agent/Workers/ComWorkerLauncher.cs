@@ -6,6 +6,7 @@ using System.Security;
 using System.Security.Principal;
 using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
+using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Agent.Workers;
@@ -249,7 +250,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             desktop = worker.Desktop.Name;
         }
 
-        string commandLine = $"\"{program}\" {baseKey} {(mode == OutpostModeEnum.Write ? "write" : "read")}";
+        string commandLine = $"\"{program}\" {baseKey} {OutpostForms.WriteMode(mode)}";
 
         AnonymousPipeServerStream? input = null;
         AnonymousPipeServerStream? output = null;

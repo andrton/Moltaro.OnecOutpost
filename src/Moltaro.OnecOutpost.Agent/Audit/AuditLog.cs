@@ -183,7 +183,7 @@ internal sealed class AuditLog : IDisposable
         writer.Name("base");
         writer.String(command.Base);
         writer.Name("mode");
-        writer.String(ModeWord(command.Mode));
+        writer.String(OutpostForms.WriteMode(command.Mode));
         writer.Name("callerKey");
         writer.NullableString(command.CallerKey);
         writer.Name("script");
@@ -219,7 +219,7 @@ internal sealed class AuditLog : IDisposable
         writer.Name("base");
         writer.NullableString(baseKey);
         writer.Name("mode");
-        writer.NullableString(mode is OutpostModeEnum known ? ModeWord(known) : null);
+        writer.NullableString(mode is OutpostModeEnum known ? OutpostForms.WriteMode(known) : null);
         writer.Name("code");
         writer.String(code);
 
@@ -456,20 +456,15 @@ internal sealed class AuditLog : IDisposable
             earlier.Confirmed || later.Confirmed);
     }
 
-    private static string ModeWord(OutpostModeEnum mode)
-    {
-        return mode == OutpostModeEnum.Read ? "read" : "write";
-    }
-
+    // The outcome of an ended: succeeded, failed or unknown, never refused, which a refused records.
     private static string OutcomeWord(OutpostAgentOutcomeKindEnum kind)
     {
-        return kind switch
+        if (kind == OutpostAgentOutcomeKindEnum.Refused)
         {
-            OutpostAgentOutcomeKindEnum.Succeeded => "succeeded",
-            OutpostAgentOutcomeKindEnum.Failed => "failed",
-            OutpostAgentOutcomeKindEnum.Unknown => "unknown",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "An ended has no outcome of this kind."),
-        };
+            throw new ArgumentOutOfRangeException(nameof(kind), kind, "An ended has no outcome of this kind.");
+        }
+
+        return OutpostForms.WriteOutcomeKind(kind);
     }
 
     // Reading an entry: each reader takes the member of that name only when the entry gives it exactly once, in its
@@ -545,50 +540,25 @@ internal sealed class AuditLog : IDisposable
             return false;
         }
 
-        switch (word)
-        {
-            case null:
-                return true;
+        mode = OutpostForms.ReadMode(word);
 
-            case "read":
-                mode = OutpostModeEnum.Read;
-                return true;
-
-            case "write":
-                mode = OutpostModeEnum.Write;
-                return true;
-
-            default:
-                return false;
-        }
+        return word is null || mode is not null;
     }
 
     private static bool TryReadOutcome(JsonElement entry, out OutpostAgentOutcomeKindEnum kind)
     {
         kind = default;
 
-        if (!TryReadText(entry, "outcome", out string? word))
+        if (!TryReadText(entry, "outcome", out string? word)
+            || OutpostForms.ReadOutcomeKind(word) is not OutpostAgentOutcomeKindEnum read
+            || read == OutpostAgentOutcomeKindEnum.Refused)
         {
             return false;
         }
 
-        switch (word)
-        {
-            case "succeeded":
-                kind = OutpostAgentOutcomeKindEnum.Succeeded;
-                return true;
+        kind = read;
 
-            case "failed":
-                kind = OutpostAgentOutcomeKindEnum.Failed;
-                return true;
-
-            case "unknown":
-                kind = OutpostAgentOutcomeKindEnum.Unknown;
-                return true;
-
-            default:
-                return false;
-        }
+        return true;
     }
 
     // A duration of §2, whole milliseconds, or null.
