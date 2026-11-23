@@ -10,7 +10,7 @@ internal static class ConsoleExitCodes
     public const int Failure = 1;
 
     // Every command: an unknown command or option, a missing or invalid argument or password, install run from inside
-    // the program folder.
+    // the program folder or from a folder that holds it.
     public const int Usage = 2;
 
     // Every command: the console is not run as administrator; nothing was changed.

@@ -24,7 +24,9 @@ internal sealed partial class TestService
 
     public const uint AutomaticStart = 2;
 
-    // SC_ACTION_RESTART.
+    // SC_ACTION_NONE, which Windows repeats as the last action for every later failure, and SC_ACTION_RESTART.
+    public const int NoAction = 0;
+
     public const int Restart = 1;
 
     private const uint ScManagerConnect = 0x1;

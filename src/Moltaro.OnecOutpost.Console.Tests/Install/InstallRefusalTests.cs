@@ -56,7 +56,9 @@ public sealed class InstallRefusalTests
 
         Assert.Equal(ConsoleExitCodes.Usage, result.ExitCode);
         Assert.Contains(
-            $"Usage (2): unpack the archive outside {TestMachine.ProgramFolder} and run install from there",
+            $"Usage (2): install runs from {Path.TrimEndingDirectorySeparator(_machine.Source)}, which holds "
+            + $"{TestMachine.ProgramFolder}; unpack the archive into a folder of its own outside %ProgramFiles% and run "
+            + "install from there",
             TestMachine.LinesOf(result));
         Assert.Empty(_machine.Operations);
     }

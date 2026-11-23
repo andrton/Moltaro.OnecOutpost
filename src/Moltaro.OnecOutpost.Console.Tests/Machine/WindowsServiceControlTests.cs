@@ -10,11 +10,11 @@ namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 // The service controller of Windows as the console uses it (the S10 brief, "WindowsServiceControl"), with
 // Requires=Windows and Requires=Administrator, on a service of the test's own: Install creates the service in its own
 // process, starting automatically, under NT SERVICE\{name} without a password, with a description, the failure actions
-// of the console, restart after a minute three times with the count reset after a day and not for a stop with an error,
-// and no required privileges, which would drop the two of the agent's account; on an existing service it reconfigures
-// it, never deleting it, and keeps its failure actions. A service marked for deletion counts as deleted, and cannot be
-// installed until it is gone. A stop of a stopped service is Stopped, of an unknown one NotInstalled; stopping a running
-// service is the fakes' and the lab's.
+// of the console, restart after a minute at most three times, then nothing, with the count reset after a day and not
+// for a stop with an error, and no required privileges, which would drop the two of the agent's account; on an
+// existing service it reconfigures it, never deleting it, and keeps its failure actions. A service marked for deletion
+// counts as deleted, and cannot be installed until it is gone. A stop of a stopped service is Stopped, of an unknown one
+// NotInstalled; stopping a running service is the fakes' and the lab's.
 [Trait("Requires", "Windows")]
 [Trait("Requires", "Administrator")]
 [SupportedOSPlatform("windows")]
@@ -39,7 +39,9 @@ public sealed class WindowsServiceControlTests
             Assert.False(string.IsNullOrEmpty(service.Description()));
             (uint resetPeriod, (int Type, uint Delay)[] actions) = service.FailureActions();
             Assert.Equal(86400u, resetPeriod);
-            Assert.Equal([(TestService.Restart, 60000u), (TestService.Restart, 60000u), (TestService.Restart, 60000u)], actions);
+            Assert.Equal(
+                [(TestService.Restart, 60000u), (TestService.Restart, 60000u), (TestService.Restart, 60000u), (TestService.NoAction, 0u)],
+                actions);
             Assert.False(service.FailureActionsOnNonCrashFailures());
             Assert.Empty(service.RequiredPrivileges());
 

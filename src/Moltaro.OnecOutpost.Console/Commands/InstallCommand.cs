@@ -93,11 +93,19 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
             return null;
         }
 
-        if (IsInside(source, programFolder) || IsInside(programFolder, source))
+        if (IsInside(source, programFolder))
         {
             throw new CommandEndException(
                 ConsoleExitCodes.Usage,
                 $"unpack the archive outside {_parts.ProgramFolder} and run install from there");
+        }
+
+        if (IsInside(programFolder, source))
+        {
+            throw new CommandEndException(
+                ConsoleExitCodes.Usage,
+                $"install runs from {Path.TrimEndingDirectorySeparator(_parts.Source)}, which holds {_parts.ProgramFolder}; "
+                + "unpack the archive into a folder of its own outside %ProgramFiles% and run install from there");
         }
 
         return _parts.Source;
