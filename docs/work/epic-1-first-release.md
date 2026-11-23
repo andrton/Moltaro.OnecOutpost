@@ -4552,7 +4552,8 @@ the contract of the executor and the COM worker approved.
       `pid`, `path`, `arguments` and `connection` succeed with its process identity, its
       `Environment.ProcessPath`, its arguments as an array and its connection line's
       members as an object; any other succeeds with `null`. S9c's tests step adds `job`,
-      whether the process was in a job when its `Main` began, which `Main` asks first;
+      the process ids of its immediate job when its `Main` began, which `Main` asks first,
+      or `null` in no job (S9c's code review, round 1);
       `user`, the SID of the account it runs under; and `handle <n>`, the final path of the
       file that its handle of value n names, or `null`.
     - **The tests with `Requires=Windows`**, `Moltaro.OnecOutpost.Agent.Tests`, folder
@@ -4869,8 +4870,10 @@ implementer work on `xhigh`.
       on `CreateProcessWithLogonW` with `LOGON_WITH_PROFILE`, and records it here.
     - **The tests with `Requires=Windows`**, `Moltaro.OnecOutpost.Agent.Tests`:
       - S9b's launcher tests, unchanged, now with the test's own token, needing no right;
-      - the test program reports `IsProcessInJob` of itself as the first thing its `Main`
-        does, before it reads a line, and its new script `job` gives it: true;
+      - the test program reports the process ids of its immediate job as the first thing
+        its `Main` does, before it reads a line, and its new script `job` gives them: the
+        worker's own id and not the test host's, which tells the launcher's job from one
+        the test host runs in; the code holds the order (S9c's code review, round 1);
       - `LogOn` of a random account that does not exist: the base, the account and the
         message of 1326; through `AgentHost.RunAsync` with the real launcher, `DiskFolder`
         and `FakeAccessLists` admitting its `Programs`, `started`'s error, the exit
