@@ -9,6 +9,7 @@ using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Polls;
 using Moltaro.OnecOutpost.Agent.Records;
 using Moltaro.OnecOutpost.Agent.Secrets;
+using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Agent.Start;
@@ -29,16 +30,21 @@ internal static class AgentStart
     private static ReadOnlySpan<byte> ByteOrderMark => [0xEF, 0xBB, 0xBF];
 
     // Runs the steps of a start, and the first that fails decides: the audit log, whose IOException passes and records
-    // nothing; a Fault of the log; the access lists of the data folder, its folders and its files; agent.json and
-    // secrets.dat; the outbox, the records of commands and the poll numbers; and policy.json, with a password in the
-    // secrets for every mode it serves. A failed step after the first records started with the error and
-    // withoutSafeMode empty, records policy invalid when policy.json failed, disposes the log and throws
-    // AgentStopException with the same reason. When every step passes, it records started with the bases that write
-    // without safe mode and policy as valid, calls Recover and returns the run. version is the agent's version as given.
+    // nothing; a Fault of the log; the access lists of the data folder, its folders and its files; the access lists of
+    // the program folder, programs, its full path, through which nobody else may change the code that the agent's
+    // account runs; agent.json and secrets.dat; the outbox, the records of commands and the poll numbers; policy.json,
+    // with a password in the secrets for every mode it serves and for the worker account of every base that names one;
+    // and the logon of each such worker account, in the policy's order, before any worker starts. A failed step after
+    // the first records started with the error and withoutSafeMode empty, records policy invalid when policy.json
+    // failed, disposes the log and throws AgentStopException with the same reason. When every step passes, it records
+    // started with the bases that write without safe mode and policy as valid, calls Recover and returns the run.
+    // version is the agent's version as given.
     public static AgentRun Open(
         AgentFolders folders,
         IAccessLists access,
         IMachineProtection protection,
+        IWorkerLauncher workers,
+        string programs,
         TimeProvider clock,
         string version)
     {
@@ -51,7 +57,7 @@ internal static class AgentStart
 
             try
             {
-                run = Check(folders, access, protection, clock, log);
+                run = Check(folders, access, protection, workers, programs, clock, log);
             }
             catch (AgentStopException exception)
             {
@@ -90,12 +96,14 @@ internal static class AgentStart
         }
     }
 
-    // Steps 2 to 6, which write nothing: each failure is an AgentStopException with its reason, and an invalid policy
+    // Steps 2 to 7, which write nothing: each failure is an AgentStopException with its reason, and an invalid policy
     // an AgentPolicyException.
     private static AgentRun Check(
         AgentFolders folders,
         IAccessLists access,
         IMachineProtection protection,
+        IWorkerLauncher workers,
+        string programs,
         TimeProvider clock,
         AuditLog log)
     {
@@ -107,6 +115,7 @@ internal static class AgentStart
         IReadOnlyList<string> rootNames = List(folders.Root, "the data folder");
 
         CheckAccess(folders, access, log, rootNames);
+        CheckPrograms(access, programs);
 
         AgentPairingSettings pairing = ReadPairing(folders.Root, rootNames);
         AgentSecrets secrets = ReadSecrets(folders.Root, rootNames, protection);
@@ -118,6 +127,7 @@ internal static class AgentStart
         AgentPolicy policy = ReadPolicy(folders.Root, rootNames);
 
         CheckPasswords(policy, secrets);
+        LogOn(policy, secrets, workers);
 
         return new AgentRun(policy, pairing, secrets, log, outbox, records, numbers);
     }
@@ -152,6 +162,28 @@ internal static class AgentStart
                 throw new AgentStopException(
                     $"the access list of {entry} admits {string.Join(", ", others)}; expected nobody but Administrators, SYSTEM and the agent's account, as the console's install sets it");
             }
+        }
+    }
+
+    // An account that could replace the code that the agent's account runs, the agent's own program, the worker or the
+    // executor, would get the agent's secrets; the first entry through which one could stops the start.
+    private static void CheckPrograms(IAccessLists access, string programs)
+    {
+        IReadOnlyList<(string Path, IReadOnlyList<string> Accounts)> writers;
+
+        try
+        {
+            writers = access.Writers(programs);
+        }
+        catch (IOException)
+        {
+            throw new AgentStopException("the access lists of the program folder cannot be read");
+        }
+
+        if (writers is [(string path, IReadOnlyList<string> accounts), ..])
+        {
+            throw new AgentStopException(
+                $"the access list of {path} lets {string.Join(", ", accounts)} change it; expected nobody but Administrators, SYSTEM, TrustedInstaller and the agent's account, as the console's install sets it");
         }
     }
 
@@ -252,6 +284,25 @@ internal static class AgentStart
             {
                 throw new AgentStopException(
                     $"{SecretsName} holds no password for the write mode of the base {basePolicy.Key}; write it with the console");
+            }
+
+            if (basePolicy.Write?.WorkerAccount is not null && !secrets.WorkerPasswords.ContainsKey(basePolicy.Key))
+            {
+                throw new AgentStopException(
+                    $"{SecretsName} holds no password for the worker account of the base {basePolicy.Key}; write it with the console");
+            }
+        }
+    }
+
+    // Every COM worker of a base with a worker account runs under it, Reads included, so its logon comes before any
+    // worker starts. The launcher's AgentStopException passes, and no later base is logged on.
+    private static void LogOn(AgentPolicy policy, AgentSecrets secrets, IWorkerLauncher workers)
+    {
+        foreach (AgentBasePolicy basePolicy in policy.Bases)
+        {
+            if (basePolicy.Write?.WorkerAccount is string account)
+            {
+                workers.LogOn(basePolicy.Key, account, secrets.WorkerPasswords[basePolicy.Key]);
             }
         }
     }

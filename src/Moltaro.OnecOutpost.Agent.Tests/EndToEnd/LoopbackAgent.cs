@@ -74,7 +74,8 @@ internal sealed class LoopbackAgent
             {
                 [(TestCalls.BaseKey, OutpostModeEnum.Read)] = "read-pw",
                 [(TestCalls.BaseKey, OutpostModeEnum.Write)] = "write-pw",
-            });
+            },
+            new Dictionary<string, string>());
 
         agent.Data.Root.Seed("agent.json", AgentPairingFile.Write(settings));
         agent.Data.Root.Seed("secrets.dat", SecretsFile.Write(secrets, agent.Protection));
@@ -100,6 +101,7 @@ internal sealed class LoopbackAgent
             Access,
             Protection,
             Workers,
+            PairedFolder.Programs,
             TestHost.Executor,
             Handler,
             clock,

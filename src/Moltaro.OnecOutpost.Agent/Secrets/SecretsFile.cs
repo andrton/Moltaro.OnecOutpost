@@ -7,13 +7,15 @@ using Moltaro.OnecOutpost.Protocol.Signing;
 
 namespace Moltaro.OnecOutpost.Agent.Secrets;
 
-// The form of secrets.dat: Protect over {"key":…,"passwords":[{"base":…,"mode":"read","password":…},…]}, written by
-// the writer of §2 of docs/protocol.md with the key in base64url.
+// The form of secrets.dat: Protect over
+// {"key":…,"passwords":[{"base":…,"mode":"read","password":…},…],"workers":[{"base":…,"password":…},…]}, written by the
+// writer of §2 of docs/protocol.md with the key in base64url. workers holds the password of the worker account of each
+// base whose write names one; it is required, and empty when no base names one.
 internal static class SecretsFile
 {
     // Unprotects the file and reads its secrets. The CryptographicException of the protection passes; content that
-    // breaks the form, a key that is not an ECDSA key on P-256 in PKCS#8, a base key against its rule or a base and mode
-    // given twice is FormatException, quoting nothing.
+    // breaks the form, a key that is not an ECDSA key on P-256 in PKCS#8, a base key against its rule, or a base and mode
+    // of passwords or a base of workers given twice is FormatException, quoting nothing.
     public static AgentSecrets Read(byte[] file, IMachineProtection protection)
     {
         byte[] plain = protection.Unprotect(file);
@@ -21,7 +23,7 @@ internal static class SecretsFile
         try
         {
             using JsonDocument document = OutpostJsonReader.ParseMessage(plain);
-            JsonElement secrets = OutpostJsonReader.Members(document.RootElement, "key", "passwords");
+            JsonElement secrets = OutpostJsonReader.Members(document.RootElement, "key", "passwords", "workers");
 
             byte[] key = OutpostJsonReader.ReadBytes(secrets, "key");
             CheckKey(key);
@@ -32,14 +34,9 @@ internal static class SecretsFile
             {
                 JsonElement entry = OutpostJsonReader.Members(item, "base", "mode", "password");
 
-                string baseKey = OutpostJsonReader.ReadString(entry, "base");
+                string baseKey = ReadBaseKey(entry);
                 OutpostModeEnum mode = ReadMode(entry);
                 string password = OutpostJsonReader.ReadString(entry, "password");
-
-                if (!OutpostNames.IsBaseKey(baseKey))
-                {
-                    throw OutpostJsonReader.Form("A base is not a base key.");
-                }
 
                 // A base and a mode name one 1C account, so one password each.
                 if (!passwords.TryAdd((baseKey, mode), password))
@@ -48,7 +45,23 @@ internal static class SecretsFile
                 }
             }
 
-            return new AgentSecrets(key, passwords);
+            Dictionary<string, string> workerPasswords = new(StringComparer.Ordinal);
+
+            foreach (JsonElement item in OutpostJsonReader.ReadArray(secrets, "workers").EnumerateArray())
+            {
+                JsonElement entry = OutpostJsonReader.Members(item, "base", "password");
+
+                string baseKey = ReadBaseKey(entry);
+                string password = OutpostJsonReader.ReadString(entry, "password");
+
+                // A base has one worker account, so one password.
+                if (!workerPasswords.TryAdd(baseKey, password))
+                {
+                    throw OutpostJsonReader.Form("A base of the workers is given twice.");
+                }
+            }
+
+            return new AgentSecrets(key, passwords, workerPasswords);
         }
         catch (OutpostProtocolException exception)
         {
@@ -75,6 +88,20 @@ internal static class SecretsFile
             writer.String(baseKey);
             writer.Name("mode");
             writer.String(mode == OutpostModeEnum.Read ? "read" : "write");
+            writer.Name("password");
+            writer.String(password);
+            writer.EndObject();
+        }
+
+        writer.EndArray();
+        writer.Name("workers");
+        writer.StartArray();
+
+        foreach ((string baseKey, string password) in secrets.WorkerPasswords)
+        {
+            writer.StartObject();
+            writer.Name("base");
+            writer.String(baseKey);
             writer.Name("password");
             writer.String(password);
             writer.EndObject();
@@ -111,6 +138,18 @@ internal static class SecretsFile
         // ImportPublicKey refuses every key but one on P-256 with the code form, which the caller turns into a
         // FormatException.
         OutpostKeys.ImportPublicKey(OutpostKeys.ExportPublicKey(imported)).Dispose();
+    }
+
+    private static string ReadBaseKey(JsonElement entry)
+    {
+        string baseKey = OutpostJsonReader.ReadString(entry, "base");
+
+        if (!OutpostNames.IsBaseKey(baseKey))
+        {
+            throw OutpostJsonReader.Form("A base is not a base key.");
+        }
+
+        return baseKey;
     }
 
     private static OutpostModeEnum ReadMode(JsonElement entry)

@@ -163,12 +163,12 @@ public sealed class PolicyRuleTests
     }
 
     // Carried over from S2: requestTimeout is in the form of runLimit, from 10 seconds to 1 hour, and safeMode of write
-    // is true or false.
+    // is true or false. Since S9c a write with safeMode false names its worker account, which WorkerAccountPolicyTests
+    // states.
     [Theory]
     [InlineData("", "requestTimeout", "\"00:00:10\"")]
     [InlineData("", "requestTimeout", "\"01:00:00\"")]
     [InlineData("bases[0].write", "safeMode", "true")]
-    [InlineData("bases[0].write", "safeMode", "false")]
     public void A_request_timeout_at_either_end_of_its_range_and_a_safe_mode_of_write_are_accepted(
         string owner,
         string member,

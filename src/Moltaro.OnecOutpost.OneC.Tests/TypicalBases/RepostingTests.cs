@@ -9,11 +9,12 @@ namespace Moltaro.OnecOutpost.OneC.Tests.TypicalBases;
 // again by the tunnel with the safe mode that writeSafeMode gives, has the register movements it had before, which a
 // person's posting made (concept §12, O1). The document and its movements come from the base while the test runs; the
 // scripts name no object of a typical configuration and read the movements through the register records of the
-// document, whatever its registers are.
+// document, whatever its registers are. The lab's test of the worker account (the S9c brief) posts again with the same
+// scripts through the agent, and compares the movements as this test does.
 public sealed class RepostingTests
 {
     // Gives the identifier of the latest posted document of the type.
-    private const string LatestPostedDocument = """
+    internal const string LatestPostedDocument = """
         Query = New Query;
         Query.Text = "SELECT TOP 1 Documents.Ref AS Ref FROM Document." + Parameters["documentType"] + " AS Documents WHERE Documents.Posted ORDER BY Documents.Date DESC";
         Selection = Query.Execute().Select();
@@ -26,7 +27,7 @@ public sealed class RepostingTests
     // Gives the movements of the document: for each register of its register records, by the full name of the
     // register, its records in their order, each as the list of its columns with their values in the internal string
     // form of 1C, which tells apart any two values, references included.
-    private const string MovementsOfTheDocument = """
+    internal const string MovementsOfTheDocument = """
         Document = Documents[Parameters["documentType"]].GetRef(New UUID(Parameters["id"])).GetObject();
         Movements = New Map;
         For Each RecordSet In Document.RegisterRecords Do
@@ -45,7 +46,7 @@ public sealed class RepostingTests
         Result = Movements;
         """;
 
-    private const string PostTheDocumentAgain = """
+    internal const string PostTheDocumentAgain = """
         Document = Documents[Parameters["documentType"]].GetRef(New UUID(Parameters["id"])).GetObject();
         Document.Write(DocumentWriteMode.Posting);
         """;
@@ -99,7 +100,7 @@ public sealed class RepostingTests
     }
 
     // The registers whose records differ before and after, or that only one side holds.
-    private static IEnumerable<string> Changed(JsonElement before, JsonElement after)
+    internal static IEnumerable<string> Changed(JsonElement before, JsonElement after)
     {
         Dictionary<string, JsonElement> registersAfter = after
             .EnumerateObject()

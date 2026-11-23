@@ -1,9 +1,9 @@
 using System.Buffers;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 
@@ -17,11 +17,14 @@ namespace Moltaro.OnecOutpost.Agent.Workers;
 //
 // The pool calls OpenAsync and then RunAsync one at a time; Kill may run beside either, from any thread. A read from
 // the pipe of a process does not end on cancellation, so cancellation kills the process, which ends its output.
-// Limitation: .NET 10 opens the redirected pipes for synchronous I/O, so each open or run holds a pool thread while it
-// waits.
+// Limitation: Windows gives anonymous pipes no asynchronous I/O, so each open or run holds a pool thread while it waits.
+// It owns its streams and the handle of its process.
 [SupportedOSPlatform("windows")]
-internal sealed class ComWorkerProcess : IWorkerProcess
+internal sealed partial class ComWorkerProcess : IWorkerProcess
 {
+    // The exit code of a killed worker, as Process.Kill gives it.
+    private const uint KilledExitCode = uint.MaxValue;
+
     // The longest ready line, its LF not counted.
     private const int ReadyLimit = 1024;
 
@@ -36,21 +39,22 @@ internal sealed class ComWorkerProcess : IWorkerProcess
         MaxDepth = OutpostProtocol.MaxMessageDepth,
     };
 
-    private readonly Process _process;
+    private readonly SafeProcessHandle _process;
 
     private readonly Stream _input;
 
     private readonly Stream _output;
 
-    // 1 once the first Kill ended the process: Kill is idempotent, and only the first one calls Process.Kill.
+    // 1 once the first Kill ended the process: Kill is idempotent, and only the first one calls TerminateProcess.
     private int _killed;
 
-    // The process the launcher started, with its standard input and output redirected, already in the job.
-    public ComWorkerProcess(Process process)
+    // The process that the launcher created, which it puts into the job before the process runs, with the agent's ends
+    // of its standard input and output.
+    public ComWorkerProcess(SafeProcessHandle process, Stream input, Stream output)
     {
         _process = process;
-        _input = process.StandardInput.BaseStream;
-        _output = process.StandardOutput.BaseStream;
+        _input = input;
+        _output = output;
     }
 
     // Writes the connection line and reads one line of at most 1 KiB: true only for an object whose one member is
@@ -99,7 +103,8 @@ internal sealed class ComWorkerProcess : IWorkerProcess
         return null;
     }
 
-    // Process.Kill, an ended process ignored, as Process.Kill ignores one.
+    // TerminateProcess. Its failure is ignored: the handle of a started process may terminate it, so the call fails
+    // only for a process that has ended, as Process.Kill ignores one.
     public void Kill()
     {
         if (Interlocked.Exchange(ref _killed, 1) == 1)
@@ -107,7 +112,7 @@ internal sealed class ComWorkerProcess : IWorkerProcess
             return;
         }
 
-        _process.Kill();
+        TerminateProcess(_process, KilledExitCode);
     }
 
     // Closes the worker's input, which ends a worker that still runs at the end of its input, and its output, then
@@ -127,6 +132,10 @@ internal sealed class ComWorkerProcess : IWorkerProcess
         _output.Dispose();
         _process.Dispose();
     }
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool TerminateProcess(SafeProcessHandle process, uint exitCode);
 
     // The connection line of S9: location, user, password, safeMode and executor. The password travels only here.
     private static byte[] ConnectionLine(WorkerConnectionLine connection)

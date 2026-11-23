@@ -1,6 +1,9 @@
 using System.Runtime.Versioning;
+using System.Security.AccessControl;
 using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
 using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Pairing;
 using Moltaro.OnecOutpost.Agent.Secrets;
@@ -17,15 +20,31 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 // folder of its own in the temporary folder of the lab disk, outside the repository, whose access list admits nobody
 // but Administrators, SYSTEM and the account that runs the tests, as AdmitNobodyElse sets it, with policy.json,
 // agent.json written through AgentPairingFile and secrets.dat through SecretsFile with MachineDpapi. The policy names
-// the test base of lab.local.json as the base test, read and written, with one worker per mode, a run limit of a minute
-// and a retryDelayMax of a second; the passwords of its two accounts come from lab.local.json and never from a file in
-// Git. Its clock is a fake one, which its runs and their servers share, and its workers are in one job of the test. A
-// test starts a run of the agent on it, and another after the first stopped, as a restart does. Disposing it disposes
-// the job, which ends every worker left, and removes the folder.
+// one base of lab.local.json, the test base as the base test unless a test names a copy of a typical base, read and
+// written, with one worker per mode, a run limit of a minute and a retryDelayMax of a second; the passwords of its two
+// accounts come from lab.local.json and never from a file in Git. Its Writes run in safe mode, or without it under the
+// worker account of lab.local.json, whose password secrets.dat holds as well (the S9c brief).
+//
+// Its program folder (the S9c brief) is a folder of its own directly under the root of the system drive, as the
+// console's install will put the program under %ProgramFiles%: there the worker account may read and run the program,
+// which it may not inside the profile of the account that runs the tests, and the start's check of the program folder
+// and its parents passes, since the root lets others add a folder only. It is made with inheritance off and the list
+// that the install sets: full control for Administrators, SYSTEM and the account that runs the tests, which stands for
+// the agent's, and read and run for Users, the worker account among them. It holds a copy of the worker beside the
+// tests, with the files of its build, and of the executor of the repository.
+//
+// Its clock is a fake one, which its runs and their servers share, and its workers are in one job of the test. A test
+// starts a run of the agent on it, and another after the first stopped, as a restart does. Disposing it disposes the
+// job, which ends every worker left, waits until every process of the job ended, and then removes both folders:
+// closing a job ends its processes asynchronously, and the file of a program that still runs cannot be removed. The
+// process of the tests joins LabJob first, through which it finds the workers and waits for their end, those under a
+// worker account included.
 [SupportedOSPlatform("windows")]
 internal sealed class LabAgent : IDisposable
 {
-    public const string BaseKey = "test";
+    public const string TestBaseKey = "test";
+
+    public const string TypicalBaseKey = "typical";
 
     public const string Version = "0.1.0-lab";
 
@@ -37,15 +56,35 @@ internal sealed class LabAgent : IDisposable
     // that never used 1C took twenty seconds on the lab machine (concept §12).
     public static readonly TimeSpan Deadline = TimeSpan.FromMinutes(2);
 
+    private const string WorkerName = "Moltaro.OnecOutpost.ComWorker";
+
     private readonly DirectoryInfo _temporary;
 
-    private LabAgent(DirectoryInfo temporary)
+    private LabAgent(DirectoryInfo temporary, string key, LabAccount? workerAccount)
     {
         _temporary = temporary;
+        Key = key;
+        WorkerAccount = workerAccount;
         DataPath = Path.Combine(temporary.FullName, "data");
+        ProgramsPath = Path.Combine(
+            Path.GetPathRoot(Environment.SystemDirectory)!,
+            $"outpost-lab-programs-{Guid.NewGuid():N}");
     }
 
+    // The key of the base in the policy.
+    public string Key { get; }
+
+    // The account under which the agent runs the workers of its base, or null when they run under its own.
+    public LabAccount? WorkerAccount { get; }
+
     public string DataPath { get; }
+
+    // The program folder, which the start judges and from which the workers run.
+    public string ProgramsPath { get; }
+
+    public string WorkerPath => Path.Combine(ProgramsPath, WorkerName + ".exe");
+
+    public string ExecutorPath => Path.Combine(ProgramsPath, "OutpostExecutor.epf");
 
     public Guid Agent { get; } = Guid.NewGuid();
 
@@ -62,18 +101,105 @@ internal sealed class LabAgent : IDisposable
         new DiskFolder(Path.Combine(DataPath, "audit")),
         new DiskFolder(Path.Combine(DataPath, "outcomes")));
 
-    // A data folder with the files of the agent of the test base.
+    // A data folder with the files of the agent of the test base, its Writes in safe mode.
     public static LabAgent Create()
+    {
+        LabTestBase testBase = LabFile.Read().TestBase;
+
+        return Create(TestBaseKey, testBase.Server, testBase.Database, testBase.Read, testBase.Write, workerAccount: null);
+    }
+
+    // The same, its Writes without safe mode under the worker account.
+    public static LabAgent WithoutSafeMode(LabTestBase testBase, LabAccount workerAccount)
+    {
+        return Create(TestBaseKey, testBase.Server, testBase.Database, testBase.Read, testBase.Write, workerAccount);
+    }
+
+    // A data folder with the files of the agent of a copy of a typical base, as the base typical, its Writes without
+    // safe mode under the worker account.
+    public static LabAgent WithoutSafeMode(LabTypicalBase typicalBase, LabAccount workerAccount)
+    {
+        return Create(TypicalBaseKey, typicalBase.Server, typicalBase.Database, typicalBase.Read, typicalBase.Write, workerAccount);
+    }
+
+    // The worker account of lab.local.json, which the owner adds by hand.
+    public static LabAccount WorkerAccountOf(LabFile lab)
+    {
+        Assert.True(
+            lab.WorkerAccount is not null,
+            "lab.local.json names no workerAccount: a local user outside Administrators with \"Log on as a batch job\".");
+
+        return lab.WorkerAccount;
+    }
+
+    // Starts a run of the agent on the data folder, with a server and a launcher of its own.
+    public LabRun Start()
+    {
+        return LabRun.Start(this);
+    }
+
+    // Writes a file beside the data folder that Users may read and run, and gives its full path: a file that a worker
+    // account may read, at the same depth of the same folder as the data folder.
+    public string WriteFileForUsers(string name, string content)
+    {
+        string path = Path.Combine(_temporary.FullName, name);
+
+        File.WriteAllText(path, content);
+        AccessListEdits.Allow(path, new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null), FileSystemRights.ReadAndExecute);
+
+        return path;
+    }
+
+    public void Dispose()
+    {
+        // Every process that the tests started and that runs is the agent's, its workers, since the tests run one at a
+        // time and each waits for its own.
+        IReadOnlyList<long> running = LabJob.Others();
+        List<SafeProcessHandle> handles = LabJob.Open(running, WorkerAccount);
+
+        try
+        {
+            Job.Dispose();
+            ServerKey.Dispose();
+            AgentKey.Dispose();
+
+            Assert.True(
+                LabJob.WaitUntilEnded(running, handles, Deadline),
+                $"The workers of the agent did not end within {Deadline} after its job closed: processes {string.Join(", ", running)}.");
+        }
+        finally
+        {
+            // Closed before the removal: a handle of a process keeps the file of its program.
+            foreach (SafeProcessHandle handle in handles)
+            {
+                handle.Dispose();
+            }
+        }
+
+        Remove(_temporary.FullName);
+        Remove(ProgramsPath);
+    }
+
+    private static LabAgent Create(
+        string key,
+        string server,
+        string database,
+        LabAccount read,
+        LabAccount write,
+        LabAccount? workerAccount)
     {
         Assert.True(
             File.Exists(Repository.ExecutorPath),
             $"{Repository.ExecutorPath} is missing: it is built from the sources in src/Executor with the Designer.");
 
-        LabAgent agent = new(Directory.CreateTempSubdirectory("outpost-lab-agent-"));
+        LabJob.EnsureJoined();
+
+        LabAgent agent = new(Directory.CreateTempSubdirectory("outpost-lab-agent-"), key, workerAccount);
 
         try
         {
-            agent.WriteFiles(LabFile.Read().TestBase);
+            agent.WriteFiles(server, database, read, write);
+            agent.WritePrograms();
 
             return agent;
         }
@@ -84,34 +210,30 @@ internal sealed class LabAgent : IDisposable
         }
     }
 
-    // Starts a run of the agent on the data folder, with a server and a launcher of its own.
-    public LabRun Start()
+    // A folder of the agent with everything in it, read-only files included, when it was made.
+    private static void Remove(string folder)
     {
-        return LabRun.Start(this);
-    }
+        if (!Directory.Exists(folder))
+        {
+            return;
+        }
 
-    public void Dispose()
-    {
-        Job.Dispose();
-        ServerKey.Dispose();
-        AgentKey.Dispose();
-
-        foreach (string file in Directory.EnumerateFiles(_temporary.FullName, "*", SearchOption.AllDirectories))
+        foreach (string file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
         {
             File.SetAttributes(file, FileAttributes.Normal);
         }
 
-        _temporary.Delete(recursive: true);
+        Directory.Delete(folder, recursive: true);
     }
 
-    private void WriteFiles(LabTestBase testBase)
+    private void WriteFiles(string server, string database, LabAccount read, LabAccount write)
     {
         Directory.CreateDirectory(DataPath);
         AccessListEdits.AdmitNobodyElse(DataPath);
         Directory.CreateDirectory(Path.Combine(DataPath, "audit"));
         Directory.CreateDirectory(Path.Combine(DataPath, "outcomes"));
 
-        File.WriteAllBytes(Path.Combine(DataPath, "policy.json"), Policy(testBase));
+        File.WriteAllBytes(Path.Combine(DataPath, "policy.json"), Policy(server, database, read.User, write.User, WorkerAccount?.User));
 
         AgentPairingSettings pairing = new(
             new Uri("https://outpost.example.com/agents"),
@@ -122,19 +244,41 @@ internal sealed class LabAgent : IDisposable
 
         File.WriteAllBytes(Path.Combine(DataPath, "agent.json"), AgentPairingFile.Write(pairing));
 
+        Dictionary<string, string> workerPasswords = [];
+
+        if (WorkerAccount is not null)
+        {
+            workerPasswords[Key] = WorkerAccount.Password;
+        }
+
         AgentSecrets secrets = new(
             AgentKey.ExportPkcs8PrivateKey(),
             new Dictionary<(string Base, OutpostModeEnum Mode), string>
             {
-                [(BaseKey, OutpostModeEnum.Read)] = testBase.Read.Password,
-                [(BaseKey, OutpostModeEnum.Write)] = testBase.Write.Password,
-            });
+                [(Key, OutpostModeEnum.Read)] = read.Password,
+                [(Key, OutpostModeEnum.Write)] = write.Password,
+            },
+            workerPasswords);
 
         File.WriteAllBytes(Path.Combine(DataPath, "secrets.dat"), SecretsFile.Write(secrets, new MachineDpapi()));
     }
 
-    // policy.json as an administrator writes it for the test base.
-    private static byte[] Policy(LabTestBase testBase)
+    // The worker with the files of its build, and the executor.
+    private void WritePrograms()
+    {
+        Directory.CreateDirectory(ProgramsPath);
+        AccessListEdits.LetUsersReadAndRun(ProgramsPath);
+
+        foreach (string extension in new[] { ".exe", ".dll", ".runtimeconfig.json", ".deps.json" })
+        {
+            File.Copy(Path.Combine(AppContext.BaseDirectory, WorkerName + extension), Path.Combine(ProgramsPath, WorkerName + extension));
+        }
+
+        File.Copy(Repository.ExecutorPath, ExecutorPath);
+    }
+
+    // policy.json as an administrator writes it for the base.
+    private byte[] Policy(string server, string database, string readUser, string writeUser, string? workerAccount)
     {
         using MemoryStream policy = new();
 
@@ -144,11 +288,11 @@ internal sealed class LabAgent : IDisposable
             writer.WriteString("retryDelayMax", RetryDelayMax.ToString("c"));
             writer.WriteStartArray("bases");
             writer.WriteStartObject();
-            writer.WriteString("key", BaseKey);
-            writer.WriteString("server", testBase.Server);
-            writer.WriteString("database", testBase.Database);
-            WriteMode(writer, "read", testBase.Read.User);
-            WriteMode(writer, "write", testBase.Write.User);
+            writer.WriteString("key", Key);
+            writer.WriteString("server", server);
+            writer.WriteString("database", database);
+            WriteMode(writer, "read", readUser);
+            WriteMode(writer, "write", writeUser, workerAccount);
             writer.WriteEndObject();
             writer.WriteEndArray();
             writer.WriteEndObject();
@@ -157,12 +301,20 @@ internal sealed class LabAgent : IDisposable
         return policy.ToArray();
     }
 
-    private static void WriteMode(Utf8JsonWriter writer, string mode, string account)
+    // A mode; a write with a worker account turns safe mode off.
+    private static void WriteMode(Utf8JsonWriter writer, string mode, string account, string? workerAccount = null)
     {
         writer.WriteStartObject(mode);
         writer.WriteString("account", account);
         writer.WriteNumber("workers", 1);
         writer.WriteString("runLimit", RunLimit.ToString("c"));
+
+        if (workerAccount is not null)
+        {
+            writer.WriteBoolean("safeMode", false);
+            writer.WriteString("workerAccount", workerAccount);
+        }
+
         writer.WriteEndObject();
     }
 }

@@ -19,8 +19,8 @@ public sealed class AgentCommandTests
         string parameters = new JsonObject { ["description"] = TestBaseScripts.NewDescription() }.ToJsonString();
         using LabAgent agent = LabAgent.Create();
         await using LabRun run = agent.Start();
-        Assert.True(await run.OpenedAsync(OutpostModeEnum.Read));
-        Assert.True(await run.OpenedAsync(OutpostModeEnum.Write));
+        Assert.True(await run.OpenedAsync(OutpostModeEnum.Read), run.WhyNotOpened(OutpostModeEnum.Read));
+        Assert.True(await run.OpenedAsync(OutpostModeEnum.Write), run.WhyNotOpened(OutpostModeEnum.Write));
 
         OutpostOutcomeMessage written = await run.OutcomeAsync(run.Send(OutpostModeEnum.Write, TestBaseScripts.CreateProduct, parameters));
         OutpostOutcomeMessage counted = await run.OutcomeAsync(run.Send(OutpostModeEnum.Read, TestBaseScripts.CountProducts, parameters));

@@ -1,8 +1,10 @@
 using System.Runtime.Versioning;
 using System.Text.Json;
-using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
+using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
+using Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
+using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
@@ -10,7 +12,8 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 // The acceptance of S6, with Requires=Windows: a data folder, or a file in it, whose access list admits anybody else
 // makes the agent stop, recorded. The data folder is on the disk, in the test's temporary folder, with the access list
 // that the console's install gives it and the account that runs the tests in the place of the agent's; its secrets are
-// encrypted with DPAPI for the machine.
+// encrypted with DPAPI for the machine. The data folder's lists are those of Windows; the program folder lets nobody
+// else change it, as the fake answers, so that the start reaches the data folder's files.
 [Trait("Requires", "Windows")]
 [SupportedOSPlatform("windows")]
 public sealed class DiskStartTests : IDisposable
@@ -57,6 +60,13 @@ public sealed class DiskStartTests : IDisposable
 
     private AgentRun Start()
     {
-        return AgentStart.Open(_data.Folders, new WindowsAccessLists(_data.Path), new MachineDpapi(), _clock, PairedFolder.Version);
+        return AgentStart.Open(
+            _data.Folders,
+            new DataFolderAccessLists(_data.Path),
+            new MachineDpapi(),
+            new FakeWorkerLauncher(new MemoryDataFolder()),
+            PairedFolder.Programs,
+            _clock,
+            PairedFolder.Version);
     }
 }

@@ -118,7 +118,8 @@ public sealed class StartPolicyTests
         Assert.Contains("write", error, StringComparison.Ordinal);
     }
 
-    // The owner's change of D12: started records which bases write without safe mode, in the order of the policy.
+    // The owner's change of D12: started records which bases write without safe mode, in the order of the policy. Since
+    // S9c each of them names its worker account, whose password the secrets hold.
     [Fact]
     public void Started_lists_the_bases_that_write_without_safe_mode_in_the_order_of_the_policy()
     {
@@ -127,21 +128,24 @@ public sealed class StartPolicyTests
             """
             {
               "bases": [
-                { "key": "payroll", "file": "D:\\1C\\Payroll", "read": { "account": "r" }, "write": { "account": "w", "safeMode": false } },
+                { "key": "payroll", "file": "D:\\1C\\Payroll", "read": { "account": "r" }, "write": { "account": "w", "safeMode": false, "workerAccount": "outpost-payroll" } },
                 { "key": "warehouse", "file": "D:\\1C\\Warehouse", "read": { "account": "r" } },
-                { "key": "accounting", "file": "D:\\1C\\Accounting", "read": { "account": "r" }, "write": { "account": "w", "safeMode": false } },
+                { "key": "accounting", "file": "D:\\1C\\Accounting", "read": { "account": "r" }, "write": { "account": "w", "safeMode": false, "workerAccount": "outpost-accounting" } },
                 { "key": "stock", "file": "D:\\1C\\Stock", "read": { "account": "r" }, "write": { "account": "w", "safeMode": true } }
               ]
             }
             """);
         _folder.SeedSecrets(
-            ("payroll", "read", "pw"),
-            ("payroll", "write", "pw"),
-            ("warehouse", "read", "pw"),
-            ("accounting", "read", "pw"),
-            ("accounting", "write", "pw"),
-            ("stock", "read", "pw"),
-            ("stock", "write", "pw"));
+            [
+                ("payroll", "read", "pw"),
+                ("payroll", "write", "pw"),
+                ("warehouse", "read", "pw"),
+                ("accounting", "read", "pw"),
+                ("accounting", "write", "pw"),
+                ("stock", "read", "pw"),
+                ("stock", "write", "pw"),
+            ],
+            [("payroll", "pw"), ("accounting", "pw")]);
         int count = _folder.Data.Changes.Count;
 
         _folder.Start(_clock).Log.Dispose();

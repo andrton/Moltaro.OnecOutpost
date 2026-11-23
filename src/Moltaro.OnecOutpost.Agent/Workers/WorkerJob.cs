@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Win32.SafeHandles;
@@ -49,9 +48,9 @@ internal sealed partial class WorkerJob : IDisposable
     }
 
     // Puts the process into the job: AssignProcessToJobObject.
-    public void Add(Process process)
+    public void Add(SafeProcessHandle process)
     {
-        if (!AssignProcessToJobObject(_job, process.SafeHandle))
+        if (!AssignProcessToJobObject(_job, process))
         {
             throw new Win32Exception(Marshal.GetLastPInvokeError());
         }

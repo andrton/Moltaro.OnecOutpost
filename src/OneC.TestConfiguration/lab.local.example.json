@@ -20,5 +20,6 @@
       "documentType": "<name of a document type of the configuration>",
       "writeSafeMode": false
     }
-  ]
+  ],
+  "workerAccount": { "user": "outpost-worker", "password": "<password>" }
 }

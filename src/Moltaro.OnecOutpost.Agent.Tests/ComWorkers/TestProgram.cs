@@ -47,7 +47,7 @@ internal static class TestProgram
         }
 
         Process process = Process.Start(start) ?? throw new InvalidOperationException("The test program did not start.");
-        job.Add(process);
+        job.Add(process.SafeHandle);
 
         return process;
     }

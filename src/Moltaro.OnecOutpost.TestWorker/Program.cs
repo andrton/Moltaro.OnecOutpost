@@ -1,5 +1,7 @@
 using System.Buffers;
 using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 
@@ -19,15 +21,34 @@ namespace Moltaro.OnecOutpost.TestWorker;
 // The scripts: wait writes nothing until the input ends or a kill ends the program; exit <n> ends it with n and no
 // outcome; line <text> writes <text> as the line of its outcome; pid, path, arguments and connection succeed with the
 // identity of the process, its Environment.ProcessPath, its command line as an array and the members of its connection
-// line as an object; any other script succeeds with null.
-internal static class Program
+// line as an object; any other script succeeds with null. For the start of S9c: job succeeds with the process ids of
+// the immediate job of the process when its Main began, which Main asks before anything else, as an array, or null
+// when the process was in no job, so that a test tells the job of the launcher from any other, such as one that the
+// test host runs in; desktop succeeds with the window station and the desktop that the process runs on, as
+// "{station}\{desktop}", the form of lpDesktop; user succeeds with the SID of the account the process runs under; handle <n>
+// succeeds with the final path of the file that the handle of value n names in this process, or null when n names no
+// file here, so that a test sees whether a handle of its own was inherited.
+internal static partial class Program
 {
     private const string LinePrefix = "line ";
 
     private const string ExitPrefix = "exit ";
 
+    private const string HandlePrefix = "handle ";
+
+    // QueryInformationJobObject's class of the process ids of a job, and the error of a list too long for its buffer.
+    private const int JobObjectBasicProcessIdList = 3;
+
+    private const int ErrorMoreData = 234;
+
+    // The process ids of the immediate job of the process when Main began; null when it was in no job.
+    private static long[]? _jobAtStart;
+
     private static int Main(string[] arguments)
     {
+        // First of all, before the command line is read: the process ids of the immediate job of the process itself.
+        _jobAtStart = ImmediateJob();
+
         if (arguments is not [{ Length: > 0 }, "read" or "write"])
         {
             return 1;
@@ -200,11 +221,181 @@ internal static class Program
                 writer.WriteRawValue(connection);
                 break;
 
+            case "job":
+                WriteIds(writer, _jobAtStart);
+                break;
+
+            case "user":
+                WriteUser(writer);
+                break;
+
+            case "desktop":
+                WriteDesktop(writer);
+                break;
+
+            case string when script.StartsWith(HandlePrefix, StringComparison.Ordinal):
+                WriteFinalPath(writer, long.Parse(script[HandlePrefix.Length..], CultureInfo.InvariantCulture));
+                break;
+
             default:
                 writer.WriteNullValue();
                 break;
         }
     }
+
+    // The process ids of the job with which QueryInformationJobObject answers for no job handle: the immediate job of
+    // the calling process, the innermost of nested ones. Null when it fails otherwise than for a buffer too small, as
+    // for a process in no job.
+    private static unsafe long[]? ImmediateJob()
+    {
+        for (int capacity = 64; ; capacity *= 2)
+        {
+            // JOBOBJECT_BASIC_PROCESS_ID_LIST: NumberOfAssignedProcesses and NumberOfProcessIdsInList, two DWORDs, then
+            // the ids as ULONG_PTR, from byte 8 on either bitness.
+            byte[] list = new byte[(2 * sizeof(uint)) + (capacity * IntPtr.Size)];
+
+            fixed (byte* start = list)
+            {
+                if (QueryInformationJobObject(IntPtr.Zero, JobObjectBasicProcessIdList, start, (uint)list.Length, IntPtr.Zero))
+                {
+                    uint count = *(uint*)(start + sizeof(uint));
+                    nuint* ids = (nuint*)(start + (2 * sizeof(uint)));
+                    long[] given = new long[count];
+
+                    for (int index = 0; index < count; index++)
+                    {
+                        given[index] = (long)ids[index];
+                    }
+
+                    return given;
+                }
+            }
+
+            if (Marshal.GetLastPInvokeError() != ErrorMoreData)
+            {
+                return null;
+            }
+        }
+    }
+
+    private static void WriteIds(Utf8JsonWriter writer, long[]? ids)
+    {
+        if (ids is null)
+        {
+            writer.WriteNullValue();
+
+            return;
+        }
+
+        writer.WriteStartArray();
+
+        foreach (long id in ids)
+        {
+            writer.WriteNumberValue(id);
+        }
+
+        writer.WriteEndArray();
+    }
+
+    // The window station of the process and the desktop of its first thread, as "{station}\{desktop}", or null when
+    // Windows cannot name either. The handles that Windows gives for them are not to be closed.
+    private static void WriteDesktop(Utf8JsonWriter writer)
+    {
+        string? station = NameOf(GetProcessWindowStation());
+        string? desktop = NameOf(GetThreadDesktop(GetCurrentThreadId()));
+
+        if (station is null || desktop is null)
+        {
+            writer.WriteNullValue();
+
+            return;
+        }
+
+        writer.WriteStringValue($"{station}\\{desktop}");
+    }
+
+    // The name of a window station or a desktop: GetUserObjectInformationW with UOI_NAME.
+    private static unsafe string? NameOf(IntPtr userObject)
+    {
+        const int NameIndex = 2;
+
+        char[] name = new char[256];
+        uint needed;
+
+        fixed (char* start = name)
+        {
+            if (userObject == IntPtr.Zero
+                || !GetUserObjectInformationW(userObject, NameIndex, start, (uint)(name.Length * sizeof(char)), out needed))
+            {
+                return null;
+            }
+        }
+
+        // The length counts bytes, the closing null included.
+        return new string(name, 0, Math.Max(0, ((int)needed / sizeof(char)) - 1));
+    }
+
+    // The SID of the account that the process runs under. The program runs only on Windows.
+    private static void WriteUser(Utf8JsonWriter writer)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            writer.WriteNullValue();
+
+            return;
+        }
+
+        using WindowsIdentity identity = WindowsIdentity.GetCurrent();
+
+        writer.WriteStringValue(identity.User!.Value);
+    }
+
+    // The final path of the file that the handle names, or null when the handle names no file in this process: no
+    // handle of that value, or one of something other than a file.
+    private static unsafe void WriteFinalPath(Utf8JsonWriter writer, long handle)
+    {
+        char[] path = new char[32768];
+        uint length;
+
+        fixed (char* start = path)
+        {
+            length = GetFinalPathNameByHandleW((IntPtr)handle, start, (uint)path.Length, 0);
+        }
+
+        if (length == 0 || length >= path.Length)
+        {
+            writer.WriteNullValue();
+
+            return;
+        }
+
+        writer.WriteStringValue(new string(path, 0, (int)length));
+    }
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static unsafe partial bool QueryInformationJobObject(
+        IntPtr job,
+        int informationClass,
+        void* information,
+        uint length,
+        IntPtr returnLength);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static unsafe partial uint GetFinalPathNameByHandleW(IntPtr file, char* path, uint length, uint flags);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    private static partial IntPtr GetProcessWindowStation();
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    private static partial IntPtr GetThreadDesktop(uint thread);
+
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetCurrentThreadId();
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static unsafe partial bool GetUserObjectInformationW(IntPtr userObject, int index, char* information, uint length, out uint needed);
 
     // The line with its LF in one write, as the worker writes one.
     private static void WriteLine(Stream output, string line)

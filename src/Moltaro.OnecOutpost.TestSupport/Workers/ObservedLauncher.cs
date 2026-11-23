@@ -8,9 +8,10 @@ namespace Moltaro.OnecOutpost.TestSupport.Workers;
 // the COM worker's timeouts on a fake clock; the S9b brief). It reports when the open of the n-th worker started for a
 // base and mode, counted from 1, ended, with what it gave; and when the n-th run on the workers of a base and mode began,
 // counted from 1, with its command line. A run has begun once the wrapped worker's RunAsync returned its task, so that
-// its command line is written or on its way. Every call goes to the wrapped launcher and its workers as it came, and
-// what they give is given back as it is. Start may run on several tasks at once; the reports are completed
-// asynchronously, so that no test goes on inside a call of the agent.
+// its command line is written or on its way. It keeps the processes that the wrapped launcher gave, so that a test
+// whose worker did not open tells a start that gave no process from a process whose open failed. Every call goes to
+// the wrapped launcher and its workers as it came, and what they give is given back as it is. Start may run on several
+// tasks at once; the reports are completed asynchronously, so that no test goes on inside a call of the agent.
 internal sealed partial class ObservedLauncher : IWorkerLauncher
 {
     private readonly IWorkerLauncher _launcher;
@@ -18,7 +19,7 @@ internal sealed partial class ObservedLauncher : IWorkerLauncher
     // Guards every field below it. Nothing is completed under it.
     private readonly Lock _lock = new();
 
-    private readonly Dictionary<(string Base, OutpostModeEnum Mode), int> _starts = [];
+    private readonly Dictionary<(string Base, OutpostModeEnum Mode), List<IWorkerProcess>> _given = [];
 
     private readonly Dictionary<(string Base, OutpostModeEnum Mode), int> _runs = [];
 
@@ -31,17 +32,38 @@ internal sealed partial class ObservedLauncher : IWorkerLauncher
         _launcher = launcher;
     }
 
+    public void LogOn(string baseKey, string account, string password)
+    {
+        _launcher.LogOn(baseKey, account, password);
+    }
+
     public IWorkerProcess Start(string baseKey, OutpostModeEnum mode)
     {
+        IWorkerProcess given = _launcher.Start(baseKey, mode);
         int number;
 
         lock (_lock)
         {
-            number = _starts.GetValueOrDefault((baseKey, mode)) + 1;
-            _starts[(baseKey, mode)] = number;
+            if (!_given.TryGetValue((baseKey, mode), out List<IWorkerProcess>? processes))
+            {
+                processes = [];
+                _given[(baseKey, mode)] = processes;
+            }
+
+            processes.Add(given);
+            number = processes.Count;
         }
 
-        return new ObservedProcess(this, _launcher.Start(baseKey, mode), baseKey, mode, number);
+        return new ObservedProcess(this, given, baseKey, mode, number);
+    }
+
+    // The processes that the wrapped launcher gave for the base and mode, in the order of the starts, as it gave them.
+    public IReadOnlyList<IWorkerProcess> Given(string baseKey, OutpostModeEnum mode)
+    {
+        lock (_lock)
+        {
+            return _given.TryGetValue((baseKey, mode), out List<IWorkerProcess>? processes) ? [.. processes] : [];
+        }
     }
 
     // Completes when the open of the number-th worker started for the base and mode has ended: true when it gave true,
