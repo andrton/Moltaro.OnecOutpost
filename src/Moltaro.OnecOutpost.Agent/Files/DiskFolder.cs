@@ -32,7 +32,7 @@ internal sealed partial class DiskFolder : IAgentFolder
         }
         catch (UnauthorizedAccessException exception)
         {
-            throw Refused(exception);
+            throw AsIOException(exception);
         }
     }
 
@@ -44,7 +44,7 @@ internal sealed partial class DiskFolder : IAgentFolder
         }
         catch (UnauthorizedAccessException exception)
         {
-            throw Refused(exception);
+            throw AsIOException(exception);
         }
     }
 
@@ -59,7 +59,7 @@ internal sealed partial class DiskFolder : IAgentFolder
         }
         catch (UnauthorizedAccessException exception)
         {
-            throw Refused(exception);
+            throw AsIOException(exception);
         }
     }
 
@@ -74,7 +74,7 @@ internal sealed partial class DiskFolder : IAgentFolder
         }
         catch (UnauthorizedAccessException exception)
         {
-            throw Refused(exception);
+            throw AsIOException(exception);
         }
     }
 
@@ -92,7 +92,7 @@ internal sealed partial class DiskFolder : IAgentFolder
         }
         catch (UnauthorizedAccessException exception)
         {
-            throw Refused(exception);
+            throw AsIOException(exception);
         }
 
         // The temporary file is on the disk before it takes the place of the file, so the file is always whole: the
@@ -113,7 +113,7 @@ internal sealed partial class DiskFolder : IAgentFolder
         }
         catch (UnauthorizedAccessException exception)
         {
-            throw Refused(exception);
+            throw AsIOException(exception);
         }
     }
 
@@ -125,12 +125,12 @@ internal sealed partial class DiskFolder : IAgentFolder
         }
         catch (UnauthorizedAccessException exception)
         {
-            throw Refused(exception);
+            throw AsIOException(exception);
         }
     }
 
     // Every failure of the folder is an IOException, as the boundary says.
-    private static IOException Refused(UnauthorizedAccessException exception)
+    private static IOException AsIOException(UnauthorizedAccessException exception)
     {
         return new IOException(exception.Message, exception);
     }
