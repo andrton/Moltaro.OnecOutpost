@@ -59,7 +59,7 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         _launcher = launcher;
         _executor = executor;
         _clock = clock;
-        _firstDelay = policy.RetryDelayMax / 10;
+        _firstDelay = policy.FirstRetryDelay;
     }
 
     // Gives each mode of every base as many slots as it has workers, each with a task of its own, and returns at once;
