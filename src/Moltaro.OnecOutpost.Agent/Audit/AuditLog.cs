@@ -196,7 +196,7 @@ internal sealed class AuditLog : IDisposable
         writer.Time(command.Deadline);
 
         AuditFile file = Append(writer, time);
-        Apply(file, new AuditCommand(command.Id, command.Mode, true, null, null, null, false));
+        Apply(file, AuditCommand.OfReceived(command.Id, command.Mode));
     }
 
     // Records refused with its code: the command, its base and its mode where they are known, none of them for signature
@@ -227,7 +227,7 @@ internal sealed class AuditLog : IDisposable
 
         if (command is Guid refused)
         {
-            Apply(file, new AuditCommand(refused, mode, false, OutpostAgentOutcomeKindEnum.Refused, code, null, false));
+            Apply(file, AuditCommand.OfRefused(refused, mode, code));
         }
     }
 
@@ -247,7 +247,7 @@ internal sealed class AuditLog : IDisposable
         writer.NullableInteger(durationMs);
 
         AuditFile file = Append(writer, time);
-        Apply(file, new AuditCommand(command, null, false, kind, code, durationMs, false));
+        Apply(file, AuditCommand.OfEnded(command, kind, code, durationMs));
     }
 
     // Records confirmed: the server keeps the outcome of the command.
@@ -259,7 +259,7 @@ internal sealed class AuditLog : IDisposable
         writer.Id(command);
 
         AuditFile file = Append(writer, time);
-        Apply(file, new AuditCommand(command, null, false, null, null, null, true));
+        Apply(file, AuditCommand.OfConfirmed(command));
     }
 
     // Records reservation: the bound below which the identity sends its poll numbers (§6.2).
@@ -748,7 +748,7 @@ internal sealed class AuditLog : IDisposable
                     return false;
                 }
 
-                Apply(file, new AuditCommand(received, mode, true, null, null, null, false));
+                Apply(file, AuditCommand.OfReceived(received, mode.Value));
                 break;
 
             case "refused":
@@ -762,8 +762,7 @@ internal sealed class AuditLog : IDisposable
                 // A refusal without an identity, for signature or form, names no command.
                 if (refused is Guid id)
                 {
-                    AuditCommand facts = new(id, refusedMode, false, OutpostAgentOutcomeKindEnum.Refused, refusal, null, false);
-                    Apply(file, facts);
+                    Apply(file, AuditCommand.OfRefused(id, refusedMode, refusal));
                 }
 
                 break;
@@ -777,7 +776,7 @@ internal sealed class AuditLog : IDisposable
                     return false;
                 }
 
-                Apply(file, new AuditCommand(ended, null, false, outcome, code, durationMs, false));
+                Apply(file, AuditCommand.OfEnded(ended, outcome, code, durationMs));
                 break;
 
             case "confirmed":
@@ -786,7 +785,7 @@ internal sealed class AuditLog : IDisposable
                     return false;
                 }
 
-                Apply(file, new AuditCommand(confirmed, null, false, null, null, null, true));
+                Apply(file, AuditCommand.OfConfirmed(confirmed));
                 break;
 
             case "reservation":
