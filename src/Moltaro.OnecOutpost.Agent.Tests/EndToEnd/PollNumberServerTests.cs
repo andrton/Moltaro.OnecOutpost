@@ -17,7 +17,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.EndToEnd;
 // and the agent goes on above it after a tenth of retryDelayMax. A log that was cleared is found by the polls the agent
 // counts from 1, and stops the agent for good, so that nothing it had received runs twice.
 [Trait("Requires", "PostgreSQL")]
-public sealed class PollNumberTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
+public sealed class PollNumberServerTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
     // The second run's clock is a minute behind every poll of the first; within the skew, so its commands run. The node's
     // clock does not move, so the lease of the first run's last poll still runs when the second run's Read is made: the
