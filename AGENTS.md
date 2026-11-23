@@ -61,9 +61,10 @@ in code, tests, samples or documents.
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
 Each project is created by the sprint that first needs it, under the name the plan of the
-first epic fixes. The protocol, the server, the agent, the COM worker, the executor's
-sources, the samples, the test support, the test worker, the measurement program, the test
-projects of these four and the tests that need 1C exist; the others are planned. Only the
+first epic fixes. The protocol, the server, the agent, the COM worker, the console, the
+executor's sources, the samples, the test support, the test worker, the measurement
+program, the test projects of these five and the tests that need 1C exist; the shell and
+its tests are planned. Only the
 server is packed; every other project is not.
 
 | Project | Contents |
