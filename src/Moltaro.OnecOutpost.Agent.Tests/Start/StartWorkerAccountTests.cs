@@ -121,7 +121,7 @@ public sealed class StartWorkerAccountTests
     {
         _folder.Start(_clock).Log.Dispose();
 
-        Assert.Equal([PairedFolder.Programs], _folder.Access.ProgramsAsked);
+        Assert.Equal([PairedFolder.ProgramFolder], _folder.Access.ProgramsAsked);
     }
 
     // Somebody who could replace the code that the agent's account runs would get its secrets.

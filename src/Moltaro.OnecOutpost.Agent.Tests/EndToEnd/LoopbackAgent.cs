@@ -101,7 +101,7 @@ internal sealed class LoopbackAgent
             Access,
             Protection,
             Workers,
-            PairedFolder.Programs,
+            PairedFolder.ProgramFolder,
             TestHost.Executor,
             Handler,
             clock,

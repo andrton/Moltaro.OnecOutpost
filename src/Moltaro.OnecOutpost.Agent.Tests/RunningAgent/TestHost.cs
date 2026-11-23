@@ -43,7 +43,7 @@ internal sealed class TestHost : IAsyncDisposable
             folder.Access,
             folder.Protection,
             workers,
-            PairedFolder.Programs,
+            PairedFolder.ProgramFolder,
             Executor,
             (_, _) => Server,
             clock,

@@ -48,7 +48,7 @@ internal sealed class WindowsAccessLists : IAccessLists
 
     // The accounts that may change the program folder: those of the data folder, and TrustedInstaller, which owns what
     // Windows installs, such as the root of the system's volume.
-    private readonly SecurityIdentifier[] _admittedPrograms;
+    private readonly SecurityIdentifier[] _admittedToProgramFolder;
 
     public WindowsAccessLists(string dataFolder)
     {
@@ -63,7 +63,7 @@ internal sealed class WindowsAccessLists : IAccessLists
             agent.User!,
         ];
 
-        _admittedPrograms = [.. _admitted, TrustedInstaller];
+        _admittedToProgramFolder = [.. _admitted, TrustedInstaller];
     }
 
     public IReadOnlyList<string> Others(string path)
@@ -80,10 +80,10 @@ internal sealed class WindowsAccessLists : IAccessLists
     // folder is judged by the console's check (S10), not here.
     public IReadOnlyList<(string Path, IReadOnlyList<string> Accounts)> Writers(string folder)
     {
-        DirectoryInfo programs = new(Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)));
+        DirectoryInfo programFolder = new(Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)));
         List<DirectoryInfo> parents = [];
 
-        for (DirectoryInfo? parent = programs.Parent; parent is not null; parent = parent.Parent)
+        for (DirectoryInfo? parent = programFolder.Parent; parent is not null; parent = parent.Parent)
         {
             parents.Insert(0, parent);
         }
@@ -95,8 +95,8 @@ internal sealed class WindowsAccessLists : IAccessLists
             Judge(parent, ParentRights, writers);
         }
 
-        Judge(programs, ProgramRights, writers);
-        JudgeContent(programs, writers);
+        Judge(programFolder, ProgramRights, writers);
+        JudgeContent(programFolder, writers);
 
         return writers;
     }
@@ -121,7 +121,7 @@ internal sealed class WindowsAccessLists : IAccessLists
     // applying to it gives such an account one of the rights.
     private void Judge(FileSystemInfo entry, FileSystemRights rights, List<(string Path, IReadOnlyList<string> Accounts)> writers)
     {
-        List<string> accounts = Accounts(entry, _admittedPrograms, given => (given & rights) != 0);
+        List<string> accounts = Accounts(entry, _admittedToProgramFolder, given => (given & rights) != 0);
 
         if (accounts.Count > 0)
         {

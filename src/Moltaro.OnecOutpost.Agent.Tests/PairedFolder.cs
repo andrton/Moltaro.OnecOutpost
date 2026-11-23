@@ -22,7 +22,7 @@ internal sealed class PairedFolder
     public const string Version = "0.1.0-test";
 
     // The program folder of the agent, as its start is given it.
-    public const string Programs = @"C:\Program Files\Moltaro Outpost";
+    public const string ProgramFolder = @"C:\Program Files\Moltaro Outpost";
 
     // Two bases: one on a cluster that may be read and written, and one in a folder that is only read.
     public const string Policy = """
@@ -116,6 +116,6 @@ internal sealed class PairedFolder
 
     public AgentRun Start(TimeProvider clock)
     {
-        return AgentStart.Open(Data.Folders, Access, Protection, Workers, Programs, clock, Version);
+        return AgentStart.Open(Data.Folders, Access, Protection, Workers, ProgramFolder, clock, Version);
     }
 }

@@ -28,7 +28,7 @@ internal static class AgentHost
                 parts.Access,
                 parts.Protection,
                 parts.Workers,
-                parts.Programs,
+                parts.ProgramFolder,
                 parts.Clock,
                 parts.Version);
         }

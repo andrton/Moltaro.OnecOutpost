@@ -65,7 +65,7 @@ public sealed class DiskStartTests : IDisposable
             new DataFolderAccessLists(_data.Path),
             new MachineDpapi(),
             new FakeWorkerLauncher(new MemoryDataFolder()),
-            PairedFolder.Programs,
+            PairedFolder.ProgramFolder,
             _clock,
             PairedFolder.Version);
     }

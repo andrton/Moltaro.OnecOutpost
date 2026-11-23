@@ -73,7 +73,7 @@ public sealed class WorkerLogOnTests : IDisposable
             new FakeAccessLists(),
             new MachineDpapi(),
             launcher,
-            PairedFolder.Programs,
+            PairedFolder.ProgramFolder,
             TestHost.Executor,
             (_, _) => server,
             clock,
