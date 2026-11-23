@@ -3994,9 +3994,10 @@ request and merge under PQ1:
       request over HTTP to the node with its header lines, less those of one hop, and the
       exact bytes of its body. It writes back what the agent reads of an answer: the
       status, `Content-Type`, `Outpost-Signature` and body. Every answer carries
-      `Connection: close`, so each request comes on a tunnel of its own. On a reused
-      connection that closes unanswered, .NET can send a request again by itself, and a
-      dropped request would then reach a node after all. An agent that closes its
+      `Connection: close`, so each request comes on a tunnel of its own, which keeps the
+      relay simple. A dropped request never reaches a node later: .NET sends a request
+      again by itself only while its body has not gone, and the proxy reads every body
+      whole before a rule takes it (the refactorer, S8). An agent that closes its
       connection while its request is at the node ends that request there too, as the
       byte pipe of S6c did.
     - **Choosing a request.** Each of the three methods sets a rule at once and gives a
