@@ -4,6 +4,9 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Lab;
 // outpost-write that Build-TestBase.ps1 creates.
 internal sealed class LabTestBase
 {
+    // The key of the base in the tests' policies and commands.
+    public const string Key = "test";
+
     // The address of the cluster, such as localhost:1541.
     public required string Server { get; init; }
 

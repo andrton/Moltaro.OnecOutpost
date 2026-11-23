@@ -11,6 +11,14 @@ internal static class Repository
     // The executor, built from its sources in src/Executor.
     public static string ExecutorPath => Path.Combine(SourceDirectory, "Executor", "OutpostExecutor.epf");
 
+    // Fails the test when the executor is missing, which only the Designer builds.
+    public static void AssertExecutorBuilt()
+    {
+        Assert.True(
+            File.Exists(Repository.ExecutorPath),
+            $"{Repository.ExecutorPath} is missing: it is built from the sources in src/Executor with the Designer.");
+    }
+
     public static string LabFilePath => Path.Combine(SourceDirectory, "OneC.TestConfiguration", "lab.local.json");
 
     // Guide G2, whose scripts a test reads from its Markdown and runs on the test base.

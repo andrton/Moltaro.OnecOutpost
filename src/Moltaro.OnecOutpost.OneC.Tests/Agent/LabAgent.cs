@@ -42,10 +42,6 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 [SupportedOSPlatform("windows")]
 internal sealed class LabAgent : IDisposable
 {
-    public const string TestBaseKey = "test";
-
-    public const string TypicalBaseKey = "typical";
-
     public const string Version = "0.1.0-lab";
 
     public static readonly TimeSpan RunLimit = TimeSpan.FromMinutes(1);
@@ -102,20 +98,20 @@ internal sealed class LabAgent : IDisposable
     {
         LabTestBase testBase = LabFile.Read().TestBase;
 
-        return Create(TestBaseKey, testBase.Server, testBase.Database, testBase.Read, testBase.Write, workerAccount: null);
+        return Create(LabTestBase.Key, testBase.Server, testBase.Database, testBase.Read, testBase.Write, workerAccount: null);
     }
 
     // The same, its Writes without safe mode under the worker account.
     public static LabAgent WithoutSafeMode(LabTestBase testBase, LabAccount workerAccount)
     {
-        return Create(TestBaseKey, testBase.Server, testBase.Database, testBase.Read, testBase.Write, workerAccount);
+        return Create(LabTestBase.Key, testBase.Server, testBase.Database, testBase.Read, testBase.Write, workerAccount);
     }
 
     // A data folder with the files of the agent of a copy of a typical base, as the base typical, its Writes without
     // safe mode under the worker account.
     public static LabAgent WithoutSafeMode(LabTypicalBase typicalBase, LabAccount workerAccount)
     {
-        return Create(TypicalBaseKey, typicalBase.Server, typicalBase.Database, typicalBase.Read, typicalBase.Write, workerAccount);
+        return Create(LabTypicalBase.Key, typicalBase.Server, typicalBase.Database, typicalBase.Read, typicalBase.Write, workerAccount);
     }
 
     // The worker account of lab.local.json, which the owner adds by hand.
@@ -184,9 +180,7 @@ internal sealed class LabAgent : IDisposable
         LabAccount write,
         LabAccount? workerAccount)
     {
-        Assert.True(
-            File.Exists(Repository.ExecutorPath),
-            $"{Repository.ExecutorPath} is missing: it is built from the sources in src/Executor with the Designer.");
+        Repository.AssertExecutorBuilt();
 
         LabJob.EnsureJoined();
 

@@ -11,20 +11,20 @@ internal static class LabWorkers
     {
         LabTestBase testBase = LabFile.Read().TestBase;
 
-        return StartAsync("test", "read", testBase.Server, testBase.Database, testBase.Read, safeMode: true);
+        return StartAsync(LabTestBase.Key, "read", testBase.Server, testBase.Database, testBase.Read, safeMode: true);
     }
 
     public static Task<WorkerProcess> TestBaseWriteAsync(bool safeMode = true)
     {
         LabTestBase testBase = LabFile.Read().TestBase;
 
-        return StartAsync("test", "write", testBase.Server, testBase.Database, testBase.Write, safeMode);
+        return StartAsync(LabTestBase.Key, "write", testBase.Server, testBase.Database, testBase.Write, safeMode);
     }
 
     public static Task<WorkerProcess> TypicalBaseReadAsync(LabTypicalBase typicalBase)
     {
         return StartAsync(
-            "typical",
+            LabTypicalBase.Key,
             "read",
             typicalBase.Server,
             typicalBase.Database,
@@ -35,7 +35,7 @@ internal static class LabWorkers
     public static Task<WorkerProcess> TypicalBaseWriteAsync(LabTypicalBase typicalBase)
     {
         return StartAsync(
-            "typical",
+            LabTypicalBase.Key,
             "write",
             typicalBase.Server,
             typicalBase.Database,
@@ -57,9 +57,7 @@ internal static class LabWorkers
         LabAccount account,
         bool safeMode)
     {
-        Assert.True(
-            File.Exists(Repository.ExecutorPath),
-            $"{Repository.ExecutorPath} is missing: it is built from the sources in src/Executor with the Designer.");
+        Repository.AssertExecutorBuilt();
 
         WorkerProcess worker = WorkerProcess.Start(baseKey, mode);
 
