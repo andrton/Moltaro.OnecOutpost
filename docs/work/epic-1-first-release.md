@@ -3094,7 +3094,7 @@ documents step.
     internal sealed class WorkerPool : IAsyncDisposable
     {
         public WorkerPool(AgentPolicy policy, AgentSecrets secrets, IWorkerLauncher launcher, string executor, TimeProvider clock);
-        public void Open(CancellationToken cancellationToken);
+        public void Open();
         public int Free(string baseKey, OutpostModeEnum mode);
         public Task<WorkerRun> RunAsync(OutpostCommandMessage command, CancellationToken cancellationToken);
         public void Release(Guid command);
@@ -4341,8 +4341,9 @@ the contract of the executor and the COM worker approved.
         after one whose open did not, twice the delay before it, from a tenth up to
         `retryDelayMax` (3, 6, 12, 24, 30, 30 … seconds by default). So a worker that opens
         and then fails every command comes back after a tenth each time.
-      - Lifetimes: the pool holds one `CancellationTokenSource` linked to `Open`'s token,
-        which its slots pass to their delays and opens. `DisposeAsync` cancels it first,
+      - Lifetimes: the pool holds one `CancellationTokenSource` of its own, which only
+        `DisposeAsync` cancels and which its slots pass to their delays and opens; `Open`
+        takes no token (the coordinator, 23 November 2026, from S9b's code review, round 2). `DisposeAsync` cancels it first,
         then awaits every slot, and disposes nothing itself. On it a slot kills its current
         worker, waits for its open and for the run that holds it, if any, disposes it and
         ends; a worker it starts after the cancellation it kills and disposes at once. The
@@ -4372,7 +4373,7 @@ the contract of the executor and the COM worker approved.
       beside its own file, each holding `WorkerFile` with the files of its build, and
       `ComConnector`.
     - **The start.** `Process.Start` of the program with `ArgumentList` the base key and
-      `read` or `write`, the three standard streams redirected, `UseShellExecute` false and
+      `read` or `write`, standard input and output redirected and standard error not, `UseShellExecute` false and
       `CreateNoWindow` true, then `WorkerJob.Add`. The connection with its password travels
       only in the first input line, never on the command line or in the environment. A
       program that does not start, and a process the job does not take, killed at once,
@@ -4390,8 +4391,8 @@ the contract of the executor and the COM worker approved.
         line, a longer line and any other line kill the process and give null.
       - A failed write gives false or null; cancellation kills and throws
         `OperationCanceledException`. `Kill` is `Process.Kill`, an ended process ignored.
-      - The standard error is read and dropped, so a worker never waits on a full pipe.
-        *Limitation:* the agent keeps no diagnostics of a worker; the console's `check`
+      - The standard error is not redirected: the worker inherits the agent's, which a
+        service has none of. *Limitation:* the agent keeps no diagnostics of a worker; the console's `check`
         shows why one does not open (S10).
     - **`WorkerJob`**: `CreateJobObjectW` with null attributes, so its handle is not
       inheritable, then `SetInformationJobObject` with `JobObjectExtendedLimitInformation`
@@ -4408,8 +4409,7 @@ the contract of the executor and the COM worker approved.
       solution, `net10.0`, `IsPackable` false, nothing outside .NET, written by the test
       author, referenced by `Moltaro.OnecOutpost.Agent.Tests` as the lab project references
       the worker. It speaks S9's lines, command line and exit codes, each outcome as the
-      executor's line with its true size. A `location` of `no-session` gets
-      `{"ready":false}` and exit code 2, one of `line <text>` gets `<text>` as its ready
+      executor's line with its true size. A `location` of `line <text>` gets `<text>` as its ready
       line, any other `{"ready":true}`. Scripts: `wait` writes nothing until the input ends
       or a kill; `exit <n>` ends with `n` and no outcome; `line <text>` writes `<text>`;
       `pid`, `path`, `arguments` and `connection` succeed with its process identity, its
