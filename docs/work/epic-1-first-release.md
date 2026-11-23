@@ -756,7 +756,9 @@ Text marked *(S6)* holds as a draft of the contract, until the owner overturns i
 changes "Carried over from S2" that S6 builds, and the list "What S6 changes in the public
 contract", both in [S6's brief](#s6--the-agent). Text marked *(S9b)* holds the same way:
 the list "What S9b changes in the public contract, as a draft for the owner" in
-[S9b's brief](#s9b--the-agent-runs-the-com-workers).
+[S9b's brief](#s9b--the-agent-runs-the-com-workers). Text marked *(S9c)* holds the same way:
+the list "What S9c changes in the public contract, as a draft for the owner" in
+[S9c's brief](#s9c--the-account-of-the-workers-without-safe-mode).
 
 - **The data folder admits nobody else.** The console's `install` creates it with
   inheritance off:
@@ -769,8 +771,28 @@ the list "What S9b changes in the public contract, as a draft for the owner" in
   access lists of the folder and of every file it reads, since a file moved into the
   folder keeps its own. If one of them admits anyone else, it records `started` with an
   error and stops.
+- *(S9c)* **The agent refuses a program folder that others may change**, since an account
+  that could replace the code the agent's account runs, its own program, the worker or the
+  executor, would get its secrets. When it starts, it checks the access lists of the folder
+  of its program, of everything in it, and of the folders above it up to the volume's
+  root, as "The program folder" in S9c's brief says. If anyone but Administrators, SYSTEM,
+  `NT SERVICE\TrustedInstaller` and the agent's account could change them, it records
+  `started` with an error that names the entry and the accounts, and stops. The console's
+  `install` puts the program under `%ProgramFiles%` with inheritance off, full control for
+  Administrators and SYSTEM, read and run for Users, and Administrators owning every entry
+  it writes. The folder of the COM connector is judged by the same rule by the console's
+  `check`, not by the agent.
 - **The agent's account** is the virtual service account `NT SERVICE\MoltaroOnecOutpost`,
-  which needs no password.
+  which needs no password. *(S9c)* The console's `install` grants it "Replace a process
+  level token" and "Adjust memory quotas for a process", which it needs to start a worker
+  under a worker account; they take effect from its next start.
+- *(S9c)* **A worker account** runs every COM worker of a base whose `write` has
+  `safeMode: false`, Reads included. It is a local user outside Administrators, with no
+  privilege beyond those of Users, and "Log on as a batch job", which the console's
+  `install` grants. The agent logs it on at its start, before any worker starts, and stops
+  with an error when it cannot. Its profile is not loaded. A script without safe mode does
+  what that account can, can leave a process outside the job object through Task Scheduler
+  or WMI, and can read and forge what the other workers of its base do.
 - *(S6)* **The agent program** takes one argument, `service`, and runs only as the
   Windows service. It exits with 0 when stopped; 1 when it stops on its own, recorded in
   the audit log when the log can be written; 2 when the log was not opened, as for a
@@ -784,7 +806,7 @@ the list "What S9b changes in the public contract, as a draft for the owner" in
 | `policy.json` | The administrator | Yes | The local policy, below |
 | `audit\YYYY-MM-DD.jsonl` | The agent | Yes | The audit log, one file per UTC day, below |
 | `agent.json` | The console, when it pairs | No | The server's address, the agent's identity, the pinned server key, and the poll timeout and lease grace of the pairing answer |
-| `secrets.dat` | The console | No | The agent's private key and the 1C passwords, encrypted with DPAPI for the machine |
+| `secrets.dat` | The console | No | The agent's private key and the 1C passwords, *(S9c)* and the password of the worker account of each base that names one, encrypted with DPAPI for the machine |
 | `outcomes\` | The agent | No | The outbox: outcomes not yet confirmed by the server, one file per command |
 
 #### `policy.json`
@@ -801,7 +823,7 @@ the list "What S9b changes in the public contract, as a draft for the owner" in
       "server": "srv-1c:1541",
       "database": "accounting",
       "read": { "account": "outpost-read", "workers": 1, "runLimit": "00:10:00" },
-      "write": { "account": "outpost-write", "workers": 1, "runLimit": "00:10:00", "safeMode": false }
+      "write": { "account": "outpost-write", "workers": 1, "runLimit": "00:10:00", "safeMode": false, "workerAccount": "outpost-worker" }
     },
     {
       "key": "warehouse-file",
@@ -826,7 +848,8 @@ the list "What S9b changes in the public contract, as a draft for the owner" in
 | `write` | Present only when the base may be written |
 | `account` | The 1C account of the mode; its password is a secret that the console writes |
 | `workers` | 1 to 8; 1 when absent |
-| `safeMode` | In `write` only: whether the Writes of the base run in the 1C safe mode; `true` when absent. With `false`, the COM workers of the base run under a Windows account of their own (D12). *(S9b)* Until S9c, the agent starts its COM workers under its own account, so it serves a base with `false` for Read only: it starts no Write worker for it, declares its `write` as `null` in its polls, and refuses a Write that reaches it with `not-served`. In `read` it is an unknown member: a Read always runs in safe mode |
+| `safeMode` | In `write` only: whether the Writes of the base run in the 1C safe mode; `true` when absent. With `false`, the COM workers of the base run under a Windows account of their own (D12), *(S9c)* which `workerAccount` names. A script without safe mode does what that account can, can leave a process outside the job object through Task Scheduler or WMI, and can read and forge what the other workers of its base do. In `read` it is an unknown member: a Read always runs in safe mode |
+| `workerAccount` | *(S9c)* In `write` only: the local Windows account under which every COM worker of the base runs, Reads included; its password is a secret that the console writes. Required when `safeMode` is false, refused when it is true or absent. 1 to 20 characters, none of `" / \ [ ] : ; \| = , + * ? < > @` or a control character, and not only periods and spaces, so never a domain account or a UPN; unique across bases, ignoring case, so that the scripts of one base cannot reach the workers of another. In `read` it is an unknown member |
 | `runLimit` | A .NET `TimeSpan` in its constant form `[d.]hh:mm:ss`, from 1 second to 1 day (`1.00:00:00`); 10 minutes when absent. *(S6)* It is also the deadline for a worker of the mode to open its session: a worker that has not opened by then is ended and never runs a command |
 
 - **An invalid file serves nothing.** An unknown member, a member given twice, a wrong
@@ -837,7 +860,8 @@ the list "What S9b changes in the public contract, as a draft for the owner" in
   nothing and records why in the audit log. *(S6)* It records `started` with an error and
   `policy` with `valid` false, and stops; nothing is polled until a start with a valid
   policy, and the outbox waits on the disk meanwhile. A mode that the policy serves without
-  its password in `secrets.dat` stops the start too.
+  its password in `secrets.dat` stops the start too, *(S9c)* as does a `workerAccount`
+  without its password there.
 - **The error says clearly where and what** (Q1): the path of the member, such as
   `bases[1].read.workers`, what is wrong with it, and what is expected there. For example:
   `bases[0].server: the value is empty; expected the 1C cluster address such as

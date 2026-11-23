@@ -4,10 +4,11 @@ For the developer of an application that calls `ReadAsync` and `WriteAsync` of t
 to write the 1C script that a command runs, what it receives, what it may return, and what each outcome tells you.
 
 **Status:** in this version the agent starts its COM workers, so a command from `ReadAsync` or `WriteAsync` runs in
-the base, except a Write of a base whose Writes run without safe mode, as
+the base, a Write of a base whose Writes run without safe mode included, as
 [What a command is](#what-a-command-is) says. Every script in this guide is run from this file by a test on the lab
 machine, through the COM worker, against the repository's test base on 1C:Enterprise 8.3.17.1851 in the
-compatibility mode 8.2.13. These tests passed on the lab on 23 November 2026.
+compatibility mode 8.2.13. These tests passed on the lab on 23 November 2026. The lab tests of Writes without safe
+mode under a worker account wait for the lab run.
 
 ## Before you start
 
@@ -39,11 +40,16 @@ but running your script.
   The script can still do everything the account's rights allow with the data. Only the administrator of the agent
   machine can turn safe mode off, and only for the Writes of a base.
 
-**Not in this version: Writes without safe mode.** The agent does not serve the Writes of a base whose local policy
-turns safe mode off (`"safeMode": false`). It starts no Write worker for that base, so the server refuses such a
-Write with `mode-closed`, and an agent that receives one all the same refuses it with `not-served`. The Reads of that
-base are served as usual. The reason: the agent would run those Writes under its own service account, which can read
-the agent's secrets. Running them under a Windows account of their own is planned.
+**Writes without safe mode.** When the local policy of a base turns safe mode off for its Writes
+(`"safeMode": false`), it also names a local Windows account of that base alone (`"workerAccount"`), and every COM
+worker of the base runs under it, those of its Reads included. A Write of that base is not limited by safe mode: it
+can do on the agent machine what that account can do in Windows, and nothing more. That account can read neither the
+agent's secrets nor its audit log. The Reads of the base still run in safe mode. Two limitations remain:
+
+- such a script can start a process outside the job object of the agent, which then does not end with the agent,
+  through a service that the account may use, such as Task Scheduler or WMI, so the rights the administrator gives the account are the boundary;
+- the workers of one base run under one account, so such a script can read the commands of the other workers of its
+  base, their 1C passwords included, and forge what they report.
 
 ## The contract of a script
 
@@ -706,8 +712,8 @@ Each code below is a constant of `OutpostCodes`, which `OutpostOutcome.Code` hol
 | `lost` | Failed | A Read whose agent or worker stopped while it ran, whose agent stayed away, or whose agent was revoked | Send it again |
 | `agent-stopped` | Unknown | A Write whose agent or worker stopped while it ran | Find out what it did |
 | `disconnected` | Unknown | A Write whose agent stayed away longer than its run limit | Find out what it did |
-| `not-served` | Refused | The local policy of the agent does not serve the base or the mode, or, in this version, the command is a Write of a base whose Writes run without safe mode | Ask the administrator |
-| `mode-closed` | Refused | The agent that holds the base does not open the mode, such as Write for a base that is only read or, in this version, whose Writes run without safe mode | Ask the administrator |
+| `not-served` | Refused | The local policy of the agent does not serve the base or the mode | Ask the administrator |
+| `mode-closed` | Refused | The agent that holds the base does not open the mode, such as Write for a base that is only read | Ask the administrator |
 | `unknown-base` | Refused | No agent holds the base key | Check the key, and that its agent is paired and polls |
 | `caller-key-conflict` | Refused | The caller key names another command of the base, with another mode, script or parameters | Use a new key for new work |
 | `expired`, `clock-skew` | Refused | By the agent's clock the command came too late, or from too far ahead | Send it again; check the clocks of the machines |

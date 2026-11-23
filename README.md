@@ -90,14 +90,37 @@ so it ends with the agent, however the agent ends. A worker whose script runs pa
 limit of its mode is ended: the Read fails and the Write is Unknown, both with
 `run-limit`. A worker that ends or does not open its session is started again after a
 delay, which grows while its session does not open, up to `retryDelayMax`. This is tested
-on Windows with a test program in place of the worker. Until S9c, a base whose policy turns
-safe mode off for its Writes is served for Read only: the agent starts no Write worker for
-it, and a Write to it is Refused, since the agent would run it under its own account,
-which can read the agent's secrets. The tests that run a Read and a Write through the
-agent and the worker against the repository's test base, and every script of
-[Writing scripts](docs/guides/scripts.md), passed on the lab machine with
+on Windows with a test program in place of the worker. The tests that run a Read and a
+Write through the agent and the worker against the repository's test base, and every
+script of [Writing scripts](docs/guides/scripts.md), passed on the lab machine with
 1C:Enterprise 8.3.17.1851 on 23 November 2026, the server being the test's own; a Read and
 a Write from a real server on another machine come with the console and the shell.
+
+A base whose policy turns safe mode off for its Writes is served for Write too. All its
+COM workers, those of its Reads included, run under a local Windows account of its own,
+which `workerAccount` of its `write` in `policy.json` names and whose password is in
+`secrets.dat`, so that a script without safe mode can read neither the agent's secrets nor
+its audit log. Each base has an account of its own. At a start the agent logs each such
+account on before any worker starts, and stops when the account cannot log on, when it is
+an administrator or holds a privilege beyond an ordinary user's, or when the agent's account
+lacks the rights it needs to start a process under another account. At a start the agent
+also checks the access lists of its program folder, everything in it and the folders
+above it, and stops when anyone but Administrators, SYSTEM, TrustedInstaller and its own
+account could change the code that it and its workers run. This is tested on every
+platform with a fake in place of the workers, and on Windows against the access lists and
+an account that does not exist. Its tests on the lab machine, under a real worker account
+against the test base and a copy of a typical base, wait for the lab run. The console's
+`install` will grant the agent's account and each worker account their rights, and
+prepare the program folder. Limitations:
+
+- the folder of the COM connector is not checked by the agent; the console's `check` will
+  judge it by the rule of the program folder;
+- a script without safe mode can start a process outside the job object through a
+  service that its account may use, such as Task Scheduler or WMI, so the rights of the
+  worker account are the boundary;
+- the workers of one base run under one account, so a script without safe mode can read
+  the commands of the other workers of its base, their 1C passwords included, and forge
+  what they report.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from
