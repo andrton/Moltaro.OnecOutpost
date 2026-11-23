@@ -17,10 +17,6 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Nodes;
 [Trait("Requires", "PostgreSQL")]
 public sealed class LostMessageTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    // A tenth of the default retryDelayMax of policy.json: the agent's first delay after a lost answer, to a poll or to
-    // an outcome (§9).
-    private static readonly TimeSpan FirstDelay = TimeSpan.FromSeconds(3);
-
     private static readonly TimeSpan Millisecond = TimeSpan.FromMilliseconds(1);
 
     // The proxy drops the answer of the first poll, on the first node, which handed out the Write of a call on the
@@ -46,8 +42,8 @@ public sealed class LostMessageTests(PostgreSqlFixture postgres) : IClassFixture
             cancellationToken);
         Guid id = Assert.Single(CommandsOf(agent, await dropped)).Id;
         proxy.Node = nodes.Second;
-        await nodes.Second.WaitForTimerAsync(start + FirstDelay, cancellationToken);
-        nodes.Clock.Advance(FirstDelay);
+        await nodes.Second.WaitForTimerAsync(start + TestTimes.FirstDelay, cancellationToken);
+        nodes.Clock.Advance(TestTimes.FirstDelay);
 
         OutpostOutcome outcome = await call;
 
@@ -84,9 +80,9 @@ public sealed class LostMessageTests(PostgreSqlFixture postgres) : IClassFixture
         HeldRequest older = await firstHeld;
         await nodes.First.WaitForTimerAsync(start + agentWait, cancellationToken);
         nodes.Clock.Advance(agentWait);
-        await nodes.First.WaitForTimerAsync(start + agentWait + FirstDelay, cancellationToken);
-        nodes.Clock.Advance(FirstDelay);
-        await nodes.First.WaitForTimerAsync(start + agentWait + FirstDelay + pollTimeout, cancellationToken);
+        await nodes.First.WaitForTimerAsync(start + agentWait + TestTimes.FirstDelay, cancellationToken);
+        nodes.Clock.Advance(TestTimes.FirstDelay);
+        await nodes.First.WaitForTimerAsync(start + agentWait + TestTimes.FirstDelay + pollTimeout, cancellationToken);
         Task<HeldRequest> nextHeld = proxy.HoldNextAsync(IsPoll, cancellationToken);
         nodes.Clock.Advance(pollTimeout);
         HeldRequest next = await nextHeld;
@@ -140,8 +136,8 @@ public sealed class LostMessageTests(PostgreSqlFixture postgres) : IClassFixture
         Guid id = outcome.CommandId!.Value;
         Assert.Equal(200, (await dropped).Status);
         proxy.Node = nodes.Second;
-        await nodes.Second.WaitForTimerAsync(start + FirstDelay, cancellationToken);
-        nodes.Clock.Advance(FirstDelay);
+        await nodes.Second.WaitForTimerAsync(start + TestTimes.FirstDelay, cancellationToken);
+        nodes.Clock.Advance(TestTimes.FirstDelay);
         await agent.Data.WaitForAsync(Operations.Is($"confirmed {id}"));
 
         OutpostOutcome repeat = await TestCalls.CallAsync(nodes.Second.Server, "write", "invoice-17", cancellationToken);
@@ -201,8 +197,8 @@ public sealed class LostMessageTests(PostgreSqlFixture postgres) : IClassFixture
         proxy.Node = nodes.Second;
         Task<HeldRequest> nextHeld = proxy.HoldNextAsync(PollListing(command.Id), cancellationToken);
         Task<HeldRequest> outcomeHeld = proxy.HoldNextAsync(IsOutcome, cancellationToken);
-        await nodes.Second.WaitForTimerAsync(start + FirstDelay, cancellationToken);
-        nodes.Clock.Advance(FirstDelay);
+        await nodes.Second.WaitForTimerAsync(start + TestTimes.FirstDelay, cancellationToken);
+        nodes.Clock.Advance(TestTimes.FirstDelay);
         HeldRequest next = await nextHeld;
         HeldRequest outcome = await outcomeHeld;
 

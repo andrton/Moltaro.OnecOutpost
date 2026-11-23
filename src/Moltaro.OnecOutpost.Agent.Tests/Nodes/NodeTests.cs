@@ -18,9 +18,6 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Nodes;
 [Trait("Requires", "PostgreSQL")]
 public sealed class NodeTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    // A tenth of the default retryDelayMax of policy.json: the agent's first delay after a lost answer (§9).
-    private static readonly TimeSpan FirstDelay = TimeSpan.FromSeconds(3);
-
     // The clock does not move, so the call returns because each node woke the other (principle 6): the call's set of the
     // agent's key the poll held on the other node, and that node's set of the command's key, once it kept the outcome,
     // the call.
@@ -162,11 +159,11 @@ public sealed class NodeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         CancellationToken cancellationToken)
     {
         using CancellationTokenSource stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        Task delayed = clock.WaitForTimerAsync(clock.GetUtcNow() + FirstDelay, stop.Token);
+        Task delayed = clock.WaitForTimerAsync(clock.GetUtcNow() + TestTimes.FirstDelay, stop.Token);
 
         if (await Task.WhenAny(next, delayed) == delayed)
         {
-            clock.Advance(FirstDelay);
+            clock.Advance(TestTimes.FirstDelay);
         }
 
         stop.Cancel();
