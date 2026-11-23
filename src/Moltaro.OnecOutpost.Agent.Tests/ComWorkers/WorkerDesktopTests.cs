@@ -34,7 +34,7 @@ public sealed class WorkerDesktopTests : IDisposable
 
     // The worker account is never granted WinSta0 or its Default desktop: the station is the agent's own
     // non-interactive one, which Windows names Service-0x{high}-{low}$ after the agent's logon session.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_desktop_of_a_base_is_on_the_agents_own_non_interactive_station_never_WinSta0()
     {
         using SafeAccessTokenHandle token = TestTokens.Own();
@@ -46,7 +46,7 @@ public sealed class WorkerDesktopTests : IDisposable
     }
 
     // The launcher owns the token and the desktop that Use gets, and closes them when it is disposed.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_of_a_base_given_a_desktop_that_admits_its_token_runs_on_that_desktop()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -68,7 +68,7 @@ public sealed class WorkerDesktopTests : IDisposable
     // is a restricted version of that token that holds its logon SID and Administrators for deny only, so that the
     // desktop admits nothing of it, whether the tests run elevated or not: the worker starts, ends before its first
     // line, and its open gives false.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_of_a_base_given_a_desktop_that_does_not_admit_its_token_does_not_open()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

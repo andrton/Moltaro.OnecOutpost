@@ -79,8 +79,9 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     // The agent's own primary token.
     private readonly SafeAccessTokenHandle _agentToken;
 
-    // The token of each logged-on base, by base key. Written only by LogOn, before any Start reads it.
-    private readonly Dictionary<string, SafeAccessTokenHandle> _tokens = new(StringComparer.Ordinal);
+    // The token and the desktop of each logged-on base, by base key. Written only by Use, before any Start reads it.
+    private readonly Dictionary<string, (SafeAccessTokenHandle Token, WorkerDesktop Desktop)> _workers =
+        new(StringComparer.Ordinal);
 
     // The two programs of the worker, the ProgID of the connector whose registration chooses between them, and the job
     // that every started process joins. It opens the agent's own primary token; a failure is a Win32Exception.
@@ -113,9 +114,11 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     // 3. the agent's token holds SeAssignPrimaryTokenPrivilege and SeIncreaseQuotaPrivilege, enabled or not, since
     //    CreateProcessAsUserW enables them: the agent's account lacks the right "Replace a process level token" or
     //    "Adjust memory quotas for a process"; install the agent with the console. When the agent's privileges cannot
-    //    be read: the privileges of the agent's account cannot be read: {the Win32 message}.
-    // The logon comes first, so that a missing account gives 1326 whatever the agent holds. The token lives as long as
-    // the launcher; one logon per start of the agent, so no retries lock the account out.
+    //    be read: the privileges of the agent's account cannot be read: {the Win32 message};
+    // 4. WorkerDesktop.Make for the token, then Use with both (the S9c brief, "The desktop of a worker"): the worker
+    //    account {account} of the base {key} cannot get a desktop: {the Win32 message}.
+    // The logon comes first, so that a missing account gives 1326 whatever the agent holds. The token and the desktop
+    // live as long as the launcher; one logon per start of the agent, so no retries lock the account out.
     public void LogOn(string baseKey, string account, string password)
     {
         SafeAccessTokenHandle token = LogOnUser(baseKey, account, password);
@@ -126,7 +129,9 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
             try
             {
-                ordinary = WorkerAccountRule.IsOrdinary(Groups(token), Privileges(token));
+                List<string> groups = [.. Groups(token).Select(group => group.Sid.Value)];
+
+                ordinary = WorkerAccountRule.IsOrdinary(groups, Privileges(token));
             }
             catch (Win32Exception exception)
             {
@@ -158,7 +163,27 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
                     "the agent's account lacks the right \"Replace a process level token\" or \"Adjust memory quotas for a process\"; install the agent with the console");
             }
 
-            _tokens.Add(baseKey, token);
+            WorkerDesktop desktop;
+
+            try
+            {
+                desktop = WorkerDesktop.Make(baseKey, token);
+            }
+            catch (Win32Exception exception)
+            {
+                throw new AgentStopException(
+                    $"the worker account {account} of the base {baseKey} cannot get a desktop: {exception.Message}");
+            }
+
+            try
+            {
+                Use(baseKey, token, desktop);
+            }
+            catch
+            {
+                desktop.Dispose();
+                throw;
+            }
         }
         catch
         {
@@ -171,17 +196,19 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     // desktop.Name. The launcher owns both from then on and closes them when disposed. LogOn calls it after its checks,
     // with the desktop that WorkerDesktop.Make gives for the token; a test calls it with its own token and a desktop of
     // its own. Like LogOn, it runs before any Start.
+    // A base given twice is an ArgumentException, and then the caller keeps both.
     public void Use(string baseKey, SafeAccessTokenHandle token, WorkerDesktop desktop)
     {
-        throw new NotSupportedException();
+        _workers.Add(baseKey, (token, desktop));
     }
 
     // Closes the tokens of the logged-on bases, their desktops and the agent's own token.
     public void Dispose()
     {
-        foreach (SafeAccessTokenHandle token in _tokens.Values)
+        foreach ((SafeAccessTokenHandle token, WorkerDesktop desktop) in _workers.Values)
         {
             token.Dispose();
+            desktop.Dispose();
         }
 
         _agentToken.Dispose();
@@ -189,18 +216,19 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
     // Reads the registry at each start (concept §5, O8): the x64 program when the connector is registered for 64 bits,
     // otherwise the x86 program when it is for 32 bits, otherwise a NoProcess. Two anonymous pipes, then
-    // CreateProcessAsUserW with the token of the base's worker account when it was logged on, else the agent's own:
-    // the program's full path, the command line "{program}" {base key} {read|write}, suspended and without a window,
-    // the environment of the token's account, CreateEnvironmentBlock(token, false), never the agent's, the program's
-    // folder as its working folder, lpDesktop "", which connects it to the window station of its logon session, the
-    // client ends of the pipes as its standard input and output, a null standard error, and a list of the handles it
-    // inherits that names those two ends alone. Then the agent's copies of the client ends close, the process joins the
-    // job and its thread resumes, so that a worker is in the job before any of its code runs; the job lets nothing
-    // break away from it. The connection with its password travels only in the first input line, never on the command
-    // line or in the environment. Any failure, a created process terminated first, gives a NoProcess: Start throws
-    // nothing but the ObjectDisposedException of a job that was disposed, which only a test does. Limitations: the profile of a worker account is not loaded, since only an administrator or LocalSystem
-    // may load one, so its HKCU is the default hive and its TEMP the system's; and a worker that does not start keeps
-    // no diagnostics.
+    // CreateProcessAsUserW with the token that Use gave for the base, else the agent's own: the program's full path, the
+    // command line "{program}" {base key} {read|write}, suspended and without a window, the environment of the token's
+    // account, CreateEnvironmentBlock(token, false), never the agent's, the program's folder as its working folder,
+    // lpDesktop the Name of the base's desktop, or "" under the agent's own token, which connects the worker to the
+    // window station of the agent's logon session, the client ends of the pipes as its standard input and output, a
+    // null standard error, and a list of the handles it inherits that names those two ends alone. Then the agent's
+    // copies of the client ends close, the process joins the job and its thread resumes, so that a worker is in the job
+    // before any of its code runs; the job lets nothing break away from it. The connection with its password travels
+    // only in the first input line, never on the command line or in the environment. Any failure, a created process
+    // terminated first, gives a NoProcess: Start throws nothing but the ObjectDisposedException of a job that was
+    // disposed, which only a test does. Limitations: the profile of a worker account is not loaded, since only an
+    // administrator or LocalSystem may load one, so its HKCU is the default hive and its TEMP the system's; and a worker
+    // that does not start keeps no diagnostics.
     public IWorkerProcess Start(string baseKey, OutpostModeEnum mode)
     {
         string? program = ProgramOfConnector();
@@ -210,7 +238,15 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             return new NoProcess();
         }
 
-        SafeAccessTokenHandle token = _tokens.GetValueOrDefault(baseKey) ?? _agentToken;
+        SafeAccessTokenHandle token = _agentToken;
+        string desktop = "";
+
+        if (_workers.TryGetValue(baseKey, out (SafeAccessTokenHandle Token, WorkerDesktop Desktop) worker))
+        {
+            token = worker.Token;
+            desktop = worker.Desktop.Name;
+        }
+
         string commandLine = $"\"{program}\" {baseKey} {(mode == OutpostModeEnum.Write ? "write" : "read")}";
 
         AnonymousPipeServerStream? input = null;
@@ -225,6 +261,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
                 token,
                 program,
                 commandLine,
+                desktop,
                 input.ClientSafePipeHandle,
                 output.ClientSafePipeHandle);
 
@@ -284,9 +321,9 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             $"the worker account {account} of the base {baseKey} cannot log on: {new Win32Exception(error).Message}");
     }
 
-    // The SIDs of the token's groups, whatever their attributes, deny-only ones included. Win32Exception when the token
-    // cannot give them.
-    private static unsafe List<string> Groups(SafeAccessTokenHandle token)
+    // The groups of the token, whatever their attributes, deny-only ones included, each with its attributes: LogOn judges
+    // their SIDs, and WorkerDesktop takes the logon SID from them. Win32Exception when the token cannot give them.
+    internal static unsafe List<(SecurityIdentifier Sid, uint Attributes)> Groups(SafeAccessTokenHandle token)
     {
         nint information = TokenInformation(token, TokenGroupsClass);
 
@@ -295,11 +332,11 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             // TOKEN_GROUPS: the count, then the entries at the alignment of their first member, a pointer.
             uint count = *(uint*)information;
             SidAndAttributes* entries = (SidAndAttributes*)(information + sizeof(nint));
-            List<string> groups = [];
+            List<(SecurityIdentifier Sid, uint Attributes)> groups = [];
 
             for (uint index = 0; index < count; index++)
             {
-                groups.Add(new SecurityIdentifier(entries[index].Sid).Value);
+                groups.Add((new SecurityIdentifier(entries[index].Sid), entries[index].Attributes));
             }
 
             return groups;
@@ -379,6 +416,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
         SafeAccessTokenHandle token,
         string program,
         string commandLine,
+        string desktop,
         SafePipeHandle standardInput,
         SafePipeHandle standardOutput)
     {
@@ -412,13 +450,13 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             // CreateProcessAsUserW may write into the command line, so it gets a copy of its own, ended by a null.
             char[] line = [.. commandLine, '\0'];
 
-            fixed (char* desktop = "")
+            fixed (char* desktopName = desktop)
             fixed (char* lineStart = line)
             {
                 StartupInfo startup = new()
                 {
                     Size = Marshal.SizeOf<StartupInfo>(),
-                    Desktop = (nint)desktop,
+                    Desktop = (nint)desktopName,
                     Flags = UseStandardHandles,
                     StandardInput = inherited[0],
                     StandardOutput = inherited[1],
