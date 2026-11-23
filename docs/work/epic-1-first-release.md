@@ -1223,7 +1223,7 @@ The agent with 1C
 Several nodes, and the refactoring
   S7a nodes, losses ── S7b measurements, explanations ── S8 refactoring ── lab
 The tools
-  S10a console setup ── architect ── S10b console check ── lab ── architect ── S11 shell ── architect
+  S10a console setup ── architect ── S10aR refactoring ── S10b console check ── lab ── architect ── S11 shell ── architect
 The release
   S12 documents, packages, archive ── architect
 ```
@@ -1320,6 +1320,7 @@ The release
 | S9b | The agent runs the COM workers | Full | Done, 23 November 2026: the agent runs the COM workers of each base and mode with the bitness of the registered connector, inside a job object, ends a worker at its run limit and starts it again with a growing delay, and serves a base whose Writes run without safe mode for Read only until S9c; guide G2 with a lab test of every script. The internal contract was reviewed in two rounds and approved under PQ2; the code review took three rounds (six P3s of round 1, two of round 2, all fixed). 2430 tests passed here. On the lab, 23 November 2026, 1C:Enterprise 8.3.17.1851, the test base built again: 73 of 73 tests of `Moltaro.OnecOutpost.OneC.Tests` passed (S9's 45, G2's 25, the agent's 3), in 7 min 05 s. The agent, the COM worker and 1C were real, the server the test's; the real server against the agent is proven in CI over loopback (S6c) |
 | S9c | The account of the workers without safe mode | Full | Done, 23 November 2026: `write.workerAccount` in `policy.json` and its password in `secrets.dat`; the agent logs each such account on once at the start and runs every COM worker of its base, Reads included, under it (`LogonUserW`, `CreateProcessAsUserW` suspended, in the job, only its two pipe ends inherited); the program folder and the folders above it checked at the start. The internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P2 of the job test, fixed). The lab run of 106e58f gave 71 of 76 (the lab agent removed its program folder while workers ran, and gave no reason when a worker did not open), that of bc53229 gave 73 of 76 (the worker under its account ended 0xC0000142: it could not connect to the window station or desktop that `""` names); after a study the worker gets a desktop of the agent's own on its non-interactive station, never WinSta0, reviewed in two rounds (a P2 of the tests, fixed). The third lab run, of 849574f, gave 76 of 76 |
 | S10a | The console's setup: `install`, `uninstall`, `pair`, `secret`, `connector register` | Full | Not started |
+| S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 | Refactoring | Not started |
 | S10b | The console's check, the metadata report and guide G1 | Full | Not started |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
@@ -5053,6 +5054,31 @@ implementer work on `xhigh`.
     is written after S10a is merged, with what S10a taught. Its test author and implementer
     work on `xhigh`, since `check` reads the secrets and signs an `outcome` with the
     agent's key.
+- **From the architect's review 1** (the whole code base after S8; the planner, 23
+  November 2026):
+  - *S10a's documents step:* explanation E1, both forms in one change, still says that a
+    Write without safe mode is refused and that a script always runs in safe mode; it is
+    brought up to S9c.
+  - *S10a's contract, with the fixes of its first review round:* one finder of the COM
+    connector, in the agent, which the launcher and the console both use: the classes of
+    HKLM in each registry view, never HKCR, a registration counting only when its file
+    exists. The agent's behavior changes: a registration whose file is gone no longer
+    picks that bitness. It is a draft for the owner and has a test of its own.
+  - *S10b, before the code that calls them,* each keeping what the architect's list says
+    must stay unchanged:
+    - `ComWorkerLauncher`'s three steps, finding the connector, logging a worker account on
+      and judging it, and creating the worker's process, get one home each in `Workers`,
+      which the launcher composes and `check` calls alone; the copies in the lab tests go.
+      A strict zone: its implementer and reviewer work on `xhigh`;
+    - the checks of `AgentStart` become internal and free of the open audit log, whose lock
+      the running service holds, so that `check` reports each; the layout of the data
+      folder, its path, `audit`, `outcomes` and the three file names, is named once;
+    - the answer to an `outcome` becomes a record that carries the answer's time and the
+      reason of a refusal, computed once, which the server's line and the skew of `check`
+      need;
+    - the connection line of a worker and the judgment of its output move out of
+      `WorkerPool` into statics, from `WorkerConnectionLine.For`, so that `check` and
+      `metadata` run a worker outside a pool.
 - **Q14** (the planner, 23 November 2026): the rule stays strict. A file of the data
   folder whose owner is not Administrators, SYSTEM or the agent's account counts as
   somebody else, since an owner can always change the file's access list. `install` makes
@@ -5410,6 +5436,42 @@ implementer work on `xhigh`.
     paired, and leads to G1.
 - **Out of scope.** The shell.
 
+### S10aR · Refactoring after S10a
+
+**Track:** refactoring · **Branch:** `epic-1/sprint-10ar-refactoring` · **Needs:** S10a,
+merged.
+
+- **Goal.** The entries of the architect's review 1 that the planner took (23 November
+  2026) are carried out, as the [development process](process.md#the-refactoring-sprint)
+  says, and nothing else.
+- **Entries**, each its own commit, each keeping what is named:
+  - *8.* `OutpostStore` repeats its transaction frame in 18 operations and rebuilds its
+    table names 19 times: one private `InTransactionAsync` that opens the context, begins
+    ReadCommitted, runs the operation and commits, and the table names and the filter of
+    `HoldingTheirKey` computed once. Unchanged: one transaction per operation under
+    ReadCommitted, with its statements in their order; the order of locks, token, agent
+    row, claims, commands; one transaction per purge batch. The cases of S7b are measured
+    again on a quiet machine, and the p95 of each stays within the figure S7b recorded; a
+    run on a loaded machine counts neither way;
+  - *9.* the growing delay of a retry is written twice, in `AgentLoop` and `WorkerPool`: one
+    `AgentPolicy.NextRetryDelay` beside `FirstRetryDelay`. Unchanged: the default sequence
+    3, 6, 12, 24, 30, 30 seconds; the first worker of a slot waits for nothing; the delay
+    goes back to a tenth after an answer, or after a worker that opened;
+  - *10.* the audit log repeats readers of `OutpostJsonReader`, and the millisecond of §2
+    is cut in three places: the log uses the protocol's readers, and one
+    `OutpostForms.ToMilliseconds` serves the three places. Unchanged: the log reads
+    everything its writer writes and sets `Fault` on any other line; the store keeps
+    exactly the deadline and the skew that were signed;
+  - *11.* small cleanups: the overload of `OutpostCodec.ReadOutcomeRequest` that only tests
+    call goes; the protocol's `InternalsVisibleTo` for the shell goes, since the shell
+    depends on the server (principle 12); the server's `CommandChecks` becomes
+    `ParameterChecks`; the comment of `WorkerExitCodes` names who reads the exit code.
+- **Refused** (the planner, 23 November 2026): splitting `Moltaro.OnecOutpost.TestSupport`
+  by side, so that the tests that need 1C do not reference the server's store. A
+  referenced assembly is not a test that needs PostgreSQL: the rule of
+  `Moltaro.OnecOutpost.OneC.Tests` is about what a test needs to run (KISS).
+- **Out of scope.** Every other entry of the list, which S10a, S10b, S11 or S12 carries.
+
 ### S11 · The shell
 
 **Track:** full · **Branch:** `epic-1/sprint-11-shell` · **Needs:** S10.
@@ -5437,6 +5499,10 @@ implementer work on `xhigh`.
   - **Guide G3**, its first part: a first session with the shell, as
     [The user guides](#the-user-guides) lists it.
   - The documents step: `README.md` shows a session, and leads to G3.
+- **From the architect's review 1** (the planner, 23 November 2026): the harness of the
+  real agent with the fake worker, `LoopbackAgent` and its fakes, moves from
+  `Moltaro.OnecOutpost.Agent.Tests` to `Moltaro.OnecOutpost.TestSupport`, where the shell's
+  tests reach it.
 - **Out of scope.** The release.
 
 ### S12 · Documents, packages and the archive
@@ -5471,6 +5537,14 @@ implementer work on `xhigh`.
   - The final figures of [Measured results](#measured-results) in `README.md`.
   - The documents step over the whole product documentation, as the process says for the
     last sprint of an epic.
+- **From the architect's review 1** (the planner, 23 November 2026), for the documents
+  step:
+  - the comments of the product code that cite working documents removed after the
+    release, a brief, a question of this plan or a sprint, about 12 files, state the rule
+    itself or name a section of the concept or of `docs/protocol.md`;
+  - the formats of `agent.json`, `secrets.dat`, the entries of the audit log and the
+    worker's lines, which today only this plan holds, move into product documentation,
+    `docs/agent-files.md`, and the status line of `docs/protocol.md` points there.
 - **Out of scope.** The tag itself, which is the owner's.
 
 ## The contracts of stages 2 and 3
