@@ -16,6 +16,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 // No test here logs on: S9b's launcher tests run on the agent's own token as well.
 [Trait("Requires", "Windows")]
 [SupportedOSPlatform("windows")]
+[Collection(WindowStationCollection.Name)]
 public sealed class WorkerCreationTests : IDisposable
 {
     private readonly TestConnector _connector = TestConnector.Register(RegistryView.Registry64);

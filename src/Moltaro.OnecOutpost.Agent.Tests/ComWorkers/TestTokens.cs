@@ -7,7 +7,8 @@ using Microsoft.Win32.SafeHandles;
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
 // Tokens of the process of the tests, which stands for the agent, for the tests of the worker's desktop: its own
-// primary token, as the launcher opens the agent's; its logon SID; and a restricted version of it that holds some of
+// primary token, as the launcher opens the agent's; its logon SID and the identifier of its logon session; and a
+// restricted version of it that holds some of
 // its groups for deny only, which a process may start a child with as with its own token, and which an allow entry for
 // those groups does not admit.
 [SupportedOSPlatform("windows")]
@@ -73,6 +74,23 @@ internal static partial class TestTokens
         }
 
         throw new InvalidOperationException("The token holds no logon SID.");
+    }
+
+    // The identifier of the token's logon session, its AuthenticationId: TokenStatistics, whose LUID AuthenticationId,
+    // LowPart then HighPart, is at byte 8.
+    public static unsafe ulong LogonOf(SafeAccessTokenHandle token)
+    {
+        const int TokenStatisticsClass = 10;
+        const int TokenStatisticsLength = 56;
+
+        byte* statistics = stackalloc byte[TokenStatisticsLength];
+
+        if (!GetTokenInformation(token, TokenStatisticsClass, statistics, TokenStatisticsLength, out _))
+        {
+            throw new Win32Exception(Marshal.GetLastPInvokeError());
+        }
+
+        return ((ulong)*(uint*)(statistics + 12) << 32) | *(uint*)(statistics + 8);
     }
 
     // CreateRestrictedToken with these SIDs to disable, so that the new token holds them for deny only.
