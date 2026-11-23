@@ -36,7 +36,7 @@ public sealed class WindowsAccessListsTests : IDisposable
     [Fact]
     public void A_data_folder_as_the_install_sets_it_admits_nobody_else()
     {
-        WindowsAccessLists access = new(_data);
+        WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
         Assert.Empty(access.Others(""));
         Assert.Empty(access.Others("audit"));
@@ -49,7 +49,7 @@ public sealed class WindowsAccessListsTests : IDisposable
     public void A_file_whose_access_list_admits_anybody_else_names_that_account()
     {
         AccessListEdits.Allow(Path.Combine(_data, "policy.json"), AccessListEdits.Everyone);
-        WindowsAccessLists access = new(_data);
+        WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
         Assert.Equal([AccessListEdits.NameOf(AccessListEdits.Everyone)], access.Others("policy.json"));
         Assert.Empty(access.Others(""));
@@ -59,7 +59,7 @@ public sealed class WindowsAccessListsTests : IDisposable
     public void A_folder_whose_access_list_admits_anybody_else_names_that_account()
     {
         AccessListEdits.Allow(Path.Combine(_data, "audit"), AccessListEdits.Everyone);
-        WindowsAccessLists access = new(_data);
+        WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
         Assert.Equal([AccessListEdits.NameOf(AccessListEdits.Everyone)], access.Others("audit"));
     }
@@ -70,7 +70,7 @@ public sealed class WindowsAccessListsTests : IDisposable
     {
         SecurityIdentifier unknown = new("S-1-5-21-1-2-3-1001");
         AccessListEdits.Allow(Path.Combine(_data, "policy.json"), unknown);
-        WindowsAccessLists access = new(_data);
+        WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
         Assert.Equal(["S-1-5-21-1-2-3-1001"], access.Others("policy.json"));
     }
@@ -80,7 +80,7 @@ public sealed class WindowsAccessListsTests : IDisposable
     public void A_deny_entry_admits_nobody()
     {
         AccessListEdits.Deny(Path.Combine(_data, "policy.json"), AccessListEdits.Everyone);
-        WindowsAccessLists access = new(_data);
+        WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
         Assert.Empty(access.Others("policy.json"));
     }
@@ -94,7 +94,7 @@ public sealed class WindowsAccessListsTests : IDisposable
         Directory.CreateDirectory(outcomes);
         AccessListEdits.AllowInsideOnly(outcomes, AccessListEdits.Everyone);
         File.WriteAllText(Path.Combine(outcomes, "planted.json"), "{}");
-        WindowsAccessLists access = new(_data);
+        WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
         Assert.Empty(access.Others("outcomes"));
         Assert.Equal([AccessListEdits.NameOf(AccessListEdits.Everyone)], access.Others(@"outcomes\planted.json"));
@@ -103,7 +103,7 @@ public sealed class WindowsAccessListsTests : IDisposable
     [Fact]
     public void The_list_of_an_entry_that_does_not_exist_cannot_be_read_and_fails_with_IOException()
     {
-        WindowsAccessLists access = new(_data);
+        WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
         Assert.ThrowsAny<IOException>(() => access.Others("secrets.dat"));
     }

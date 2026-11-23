@@ -2,10 +2,10 @@ using System.Runtime.Versioning;
 using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
-using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 

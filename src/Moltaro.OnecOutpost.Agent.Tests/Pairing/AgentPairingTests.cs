@@ -2,12 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Agent.Pairing;
-using Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeHttp;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Pairing;
 

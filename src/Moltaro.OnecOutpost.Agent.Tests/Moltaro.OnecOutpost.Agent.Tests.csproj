@@ -3,8 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
-    <!-- LibraryImport generates unsafe code for AnonymousLogon, TestTokens and TestDesktop, and the last two read
-         native structures through pointers. -->
+    <!-- LibraryImport generates unsafe code for TestTokens and TestDesktop, which read native structures through
+         pointers. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 

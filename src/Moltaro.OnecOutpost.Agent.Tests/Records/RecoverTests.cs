@@ -2,11 +2,11 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Audit;
 using Moltaro.OnecOutpost.Agent.Outcomes;
 using Moltaro.OnecOutpost.Agent.Records;
-using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditEntries;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 

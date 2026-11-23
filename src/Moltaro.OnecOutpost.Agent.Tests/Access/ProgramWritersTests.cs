@@ -187,15 +187,15 @@ public sealed class ProgramWritersTests : IDisposable
     }
 
     // The owner of an entry may change its list, so an owner counts as much as an entry that gives a right. The lists
-    // are made while the thread impersonates ANONYMOUS LOGON, which is then the agent's account, so that the account
-    // that runs the tests is somebody else; the file gives it no right, and it is the file's owner.
+    // are made for ANONYMOUS LOGON as the agent's account, so that the account that runs the tests is somebody else;
+    // the file gives it no right, and it is the file's owner.
     [Fact]
     public void An_entry_that_an_account_other_than_the_agents_owns_is_reported_with_that_account()
     {
         using WindowsIdentity tests = WindowsIdentity.GetCurrent();
         string owned = WriteFile("owned.dll");
         OwnedWithoutRights(owned, tests.User!);
-        WindowsAccessLists access = AnonymousLogon.Run(() => new WindowsAccessLists(_temporary.PathOf("data")));
+        WindowsAccessLists access = new(_temporary.PathOf("data"), new SecurityIdentifier(WellKnownSidType.AnonymousSid, null));
 
         try
         {
@@ -233,14 +233,14 @@ public sealed class ProgramWritersTests : IDisposable
     [Fact]
     public void The_lists_of_a_program_folder_that_does_not_exist_cannot_be_read_and_fail_with_IOException()
     {
-        WindowsAccessLists access = new(_temporary.PathOf("data"));
+        WindowsAccessLists access = new(_temporary.PathOf("data"), AccessListEdits.TestAccount);
 
         Assert.ThrowsAny<IOException>(() => access.Writers(_temporary.PathOf("missing")));
     }
 
     private IReadOnlyList<(string Path, IReadOnlyList<string> Accounts)> Writers()
     {
-        return new WindowsAccessLists(_temporary.PathOf("data")).Writers(_programs);
+        return new WindowsAccessLists(_temporary.PathOf("data"), AccessListEdits.TestAccount).Writers(_programs);
     }
 
     // The entries at the folder and below it, in the order Writers gives them, each as "{path}: {accounts}".

@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Audit;
 using Moltaro.OnecOutpost.Agent.Files;
@@ -17,17 +16,12 @@ namespace Moltaro.OnecOutpost.Agent.Start;
 // What a start finds in the data folder, after a restart included.
 internal static class AgentStart
 {
-    private const string PolicyName = "policy.json";
+    // The files of the data folder that the agent reads, which the console writes.
+    public const string PolicyName = "policy.json";
 
-    private const string PairingName = "agent.json";
+    public const string PairingName = "agent.json";
 
-    private const string SecretsName = "secrets.dat";
-
-    // policy.json is read as UTF-8; bytes that are not make the file invalid, never U+FFFD.
-    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-
-    // The byte order mark that an editor may put first in policy.json: U+FEFF in UTF-8.
-    private static ReadOnlySpan<byte> ByteOrderMark => [0xEF, 0xBB, 0xBF];
+    public const string SecretsName = "secrets.dat";
 
     // Runs the steps of a start, and the first that fails decides: the audit log, whose IOException passes and records
     // nothing; a Fault of the log; the access lists of the data folder, its folders and its files; the access lists of
@@ -226,8 +220,8 @@ internal static class AgentStart
         }
     }
 
-    // The policy as AgentPolicyReader reads it from the text of the file in UTF-8, a byte order mark skipped and not
-    // counted in the columns of an error. A file that cannot be read is as invalid as one that breaks its rules.
+    // The policy as AgentPolicyReader reads it from the file. A file that cannot be read is as invalid as one that breaks
+    // its rules.
     private static AgentPolicy ReadPolicy(IAgentFolder root, IReadOnlyList<string> rootNames)
     {
         if (!rootNames.Contains(PolicyName))
@@ -246,26 +240,7 @@ internal static class AgentStart
             throw new AgentPolicyException("", "the file cannot be read; expected a file that the agent's account may read");
         }
 
-        ReadOnlySpan<byte> text = bytes;
-
-        if (text.StartsWith(ByteOrderMark))
-        {
-            text = text[ByteOrderMark.Length..];
-        }
-
-        string json;
-
-        try
-        {
-            json = StrictUtf8.GetString(text);
-        }
-        catch (DecoderFallbackException)
-        {
-            // The fault is the file as a whole, so the path is empty, and the bytes are not repeated.
-            throw new AgentPolicyException("", "the file holds bytes that are not UTF-8; expected JSON text in UTF-8");
-        }
-
-        return AgentPolicyReader.Read(json);
+        return AgentPolicyReader.ReadFile(bytes);
     }
 
     // A mode that the policy serves needs the password of its account: a start without one would only fail later, in

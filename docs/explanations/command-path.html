@@ -105,10 +105,9 @@ page follows them along the path. The same explanation as text is
 <p class="status"><strong>Status:</strong> built. The path works end to end. It is tested over
 loopback HTTP with one server node and with two on one PostgreSQL, with the real agent and a
 fake in place of the COM worker. The agent with its COM workers ran Reads and Writes in a
-real 1C:Enterprise 8.3.17.1851 on the lab machine, with the test's own server. Intended, not
-built yet: the console that installs and pairs an agent on its machine, and the shell. A
-Write to a base whose local policy turns safe mode off is refused until the workers of such
-a base run under a Windows account of their own.</p>
+real 1C:Enterprise 8.3.17.1851 on the lab machine, with the test's own server, a Write
+without safe mode under the Windows account of its base included. The console installs and
+pairs an agent on its machine; its check and the shell are not built yet.</p>
 
 <figure aria-label="Animated figure: the path of a command">
 <svg id="stage" viewBox="0 0 480 412" role="img" aria-labelledby="stage-title">
@@ -175,7 +174,7 @@ a base run under a Windows account of their own.</p>
   <li><strong>The signals</strong> are Moltaro.Signals, which wake a waiter on any node. A signal carries no data: it says "read the store again".</li>
   <li><strong>The agent</strong> is the Windows service next to 1C. It opens every connection itself, over HTTPS, and keeps one poll open at a time.</li>
   <li><strong>The audit log</strong> is the agent's record of every command, on the disk of its machine.</li>
-  <li><strong>The COM worker</strong> is a process of the agent that holds a session in one base under one 1C account, and runs scripts there through the executor.</li>
+  <li><strong>The COM worker</strong> is a process of the agent that holds a session in one base under one 1C account, and runs scripts there through the executor. It runs under the agent's Windows account, or, in a base whose Writes run without safe mode, under the Windows account of that base.</li>
 </ul>
 
 <h2>The path</h2>
@@ -186,7 +185,7 @@ a base run under a Windows account of their own.</p>
   <li><strong>The poll.</strong> A poll of the agent waits on some node, often not the node of the call. Woken, the poll takes the command in one conditional change of the store, if it is still the newest poll of its agent: oldest commands first, and no more than the free workers it declared. Its answer carries the exact bytes of the command and the server's signature over them. A command that no poll takes before its take deadline ends as Expired.</li>
   <li><strong>The agent's checks.</strong> The agent verifies the signature with the server key it pinned at pairing, and looks for the command in its audit log: a command already there never runs again. Then it checks the protocol version, that the command names this agent, that its local policy serves the base and the mode, and, by the agent's own clock, that the command was not issued too far ahead and that its take deadline has not passed by more than the allowed skew. The first check that fails refuses the command with its code, such as <code>not-served</code> or <code>expired</code>. A command whose signature does not verify is only recorded, since nothing in it can be trusted.</li>
   <li><strong>The audit log.</strong> Before the command runs, and before the next poll opens, the agent writes it to its audit log on the disk: the time, the identity, the base, the mode, the caller key, the script and the parameters. A command that cannot be recorded does not run. From then on every poll lists the command as received, until the server confirms its outcome.</li>
-  <li><strong>The worker.</strong> The agent gives the command to a free COM worker of its base and mode, a process of its own that holds a 1C session under the account of that mode. The worker runs the script whole, in 1C's safe mode: a Read outside a transaction, a Write inside one transaction, committed or rolled back as a whole. The executor writes the result as JSON, and checks the result's type and the outcome's size before a Write commits. A script that passes the run limit of its mode ends with its worker.</li>
+  <li><strong>The worker.</strong> The agent gives the command to a free COM worker of its base and mode, a process of its own that holds a 1C session under the account of that mode. The worker runs the script whole, in 1C's safe mode unless the local policy turns it off for the Writes of the base: a Read outside a transaction, a Write inside one transaction, committed or rolled back as a whole. Every worker of a base whose Writes run without safe mode runs under a Windows account of its own, which can read neither the agent's secrets nor its audit log. The executor writes the result as JSON, and checks the result's type and the outcome's size before a Write commits. A script that passes the run limit of its mode ends with its worker.</li>
   <li><strong>The outcome.</strong> The agent keeps the outcome in a file on its disk, records how the command ended in its audit log, and sends the outcome to any node, signed with its own key. The node keeps the first outcome of the command, and only from the agent it handed the command to. It sets a signal for the command and confirms the outcome to the agent with a signed answer. The agent records the confirmation and removes the file; until then it sends the outcome again.</li>
   <li><strong>The caller.</strong> The node where the call waits wakes, reads the outcome from the store and returns it: Succeeded with the result and the user messages of 1C, Failed with a code, Refused with the code of the check, Expired, or Unknown when the effect of a Write cannot be known. The caller may stop waiting at any time. That does not stop the command, and a repeat with the caller key returns its outcome.</li>
 </ol>

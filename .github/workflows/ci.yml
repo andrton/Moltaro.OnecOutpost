@@ -48,4 +48,5 @@ jobs:
       - run: dotnet build --configuration Release
       - run: dotnet build Moltaro.OnecOutpost.OneC.Tests --configuration Release
       # Every test but those that need PostgreSQL: the Windows runners have no Linux containers.
+      # Its runner is elevated, so the tests with Requires=Administrator run here too.
       - run: dotnet test --configuration Release --no-build --filter-not-trait "Requires=PostgreSQL"

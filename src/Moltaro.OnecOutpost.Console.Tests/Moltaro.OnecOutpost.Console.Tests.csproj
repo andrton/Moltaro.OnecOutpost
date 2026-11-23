@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- LibraryImport generates unsafe code for the calls with which the tests that need an administrator read back the
+         service, its configuration and the rights of its account. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The console: the reference builds it and copies it beside the tests, which run it as a child process too. -->
+    <ProjectReference Include="..\Moltaro.OnecOutpost.Console\Moltaro.OnecOutpost.Console.csproj" />
+    <ProjectReference Include="..\Moltaro.OnecOutpost.TestSupport\Moltaro.OnecOutpost.TestSupport.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console.Cli.Testing" />
+    <PackageReference Include="Spectre.Console.Testing" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+</Project>

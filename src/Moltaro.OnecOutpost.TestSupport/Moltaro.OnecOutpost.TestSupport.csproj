@@ -16,7 +16,8 @@
     <ProjectReference Include="..\Moltaro.OnecOutpost.Protocol\Moltaro.OnecOutpost.Protocol.csproj" />
     <ProjectReference Include="..\Moltaro.OnecOutpost.Server\Moltaro.OnecOutpost.Server.csproj" />
     <!-- The launcher that reports what the workers did wraps the agent's boundary of the COM workers, for the agent's
-         tests and the lab's. -->
+         tests and the lab's; the fakes of the data folder, the access lists, the protection and the server stand in
+         for the agent's boundaries, in the agent's tests and the console's. -->
     <ProjectReference Include="..\Moltaro.OnecOutpost.Agent\Moltaro.OnecOutpost.Agent.csproj" />
   </ItemGroup>
 
@@ -25,6 +26,8 @@
     <PackageReference Include="Testcontainers.PostgreSql" />
     <!-- The helpers of the loopback server assert what came back, as the tests that use them do. -->
     <PackageReference Include="xunit.v3.assert" />
+    <!-- The fakes of the data folder and of the server wait within the token of the test that runs, TestContext's. -->
+    <PackageReference Include="xunit.v3.extensibility.core" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +35,7 @@
          and the protocol, so they are internal too, for the test projects that use them and the measurement program. -->
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Server.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Agent.Tests" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Console.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.OneC.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Measurements" />
   </ItemGroup>

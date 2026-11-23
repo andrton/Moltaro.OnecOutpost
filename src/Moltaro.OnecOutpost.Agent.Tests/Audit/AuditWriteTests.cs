@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Audit;
-using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditEntries;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Audit;

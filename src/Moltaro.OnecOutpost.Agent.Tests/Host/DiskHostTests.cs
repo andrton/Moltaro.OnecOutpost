@@ -4,13 +4,13 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.Agent.Secrets;
-using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
-using Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 using Moltaro.OnecOutpost.Agent.Tests.Start;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeFiles;
+using Moltaro.OnecOutpost.TestSupport.FakeHttp;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Host;
 
@@ -42,7 +42,7 @@ public sealed class DiskHostTests : IDisposable
         FakeServer server = new(serverKey, clock);
         AgentParts parts = new(
             _data.Folders,
-            new WindowsAccessLists(_data.Path),
+            new WindowsAccessLists(_data.Path, AccessListEdits.TestAccount),
             new MachineDpapi(),
             new FakeWorkerLauncher(new MemoryDataFolder()),
             PairedFolder.ProgramFolder,

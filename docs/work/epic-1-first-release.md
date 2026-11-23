@@ -758,7 +758,9 @@ contract", both in [S6's brief](#s6--the-agent). Text marked *(S9b)* holds the s
 the list "What S9b changes in the public contract, as a draft for the owner" in
 [S9b's brief](#s9b--the-agent-runs-the-com-workers). Text marked *(S9c)* holds the same way:
 the list "What S9c changes in the public contract, as a draft for the owner" in
-[S9c's brief](#s9c--the-account-of-the-workers-without-safe-mode).
+[S9c's brief](#s9c--the-account-of-the-workers-without-safe-mode). Text marked *(S10a)*
+holds the same way: the list "What S10a changes in the public contract, as a draft for the
+owner" in [S10's brief](#s10--the-console).
 
 - **The data folder admits nobody else.** The console's `install` creates it with
   inheritance off:
@@ -767,6 +769,15 @@ the list "What S9c changes in the public contract, as a draft for the owner" in
     `outcomes\`;
   - nobody else has any right. `%ProgramData%` lets every local user create
   files, so without this a local user could plant a policy, a pinned key or an outcome.
+
+  *(S10a)* A data folder that exists already is given these lists again only when neither
+  it, `audit\` nor `outcomes\` is a reparse point or admits anyone else; otherwise
+  `install` refuses it and repairs nothing. `pair` and `secret` refuse a data folder that is
+  a reparse point or admits anyone else; they judge the folder itself. An owner
+  other than Administrators, SYSTEM or the agent's account counts as somebody else, since an
+  owner can always change the access list (Q14 in [S10's brief](#s10--the-console)), so
+  `install`, `pair` and `secret` make Administrators the owner of the folder and of every
+  file they write.
 - **The agent refuses a folder that admits anybody else.** When it starts, it checks the
   access lists of the folder and of every file it reads, since a file moved into the
   folder keeps its own. If one of them admits anyone else, it records `started` with an
@@ -780,19 +791,39 @@ the list "What S9c changes in the public contract, as a draft for the owner" in
   `started` with an error that names the entry and the accounts, and stops. The console's
   `install` puts the program under `%ProgramFiles%` with inheritance off, full control for
   Administrators and SYSTEM, read and run for Users, and Administrators owning every entry
-  it writes. The folder of the COM connector is judged by the same rule by the console's
+  it writes. *(S10a)* That folder is `%ProgramFiles%\Moltaro.OnecOutpost`: `install`, run
+  from outside it, replaces its content with that of the unpacked archive, or, run from
+  that folder itself, sets its lists alone; it refuses a run from inside it or from a
+  folder that holds it. Then it judges the folder by the agent's rule before it registers
+  or reconfigures the service, and refuses, without repairing, a folder that someone else
+  may change. The folder of the COM connector is judged by the same rule by the console's
   `check`, not by the agent.
+- *(S10a)* **The COM connector** is the one that the classes of HKLM register, in the
+  64-bit view and in the 32-bit one, never HKCR, which merges in the classes of the user
+  who runs the console, unseen by the service; a registration counts only when its file
+  exists. The agent and the console read it through one finder. The agent starts its
+  workers with the bitness of the first registered connector, 64 bits first, so a
+  registration whose file is gone picks no bitness. `connector register` registers a
+  connector only where exactly one version of a bitness is installed, since the connector
+  has to match the version of the 1C cluster.
 - **The agent's account** is the virtual service account `NT SERVICE\MoltaroOnecOutpost`,
   which needs no password. *(S9c)* The console's `install` grants it "Replace a process
   level token" and "Adjust memory quotas for a process", which it needs to start a worker
-  under a worker account; they take effect from its next start.
+  under a worker account; they take effect from its next start. *(S10a)* `install`
+  registers the service `MoltaroOnecOutpost` under that account with an automatic start,
+  and does not start it; it reconfigures a service that exists, never deletes it, and
+  writes the failure actions, a restart after a minute at most three times, the count
+  reset after a day, only when it creates it. `uninstall` takes the two rights back,
+  then removes the service, and leaves both folders.
 - *(S9c)* **A worker account** runs every COM worker of a base whose `write` has
   `safeMode: false`, Reads included. It is a local user outside Administrators, with no
-  privilege beyond those of Users, and "Log on as a batch job", which the console's
-  `install` grants. The agent logs it on at its start, before any worker starts, and stops
-  with an error when it cannot. Its profile is not loaded. A script without safe mode does
-  what that account can, can leave a process outside the job object through Task Scheduler
-  or WMI, and can read and forge what the other workers of its base do.
+  privilege beyond those of Users, and "Log on as a batch job", which *(S10a)* the
+  console's `secret <base key> worker` grants, not `install`, since the policy names the
+  account only after `install`; `uninstall` leaves it that right. The agent logs it on at
+  its start, before any worker starts, and stops with an error when it cannot. Its profile
+  is not loaded. A script without safe mode does what that account can, can leave a
+  process outside the job object through Task Scheduler or WMI, and can read and forge
+  what the other workers of its base do.
 - *(S6)* **The agent program** takes one argument, `service`, and runs only as the
   Windows service. It exits with 0 when stopped; 1 when it stops on its own, recorded in
   the audit log when the log can be written; 2 when the log was not opened, as for a
@@ -806,7 +837,7 @@ the list "What S9c changes in the public contract, as a draft for the owner" in
 | `policy.json` | The administrator | Yes | The local policy, below |
 | `audit\YYYY-MM-DD.jsonl` | The agent | Yes | The audit log, one file per UTC day, below |
 | `agent.json` | The console, when it pairs | No | The server's address, the agent's identity, the pinned server key, and the poll timeout and lease grace of the pairing answer |
-| `secrets.dat` | The console | No | The agent's private key and the 1C passwords, *(S9c)* and the password of the worker account of each base that names one, encrypted with DPAPI for the machine |
+| `secrets.dat` | The console | No | The agent's private key and the 1C passwords, *(S9c)* and the password of the worker account of each base that names one, encrypted with DPAPI for the machine. *(S10a)* `pair` writes it with the key alone, and `secret` writes each password, keeping the others |
 | `outcomes\` | The agent | No | The outbox: outcomes not yet confirmed by the server, one file per command |
 
 #### `policy.json`
@@ -1096,6 +1127,11 @@ The concept fixes the principles; S2 fixes the bytes.
 
 - **Tracks.** The [development process](process.md) applies.
   - S8 is on the refactoring track.
+  - After each of S10a, S10b, S11 and S12 is merged, the architect reviews what the
+    system has become, as the [development process](process.md#the-architects-review)
+    says; a refactoring sprint S10aR, S10bR, S11R or S12R follows only when an entry of
+    its list is taken (the owner, 23 November 2026). The first architect's review reads
+    the whole code base after S8, alongside S10a.
   - L1 and S12 are on the light track.
   - Every other sprint is on the full track, because each delivers behavior of the
     contract: contract, then tests by another agent, then implementation, each its own
@@ -1218,9 +1254,9 @@ The agent with 1C
 Several nodes, and the refactoring
   S7a nodes, losses ── S7b measurements, explanations ── S8 refactoring ── lab
 The tools
-  S10 console ── S11 shell
+  S10a console setup ── architect ── S10aR refactoring ── S10b console check ── lab ── architect ── S11 shell ── architect
 The release
-  S12 documents, packages, archive
+  S12 documents, packages, archive ── architect
 ```
 
 - **1C first** (the owner, 21 November 2026). Everything rests on a script that runs in a
@@ -1287,6 +1323,12 @@ The release
   without it.
 - **S10 and S11.** The console works on the agent machine, the shell next to a server.
   They share nothing.
+- **S10a, the console's setup, apart from S10b, its check** (the coordinator, 23 November
+  2026, under the planner's standing instruction to cut a sprint too large for one
+  exhaustive review). `install` with the service, the rights and the access lists,
+  `pair` and `secret` are strict zones of their own; `check`, with a probe of every base
+  and every account, the server and the worker accounts, and `metadata` are a second
+  one, which needs the lab. Each review can then be exhaustive.
 
 ### Status
 
@@ -1308,7 +1350,9 @@ The release
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Done, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. The code review took three rounds, and its last finding, confirmed on the lab, was fixed by a query of the executor before the commit of a Write, reviewed once more. On the lab, 1C:Enterprise 8.3.17.1851, the first run gave 43 of 44 tests that need 1C passed; the failed one, `A_write_whose_commit_raises_gives_unknown_transaction_ended`, was removed, since 8.3.17 gave no way to provoke the case. The second run, with the `.epf` rebuilt after the fix, gave 45 of 45 passed, on the test base and one copy of a typical base, which ran with one account for both modes. No manual scenario, since every line of the Acceptance has a test. What it changed in the public contract is listed in its brief for the owner |
 | S9b | The agent runs the COM workers | Full | Done, 23 November 2026: the agent runs the COM workers of each base and mode with the bitness of the registered connector, inside a job object, ends a worker at its run limit and starts it again with a growing delay, and serves a base whose Writes run without safe mode for Read only until S9c; guide G2 with a lab test of every script. The internal contract was reviewed in two rounds and approved under PQ2; the code review took three rounds (six P3s of round 1, two of round 2, all fixed). 2430 tests passed here. On the lab, 23 November 2026, 1C:Enterprise 8.3.17.1851, the test base built again: 73 of 73 tests of `Moltaro.OnecOutpost.OneC.Tests` passed (S9's 45, G2's 25, the agent's 3), in 7 min 05 s. The agent, the COM worker and 1C were real, the server the test's; the real server against the agent is proven in CI over loopback (S6c) |
 | S9c | The account of the workers without safe mode | Full | Done, 23 November 2026: `write.workerAccount` in `policy.json` and its password in `secrets.dat`; the agent logs each such account on once at the start and runs every COM worker of its base, Reads included, under it (`LogonUserW`, `CreateProcessAsUserW` suspended, in the job, only its two pipe ends inherited); the program folder and the folders above it checked at the start. The internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P2 of the job test, fixed). The lab run of 106e58f gave 71 of 76 (the lab agent removed its program folder while workers ran, and gave no reason when a worker did not open), that of bc53229 gave 73 of 76 (the worker under its account ended 0xC0000142: it could not connect to the window station or desktop that `""` names); after a study the worker gets a desktop of the agent's own on its non-interactive station, never WinSta0, reviewed in two rounds (a P2 of the tests, fixed). The third lab run, of 849574f, gave 76 of 76 |
-| S10 | The console | Full | Not started |
+| S10a | The console's setup: `install`, `uninstall`, `pair`, `secret`, `connector register` | Full | Done, 23 November 2026: the console on Spectre.Console.Cli with `install`, `uninstall`, `pair`, `secret` and `connector register`, and one finder of the COM connector in the agent, which its launcher and the console use. The study read actions/runner and Octopus Tentacle; the internal contract was reviewed in two rounds and approved under PQ2, round 2's fixes (a P2 of the contract step and six P3) taken without a third round. The code review took three rounds: three P1 of round 1 (the lists of `audit` and `outcomes`, tests that expected an order of entries, colour forced on in CI), five P3 of round 2, none in round 3. 2697 tests passed here; CI passed with the tests of `Requires=Administrator` on its elevated `windows` job. The manual run of its commands is on the lab with S10b. What it changes in the public contract is listed in the S10 brief for the owner |
+| S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 | Refactoring | Not started |
+| S10b | The console's check, the metadata report and guide G1 | Full | Not started |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
 
@@ -4077,7 +4121,7 @@ request and merge under PQ1:
 - **Goal.** The code base after S7 has no technical debt worth removing before the console
   and the shell build on the agent.
 - **Contract.** None; nothing public or asserted changes.
-- **To read.** `AGENTS.md`; the [development process](process.md#a-refactoring-sprint), "A
+- **To read.** `AGENTS.md`; the [development process](process.md) as it stood for S8, "A
   refactoring sprint"; the whole code base; the briefs of S9–S12.
 - **Acceptance.** Build, format and every test green after every commit. No public member
   and no assertion changed. Each change makes the code simpler to read or to change. The
@@ -4983,10 +5027,11 @@ implementer work on `xhigh`.
   - S10's `secret <base key> worker` writes that password, asked without echo;
   - S10's `install` grants `NT SERVICE\MoltaroOnecOutpost` "Replace a process level
     token" and "Adjust memory quotas for a process", in effect from its next start, and
-    each worker account "Log on as a batch job"; a worker account is a local user outside
-    Administrators with no privilege beyond Users'. `install` and G1 put the program
-    under `%ProgramFiles%` with its list's inheritance off, full control for Administrators
-    and SYSTEM, read and run for Users, and Administrators owning every entry it writes;
+    each worker account "Log on as a batch job" (S10a moved that right to `secret <base
+    key> worker`); a worker account is a local user outside Administrators with no
+    privilege beyond Users'. `install` and G1 put the program under `%ProgramFiles%` with
+    its list's inheritance off, full control for Administrators and SYSTEM, read and run
+    for Users, and Administrators owning every entry it writes;
   - S10's `check` judges the connector's folder by the rule of the program folder;
   - "The files of the agent": the agent refuses a program folder that others may change,
     by "The program folder" above;
@@ -5023,7 +5068,62 @@ implementer work on `xhigh`.
 
 ### S10 · The console
 
-**Track:** full · **Branch:** `epic-1/sprint-10-console` · **Needs:** S9c, S8.
+**Track:** full · **Branch:** `epic-1/sprint-10a-console-setup`, then
+`epic-1/sprint-10b-console-check` · **Needs:** S9c, S8.
+
+- **The cut** (the coordinator, 23 November 2026, under the planner's standing instruction
+  to cut a sprint too large for one exhaustive review). S10 runs as two sprints, each with
+  its own pull request:
+  - **S10a, the setup**: the console project, `install`, `uninstall`, `pair`, `secret` with
+    its form for the worker account, and `connector register`, with the finder of the
+    connector that `check` uses later. Pairing, secrets and the access lists are strict
+    zones, so its test author and implementer work on `xhigh`. Its Acceptance is the
+    automated lines of the commands it builds. It has no lab line: the manual run of its
+    commands and S9c's manual line run on the lab with S10b, which needs a paired agent
+    anyway, so the owner goes to the lab once for S10.
+  - **S10b, the check and the report**: `check`, `metadata`, the tests in
+    `Moltaro.OnecOutpost.OneC.Tests`, the manual lines and guide G1. Its internal contract
+    is written after S10a is merged, with what S10a taught. Its test author and implementer
+    work on `xhigh`, since `check` reads the secrets and signs an `outcome` with the
+    agent's key.
+- **A draft pull request before the close** (the owner, 23 November 2026, for S10a only):
+  S10a's tests with `Requires=Administrator` run only in CI's elevated `windows` job, so
+  after the implementation step its branch is pushed and its pull request opened as a
+  draft; every later fix is pushed to it, never force-pushed, and it is marked ready and
+  merged only after the close, under PQ1. A later sprint that needs the same asks again.
+- **From the architect's review 1** (the whole code base after S8; the planner, 23
+  November 2026):
+  - *S10a's documents step:* explanation E1, both forms in one change, still says that a
+    Write without safe mode is refused and that a script always runs in safe mode; it is
+    brought up to S9c.
+  - *S10a's contract, with the fixes of its first review round:* one finder of the COM
+    connector, in the agent, which the launcher and the console both use: the classes of
+    HKLM in each registry view, never HKCR, a registration counting only when its file
+    exists. The agent's behavior changes: a registration whose file is gone no longer
+    picks that bitness. It is a draft for the owner and has a test of its own.
+  - *S10b, before the code that calls them,* each keeping what the architect's list says
+    must stay unchanged:
+    - `ComWorkerLauncher`'s three steps, finding the connector, logging a worker account on
+      and judging it, and creating the worker's process, get one home each, the first in
+      the agent's `Connector` since S10a and the others in `Workers`, which the launcher
+      composes and `check` calls alone; the copies in the lab tests go.
+      A strict zone: its implementer and reviewer work on `xhigh`;
+    - the checks of `AgentStart` become internal and free of the open audit log, whose lock
+      the running service holds, so that `check` reports each; the layout of the data
+      folder, its path, `audit`, `outcomes` and the three file names, is named once;
+    - the answer to an `outcome` becomes a record that carries the answer's time and the
+      reason of a refusal, computed once, which the server's line and the skew of `check`
+      need;
+    - the connection line of a worker and the judgment of its output move out of
+      `WorkerPool` into statics, from `WorkerConnectionLine.For`, so that `check` and
+      `metadata` run a worker outside a pool.
+- **Q14** (the planner, 23 November 2026): the rule stays strict. A file of the data
+  folder whose owner is not Administrators, SYSTEM or the agent's account counts as
+  somebody else, since an owner can always change the file's access list. `install` makes
+  Administrators the owner of the data folder and of every file it writes, and so do `pair`
+  and `secret` (S10a); `check` names a file whose owner is someone else and gives the
+  remedy (S10b); G1 shows how to edit `policy.json` without changing its owner, and the
+  one command that restores it (S10b).
 
 - **Goal.** The administrator does everything for an agent from the console:
   - installs the service under its virtual account, with the data folder and its access
@@ -5037,6 +5137,297 @@ implementer work on `xhigh`.
   list and owner) and for `check` (the connector's folder). The metadata
   report starts from the owner's collector and rewrites it to the rules of this repository
   (PQ5).
+  - *Internal of S10a* (the contract author, 23 November 2026, from S10's study, with the
+    coordinator's decisions under PQ2; reviewed in two rounds; approved by the coordinator
+    under PQ2, 23 November 2026, with round 2's fixes, which no further round reviews).
+    Every type is `internal`; `Commands` uses the agent and `Service`, `Rights`, `Folders`
+    and `Connector`, which use nothing of each other. `sid` is `ServiceAccount.Sid(ServiceName)`.
+
+    ```csharp
+    // Moltaro.OnecOutpost.Agent.Connector, the one finder of the COM connector, which the launcher and the console use
+    internal enum ConnectorBitnessEnum { X64, X86 }
+    internal sealed record ConnectorFile(string Path, string Version);
+    internal sealed record ConnectorFinding(ConnectorBitnessEnum Bitness, ConnectorFile? Registered, IReadOnlyList<ConnectorFile> Unregistered);
+    internal interface IConnectorFinder { IReadOnlyList<ConnectorFinding> Find(); }
+    // ComConnector, V83.COMConnector, moves here; Machine() is HKLM's SOFTWARE\Classes in both views and both 1cv8 folders.
+    [SupportedOSPlatform("windows")]
+    internal sealed class ConnectorFinder(RegistryKey classes64, RegistryKey classes32, string progId, IReadOnlyList<string> platformFolders) : IConnectorFinder { }
+    internal static class ServiceAccount { public static string Sid(string serviceName); } // Agent.Access; computed without Windows
+
+    // Moltaro.OnecOutpost.Console.Commands. A command takes (IAnsiConsole, ConsoleParts); its own settings in {Command}.Settings.cs.
+    internal sealed record ConsoleParts(bool Elevated, string ServiceName, string Source, string ProgramFolder, string DataFolder,
+        IAgentFolder Data, IServiceControl Services, IAccountRights Rights, IFolderSetup Folders, Func<string, IAccessLists> AccessLists,
+        IMachineProtection Protection, IConnectorFinder Connectors, IConnectorRegistration Registration,
+        Func<Uri, Uri?, HttpMessageHandler> Handlers, TextReader? Input, TimeProvider Clock, string Version); // Input: null for a console
+    internal static class ConsoleApp { public static void Configure(IConfigurator config, ConsoleParts parts); }
+    internal static class ConsoleExitCodes { } // the table below; StopTimeoutConverter : TypeConverter, by TryReadTimeSpan
+    internal sealed class ServiceSettings : CommandSettings { public TimeSpan StopTimeout { get; init; } } // --stop-timeout <TIME>
+    // InstallCommand and UninstallCommand : AsyncCommand<ServiceSettings>; PairCommand : AsyncCommand<PairCommand.Settings>,
+    // <SERVER> <TOKEN>; SecretCommand, <BASE> <KIND>, likewise; ConnectorRegisterCommand : AsyncCommand<EmptyCommandSettings>.
+
+    // Moltaro.OnecOutpost.Console.Service
+    internal enum ServiceStopEnum { NotInstalled, Stopped, TimedOut }
+    internal interface IServiceControl
+    {
+        bool Install(string name, string displayName, string binaryPath); // true when created, false when reconfigured
+        Task<ServiceStopEnum> StopAsync(string name, TimeSpan timeout, CancellationToken cancellationToken);
+        void Delete(string name);
+    }
+    [SupportedOSPlatform("windows")] internal sealed partial class WindowsServiceControl : IServiceControl { public WindowsServiceControl(TimeProvider clock); }
+
+    // Moltaro.OnecOutpost.Console.Rights
+    internal static class AccountRightNames { } // AssignPrimaryToken, IncreaseQuota, BatchLogon: the names LSA gives them
+    internal interface IAccountRights
+    {
+        string? UserSid(string account); // a local user's, by LookupAccountNameW; null for none, a group or an alias
+        void Grant(string sid, IReadOnlyList<string> rights);
+        void Revoke(string sid, IReadOnlyList<string> rights);
+    }
+    [SupportedOSPlatform("windows")] internal sealed partial class WindowsAccountRights : IAccountRights { public IReadOnlyList<string> Held(string sid); }
+
+    // Moltaro.OnecOutpost.Console.Folders
+    internal enum FolderKindEnum { Absent, Folder, ReparsePoint }
+    internal interface IFolderSetup
+    {
+        FolderKindEnum Kind(string path);
+        string FinalPath(string folder); // by GetFinalPathNameByHandleW; the full path of one that does not exist
+        void ApplyProgramFolder(string folder, string? source); // null: the lists alone
+        void ApplyDataFolder(string folder, string agentSid, bool create);
+        void OwnByAdministrators(string file);
+    }
+    [SupportedOSPlatform("windows")] internal sealed class WindowsFolderSetup : IFolderSetup { }
+
+    // Moltaro.OnecOutpost.Console.Connector
+    internal interface IConnectorRegistration
+    {
+        string CommandOf(ConnectorBitnessEnum bitness, string path);
+        Task<int> RegisterAsync(ConnectorBitnessEnum bitness, string path, CancellationToken cancellationToken); // regsvr32's code
+    }
+    [SupportedOSPlatform("windows")] internal sealed class RegSvr32Registration : IConnectorRegistration { }
+    ```
+
+    - **The program** gives `NotWindows` elsewhere, else runs a `CommandApp` with: `Elevated`
+      by `WindowsPrincipal.IsInRole`, false for UAC's filtered token; `MoltaroOnecOutpost`;
+      `AppContext.BaseDirectory`; `%ProgramFiles%` and `%ProgramData%`'s `Moltaro.OnecOutpost`;
+      `AccessLists` making the string a `SecurityIdentifier`; `ConnectorFinder.Machine()`; a
+      redirected standard input as UTF-8, a byte order mark skipped; its product version.
+      Whether it is interactive, and so prompts, is Spectre's own detection, as `AGENTS.md`
+      asks. `RunAsync` gets a token that `Console.CancelKeyPress` cancels, setting `Cancel`,
+      which each command checks before each step, so Ctrl+C ends it between two steps.
+      `Configure` registers the parts, sets `UseStrictParsing` and the name, and by
+      `SetExceptionHandler` gives `Cancelled` for an `OperationCanceledException` whose token
+      is cancelled, `Usage` for Spectre's parse and validation errors, `Failure` for any
+      other. Waits show a spinner.
+    - **Output.** A step done writes one line; any other end writes, in red, `{Kind}
+      ({code}): {reason}`, a failed step `Failure (1): the step "{step}" failed: {message}`
+      and `(Windows error {code})`. Nothing writes a password, a token or unverified text.
+
+      | Code | Constant | Commands | When |
+      | --- | --- | --- | --- |
+      | 0 | `Success` | all | Done, `--help` too |
+      | 1 | `Failure` | all | A step failed for a reason of Windows or of the disk, or an unexpected exception |
+      | 2 | `Usage` | all | An unknown command or option, a missing or invalid argument or password, `install` run from inside the program folder or from a folder that holds it |
+      | 3 | `NotElevated` | all | Not run as administrator; nothing was changed |
+      | 4 | `NotWindows` | all | Not on Windows |
+      | 5 | `Cancelled` | all | Ctrl+C |
+      | 6 | `NotInstalled` | `uninstall`, `pair`, `secret` | The service, or the data folder, does not exist |
+      | 7 | `StopTimedOut` | `install`, `uninstall` | The service did not stop within `--stop-timeout`; nothing further was done |
+      | 8 | `ProgramFolderWriters` | `install` | Someone else may change the program folder |
+      | 9 | `DataFolderAdmitsOthers` | `install`, `pair`, `secret` | The data folder admits someone else, or is a reparse point |
+      | 10 | `PolicyInvalid` | `pair`, `secret` | `policy.json` is absent, unreadable or invalid |
+      | 11 | `AlreadyPaired` | `pair` | `agent.json` exists |
+      | 12 | `PairingFailed` | `pair` | Anything but a verified `200` |
+      | 13 | `NotPaired` | `secret` | `secrets.dat` is absent |
+      | 14 | `NotInPolicy` | `secret` | The policy names no such base, mode or worker account |
+      | 15 | `UnknownAccount` | `secret` | The worker account is not a local user |
+      | 16 | `NotInteractive` | `secret` | The input is the console, the output redirected |
+      | 17 | `ConnectorNotRegistered` | `connector register` | No bitness ends with a registered connector: several installed, or none |
+      | 18 | `RegistrationFailed` | `connector register` | regsvr32 failed, or HKLM shows no registration after it |
+
+    - **`install [--stop-timeout <TIME>]`**, `TIME` in `policy.json`'s constant form, `00:00:01`
+      to `01:00:00`, `00:01:00` when absent; each step idempotent, named in its failure:
+      1. *elevation*: `install needs a console run as administrator; nothing was changed`;
+         a `Source` whose `FinalPath` lies inside that of `ProgramFolder` gives `Usage`,
+         `unpack the archive outside {folder} and run install from there`; one whose
+         `FinalPath` holds that of `ProgramFolder` gives `Usage` too, with a message of its
+         own that says to unpack the archive into a folder of its own outside
+         `%ProgramFiles%`;
+      2. *stop*: `StopAsync`; `TimedOut` gives `the service {name} did not stop within
+         {timeout}; run install again once it has, or with a longer --stop-timeout`;
+      3. *program folder*: `ApplyProgramFolder(ProgramFolder, source)`, `source` null for
+         equal final paths, `Copied the program to {folder} and set its access lists.` or
+         `Set …`; then `AccessLists(sid).Writers(ProgramFolder)`, before the service is registered or reconfigured,
+         entries giving `ProgramFolderWriters` with a table of them;
+      4. *service*: `Install(name, "Moltaro OnecOutpost agent", "\"{ProgramFolder}\Moltaro.OnecOutpost.Agent.exe\" service")`,
+         `Registered` or `Reconfigured the service {name} under NT SERVICE\{name}.`; 1072 gives
+         `Failure` and `close the Services console and Event Viewer, and run install again`;
+      5. *rights*: `Grant(sid, [AssignPrimaryToken, IncreaseQuota])`, `Granted NT SERVICE\{name}
+         "Replace a process level token" and "Adjust memory quotas for a process".`;
+      6. *data folder*: `Kind` of the folder, `audit` and `outcomes`; a `ReparsePoint`, or
+         the accounts of `Others` of a `Folder`, give `DataFolderAdmitsOthers`, `{entry} of
+         {folder} is a reparse point | admits {accounts}; install does not repair it: inspect
+         it, remove it and run install again`; then `ApplyDataFolder(DataFolder, sid,
+         create)`, `create` when `Absent`: `Created` or `Set the access lists of {folder}.`
+
+      Then `Installed; the service is not started. Start it once policy.json, the pairing
+      and the passwords are written; an update keeps those written before.`
+    - **`uninstall [--stop-timeout <TIME>]`**: elevation; `StopAsync`, `NotInstalled` giving
+      `NotInstalled`, `… nothing was changed`, `TimedOut` `StopTimedOut`; `Revoke(sid, [the
+      two])`, `Delete`; then `Removed the service {name} and its account's two rights. Left
+      {both folders}, with the audit log; the worker accounts keep "Log on as a batch job".`
+    - **The steps `pair` and `secret` share**, written once: elevation; the data folder's
+      `Kind`, `Absent` giving `NotInstalled`, `… run install first`, and `ReparsePoint`
+      `DataFolderAdmitsOthers`; `AccessLists(sid).Others("")`, accounts giving
+      `DataFolderAdmitsOthers`, since DPAPI for the machine lets every local process decrypt
+      and only the folder's list keeps the secrets (*limitation:* an entry that only the
+      folder's content inherits, which only an administrator can add, reaches a file written
+      there, which the agent's start then refuses); `policy.json` by `ReadFile`,
+      `PolicyInvalid` with the agent's reason. Files go by `Data.Replace`, then `OwnByAdministrators` (Q14).
+    - **`pair <SERVER> <TOKEN>`**, `SERVER` absolute and allowed by `ServerRoute.IsAllowed`,
+      `TOKEN` read by `OutpostPairingTokenText.TryRead`, else `Usage` naming the rule and
+      quoting neither. After the shared steps:
+      1. `agent.json` exists: `AlreadyPaired`, `the agent is paired; to pair it anew,
+         remove agent.json; what its outbox holds then reaches the server under the new
+         identity, which drops it as another agent's (§6.3); pairing anew writes secrets.dat
+         with the new key alone, so the passwords are written again with secret`;
+      2. `AgentPairing.PairAsync` with `Version`, `Handlers(server, policy.Proxy)` and
+         `policy.RequestTimeout`; a failure gives `PairingFailed`, `HTTP {status}: ` when one
+         came and the reason by `AgentPairingFailureEnum` in §6.1's words, writing nothing;
+      3. `secrets.dat` with the new key alone, replacing one a failed pairing left, then
+         `agent.json`, which so exists only with its key; a failure gives `Failure`, `the server
+         paired the agent, but {file} could not be written: {message}; the application revokes
+         it and gives a new token`. Then `Paired with {server} as {id}; write the passwords with secret.`
+    - **`secret <BASE> <KIND>`**, `BASE` by `OutpostNames.IsBaseKey`, `KIND` exactly `read`,
+      `write` or `worker`, else `Usage`. After the shared steps: `secrets.dat` absent gives
+      `NotPaired`, `… pair the agent first`, one that does not read or decrypt `Failure`;
+      `NotInPolicy`: `the policy names no base {key} | does not let it be written | names no
+      worker account for it`. For `worker`: `UserSid("{machine}\{workerAccount}")`, null
+      giving `UnknownAccount`, `{account} of the base {key} is not a local user of this
+      machine`, then `Grant(sid, [BatchLogon])`, `Granted {account} "Log on as a batch job".`
+      The password: when `Profile.Capabilities.Interactive`, a `TextPrompt<string>` with
+      `Secret(null)`, `Password of {account} for {the read mode | the write mode | the
+      workers} of the base {key}:`; else one line of `Input`; else, `Input` being null,
+      `NotInteractive`, `run secret in a terminal, or give the password through standard
+      input`, reading nothing. An empty password is one for `read` and `write`, a real case
+      of 1C, and `Usage` for `worker`, whose blank password Windows refuses outside its
+      console (the coordinator, 23 November 2026), as is the end of the input. Every other
+      secret is kept: `Wrote the password …; the service uses it from its next start.`
+    - **`connector register`**: elevation; then per finding, `{bits}-bit: {path}, {version},
+      is registered.`, or without `Registered`: one `Unregistered` is registered and `Find`
+      read again, `{bits}-bit: registered {path}, {version}.`, else `RegistrationFailed` with
+      regsvr32's code and kind (1 arguments, 2 `OleInitialize`, 3 loading the DLL, 4 no
+      `DllRegisterServer`, 5 `DllRegisterServer` failed) or `regsvr32 ended with 0, yet HKLM
+      shows no registration`; several, `… none is registered, and the connector has to match
+      the version of the 1C cluster, so register that one:` and `{version}: {CommandOf}`
+      each; none, `… none is registered or installed`. The exit is `RegistrationFailed` when
+      a run of regsvr32 failed, else `ConnectorNotRegistered` when no bitness ends with a
+      registered connector, else `Success`.
+    - **`WindowsServiceControl`**, by `LibraryImport`, failing with `Win32Exception`, its
+      handle with `SERVICE_START`. `Install`: `ChangeServiceConfigW` of an existing service,
+      never a delete, keeping its failure actions; else `CreateServiceW` (own process,
+      automatic start, `NT SERVICE\{name}`, no password) with the failure actions, class
+      constants: restart after 1 minute, three times, reset after a day, the flag for a stop
+      with an error false; both set the description and no required privileges. `StopAsync`:
+      1060 `NotInstalled`; `SERVICE_CONTROL_STOP`, 1062 stopped, 1061 waiting;
+      `QueryServiceStatusEx` every tenth of the wait hint, 1 to 10 seconds, until stopped or
+      the timeout by the clock. `Delete`: 1072 counts as done.
+    - **`WindowsAccountRights`**: `LsaOpenPolicy(POLICY_LOOKUP_NAMES | POLICY_CREATE_ACCOUNT)`;
+      `LsaAddAccountRights`, idempotent; `LsaRemoveAccountRights` without `AllRights`, an
+      account unknown to LSA no error; `Held` by `LsaEnumerateAccountRights`.
+      **`ServiceAccount.Sid`** is `S-1-5-80-` and the SHA-1 of the upper-cased name in
+      UTF-16 as five sub-authorities, as Windows derives it.
+    - **`WindowsFolderSetup`** makes Administrators the owner of every entry it writes, as an
+      elevated token may. `ApplyDataFolder` creates, when `create`, the folder by
+      `CreateDirectoryW` with `O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;FR;;;{agent})`,
+      which fails with 183 when the folder exists, giving `Failure`, so that only a folder
+      judged by `Others` is ever applied to; otherwise it applies that descriptor; `audit\`
+      and `outcomes\` inherit it plus `(A;OICI;0x1301bf;;;{agent})`, created so or applied,
+      files untouched. `ApplyProgramFolder` makes or applies
+      `O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;0x1200a9;;;BU)`; with a `source`, it
+      empties the folder and copies `source`'s content in; then every entry gets
+      Administrators as owner and only inherited entries.
+    - **`ConnectorFinder`** never reads HKCR, which merges in the administrator's own classes,
+      unseen by the service. Per view, 64 bits only on a 64-bit Windows, `{progId}\CLSID` and
+      `CLSID\{class}\InprocServer32` give the path, expanded, `Registered` only when its file
+      exists. `Unregistered`: each other `{platformFolder}\*\bin\comcntr.dll` by ordinal
+      path, its bitness by the PE header's `Machine` (0x8664, 0x14C), its version its
+      `FileVersion`. `Find` throws nothing and may run on several slots at once: a key,
+      folder or file it cannot read is not `Registered`, or left out of `Unregistered`, as the
+      launcher reads today; a platform installed elsewhere is found only by its registration.
+      `ComWorkerLauncher` takes an `IConnectorFinder` for its ProgID and starts the first
+      `Registered` finding's program, 64 bits first, nothing else changing.
+      `RegSvr32Registration` runs `%SystemRoot%\System32\regsvr32.exe /s "{path}"`, `SysWOW64`'s
+      for 32 bits, with the token and no deadline; `CommandOf` omits `/s`.
+    - **Tests on every platform**, `Moltaro.OnecOutpost.Console.Tests`, by `CommandAppTester`
+      with `ConsoleApp.Configure` and fakes recording their calls in one list, the agent's
+      tests' moved to `TestSupport`: each command's steps in order, each failure at its step
+      with its code and line and nothing after; `install` from the program folder and from inside it, `--stop-timeout` at
+      both bounds and `00:00:00`, `01:00:01` and `1:00`; `pair` against a stub of the pair
+      endpoint signed with a test key, the policy's proxy and `requestTimeout` on a fake
+      clock, each `AgentPairingFailureEnum`, the stub's unverified body never in the output;
+      `secret` by an interactive `TestConsole`'s prompt and by `Input`, every other secret
+      kept, the batch right first, `NotInteractive`, the password never in the output;
+      `Usage`, `Failure`, and `Cancelled` by `RunAsync` with a cancelled token; in the agent's,
+      `ServiceAccount.Sid` of TrustedInstaller. `NotWindows` has no test, as the agent's has
+      none: no platform runs both branches.
+    - **Tests with `Requires=Windows`**, in the agent's tests: `ConnectorFinder` over two test
+      keys under HKCU and a temporary platform folder holding the x64 and x86 worker programs
+      as `comcntr.dll`; no worker for a registration whose file is gone, `TestConnector` now
+      registering a file that exists. In the console's: the built console as a child process
+      with redirected streams, as `ProgramTests` run the agent, each command with `--help`
+      and with one refused argument, which change nothing, each its code and no `\x1b[`.
+    - **Tests with `Requires=Windows` and `Requires=Administrator`**, each with its own
+      service `MoltaroOnecOutpostTest-{guid:N}`, whose virtual account stands for the
+      agent's and gets every right, the batch right too, so that no local user is made, and
+      its own folders, the program folder under `%ProgramFiles%`, whose parents admit
+      nobody else, all removed in `finally`: `Install` read back by the test's own
+      `QueryServiceConfigW` and `QueryServiceConfig2W`, and again; 1072 while the test
+      holds a handle of a deleted service; `StopAsync` of a stopped and an unknown service;
+      `ServiceAccount.Sid` as Windows translates it; `Grant` and `Revoke` by `Held`; both
+      folders by their SDDL and `WindowsAccessLists`; `install` then `uninstall` through
+      `CommandAppTester`. Stopping a running service is the fakes' and S10b's lab's.
+    - **The steps.** Contract: the two projects, on Spectre.Console and Spectre.Console.Cli
+      0.57.2, the tests also on their Testing packages 0.57.2. Settings, validation,
+      `ConsoleExitCodes`, `ConsoleApp`, `Program` and `ServiceAccount` work; the commands and
+      the Windows implementations throw `NotSupportedException`. Edits that state nothing
+      new, made there: `Find` gives each
+      view's `Registered` from the classes it is given as the launcher reads them today,
+      without the file check, and no `Unregistered`, since it replaces a working member; the
+      file check and `Unregistered` come with the implementation, their tests skipped until
+      then; `WindowsAccessLists(string dataFolder, SecurityIdentifier agent)`, the agent's
+      `Program` giving its own account, other callers the current user's and
+      `ProgramWritersTests` ANONYMOUS LOGON's, so `AnonymousLogon` goes, and TrustedInstaller's
+      SID from `ServiceAccount.Sid`; `AgentPolicyReader.ReadFile(byte[])` takes `AgentStart`'s
+      UTF-8 and byte order mark, `TryReadTimeSpan(string, out TimeSpan)` its constant form;
+      `AgentStart`'s file names become `public const`; the agent's `InternalsVisibleTo` names
+      the console and its tests; the launcher's callers pass a finder. Tests step:
+      `AGENTS.md`, "Tests And Samples", after the line on time, gains "A test that needs the
+      rights of an administrator, such as one that registers a service, grants a right
+      through LSA or makes Administrators the owner of a file, has the trait
+      `Requires=Administrator` with `Requires=Windows`. CI's `windows` job runs elevated and
+      runs it; a developer whose shell is not elevated adds `--filter-not-trait
+      "Requires=Administrator"`."; the comment of the `windows` job's test step in `ci.yml`
+      gains "Its runner is elevated, so the tests with Requires=Administrator run here too."
+      Documents: `README.md` names the setup commands; "The files of the agent" and the
+      contract of stage 3 take the drafts below.
+- **What S10a changes in the public contract, as a draft for the owner** (the contract
+  author, 23 November 2026). Each holds until the owner overturns it:
+  - the commands `install [--stop-timeout <TIME>]`, `uninstall [--stop-timeout <TIME>]`,
+    `pair <server address> <token>`, `secret <base key> <read|write|worker>` and `connector
+    register`, their messages and the exit codes of the table above;
+  - `install` copies the unpacked archive into `%ProgramFiles%\Moltaro.OnecOutpost`, never
+    deletes an existing service, writes the failure actions above only when it creates
+    it, does not start it, and refuses a data folder that exists and admits anyone else;
+  - "Log on as a batch job" of a worker account, a local user, is granted by `secret <base
+    key> worker`, not by `install` as S9c's draft said: the policy names it after `install`;
+  - `uninstall` takes the agent's two rights, then removes the service, leaving both folders;
+  - `pair` refuses an agent that is paired and writes `secrets.dat` with the key alone;
+    `pair` and `secret` refuse a data folder that admits anyone else; `secret` refuses to
+    read a password at a console whose output is redirected (`NotInteractive`);
+  - `connector register` registers only where exactly one version of a bitness is
+    installed; the agent judges the connector from HKLM as the console does, and a
+    registration whose file is gone no longer picks that bitness;
+  - the trait `Requires=Administrator`, with CI's `windows` job elevated.
 - **To read.** The [concept](../concept.md), §3 "Pairing" and §5 (20 November 2026);
   `docs/protocol.md`; `AGENTS.md`, principles 9 and 12; this plan, "The files of the agent",
   the contract of stage 2 and S9c's brief.
@@ -5082,6 +5473,42 @@ implementer work on `xhigh`.
     paired, and leads to G1.
 - **Out of scope.** The shell.
 
+### S10aR · Refactoring after S10a
+
+**Track:** refactoring · **Branch:** `epic-1/sprint-10ar-refactoring` · **Needs:** S10a,
+merged.
+
+- **Goal.** The entries of the architect's review 1 that the planner took (23 November
+  2026) are carried out, as the [development process](process.md#the-refactoring-sprint)
+  says, and nothing else.
+- **Entries**, each its own commit, each keeping what is named:
+  - *8.* `OutpostStore` repeats its transaction frame in 18 operations and rebuilds its
+    table names 19 times: one private `InTransactionAsync` that opens the context, begins
+    ReadCommitted, runs the operation and commits, and the table names and the filter of
+    `HoldingTheirKey` computed once. Unchanged: one transaction per operation under
+    ReadCommitted, with its statements in their order; the order of locks, token, agent
+    row, claims, commands; one transaction per purge batch. The cases of S7b are measured
+    again on a quiet machine, and the p95 of each stays within the figure S7b recorded; a
+    run on a loaded machine counts neither way;
+  - *9.* the growing delay of a retry is written twice, in `AgentLoop` and `WorkerPool`: one
+    `AgentPolicy.NextRetryDelay` beside `FirstRetryDelay`. Unchanged: the default sequence
+    3, 6, 12, 24, 30, 30 seconds; the first worker of a slot waits for nothing; the delay
+    goes back to a tenth after an answer, or after a worker that opened;
+  - *10.* the audit log repeats readers of `OutpostJsonReader`, and the millisecond of §2
+    is cut in three places: the log uses the protocol's readers, and one
+    `OutpostForms.ToMilliseconds` serves the three places. Unchanged: the log reads
+    everything its writer writes and sets `Fault` on any other line; the store keeps
+    exactly the deadline and the skew that were signed;
+  - *11.* small cleanups: the overload of `OutpostCodec.ReadOutcomeRequest` that only tests
+    call goes; the protocol's `InternalsVisibleTo` for the shell goes, since the shell
+    depends on the server (principle 12); the server's `CommandChecks` becomes
+    `ParameterChecks`; the comment of `WorkerExitCodes` names who reads the exit code.
+- **Refused** (the planner, 23 November 2026): splitting `Moltaro.OnecOutpost.TestSupport`
+  by side, so that the tests that need 1C do not reference the server's store. A
+  referenced assembly is not a test that needs PostgreSQL: the rule of
+  `Moltaro.OnecOutpost.OneC.Tests` is about what a test needs to run (KISS).
+- **Out of scope.** Every other entry of the list, which S10a, S10b, S11 or S12 carries.
+
 ### S11 · The shell
 
 **Track:** full · **Branch:** `epic-1/sprint-11-shell` · **Needs:** S10.
@@ -5109,6 +5536,10 @@ implementer work on `xhigh`.
   - **Guide G3**, its first part: a first session with the shell, as
     [The user guides](#the-user-guides) lists it.
   - The documents step: `README.md` shows a session, and leads to G3.
+- **From the architect's review 1** (the planner, 23 November 2026): the harness of the
+  real agent with the fake worker, `LoopbackAgent` and its fakes, moves from
+  `Moltaro.OnecOutpost.Agent.Tests` to `Moltaro.OnecOutpost.TestSupport`, where the shell's
+  tests reach it.
 - **Out of scope.** The release.
 
 ### S12 · Documents, packages and the archive
@@ -5143,6 +5574,14 @@ implementer work on `xhigh`.
   - The final figures of [Measured results](#measured-results) in `README.md`.
   - The documents step over the whole product documentation, as the process says for the
     last sprint of an epic.
+- **From the architect's review 1** (the planner, 23 November 2026), for the documents
+  step:
+  - the comments of the product code that cite working documents removed after the
+    release, a brief, a question of this plan or a sprint, about 12 files, state the rule
+    itself or name a section of the concept or of `docs/protocol.md`;
+  - the formats of `agent.json`, `secrets.dat`, the entries of the audit log and the
+    worker's lines, which today only this plan holds, move into product documentation,
+    `docs/agent-files.md`, and the status line of `docs/protocol.md` points there.
 - **Out of scope.** The tag itself, which is the owner's.
 
 ## The contracts of stages 2 and 3
@@ -5174,13 +5613,17 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     the executor so. A worker of a base whose Writes run without safe mode runs under a
     Windows account of its own, which can read neither the agent's secrets nor its audit
     log. S9 builds the worker's side, S9c the account and how the agent starts a worker
-    under it, and the console's `install` prepares the account.
+    under it, and the console's `secret <base key> worker` grants the account its right.
 - **The console**, a program that references the agent, the protocol, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says, with
-  these commands and their exit codes:
-  - `install` and `uninstall`;
+  these commands and their exit codes. *(S10a)* The commands of S10a are built; their
+  steps, messages and exit codes are those of "Internal of S10a" in
+  [S10's brief](#s10--the-console), with the list "What S10a changes in the public
+  contract", and each needs a console run as administrator:
+  - `install [--stop-timeout <TIME>]` and `uninstall [--stop-timeout <TIME>]`;
   - `pair <server address> <token>`;
-  - `secret <base key> <read|write>`, which asks for the password without echoing it;
+  - `secret <base key> <read|write|worker>`, which asks for the password without echoing
+    it, or reads it as one line of a redirected standard input;
   - `check`, which reports, each as passed or failed with its reason:
     - the COM connector and its version: whether one is registered for each bitness, and
       where a `comcntr.dll` that is not registered lies (the owner, 21 November 2026, after
@@ -5210,7 +5653,7 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     Every cause of a failure that a lab run finds becomes a line of `check` with its test
     (the owner, 23 November 2026).
   - `connector register`, after L1, which registers the COM connector of the installed
-    platform for its bitness, and says so when it lacks the rights of an administrator;
+    platform for each bitness that has none registered and exactly one version installed;
   - `metadata <base key> <file>`.
 - **The shell**, a program that references the server, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says:
@@ -5234,6 +5677,9 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   - *(S9b, a draft for the owner)* the COM worker of each bitness lies in `x64\` and
     `x86\` beside the agent's program, each with the files of its build, since the agent
     starts it from there; S12 builds the archive so;
+  - *(S10a)* the console lies beside the agent's program, since `install`, run from the
+    unpacked archive, copies its whole content into `%ProgramFiles%\Moltaro.OnecOutpost`
+    and registers the service as `Moltaro.OnecOutpost.Agent.exe` there;
   - every program in it is self-contained, so that no .NET runtime of either bitness has to
     be installed;
   - its SHA-256 checksum is on the release page;

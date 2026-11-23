@@ -104,15 +104,6 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Until answered** | The rule stays as it is, and `MigrateAsync` reports the error of PostgreSQL through its task. `AddOutpostServer` accepts such a schema. It blocks no sprint: the planner carried it to the closing of the epic (21 November 2026), since either answer is a small change of one check |
 | **Decides** | The owner: the rule of names is public contract |
 
-### Q14. A file of the data folder that an administrator's own account owns
-
-| | |
-| --- | --- |
-| **Found** | 22 November 2026, Epic 1 S6, review round 1 of the internal contract |
-| **Question** | The agent refuses a data folder or a file in it whose access list admits anybody else than Administrators, SYSTEM and the agent's account ("The files of the agent"). A file that an administrator writes by hand, such as `policy.json`, may be owned by that administrator's own account rather than by Administrators, depending on the machine's setting for the owner of objects that administrators create. Does such an owner count as somebody else? |
-| **Until answered** | It does: `IAccessLists.Others` names the owning account, and the agent stops with `started` and an error until Administrators own the file, as the S6 brief states in its limitation. S10's console, which writes `agent.json` and `secrets.dat`, sets their owner to Administrators |
-| **Decides** | The planner, before S10, whose console and guide G1 tell the administrator how to edit `policy.json` |
-
 ### Q15. The outcome of a command the purge removed
 
 | | |
@@ -132,6 +123,17 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The owner: the audit log is public contract |
 
 ## Answered
+
+### Q14. A file of the data folder that an administrator's own account owns
+
+| | |
+| --- | --- |
+| **Found** | 22 November 2026, Epic 1 S6, review round 1 of the internal contract |
+| **Question** | The agent refuses a data folder or a file in it whose access list admits anybody else than Administrators, SYSTEM and the agent's account ("The files of the agent"). A file that an administrator writes by hand, such as `policy.json`, may be owned by that administrator's own account rather than by Administrators, depending on the machine's setting for the owner of objects that administrators create. Does such an owner count as somebody else? |
+| **Until answered** | It does: `IAccessLists.Others` names the owning account, and the agent stops with `started` and an error until Administrators own the file, as the S6 brief states in its limitation. S10's console, which writes `agent.json` and `secrets.dat`, sets their owner to Administrators |
+| **Decides** | The planner, before S10, whose console and guide G1 tell the administrator how to edit `policy.json` |
+| **Answer** | 23 November 2026, the planner: the rule stays strict. Such an owner counts as somebody else, since an owner can always change the file's access list. `install` makes Administrators the owner of the data folder and of every file it writes; `check` names a file whose owner is someone else and gives the remedy; G1 shows how to edit `policy.json` without changing its owner, and the one command that restores it |
+| **Now lives in** | The S10 brief of the [epic document](epic-1-first-release.md#s10--the-console), applied by S10a (`install`, `pair`, `secret`) and S10b (`check`, G1) |
 
 ### Q1. Values of `policy.json` that its table does not mention
 

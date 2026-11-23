@@ -448,6 +448,7 @@ supported platform. It is committed as the built `.epf` and its XML sources.
 - install and uninstall the service;
 - pair it;
 - write a secret;
+- register the COM connector of the installed platform for a bitness that has none;
 - check:
   - the COM connector and its version;
   - the connection to each base under each account;

@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
+using Moltaro.OnecOutpost.Agent.Tests.Connector;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
@@ -20,7 +22,7 @@ public sealed class WorkerJobTests
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         using TestConnector connector = TestConnector.Register(RegistryView.Registry64);
         using WorkerJob job = new();
-        using ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, connector.ProgId, job);
+        using ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, connector.Finder, job);
         using IWorkerProcess worker = launcher.Start("accounting", OutpostModeEnum.Read);
         Assert.True(await worker.OpenAsync(TestLines.Connection(), cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken));
         (long Size, byte[] Outcome)? pid = await worker

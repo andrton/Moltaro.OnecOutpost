@@ -1,5 +1,7 @@
 using System.Runtime.Versioning;
 using Moltaro.OnecOutpost.Agent.Access;
+using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeWindows;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
 
@@ -16,7 +18,7 @@ internal sealed class DataFolderAccessLists : IAccessLists
 
     public DataFolderAccessLists(string dataFolder)
     {
-        _dataFolder = new WindowsAccessLists(dataFolder);
+        _dataFolder = new WindowsAccessLists(dataFolder, AccessListEdits.TestAccount);
     }
 
     public IReadOnlyList<string> Others(string path)

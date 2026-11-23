@@ -37,7 +37,9 @@ growing delay. A base whose Writes run without safe mode is served for Write too
 COM workers under a local Windows account of its own that the agent logs on at its start,
 after it checked that nobody else may change its program folder. The tests of the agent
 against a real 1C passed on the lab, with a server of the test, those of the worker
-account included. The server is the one
+account included. The console installs, pairs and uninstalls an agent, writes its secrets
+and registers the COM connector (`install`, `uninstall`, `pair`, `secret` and `connector
+register`); its check and metadata are planned. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions
@@ -61,9 +63,10 @@ in code, tests, samples or documents.
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
 Each project is created by the sprint that first needs it, under the name the plan of the
-first epic fixes. The protocol, the server, the agent, the COM worker, the executor's
-sources, the samples, the test support, the test worker, the measurement program, the test
-projects of these four and the tests that need 1C exist; the others are planned. Only the
+first epic fixes. The protocol, the server, the agent, the COM worker, the console, the
+executor's sources, the samples, the test support, the test worker, the measurement
+program, the test projects of these five and the tests that need 1C exist; the shell and
+its tests are planned. Only the
 server is packed; every other project is not.
 
 | Project | Contents |
@@ -337,6 +340,11 @@ Console programs:
 - Every numbered rule of the concept's section 3 has a deterministic test.
 - Time is injected through `TimeProvider`. Deadlines, expiry, polls and the timeouts of
   the COM worker are tested with a fake clock.
+- A test that needs the rights of an administrator, such as one that registers a service,
+  grants a right through LSA or makes Administrators the owner of a file, has the trait
+  `Requires=Administrator` with `Requires=Windows`. CI's `windows` job runs elevated and
+  runs it; a developer whose shell is not elevated adds `--filter-not-trait
+  "Requires=Administrator"`.
 - A test waits for an observed event; it never sleeps and never polls with a delay.
 - The store is tested against a real PostgreSQL, never an in-memory provider.
 - The transport is tested over loopback HTTP, with an agent and a server in one test. The
@@ -445,10 +453,11 @@ dotnet test --project Moltaro.OnecOutpost.OneC.Tests
   when the owner tells you to, for that version.
 - Commit messages carry no agent attribution: no `Co-Authored-By` line and no "generated
   with" line. This overrides the default of any tool.
-- Planning an epic, coordinating its sprints, reviewing a sprint or refactoring follows
-  the [development process](docs/work/process.md). Read it before taking one of those
-  roles.
-- Technical debt is removed by the refactorer in the refactoring sprint of every epic, as
-  the development process describes. Its measure is this file.
+- Planning an epic, coordinating its sprints, reviewing a sprint, the architect's review
+  or refactoring follows the [development process](docs/work/process.md). Read it before
+  taking one of those roles.
+- Technical debt is found by the architect's review after every merged sprint and removed
+  in the refactoring sprint that follows it, as the development process describes. Its
+  measure is this file.
 - Finish by reporting what changed, which checks ran and what is not done. When the task
   leaves changes in Git, suggest a commit message.

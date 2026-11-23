@@ -2,6 +2,7 @@ using System.Runtime.Versioning;
 using System.Text.Json;
 using Microsoft.Win32;
 using Moltaro.OnecOutpost.Agent.Policy;
+using Moltaro.OnecOutpost.Agent.Tests.Connector;
 using Moltaro.OnecOutpost.Agent.Tests.Workers;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Codec;
@@ -33,7 +34,7 @@ internal sealed class ComWorkerPool : IAsyncDisposable
     {
         _connector = connector;
         _job = job;
-        _launcher = new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, connector.ProgId, job);
+        _launcher = new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, connector.Finder, job);
         Launcher = new ObservedLauncher(_launcher);
 
         AgentPolicy policy = new(

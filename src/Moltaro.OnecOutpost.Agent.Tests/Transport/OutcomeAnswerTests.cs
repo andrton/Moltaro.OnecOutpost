@@ -1,9 +1,10 @@
 using System.Security.Cryptography;
-using Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
 using Moltaro.OnecOutpost.Agent.Transport;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
+using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeHttp;
 using static Moltaro.OnecOutpost.Agent.Tests.Transport.TestConnection;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Transport;

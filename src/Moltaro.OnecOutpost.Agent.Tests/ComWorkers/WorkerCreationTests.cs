@@ -2,6 +2,7 @@ using System.Runtime.Versioning;
 using System.Security.Principal;
 using System.Text.Json;
 using Microsoft.Win32;
+using Moltaro.OnecOutpost.Agent.Tests.Connector;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
@@ -108,7 +109,7 @@ public sealed class WorkerCreationTests : IDisposable
 
     private ComWorkerLauncher Launcher()
     {
-        return new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, _connector.ProgId, _job);
+        return new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, _connector.Finder, _job);
     }
 
     // A worker of accounting for Read, started by the launcher, whose open gave true.

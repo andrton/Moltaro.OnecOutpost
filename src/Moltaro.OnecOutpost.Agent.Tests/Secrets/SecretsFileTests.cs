@@ -2,9 +2,9 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using Moltaro.OnecOutpost.Agent.Secrets;
-using Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeWindows;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Secrets;
 
