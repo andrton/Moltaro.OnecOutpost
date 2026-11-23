@@ -137,9 +137,9 @@ internal static class OutpostCodec
         writer.Name("bases");
         writer.StartObject();
         writer.Name("held");
-        WriteStrings(writer, message.Held);
+        writer.Strings(message.Held);
         writer.Name("claimed");
-        WriteStrings(writer, message.Claimed);
+        writer.Strings(message.Claimed);
         writer.EndObject();
 
         writer.Name("commands");
@@ -224,7 +224,7 @@ internal static class OutpostCodec
         writer.Name("errorText");
         writer.NullableString(message.ErrorText);
         writer.Name("messages");
-        WriteStrings(writer, message.Messages);
+        writer.Strings(message.Messages);
         writer.Name("messagesTrimmed");
         writer.Boolean(message.MessagesTrimmed);
         writer.EndObject();
@@ -988,18 +988,6 @@ internal static class OutpostCodec
         writer.Name("runLimitMs");
         writer.Duration(mode.RunLimit);
         writer.EndObject();
-    }
-
-    private static void WriteStrings(OutpostJsonWriter writer, IReadOnlyList<string> strings)
-    {
-        writer.StartArray();
-
-        foreach (string text in strings)
-        {
-            writer.String(text);
-        }
-
-        writer.EndArray();
     }
 
     // An agent version of §2: 1 to 64 characters, each one of A-Z a-z 0-9 . - +.

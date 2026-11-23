@@ -115,7 +115,7 @@ internal sealed class AuditLog : IDisposable
         writer.Name("version");
         writer.String(version);
         writer.Name("withoutSafeMode");
-        WriteStrings(writer, withoutSafeMode);
+        writer.Strings(withoutSafeMode);
 
         if (error is not null)
         {
@@ -166,9 +166,9 @@ internal sealed class AuditLog : IDisposable
         (OutpostJsonWriter writer, DateTimeOffset time) = Begin("bases");
 
         writer.Name("held");
-        WriteStrings(writer, held);
+        writer.Strings(held);
         writer.Name("claimed");
-        WriteStrings(writer, claimed);
+        writer.Strings(claimed);
 
         Append(writer, time);
     }
@@ -472,18 +472,6 @@ internal sealed class AuditLog : IDisposable
             OutpostAgentOutcomeKindEnum.Unknown => "unknown",
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "An ended has no outcome of this kind."),
         };
-    }
-
-    private static void WriteStrings(OutpostJsonWriter writer, IReadOnlyList<string> strings)
-    {
-        writer.StartArray();
-
-        foreach (string text in strings)
-        {
-            writer.String(text);
-        }
-
-        writer.EndArray();
     }
 
     // Reading an entry: each reader takes the member of that name only when the entry gives it exactly once, in its

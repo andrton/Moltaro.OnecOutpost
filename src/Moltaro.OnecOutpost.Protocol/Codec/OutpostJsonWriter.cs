@@ -103,6 +103,19 @@ internal sealed class OutpostJsonWriter
         }
     }
 
+    // An array of strings, in their order.
+    public void Strings(IReadOnlyList<string> strings)
+    {
+        StartArray();
+
+        foreach (string text in strings)
+        {
+            String(text);
+        }
+
+        EndArray();
+    }
+
     public void Integer(long value)
     {
         StartValue();
