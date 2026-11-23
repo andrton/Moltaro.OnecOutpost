@@ -4858,7 +4858,9 @@ implementer work on `xhigh`.
       account may use, such as Task Scheduler or WMI, so the account's rights are the
       boundary (D12); the workers of one base can read each other's memory, commands and
       1C passwords included, and forge each other's lines through duplicated handles; the
-      password string stays in `AgentSecrets`; a worker that does not start keeps no
+      password string stays in `AgentSecrets`; a junction or symbolic link inside the
+      program folder is judged by its own list, not by its target's, and only an
+      administrator can plant one; a worker that does not start keeps no
       diagnostics.
     - **The risk of the profile** (the coordinator, 23 November 2026). The agent cannot
       load the profile, so HKCU is the default hive and TEMP the system's; the first lab
@@ -4934,8 +4936,11 @@ implementer work on `xhigh`.
 - **What the owner prepares on the lab machine** (the coordinator, 23 November 2026), since
   it changes the lab machine: a new local account outside Administrators with "Log on as a
   batch job", in `lab.local.json` as `workerAccount`, which never signs in, so it has no
-  profile, as one that `install` prepares; "Replace a process level token" for the lab
-  user, in effect after a new logon, which an elevated administrator lacks.
+  profile, as one that `install` prepares; "Replace a process level token" and "Adjust
+  memory quotas for a process" for the lab user, in effect after a new logon, which an
+  administrator's token does not use; and a `%TEMP%` of the lab user whose folders give
+  nobody else Delete or full control, since every lab agent judges its program folder
+  there (the coordinator, 23 November 2026, from S9c's code review, round 1).
 - **Study.** Done, 23 November 2026; it stays in the coordinator's notes.
 - **To read.** The [concept](../concept.md), D12, §5 and §12 (O1); `AGENTS.md`, principles
   4, 8 and 9; this plan, "The files of the agent"; the briefs of S9 and S9b.
