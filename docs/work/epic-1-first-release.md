@@ -4874,7 +4874,12 @@ implementer work on `xhigh`.
       `ObservedLauncher` take `LogOn`; `FakeAccessLists` answers `Writers` empty; the new
       arguments in `Program`, `PairedFolder`, `StoppedStart`, `TestHost`, `DiskHostTests`,
       `DiskStartTests`, `LabRun` and `PolicyValuesTests`; `StartedWorker` and `TestProgram`
-      give the handle and streams. Tests step: `lab.local.example.json` names
+      give the handle and streams; and, found in the contract step (the coordinator, 23
+      November 2026), `WorkerAccount: null` and empty worker passwords wherever a test or
+      a helper builds a mode policy or secrets (`ComWorkerPool`, `TestPool`,
+      `WorkerOpenTests`, `SecretsFileTests`, `MachineDpapiTests`, `LoopbackAgent`,
+      `LabAgent`), `Programs` in `LoopbackAgent`, and `SecretsFile.Read` giving empty
+      worker passwords. Tests step: `lab.local.example.json` names
       `workerAccount`, and `job` joins S9b's list of scripts. Implementation: `AgentHost`'s
       "until S9c" goes. Documents: `README.md` and G2 drop S9b's limitation and state
       these; "The files of the agent" takes the drafts; §6.2 of `docs/protocol.md` drops
