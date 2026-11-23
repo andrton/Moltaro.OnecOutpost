@@ -4547,6 +4547,15 @@ the contract of the executor and the COM worker approved.
     Markdown and runs it against the test base.
   - The documents step: `README.md` says the agent works with 1C, and leads to G2.
     `README.md` and G2 state the limitation.
+- **Notes of S9b's review** (the coordinator, 23 November 2026):
+  - guide G2 was written by the test author in the tests step, before the implementation,
+    so that its scripts could be read by their lab test from the start; a documents agent
+    with no other role reviewed its prose after the implementation and changed no script,
+    and the independent review found that it matches the code. A departure from "The user
+    guides", recorded here;
+  - concept §5 says an agent machine serves "one platform version per bitness"; the code
+    uses the 64-bit connector when both are registered, as S9b's draft for the owner says.
+    The concept is the owner's to change with that draft.
 - **Out of scope.** The console, the shell, the account of S9c.
 
 ### S9c · The account of the workers without safe mode
