@@ -149,6 +149,16 @@ internal sealed class ServerExchange
         Assert.True(_answer.TrySetException(exception), "The request was answered before.");
     }
 
+    // The request ends as the handler ends it when the proxy answers its CONNECT with 407 (§9).
+    public void FailTunnelRefused()
+    {
+        Fail(new HttpRequestException(
+            HttpRequestError.ProxyTunnelError,
+            "The proxy tunnel request to proxy 'http://proxy.example.com:3128/' failed with status code '407'.",
+            null,
+            HttpStatusCode.ProxyAuthenticationRequired));
+    }
+
     // An answer of the library: the status, the body in application/json and its signature for this request.
     public void AnswerSigned(int status, byte[] body)
     {

@@ -1,4 +1,3 @@
-using System.Net;
 using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
 using Moltaro.OnecOutpost.Agent.Transport;
@@ -194,11 +193,7 @@ public sealed class OutcomeAnswerTests
                 exchange.Fail(new HttpRequestException("The connection was reset."));
                 break;
             case "tunnel-refused":
-                exchange.Fail(new HttpRequestException(
-                    HttpRequestError.ProxyTunnelError,
-                    "The proxy tunnel request to proxy 'http://proxy.example.com:3128/' failed with status code '407'.",
-                    null,
-                    HttpStatusCode.ProxyAuthenticationRequired));
+                exchange.FailTunnelRefused();
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(answer), answer, "No such answer.");
