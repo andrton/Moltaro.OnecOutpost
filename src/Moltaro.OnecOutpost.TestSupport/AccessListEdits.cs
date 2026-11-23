@@ -40,10 +40,49 @@ internal static class AccessListEdits
         new DirectoryInfo(folder).SetAccessControl(security);
     }
 
+    // Sets the access list of a folder as the console's install sets that of the program folder (the S9c brief): as
+    // AdmitNobodyElse, the account that runs the tests standing for the agent's, and read and run for Users, inherited
+    // by everything created inside.
+    public static void LetUsersReadAndRun(string folder)
+    {
+        AdmitNobodyElse(folder);
+
+        Add(folder, new FileSystemAccessRule(
+            new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null),
+            FileSystemRights.ReadAndExecute,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+            PropagationFlags.None,
+            AccessControlType.Allow));
+    }
+
     // Adds an entry that allows the account to read the data of the file or the folder at the path.
     public static void Allow(string path, IdentityReference account)
     {
-        Add(path, new FileSystemAccessRule(account, FileSystemRights.ReadData, AccessControlType.Allow));
+        Allow(path, account, FileSystemRights.ReadData);
+    }
+
+    // Adds an entry that allows the account these rights on the file or the folder at the path, and on nothing inside.
+    public static void Allow(string path, IdentityReference account, FileSystemRights rights)
+    {
+        Add(path, new FileSystemAccessRule(account, rights, AccessControlType.Allow));
+    }
+
+    // Adds to a folder an entry that allows the account an access mask that FileSystemRights does not name, such as
+    // GENERIC_ALL, 0x10000000. Windows maps the generic rights of an entry that applies to the folder itself to the
+    // rights they stand for when it stores the entry, as NTFS does.
+    public static void AllowMask(string folder, SecurityIdentifier account, int mask)
+    {
+        DirectoryInfo directory = new(folder);
+        DirectorySecurity security = directory.GetAccessControl(AccessControlSections.Access);
+        RawSecurityDescriptor descriptor = new(security.GetSecurityDescriptorSddlForm(AccessControlSections.Access));
+
+        descriptor.DiscretionaryAcl!.InsertAce(
+            0,
+            new CommonAce(AceFlags.None, AceQualifier.AccessAllowed, mask, account, isCallback: false, opaque: null));
+
+        DirectorySecurity changed = new();
+        changed.SetSecurityDescriptorSddlForm(descriptor.GetSddlForm(AccessControlSections.Access), AccessControlSections.Access);
+        directory.SetAccessControl(changed);
     }
 
     // Adds an entry that denies the account the right to run the file at the path, which takes nobody's access away.
@@ -56,9 +95,16 @@ internal static class AccessListEdits
     // not apply to the folder itself.
     public static void AllowInsideOnly(string folder, IdentityReference account)
     {
+        AllowInsideOnly(folder, account, FileSystemRights.ReadData);
+    }
+
+    // Adds to a folder an entry that allows the account these rights on what is created inside it, and that does not
+    // apply to the folder itself.
+    public static void AllowInsideOnly(string folder, IdentityReference account, FileSystemRights rights)
+    {
         Add(folder, new FileSystemAccessRule(
             account,
-            FileSystemRights.ReadData,
+            rights,
             InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
             PropagationFlags.InheritOnly,
             AccessControlType.Allow));

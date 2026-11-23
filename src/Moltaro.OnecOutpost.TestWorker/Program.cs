@@ -1,5 +1,7 @@
 using System.Buffers;
 using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 
@@ -19,15 +21,27 @@ namespace Moltaro.OnecOutpost.TestWorker;
 // The scripts: wait writes nothing until the input ends or a kill ends the program; exit <n> ends it with n and no
 // outcome; line <text> writes <text> as the line of its outcome; pid, path, arguments and connection succeed with the
 // identity of the process, its Environment.ProcessPath, its command line as an array and the members of its connection
-// line as an object; any other script succeeds with null.
-internal static class Program
+// line as an object; any other script succeeds with null. For the start of S9c: job succeeds with whether the process
+// was in a job when its Main began, which Main asks before anything else, so that a process that the launcher put into
+// its job only after it ran says false; user succeeds with the SID of the account the process runs under; handle <n>
+// succeeds with the final path of the file that the handle of value n names in this process, or null when n names no
+// file here, so that a test sees whether a handle of its own was inherited.
+internal static partial class Program
 {
     private const string LinePrefix = "line ";
 
     private const string ExitPrefix = "exit ";
 
+    private const string HandlePrefix = "handle ";
+
+    // Whether the process was in a job when Main began, false when Windows could not say.
+    private static bool _inJobAtStart;
+
     private static int Main(string[] arguments)
     {
+        // First of all, before the command line is read: IsProcessInJob of the process itself, in any job.
+        _inJobAtStart = IsProcessInJob(GetCurrentProcess(), IntPtr.Zero, out bool inJob) && inJob;
+
         if (arguments is not [{ Length: > 0 }, "read" or "write"])
         {
             return 1;
@@ -200,11 +214,70 @@ internal static class Program
                 writer.WriteRawValue(connection);
                 break;
 
+            case "job":
+                writer.WriteBooleanValue(_inJobAtStart);
+                break;
+
+            case "user":
+                WriteUser(writer);
+                break;
+
+            case string when script.StartsWith(HandlePrefix, StringComparison.Ordinal):
+                WriteFinalPath(writer, long.Parse(script[HandlePrefix.Length..], CultureInfo.InvariantCulture));
+                break;
+
             default:
                 writer.WriteNullValue();
                 break;
         }
     }
+
+    // The SID of the account that the process runs under. The program runs only on Windows.
+    private static void WriteUser(Utf8JsonWriter writer)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            writer.WriteNullValue();
+
+            return;
+        }
+
+        using WindowsIdentity identity = WindowsIdentity.GetCurrent();
+
+        writer.WriteStringValue(identity.User!.Value);
+    }
+
+    // The final path of the file that the handle names, or null when the handle names no file in this process: no
+    // handle of that value, or one of something other than a file.
+    private static unsafe void WriteFinalPath(Utf8JsonWriter writer, long handle)
+    {
+        char[] path = new char[32768];
+        uint length;
+
+        fixed (char* start = path)
+        {
+            length = GetFinalPathNameByHandleW((IntPtr)handle, start, (uint)path.Length, 0);
+        }
+
+        if (length == 0 || length >= path.Length)
+        {
+            writer.WriteNullValue();
+
+            return;
+        }
+
+        writer.WriteStringValue(new string(path, 0, (int)length));
+    }
+
+    [LibraryImport("kernel32.dll")]
+    private static partial IntPtr GetCurrentProcess();
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool IsProcessInJob(IntPtr process, IntPtr job, [MarshalAs(UnmanagedType.Bool)] out bool result);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static unsafe partial uint GetFinalPathNameByHandleW(IntPtr file, char* path, uint length, uint flags);
 
     // The line with its LF in one write, as the worker writes one.
     private static void WriteLine(Stream output, string line)

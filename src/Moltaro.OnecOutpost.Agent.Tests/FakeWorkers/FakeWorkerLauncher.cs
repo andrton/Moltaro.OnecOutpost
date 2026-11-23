@@ -12,14 +12,29 @@ namespace Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 // each run gives, by its command line. A test sets them before the pool asks. Started, when a test sets it, runs once a
 // process is started and listed, before Start returns it, so that a test acts at that moment. Start may run on several
 // tasks at once, since every slot of the pool starts its workers on a task of its own (the S9b brief).
+//
+// LogOn stands for the logon of a worker account (the S9c brief): it keeps the base, the account and the password it
+// was given, and is a line "logon {base} {account}", never with the password. It refuses the logon of a base that the
+// test named with RefuseLogOn, with an AgentStopException of the test's reason, as the real launcher refuses one; any
+// other base is logged on, and every process started for it afterwards runs under its account, Reads included, as the
+// real launcher starts the workers of a logged-on base under its token. A process of a base that was not logged on
+// runs under the agent's own account.
 internal sealed class FakeWorkerLauncher : IWorkerLauncher
 {
     private readonly MemoryDataFolder _data;
 
-    // Guards the list. Nothing of a test runs under it.
+    // Guards the lists and the maps. Nothing of a test runs under it.
     private readonly Lock _lock = new();
 
     private readonly List<FakeWorkerProcess> _processes = [];
+
+    private readonly List<(string Base, string Account, string Password)> _logOns = [];
+
+    // The account of each base logged on.
+    private readonly Dictionary<string, string> _accounts = new(StringComparer.Ordinal);
+
+    // The reason with which the logon of a base is refused, by base key.
+    private readonly Dictionary<string, string> _refused = new(StringComparer.Ordinal);
 
     public FakeWorkerLauncher(MemoryDataFolder data)
     {
@@ -44,9 +59,47 @@ internal sealed class FakeWorkerLauncher : IWorkerLauncher
         }
     }
 
-    // Logs nobody on and gives nothing back.
+    // Every logon asked for, in the order of the calls, refused ones included, copied under the lock.
+    public IReadOnlyList<(string Base, string Account, string Password)> LogOns
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return [.. _logOns];
+            }
+        }
+    }
+
+    // The logon of the base is refused with an AgentStopException of this reason.
+    public void RefuseLogOn(string baseKey, string reason)
+    {
+        lock (_lock)
+        {
+            _refused[baseKey] = reason;
+        }
+    }
+
     public void LogOn(string baseKey, string account, string password)
     {
+        string? refused;
+
+        lock (_lock)
+        {
+            _logOns.Add((baseKey, account, password));
+
+            if (!_refused.TryGetValue(baseKey, out refused))
+            {
+                _accounts[baseKey] = account;
+            }
+        }
+
+        Note($"logon {baseKey} {account}");
+
+        if (refused is not null)
+        {
+            throw new AgentStopException(refused);
+        }
     }
 
     public IWorkerProcess Start(string baseKey, OutpostModeEnum mode)
@@ -56,7 +109,7 @@ internal sealed class FakeWorkerLauncher : IWorkerLauncher
         lock (_lock)
         {
             int number = _processes.Count(process => process.Base == baseKey && process.Mode == mode) + 1;
-            started = new FakeWorkerProcess(this, baseKey, mode, number);
+            started = new FakeWorkerProcess(this, baseKey, mode, number, _accounts.GetValueOrDefault(baseKey));
             _processes.Add(started);
         }
 

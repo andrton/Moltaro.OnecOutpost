@@ -38,12 +38,13 @@ internal sealed class FakeWorkerProcess : IWorkerProcess
 
     private TaskCompletionSource<(long Size, byte[] Outcome)?>? _waitingRun;
 
-    public FakeWorkerProcess(FakeWorkerLauncher launcher, string baseKey, OutpostModeEnum mode, int number)
+    public FakeWorkerProcess(FakeWorkerLauncher launcher, string baseKey, OutpostModeEnum mode, int number, string? account)
     {
         _launcher = launcher;
         Base = baseKey;
         Mode = mode;
         Number = number;
+        Account = account;
     }
 
     public string Base { get; }
@@ -51,6 +52,9 @@ internal sealed class FakeWorkerProcess : IWorkerProcess
     public OutpostModeEnum Mode { get; }
 
     public int Number { get; }
+
+    // The worker account it runs under, that of its base logged on before it started; null for the agent's own.
+    public string? Account { get; }
 
     public string Name => $"{Base} {(Mode == OutpostModeEnum.Read ? "read" : "write")} {Number}";
 

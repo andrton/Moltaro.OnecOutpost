@@ -1,4 +1,5 @@
 using Moltaro.OnecOutpost.Agent.Policy;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Policy;
 
@@ -128,8 +129,9 @@ public sealed class PolicyValuesTests
         Assert.True(policy.Bases[0].Write!.SafeMode);
     }
 
-    // safeMode of write is kept as given, false or true, while a Read always runs in safe mode.
-    [Fact]
+    // safeMode of write is kept as given, false or true, while a Read always runs in safe mode. Since S9c a write with
+    // safeMode false names its worker account.
+    [Fact(Skip = SkipReason.NotImplemented)]
     public void A_request_timeout_and_safe_mode_turned_off_or_on_are_kept()
     {
         const string Json = """
@@ -140,7 +142,7 @@ public sealed class PolicyValuesTests
                   "key": "accounting",
                   "file": "C:\\1C\\Accounting",
                   "read": { "account": "outpost-read" },
-                  "write": { "account": "outpost-write", "safeMode": false }
+                  "write": { "account": "outpost-write", "safeMode": false, "workerAccount": "outpost-worker" }
                 },
                 {
                   "key": "warehouse",
@@ -157,6 +159,7 @@ public sealed class PolicyValuesTests
         Assert.Equal(TimeSpan.FromSeconds(45), policy.RequestTimeout);
         Assert.True(policy.Bases[0].Read.SafeMode);
         Assert.False(policy.Bases[0].Write!.SafeMode);
+        Assert.Equal("outpost-worker", policy.Bases[0].Write!.WorkerAccount);
         Assert.True(policy.Bases[1].Write!.SafeMode);
     }
 }

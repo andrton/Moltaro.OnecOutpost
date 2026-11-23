@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Workers;
-using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport.Workers;
@@ -11,9 +10,10 @@ using Moltaro.OnecOutpost.TestSupport.Workers;
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
 // One run of a LabAgent, AgentHost.RunAsync as the service runs it (the S9b brief, "The lab tests"): on the agent's
-// data folder, with the machine's access lists and DPAPI, the real ComWorkerLauncher with the worker beside the tests as
-// both programs, x64 on the lab, in the agent's job, the executor of the repository, the agent's fake clock and a
-// LabServer of its own as the handler of its connection, which the connection owns. The launcher is wrapped in
+// data folder, with the machine's access lists and DPAPI, the real ComWorkerLauncher with the worker of the agent's
+// program folder as both programs, x64 on the lab, in the agent's job, that folder as the program folder that the start
+// judges (the S9c brief), the executor in it, the agent's fake clock and a LabServer of its own as the handler of its
+// connection, which the connection owns. The launcher is wrapped in
 // TestSupport's ObservedLauncher, which only reports when an open ended and when a run began, so that a test moves the
 // clock only after it observed the script running. A test stops the run as the service controller stops the service,
 // by cancelling its token.
@@ -24,12 +24,16 @@ internal sealed class LabRun : IAsyncDisposable
 
     private readonly Task<int> _exit;
 
+    // The key of the agent's base.
+    private readonly string _key;
+
     private LabRun(LabAgent agent)
     {
+        _key = agent.Key;
         Server = new LabServer(agent.ServerKey, agent.AgentKey, agent.Agent, agent.Clock);
         Workers = new ObservedLauncher(new ComWorkerLauncher(
-            Repository.WorkerPath,
-            Repository.WorkerPath,
+            agent.WorkerPath,
+            agent.WorkerPath,
             ComWorkerLauncher.ComConnector,
             agent.Job));
 
@@ -38,8 +42,8 @@ internal sealed class LabRun : IAsyncDisposable
             new WindowsAccessLists(agent.DataPath),
             new MachineDpapi(),
             Workers,
-            AppContext.BaseDirectory,
-            Repository.ExecutorPath,
+            agent.ProgramsPath,
+            agent.ExecutorPath,
             (_, _) => Server,
             agent.Clock,
             LabAgent.Version);
@@ -59,19 +63,19 @@ internal sealed class LabRun : IAsyncDisposable
     // Completes once the open of the number-th worker of the mode ended, with what it gave.
     public Task<bool> OpenedAsync(OutpostModeEnum mode, int number = 1)
     {
-        return Within(Workers.OpenedAsync(LabAgent.BaseKey, mode, number));
+        return Within(Workers.OpenedAsync(_key, mode, number));
     }
 
     // Completes once the number-th run of the mode began, with its command line.
     public Task<WorkerCommandLine> RanAsync(OutpostModeEnum mode, int number = 1)
     {
-        return Within(Workers.RanAsync(LabAgent.BaseKey, mode, number));
+        return Within(Workers.RanAsync(_key, mode, number));
     }
 
-    // Hands the test base a command, and gives its identity.
+    // Hands the agent's base a command, and gives its identity.
     public Guid Send(OutpostModeEnum mode, string script, string parameters = "{}")
     {
-        return Server.Send(LabAgent.BaseKey, mode, script, parameters);
+        return Server.Send(_key, mode, script, parameters);
     }
 
     // The outcome of the command, once the agent sent it.

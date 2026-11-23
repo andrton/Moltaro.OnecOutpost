@@ -1,17 +1,19 @@
 using System.Buffers.Text;
 using System.Security.Cryptography;
-using System.Text;
+using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
+using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Agent.Tests;
 
-// The data folder of an agent that the console has installed, paired and given its secrets, in memory: policy.json,
-// agent.json and secrets.dat written by hand in the forms of "The files of the agent" and of the S6 brief, an empty
-// audit log and an empty outbox, access lists that admit nobody else and the fake protection. A test changes what it
-// needs, then starts the agent on it as often as a restart needs.
+// The data folder of an agent that the console has installed, paired and given its secrets, in memory: policy.json
+// and agent.json written by hand in the forms of "The files of the agent" and of the S6 brief, secrets.dat written by
+// SecretsFile, whose own tests state its form, an empty audit log and an empty outbox, access lists that admit nobody
+// else and the fake protection, and the fake launcher of the workers, which every start of the folder is given. A test
+// changes what it needs, then starts the agent on it as often as a restart needs.
 internal sealed class PairedFolder
 {
     // The identity of the agent in agent.json.
@@ -47,6 +49,7 @@ internal sealed class PairedFolder
         ServerKey = serverKey;
         ServerPrivateKey = serverPrivateKey;
         PrivateKey = privateKey;
+        Workers = new FakeWorkerLauncher(Data);
     }
 
     public MemoryDataFolder Data { get; } = new();
@@ -54,6 +57,9 @@ internal sealed class PairedFolder
     public FakeAccessLists Access { get; } = new();
 
     public FakeProtection Protection { get; } = new();
+
+    // The launcher that a start through Start is given, so that a test sees the logons of the worker accounts.
+    public FakeWorkerLauncher Workers { get; }
 
     // The 91 bytes of the server key that the agent pinned.
     public byte[] ServerKey { get; }
@@ -94,17 +100,22 @@ internal sealed class PairedFolder
     // Writes secrets.dat with the agent's key and these passwords, as the console's secret writes them.
     public void SeedSecrets(params (string Base, string Mode, string Password)[] passwords)
     {
-        string entries = string.Join(
-            ",",
-            passwords.Select(entry => $$"""{"base":"{{entry.Base}}","mode":"{{entry.Mode}}","password":"{{entry.Password}}"}"""));
+        SeedSecrets(passwords, []);
+    }
 
-        string plain = $$"""{"key":"{{Base64Url.EncodeToString(PrivateKey)}}","passwords":[{{entries}}]}""";
+    // The same, with the passwords of the worker accounts of these bases (the S9c brief).
+    public void SeedSecrets((string Base, string Mode, string Password)[] passwords, (string Base, string Password)[] workers)
+    {
+        AgentSecrets secrets = new(
+            PrivateKey,
+            passwords.ToDictionary(entry => (entry.Base, entry.Mode == "read" ? OutpostModeEnum.Read : OutpostModeEnum.Write), entry => entry.Password),
+            workers.ToDictionary(entry => entry.Base, entry => entry.Password, StringComparer.Ordinal));
 
-        Data.Root.Seed("secrets.dat", Protection.Protect(Encoding.UTF8.GetBytes(plain)));
+        Data.Root.Seed("secrets.dat", SecretsFile.Write(secrets, Protection));
     }
 
     public AgentRun Start(TimeProvider clock)
     {
-        return AgentStart.Open(Data.Folders, Access, Protection, new FakeWorkerLauncher(Data), Programs, clock, Version);
+        return AgentStart.Open(Data.Folders, Access, Protection, Workers, Programs, clock, Version);
     }
 }

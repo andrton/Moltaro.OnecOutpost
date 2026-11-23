@@ -4527,7 +4527,10 @@ the contract of the executor and the COM worker approved.
       or a kill; `exit <n>` ends with `n` and no outcome; `line <text>` writes `<text>`;
       `pid`, `path`, `arguments` and `connection` succeed with its process identity, its
       `Environment.ProcessPath`, its arguments as an array and its connection line's
-      members as an object; any other succeeds with `null`.
+      members as an object; any other succeeds with `null`. S9c's tests step adds `job`,
+      whether the process was in a job when its `Main` began, which `Main` asks first;
+      `user`, the SID of the account it runs under; and `handle <n>`, the final path of the
+      file that its handle of value n names, or `null`.
     - **The tests with `Requires=Windows`**, `Moltaro.OnecOutpost.Agent.Tests`, folder
       `ComWorkers`: the real launcher, a `WorkerJob` of the test, the test program, the pool
       on the fake clock, and a class identifier that the test registers under

@@ -80,5 +80,7 @@ ignores `lab.local.json` (`*.local.json`), and it never leaves the lab machine. 
 no command line, in no log and on no screen. The tests read their bases and accounts from this file. The owner adds
 the copies of typical bases to it by hand, under `typicalBases`: for each its cluster `server` and `database`, its
 `configuration` and `version`, the accounts `read` and `write`, the `documentType` whose latest posted document a test
-posts again, and `writeSafeMode`, the safe mode of its Writes. The script uses only `testBase` and leaves
-`typicalBases` as it is.
+posts again, and `writeSafeMode`, the safe mode of its Writes. The owner also adds by hand `workerAccount`, the
+`user` and `password` of a local Windows account outside Administrators with "Log on as a batch job" that never
+signs in, under which the agent's tests run the COM workers of a base whose Writes run without safe mode (S9c). The
+script uses only `testBase` and leaves `typicalBases` and `workerAccount` as they are.
