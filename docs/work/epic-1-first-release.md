@@ -4752,8 +4752,9 @@ implementer work on `xhigh`.
     {
         public static bool IsOrdinary(IReadOnlyCollection<string> groups, IReadOnlyCollection<string> privileges);
     }
-    // ComWorkerLauncher keeps its constructor and constants; each struct of its calls in ComWorkerLauncher.{Struct}.cs;
-    // tokens are SafeAccessTokenHandle; every call through LibraryImport.
+    // ComWorkerLauncher keeps its constructor and constants and becomes IDisposable, closing its tokens, station and
+    // desktops; each struct of its calls in ComWorkerLauncher.{Struct}.cs; tokens are SafeAccessTokenHandle; every call
+    // through LibraryImport.
     [SupportedOSPlatform("windows")]
     internal sealed partial class WorkerJob : IDisposable
     {
@@ -4834,6 +4835,20 @@ implementer work on `xhigh`.
       The logon comes first, so that a missing account gives 1326 whatever the agent
       holds. The token lives as long as the launcher; one logon per start, so no retries
       lock the account out.
+    - **The desktop of a worker** (the coordinator, 23 November 2026). Cause: in the lab
+      run of 23 November 2026 each worker under the account ended with 0xC0000142 before
+      its first line, since a .NET program loads user32 before `Main` and could not
+      connect to the station and desktop that `lpDesktop` `""` names. Decision, since a
+      desktop of the agent's own admits only that logon and needs no undocumented step:
+      after step 3, once per worker logon, `CreateWindowStationW(null, …)` gives the
+      agent's own non-interactive station, refused unless its name starts with
+      `Service-0x`; it gains one ACE for the worker token's logon SID, 0x123 (enumerate
+      desktops and the station, read attributes, global atoms); `CreateDesktopW` makes
+      `OnecOutpost-{base key}` on it, swapped in and back at once, with the DACL
+      `D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;0xC7;;;{logon SID})`, 0xC7 as measured. A failure,
+      such as no `WRITE_DAC` on the station: `the worker account {account} of the base
+      {key} cannot get a desktop: {the Win32 message}`. Invariant: the worker account is
+      never granted WinSta0 or its `Default` desktop.
     - **`WorkerAccountRule.IsOrdinary`**, apart so that it is tested on every platform:
       true only when no group SID is Administrators, `S-1-5-32-544`, and each privilege is
       one of Users': `SeChangeNotifyPrivilege`, `SeShutdownPrivilege`, `SeUndockPrivilege`,
@@ -4847,7 +4862,8 @@ implementer work on `xhigh`.
       agent's own opened by the constructor), the full path, `"{program}" {base key}
       {read|write}`, `CREATE_SUSPENDED | CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT |
       EXTENDED_STARTUPINFO_PRESENT`, `CreateEnvironmentBlock(token, false)`, the program's
-      folder, `lpDesktop` `""`, the client ends as standard input and output, a null
+      folder, `lpDesktop` `"{station}\OnecOutpost-{base key}"` for a logged-on base and
+      `""` under the agent's own token, the client ends as standard input and output, a null
       standard error, and a `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` of the two client ends
       alone, so that a worker inherits nothing else. Then the client ends close,
       `WorkerJob.Add`, `ResumeThread`. A failure gives a `NoProcess`, after
@@ -4859,15 +4875,17 @@ implementer work on `xhigh`.
       account may use, such as Task Scheduler or WMI, so the account's rights are the
       boundary (D12); the workers of one base can read each other's memory, commands and
       1C passwords included, and forge each other's lines through duplicated handles; the
-      password string stays in `AgentSecrets`; a junction or symbolic link inside the
+      password string stays in `AgentSecrets`; the station's ACEs stay until the agent's
+      logon session ends; a junction or symbolic link inside the
       program folder is judged by its own list, not by its target's, and only an
       administrator can plant one; a worker that does not start keeps no
       diagnostics.
     - **The risk of the profile** (the coordinator, 23 November 2026). The agent cannot
       load the profile, so HKCU is the default hive and TEMP the system's; the first lab
-      test shows whether 1C opens and posts so, and whether such a worker joins the job of
-      the lab tests, which run in the owner's session. If not, the coordinator decides then
-      on `CreateProcessWithLogonW` with `LOGON_WITH_PROFILE`, and records it here.
+      test shows whether 1C opens and posts so. If not, the coordinator decides then on
+      `CreateProcessWithLogonW` with `LOGON_WITH_PROFILE`, and records it here. Session 0,
+      and `WRITE_DAC` of the virtual account on its station, are proven only by S10's
+      manual acceptance under the real service.
     - **The tests with `Requires=Windows`**, `Moltaro.OnecOutpost.Agent.Tests`:
       - S9b's launcher tests, unchanged, now with the test's own token, needing no right;
       - the test program reports the process ids of its immediate job as the first thing
@@ -4878,6 +4896,10 @@ implementer work on `xhigh`.
         message of 1326; through `AgentHost.RunAsync` with the real launcher, `DiskFolder`
         and `FakeAccessLists` admitting its `Programs`, `started`'s error, the exit
         `Error`, and no data file holding the generated password. Never the current user;
+      - with the process's own token: a start on a desktop that the test made and that
+        admits the token's logon SID succeeds, and the test program's new script
+        `desktop` gives that desktop's name; one that does not admit it gives no worker;
+        the station the launcher picks is never WinSta0;
       - `Writers`: read and run for Users give nothing; a write entry two folders down, an
         owner not admitted and a parent giving Everyone `Delete` are reported; an
         inherit-only entry gives nothing; a junction inside is not entered.
@@ -4889,8 +4911,8 @@ implementer work on `xhigh`.
       `started`, and for no other; through `TestHost`, in place of `WithoutSafeModeTests`,
       such a base declares its `write` and runs a Write with `SafeMode` false;
       `WorkerAccountRule` as a table.
-    - **The lab tests**, `Moltaro.OnecOutpost.OneC.Tests`, folder `Agent`, through
-      `LabAgent`, with `workerAccount` in `lab.local.json` as a `LabAccount`; `LabAgent`
+    - **The lab tests**, `Moltaro.OnecOutpost.OneC.Tests`, folder `Agent`, the in-process
+      tests of the worker account and its desktop, through `LabAgent`, with `workerAccount` in `lab.local.json` as a `LabAccount`; `LabAgent`
       copies the worker and the executor into a program folder that admits nobody else and
       lets Users read and run, and gives it as `Programs` and as the launcher's programs:
       - first, the profile's probe: on each typical base with `writeSafeMode` false, its
@@ -4902,18 +4924,12 @@ implementer work on `xhigh`.
       throw `NotSupportedException`; `WorkerAccountRule` works, being a table;
       `AgentPolicyReader` gives `WorkerAccount` null, as in S6a; `AgentStart.Open` leaves
       its new parameters unused; `WorkerJob.Add` and `ComWorkerProcess` work at once, as
-      S9b's tests use them. Edits that state nothing new, there: the fake launcher and
-      `ObservedLauncher` take `LogOn`; `FakeAccessLists` answers `Writers` empty; the new
-      arguments in `Program`, `PairedFolder`, `StoppedStart`, `TestHost`, `DiskHostTests`,
-      `DiskStartTests`, `LabRun` and `PolicyValuesTests`; `StartedWorker` and `TestProgram`
-      give the handle and streams; and, found in the contract step (the coordinator, 23
-      November 2026), `WorkerAccount: null` and empty worker passwords wherever a test or
-      a helper builds a mode policy or secrets (`ComWorkerPool`, `TestPool`,
-      `WorkerOpenTests`, `SecretsFileTests`, `MachineDpapiTests`, `LoopbackAgent`,
-      `LabAgent`), `Programs` in `LoopbackAgent`, and `SecretsFile.Read` giving empty
-      worker passwords. Tests step: `lab.local.example.json` names
-      `workerAccount`, and `job` joins S9b's list of scripts. Implementation: `AgentHost`'s
-      "until S9c" goes. Documents: `README.md` and G2 drop S9b's limitation and state
+      S9b's tests use them. Edits that state nothing new, made there (the coordinator, 23
+      November 2026): the fakes and `ObservedLauncher` take the new members; every caller,
+      test and helper passes the new arguments, `WorkerAccount: null`, empty worker
+      passwords and `Programs`; `StartedWorker` and `TestProgram` give the handle and
+      streams. Tests step: `lab.local.example.json` names `workerAccount`; `job` and
+      `desktop` join S9b's list of scripts. Implementation: `AgentHost`'s "until S9c" goes. Documents: `README.md` and G2 drop S9b's limitation and state
       these; "The files of the agent" takes the drafts; §6.2 of `docs/protocol.md` drops
       "Until sprint S9c".
 - **What S9c changes in the public contract, as a draft for the owner** (the planner, 22
@@ -4998,7 +5014,9 @@ implementer work on `xhigh`.
     the policy names the test base with `safeMode: false` and its `workerAccount`. The
     service records `started` without an error, and each worker of that base runs under
     the worker account and keeps its process past the policy's `runLimit`, set to a
-    minute, so its open gave true and 1C opened. Without the privileges, and with an administrator as the worker
+    minute, so its open gave true and 1C opened. This alone proves session 0 and that
+    the virtual account has `WRITE_DAC` on its station; without it, `LogOn` stops the
+    start with its reason. Without the privileges, and with an administrator as the worker
     account, it records `started` with its reason and stops.
   - **Guide G1**, "Installing and running an agent", as
     [The user guides](#the-user-guides) lists it. Manual, on the lab machine: the owner
