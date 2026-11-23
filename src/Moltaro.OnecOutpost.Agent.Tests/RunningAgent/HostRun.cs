@@ -1,4 +1,5 @@
 using Moltaro.OnecOutpost.Agent.Host;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 

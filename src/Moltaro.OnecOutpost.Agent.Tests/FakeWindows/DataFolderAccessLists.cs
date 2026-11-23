@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeWindows;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
 

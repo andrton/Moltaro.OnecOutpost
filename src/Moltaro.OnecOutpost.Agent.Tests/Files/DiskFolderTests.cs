@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using System.Text;
 using Moltaro.OnecOutpost.Agent.Files;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Files;
 

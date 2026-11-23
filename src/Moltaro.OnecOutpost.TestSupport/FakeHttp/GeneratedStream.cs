@@ -1,4 +1,4 @@
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
+namespace Moltaro.OnecOutpost.TestSupport.FakeHttp;
 
 // The body of an answer that is made as it is read, Length bytes of white space, so that a test of the read limits
 // (§10 of docs/protocol.md) sends more bytes than a limit without holding them. It counts what was read of it, so that a

@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Agent.Secrets;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
+namespace Moltaro.OnecOutpost.TestSupport.FakeWindows;
 
 // The protection of the secrets in place of DPAPI: it changes every byte reversibly, so that no plaintext is in what it
 // protects, and puts a mark first, so that it refuses to unprotect what it did not protect. A test can also make it

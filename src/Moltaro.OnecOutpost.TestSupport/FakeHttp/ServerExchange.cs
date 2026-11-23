@@ -6,8 +6,9 @@ using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
+using Xunit;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
+namespace Moltaro.OnecOutpost.TestSupport.FakeHttp;
 
 // One request of the agent to the FakeServer, as it came: its method, address, version and headers, and the exact
 // bytes of its body, copied when it came; and the answer the test gives it, once. The answers that the server signs

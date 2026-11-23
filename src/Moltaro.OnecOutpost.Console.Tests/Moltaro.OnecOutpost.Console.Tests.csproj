@@ -3,9 +3,9 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
-    <!-- Until the tests step of S10a writes its tests, this project holds none, and Microsoft.Testing.Platform ends a run
-         of zero tests with exit code 8. The test author removes this line with the first test. -->
-    <TestingPlatformCommandLineArguments>--ignore-exit-code 8</TestingPlatformCommandLineArguments>
+    <!-- LibraryImport generates unsafe code for the calls with which the tests that need an administrator read back the
+         service, its configuration and the rights of its account. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,7 +13,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The console: the reference builds it and copies it beside the tests, which run it as a child process too. -->
     <ProjectReference Include="..\Moltaro.OnecOutpost.Console\Moltaro.OnecOutpost.Console.csproj" />
+    <ProjectReference Include="..\Moltaro.OnecOutpost.TestSupport\Moltaro.OnecOutpost.TestSupport.csproj" />
   </ItemGroup>
 
   <ItemGroup>

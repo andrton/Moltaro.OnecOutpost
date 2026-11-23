@@ -1,6 +1,6 @@
-using Moltaro.OnecOutpost.TestSupport;
+using Xunit;
 
-namespace Moltaro.OnecOutpost.Agent.Tests;
+namespace Moltaro.OnecOutpost.TestSupport;
 
 // The times that the tests start their clocks at, the times they let pass or wait for, and the waits on a fake clock
 // and on a task that every helper of a test shares.

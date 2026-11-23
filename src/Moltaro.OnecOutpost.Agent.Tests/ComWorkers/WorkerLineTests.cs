@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using System.Text;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 

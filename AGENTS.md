@@ -337,6 +337,11 @@ Console programs:
 - Every numbered rule of the concept's section 3 has a deterministic test.
 - Time is injected through `TimeProvider`. Deadlines, expiry, polls and the timeouts of
   the COM worker are tested with a fake clock.
+- A test that needs the rights of an administrator, such as one that registers a service,
+  grants a right through LSA or makes Administrators the owner of a file, has the trait
+  `Requires=Administrator` with `Requires=Windows`. CI's `windows` job runs elevated and
+  runs it; a developer whose shell is not elevated adds `--filter-not-trait
+  "Requires=Administrator"`.
 - A test waits for an observed event; it never sleeps and never polls with a delay.
 - The store is tested against a real PostgreSQL, never an in-memory provider.
 - The transport is tested over loopback HTTP, with an agent and a server in one test. The

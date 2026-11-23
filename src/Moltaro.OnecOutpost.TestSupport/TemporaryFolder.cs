@@ -1,4 +1,4 @@
-namespace Moltaro.OnecOutpost.Agent.Tests;
+namespace Moltaro.OnecOutpost.TestSupport;
 
 // A folder of a test's own under the temporary directory, for a test that needs the disk. Disposing it removes it with
 // everything in it, read-only files included.
@@ -6,7 +6,7 @@ internal sealed class TemporaryFolder : IDisposable
 {
     public TemporaryFolder()
     {
-        Path = Directory.CreateTempSubdirectory("outpost-agent-tests-").FullName;
+        Path = Directory.CreateTempSubdirectory("outpost-tests-").FullName;
     }
 
     public string Path { get; }

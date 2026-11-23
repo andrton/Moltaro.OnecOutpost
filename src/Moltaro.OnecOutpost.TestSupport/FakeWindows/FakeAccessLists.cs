@@ -1,13 +1,18 @@
 using Moltaro.OnecOutpost.Agent.Access;
+using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
+namespace Moltaro.OnecOutpost.TestSupport.FakeWindows;
 
 // The access lists of a data folder, answered by path: every path admits nobody else until the test says that it admits
 // some accounts, or that its list cannot be read. It records each path it is asked about. The program folder lets
 // nobody else change it until the test names entries through which others may, in the order Writers gives them, or
-// says that its lists cannot be read; it records each folder it is asked about. Not thread-safe.
+// says that its lists cannot be read; it records each folder it is asked about. When it is given a data folder in
+// memory, each question is also a line "others {path}", the path quoted, or "writers {folder}" of its operation list,
+// so that a test asserts the order of the judgments among the other operations. Not thread-safe.
 internal sealed class FakeAccessLists : IAccessLists
 {
+    private readonly MemoryDataFolder? _notes;
+
     private readonly Dictionary<string, string[]> _others = new(StringComparer.Ordinal);
 
     private readonly HashSet<string> _unreadable = new(StringComparer.Ordinal);
@@ -20,6 +25,11 @@ internal sealed class FakeAccessLists : IAccessLists
 
     private bool _programsUnreadable;
 
+    public FakeAccessLists(MemoryDataFolder? notes = null)
+    {
+        _notes = notes;
+    }
+
     // The paths asked about, in the order of the questions.
     public IReadOnlyList<string> Asked => _asked;
 
@@ -29,6 +39,7 @@ internal sealed class FakeAccessLists : IAccessLists
     public IReadOnlyList<string> Others(string path)
     {
         _asked.Add(path);
+        _notes?.Note($"others \"{path}\"");
 
         if (_unreadable.Contains(path))
         {
@@ -41,6 +52,7 @@ internal sealed class FakeAccessLists : IAccessLists
     public IReadOnlyList<(string Path, IReadOnlyList<string> Accounts)> Writers(string folder)
     {
         _programsAsked.Add(folder);
+        _notes?.Note($"writers {folder}");
 
         if (_programsUnreadable)
         {

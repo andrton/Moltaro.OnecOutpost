@@ -1,8 +1,10 @@
 using System.Runtime.Versioning;
 using System.Text.Json;
 using Microsoft.Win32;
+using Moltaro.OnecOutpost.Agent.Tests.Connector;
 using Moltaro.OnecOutpost.Agent.Tests.Workers;
 using Moltaro.OnecOutpost.Agent.Workers;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 

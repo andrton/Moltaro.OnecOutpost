@@ -1,6 +1,6 @@
 using System.Text.Json;
-using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 using Moltaro.OnecOutpost.Protocol;
+using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 

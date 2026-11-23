@@ -1,11 +1,12 @@
 using Moltaro.OnecOutpost.Agent.Start;
+using Xunit;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
+namespace Moltaro.OnecOutpost.TestSupport.FakeFiles;
 
 // A data folder in memory: the data folder itself, audit\ and outcomes\, whose changes share one list, so that a test
-// asserts the order of writes across the audit log and the outbox. The fake workers and the fake server add their
-// operations to the same list, so that a test asserts their order among the writes too, and a test can wait for a
-// change to be made. It outlives the runs of the agent that a test starts on it, as a disk does across restarts. The
+// asserts the order of writes across the audit log and the outbox. The fake workers, the fake server, the fake access
+// lists and the console's fakes of the machine add their operations to the same list, so that a test asserts their
+// order among the writes too, and a test can wait for a change to be made. It outlives the runs of the agent that a test starts on it, as a disk does across restarts. The
 // list is guarded by itself, since a fake worker adds to it from the task of its run while the folders change from the
 // task of the loop.
 internal sealed class MemoryDataFolder

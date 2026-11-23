@@ -1,7 +1,7 @@
 using System.Text;
 using Moltaro.OnecOutpost.Agent.Files;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
+namespace Moltaro.OnecOutpost.TestSupport.FakeFiles;
 
 // One folder of a data folder in memory, seeded by the test. Every change it makes is a line of the list of its data
 // folder, so that a test asserts the order of writes across the audit log and the outbox; seeding and reading are not

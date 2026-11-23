@@ -1,19 +1,21 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Channels;
-using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
+using Moltaro.OnecOutpost.TestSupport.FakeFiles;
+using Xunit;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
+namespace Moltaro.OnecOutpost.TestSupport.FakeHttp;
 
 // The server of the agent's tests in place of HTTP: the handler that the agent's connection, its pairing and its host
-// are given (AgentParts.Handlers, "a fake handler gives the rest" in the S6 brief). It hands each request to the test
-// as a ServerExchange, queued by kind in the order the requests came, and answers with what the test gives: answers
-// and commands signed with the server's key as the server signs them (§3 of docs/protocol.md), and anything else that a
-// server or a hop on the path could send. It never answers by itself: a request the test leaves alone waits until the
+// are given (AgentParts.Handlers, "a fake handler gives the rest" in the S6 brief), and the stub of the pair endpoint
+// that the console's pair is given (ConsoleParts.Handlers). It hands each request to the test as a ServerExchange,
+// queued by kind in the order the requests came, and answers with what the test gives: answers and commands signed
+// with the server's key as the server signs them (§3 of docs/protocol.md), and anything else that a server or a hop on
+// the path could send. It never answers by itself: a request the test leaves alone waits until the
 // agent gives up on it. When it is given a data folder in memory, each request is a line "request pair",
 // "request poll" or "request outcome" of its operation list, so that a test asserts the order of the requests among
 // the writes of the audit log and the outbox.

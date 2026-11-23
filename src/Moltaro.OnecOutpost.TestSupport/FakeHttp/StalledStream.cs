@@ -1,4 +1,4 @@
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
+namespace Moltaro.OnecOutpost.TestSupport.FakeHttp;
 
 // The body of an answer whose status and headers came and whose bytes stop: it gives its first bytes, and then a read
 // waits until its token is cancelled, as a hop that holds an answer back does. A test of a wait ends it with the fake

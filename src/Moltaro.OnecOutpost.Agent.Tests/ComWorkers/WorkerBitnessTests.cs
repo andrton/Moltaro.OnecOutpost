@@ -1,17 +1,20 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
+using Moltaro.OnecOutpost.Agent.Tests.Connector;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
 // Concept §5 and O8, the S9b brief, "The bitness": a COM worker runs with the bitness of the connector it uses. The
 // launcher reads the registry at each start and starts the x64 program when the connector is registered for 64 bits,
 // otherwise the x86 program when it is for 32 bits, and otherwise no process, whose open gives false; a program that
-// does not start gives no process too, and Start throws nothing. The test program is copied into x64\ and x86\ of the
-// test's folder, path names the copy that runs, and the class of the connector is the test's own, for the current
-// user.
+// does not start gives no process too, and Start throws nothing. Since S10a the launcher reads the registry through the
+// one finder of the connector, and a registration whose file is gone no longer picks its bitness (the S10 brief). The
+// test program is copied into x64\ and x86\ of the test's folder, path names the copy that runs, and the class of the
+// connector is the test's own, for the current user.
 [Trait("Requires", "Windows")]
 [SupportedOSPlatform("windows")]
 public sealed class WorkerBitnessTests : IDisposable
@@ -60,6 +63,21 @@ public sealed class WorkerBitnessTests : IDisposable
         using IWorkerProcess worker = launcher.Start("accounting", OutpostModeEnum.Read);
 
         Assert.False(await worker.OpenAsync(TestLines.Connection(), cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken));
+    }
+
+    // The registration of 64 bits names a file that is gone, as after the platform of that bitness was removed without
+    // its registration, so the worker runs the program of 32 bits, whose registration names a file that exists.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task A_registration_whose_file_is_gone_does_not_pick_its_bitness()
+    {
+        string x64 = TestProgram.CopyInto(_folder.PathOf("x64"));
+        string x86 = TestProgram.CopyInto(_folder.PathOf("x86"));
+        using TestConnector connector = TestConnector.Register(RegistryView.Registry32);
+        connector.RegisterIn(RegistryView.Registry64, _folder.PathOf(@"gone\comcntr.dll"), RegistryValueKind.String);
+        using WorkerJob job = new();
+        using ComWorkerLauncher launcher = new(x64, x86, connector.Finder, job);
+
+        Assert.Equal(x86, await PathOfAStartedWorkerAsync(launcher), ignoreCase: true);
     }
 
     // A start that found no connector registered is followed by one that finds the class registered since, as after an
