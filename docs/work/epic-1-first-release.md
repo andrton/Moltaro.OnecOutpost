@@ -5054,6 +5054,11 @@ implementer work on `xhigh`.
     is written after S10a is merged, with what S10a taught. Its test author and implementer
     work on `xhigh`, since `check` reads the secrets and signs an `outcome` with the
     agent's key.
+- **A draft pull request before the close** (the owner, 23 November 2026, for S10a only):
+  S10a's tests with `Requires=Administrator` run only in CI's elevated `windows` job, so
+  after the implementation step its branch is pushed and its pull request opened as a
+  draft; every later fix is pushed to it, never force-pushed, and it is marked ready and
+  merged only after the close, under PQ1. A later sprint that needs the same asks again.
 - **From the architect's review 1** (the whole code base after S8; the planner, 23
   November 2026):
   - *S10a's documents step:* explanation E1, both forms in one change, still says that a
