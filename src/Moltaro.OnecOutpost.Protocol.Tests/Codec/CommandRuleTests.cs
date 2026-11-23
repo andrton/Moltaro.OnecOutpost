@@ -124,10 +124,10 @@ public sealed class CommandRuleTests : IDisposable
     // A member with a range, a value of it, and whether the value is within the range. Every range includes its ends.
     public static TheoryData<string, string, bool> Ranges => new()
     {
-        { "skewMs", Milliseconds(OutpostProtocol.MinClockSkew), true },
-        { "skewMs", Milliseconds(OutpostProtocol.MinClockSkew, -1), false },
-        { "skewMs", Milliseconds(OutpostProtocol.MaxClockSkew), true },
-        { "skewMs", Milliseconds(OutpostProtocol.MaxClockSkew, 1), false },
+        { "skewMs", MessageText.Milliseconds(OutpostProtocol.MinClockSkew), true },
+        { "skewMs", MessageText.Milliseconds(OutpostProtocol.MinClockSkew, -1), false },
+        { "skewMs", MessageText.Milliseconds(OutpostProtocol.MaxClockSkew), true },
+        { "skewMs", MessageText.Milliseconds(OutpostProtocol.MaxClockSkew, 1), false },
         { "skewMs", "0", false },
         { "skewMs", "-120000", false },
 
@@ -246,11 +246,6 @@ public sealed class CommandRuleTests : IDisposable
         Assert.Equal(written.Deadline, read.Deadline);
         Assert.Equal(written.Skew, read.Skew);
         Assert.Equal(written.OutcomeLimit, read.OutcomeLimit);
-    }
-
-    private static string Milliseconds(TimeSpan duration, int step = 0)
-    {
-        return ((long)duration.TotalMilliseconds + step).ToString();
     }
 
     private OutpostCommandMessage Read(string text)

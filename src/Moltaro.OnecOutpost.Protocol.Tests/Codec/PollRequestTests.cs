@@ -22,10 +22,10 @@ public sealed class PollRequestTests : IDisposable
         { "number", "-1", false },
         { "number", "9223372036854775808", false },
 
-        { "pollTimeoutMs", Milliseconds(OutpostProtocol.MinPollTimeout, -1), false },
-        { "pollTimeoutMs", Milliseconds(OutpostProtocol.MinPollTimeout), true },
-        { "pollTimeoutMs", Milliseconds(OutpostProtocol.MaxPollTimeout), true },
-        { "pollTimeoutMs", Milliseconds(OutpostProtocol.MaxPollTimeout, 1), false },
+        { "pollTimeoutMs", MessageText.Milliseconds(OutpostProtocol.MinPollTimeout, -1), false },
+        { "pollTimeoutMs", MessageText.Milliseconds(OutpostProtocol.MinPollTimeout), true },
+        { "pollTimeoutMs", MessageText.Milliseconds(OutpostProtocol.MaxPollTimeout), true },
+        { "pollTimeoutMs", MessageText.Milliseconds(OutpostProtocol.MaxPollTimeout, 1), false },
     };
 
     // A mode of a base, the member of it with a range, a value of it, and whether the value is within the range.
@@ -42,10 +42,10 @@ public sealed class PollRequestTests : IDisposable
                 ranges.Add(mode, "free", OutpostProtocol.MaxWorkers.ToString(), true);
                 ranges.Add(mode, "free", (OutpostProtocol.MaxWorkers + 1).ToString(), false);
 
-                ranges.Add(mode, "runLimitMs", Milliseconds(OutpostProtocol.MinRunLimit, -1), false);
-                ranges.Add(mode, "runLimitMs", Milliseconds(OutpostProtocol.MinRunLimit), true);
-                ranges.Add(mode, "runLimitMs", Milliseconds(OutpostProtocol.MaxRunLimit), true);
-                ranges.Add(mode, "runLimitMs", Milliseconds(OutpostProtocol.MaxRunLimit, 1), false);
+                ranges.Add(mode, "runLimitMs", MessageText.Milliseconds(OutpostProtocol.MinRunLimit, -1), false);
+                ranges.Add(mode, "runLimitMs", MessageText.Milliseconds(OutpostProtocol.MinRunLimit), true);
+                ranges.Add(mode, "runLimitMs", MessageText.Milliseconds(OutpostProtocol.MaxRunLimit), true);
+                ranges.Add(mode, "runLimitMs", MessageText.Milliseconds(OutpostProtocol.MaxRunLimit, 1), false);
             }
 
             return ranges;
@@ -247,11 +247,6 @@ public sealed class PollRequestTests : IDisposable
     public void An_agent_version_is_1_to_64_characters_of_its_alphabet(string version, bool within)
     {
         AssertReadOnlyIf(within, BodySample.Poll.With("agentVersion", MessageText.Quote(version)).ToString());
-    }
-
-    private static string Milliseconds(TimeSpan duration, int step = 0)
-    {
-        return ((long)duration.TotalMilliseconds + step).ToString();
     }
 
     private static string Mode(string free = "0", string runLimitMs = "600000")

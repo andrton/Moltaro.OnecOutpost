@@ -33,15 +33,15 @@ public sealed class PairAnswerTests : IDisposable
     // A member with a range, a value of it, and whether the value is within the range. Every range includes its ends.
     public static TheoryData<string, string, bool> Ranges => new()
     {
-        { "pollTimeoutMs", Milliseconds(OutpostProtocol.MinPollTimeout, -1), false },
-        { "pollTimeoutMs", Milliseconds(OutpostProtocol.MinPollTimeout), true },
-        { "pollTimeoutMs", Milliseconds(OutpostProtocol.MaxPollTimeout), true },
-        { "pollTimeoutMs", Milliseconds(OutpostProtocol.MaxPollTimeout, 1), false },
+        { "pollTimeoutMs", MessageText.Milliseconds(OutpostProtocol.MinPollTimeout, -1), false },
+        { "pollTimeoutMs", MessageText.Milliseconds(OutpostProtocol.MinPollTimeout), true },
+        { "pollTimeoutMs", MessageText.Milliseconds(OutpostProtocol.MaxPollTimeout), true },
+        { "pollTimeoutMs", MessageText.Milliseconds(OutpostProtocol.MaxPollTimeout, 1), false },
 
-        { "leaseGraceMs", Milliseconds(OutpostProtocol.MinLeaseGrace, -1), false },
-        { "leaseGraceMs", Milliseconds(OutpostProtocol.MinLeaseGrace), true },
-        { "leaseGraceMs", Milliseconds(OutpostProtocol.MaxLeaseGrace), true },
-        { "leaseGraceMs", Milliseconds(OutpostProtocol.MaxLeaseGrace, 1), false },
+        { "leaseGraceMs", MessageText.Milliseconds(OutpostProtocol.MinLeaseGrace, -1), false },
+        { "leaseGraceMs", MessageText.Milliseconds(OutpostProtocol.MinLeaseGrace), true },
+        { "leaseGraceMs", MessageText.Milliseconds(OutpostProtocol.MaxLeaseGrace), true },
+        { "leaseGraceMs", MessageText.Milliseconds(OutpostProtocol.MaxLeaseGrace, 1), false },
     };
 
     public void Dispose()
@@ -249,11 +249,6 @@ public sealed class PairAnswerTests : IDisposable
         {
             ProtocolAssert.Refused(OutpostProtocolCodes.Form, () => Read(body, signature));
         }
-    }
-
-    private static string Milliseconds(TimeSpan duration, int step = 0)
-    {
-        return ((long)duration.TotalMilliseconds + step).ToString();
     }
 
     private static string KeyText(ECDsa key)
