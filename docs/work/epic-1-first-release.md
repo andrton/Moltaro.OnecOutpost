@@ -1140,7 +1140,7 @@ The concept fixes the principles; S2 fixes the bytes.
 
 - **Tracks.** The [development process](process.md) applies.
   - S8 is on the refactoring track.
-  - After each of S10a, S10b, S11 and S12 is merged, the architect reviews what the
+  - After each of S10a, S10b, S10c, S11 and S12 is merged, the architect reviews what the
     system has become, as the [development process](process.md#the-architects-review)
     says; a refactoring sprint S10aR, S10bR, S11R or S12R follows only when an entry of
     its list is taken (the owner, 23 November 2026). The first architect's review reads
@@ -1267,7 +1267,7 @@ The agent with 1C
 Several nodes, and the refactoring
   S7a nodes, losses ── S7b measurements, explanations ── S8 refactoring ── lab
 The tools
-  S10a console setup ── architect ── S10aR refactoring ── S10b console check ── lab ── architect ── S11 shell ── architect
+  S10a console setup ── architect ── S10aR refactoring ── S10b console check ── architect ── S10c metadata, G1 ── lab ── architect ── S11 shell ── architect
 The release
   S12 documents, packages, archive ── architect
 ```
@@ -1363,9 +1363,10 @@ The release
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Done, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. The code review took three rounds, and its last finding, confirmed on the lab, was fixed by a query of the executor before the commit of a Write, reviewed once more. On the lab, 1C:Enterprise 8.3.17.1851, the first run gave 43 of 44 tests that need 1C passed; the failed one, `A_write_whose_commit_raises_gives_unknown_transaction_ended`, was removed, since 8.3.17 gave no way to provoke the case. The second run, with the `.epf` rebuilt after the fix, gave 45 of 45 passed, on the test base and one copy of a typical base, which ran with one account for both modes. No manual scenario, since every line of the Acceptance has a test. What it changed in the public contract is listed in its brief for the owner |
 | S9b | The agent runs the COM workers | Full | Done, 23 November 2026: the agent runs the COM workers of each base and mode with the bitness of the registered connector, inside a job object, ends a worker at its run limit and starts it again with a growing delay, and serves a base whose Writes run without safe mode for Read only until S9c; guide G2 with a lab test of every script. The internal contract was reviewed in two rounds and approved under PQ2; the code review took three rounds (six P3s of round 1, two of round 2, all fixed). 2430 tests passed here. On the lab, 23 November 2026, 1C:Enterprise 8.3.17.1851, the test base built again: 73 of 73 tests of `Moltaro.OnecOutpost.OneC.Tests` passed (S9's 45, G2's 25, the agent's 3), in 7 min 05 s. The agent, the COM worker and 1C were real, the server the test's; the real server against the agent is proven in CI over loopback (S6c) |
 | S9c | The account of the workers without safe mode | Full | Done, 23 November 2026: `write.workerAccount` in `policy.json` and its password in `secrets.dat`; the agent logs each such account on once at the start and runs every COM worker of its base, Reads included, under it (`LogonUserW`, `CreateProcessAsUserW` suspended, in the job, only its two pipe ends inherited); the program folder and the folders above it checked at the start. The internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P2 of the job test, fixed). The lab run of 106e58f gave 71 of 76 (the lab agent removed its program folder while workers ran, and gave no reason when a worker did not open), that of bc53229 gave 73 of 76 (the worker under its account ended 0xC0000142: it could not connect to the window station or desktop that `""` names); after a study the worker gets a desktop of the agent's own on its non-interactive station, never WinSta0, reviewed in two rounds (a P2 of the tests, fixed). The third lab run, of 849574f, gave 76 of 76 |
-| S10a | The console's setup: `install`, `uninstall`, `pair`, `secret`, `connector register` | Full | Done, 23 November 2026: the console on Spectre.Console.Cli with `install`, `uninstall`, `pair`, `secret` and `connector register`, and one finder of the COM connector in the agent, which its launcher and the console use. The study read actions/runner and Octopus Tentacle; the internal contract was reviewed in two rounds and approved under PQ2, round 2's fixes (a P2 of the contract step and six P3) taken without a third round. The code review took three rounds: three P1 of round 1 (the lists of `audit` and `outcomes`, tests that expected an order of entries, colour forced on in CI), five P3 of round 2, none in round 3. 2697 tests passed here; CI passed with the tests of `Requires=Administrator` on its elevated `windows` job. The manual run of its commands is on the lab with S10b. What it changes in the public contract is listed in the S10 brief for the owner |
+| S10a | The console's setup: `install`, `uninstall`, `pair`, `secret`, `connector register` | Full | Done, 23 November 2026: the console on Spectre.Console.Cli with `install`, `uninstall`, `pair`, `secret` and `connector register`, and one finder of the COM connector in the agent, which its launcher and the console use. The study read actions/runner and Octopus Tentacle; the internal contract was reviewed in two rounds and approved under PQ2, round 2's fixes (a P2 of the contract step and six P3) taken without a third round. The code review took three rounds: three P1 of round 1 (the lists of `audit` and `outcomes`, tests that expected an order of entries, colour forced on in CI), five P3 of round 2, none in round 3. 2697 tests passed here; CI passed with the tests of `Requires=Administrator` on its elevated `windows` job. The manual run of its commands is on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
 | S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 and entry 1 of review 2 | Refactoring | Done, 23 November 2026: one transaction frame in the store, measured again with every p95 within S7b's; one growing delay of a retry; the forms of §2 in the protocol alone; four small cleanups; the console's install test running the program's own parts. One commit per entry, every test green after each, no public member, assertion or test changed; the review took one round (five P4, two fixed in this plan) |
-| S10b | The console's check, the metadata report and guide G1 | Full | Not started |
+| S10b | The console's check | Full | Not started |
+| S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | Not started |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
 
@@ -5082,7 +5083,8 @@ implementer work on `xhigh`.
 ### S10 · The console
 
 **Track:** full · **Branch:** `epic-1/sprint-10a-console-setup`, then
-`epic-1/sprint-10b-console-check` · **Needs:** S9c, S8.
+`epic-1/sprint-10b-console-check`, then `epic-1/sprint-10c-console-metadata` · **Needs:** S9c,
+S8.
 
 - **The cut** (the coordinator, 23 November 2026, under the planner's standing instruction
   to cut a sprint too large for one exhaustive review). S10 runs as two sprints, each with
@@ -5092,13 +5094,21 @@ implementer work on `xhigh`.
     connector that `check` uses later. Pairing, secrets and the access lists are strict
     zones, so its test author and implementer work on `xhigh`. Its Acceptance is the
     automated lines of the commands it builds. It has no lab line: the manual run of its
-    commands and S9c's manual line run on the lab with S10b, which needs a paired agent
+    commands and S9c's manual line run on the lab with S10c, which needs a paired agent
     anyway, so the owner goes to the lab once for S10.
-  - **S10b, the check and the report**: `check`, `metadata`, the tests in
-    `Moltaro.OnecOutpost.OneC.Tests`, the manual lines and guide G1. Its internal contract
-    is written after S10a is merged, with what S10a taught. Its test author and implementer
-    work on `xhigh`, since `check` reads the secrets and signs an `outcome` with the
-    agent's key.
+  - **S10b, the check**: `check` with every line, the entries of the architect's reviews
+    joined to it, and its tests in `Moltaro.OnecOutpost.OneC.Tests`, written and built but
+    run on the lab with S10c. Its internal contract is written after S10a is merged, with
+    what S10a taught. Its test author and implementer work on `xhigh`, since `check` reads
+    the secrets, logs the worker accounts on and signs an `outcome` with the agent's key.
+    It has no lab line of its own, as S10a has none.
+  - **S10c, the metadata report and the guide** (the coordinator, 24 November 2026, from
+    S10b's study, under the planner's standing instruction to cut a sprint too large for
+    one exhaustive review): `metadata`, read in pages through the executor; guide G1; and
+    the one lab run of S10, which runs the tests of `check` and of `metadata` in
+    `Moltaro.OnecOutpost.OneC.Tests` and the manual lines of the Acceptance, the run of
+    every command, S9c's line and the installation by G1 alone. Its branch is
+    `epic-1/sprint-10c-console-metadata`.
 - **A draft pull request before the close** (the owner, 23 November 2026, for S10a only):
   S10a's tests with `Requires=Administrator` run only in CI's elevated `windows` job, so
   after the implementation step its branch is pushed and its pull request opened as a
@@ -5155,7 +5165,7 @@ implementer work on `xhigh`.
   Administrators the owner of the data folder and of every file it writes, and so do `pair`
   and `secret` (S10a); `check` names a file whose owner is someone else and gives the
   remedy (S10b); G1 shows how to edit `policy.json` without changing its owner, and the
-  one command that restores it (S10b).
+  one command that restores it (S10c).
 
 - **Goal.** The administrator does everything for an agent from the console:
   - installs the service under its virtual account, with the data folder and its access
@@ -5417,7 +5427,7 @@ implementer work on `xhigh`.
       holds a handle of a deleted service; `StopAsync` of a stopped and an unknown service;
       `ServiceAccount.Sid` as Windows translates it; `Grant` and `Revoke` by `Held`; both
       folders by their SDDL and `WindowsAccessLists`; `install` then `uninstall` through
-      `CommandAppTester`. Stopping a running service is the fakes' and S10b's lab's.
+      `CommandAppTester`. Stopping a running service is the fakes' and S10c's lab's.
     - **The steps.** Contract: the two projects, on Spectre.Console and Spectre.Console.Cli
       0.57.2, the tests also on their Testing packages 0.57.2. Settings, validation,
       `ConsoleExitCodes`, `ConsoleApp`, `Program` and `ServiceAccount` work; the commands and
