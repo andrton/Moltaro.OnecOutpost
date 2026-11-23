@@ -54,7 +54,7 @@ public sealed class WorkerDesktopTests : IDisposable
 
     // One desktop per logon (the coordinator, from the review of the desktop, round 1): {logon} is the identifier of the
     // token's logon session in hexadecimal, so that no desktop of an earlier logon is ever given again.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_desktop_of_a_base_is_named_after_the_base_and_the_logon_of_its_token()
     {
         using SafeAccessTokenHandle token = TestTokens.Own();

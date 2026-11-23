@@ -45,10 +45,12 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     // a primary token, and what GetTokenInformation needs.
     private const uint AgentTokenAccess = 0x0001 | 0x0002 | 0x0008;
 
-    // TokenGroups and TokenPrivileges of TOKEN_INFORMATION_CLASS.
+    // TokenGroups, TokenPrivileges and TokenStatistics of TOKEN_INFORMATION_CLASS.
     private const int TokenGroupsClass = 2;
 
     private const int TokenPrivilegesClass = 3;
+
+    private const int TokenStatisticsClass = 10;
 
     // CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, EXTENDED_STARTUPINFO_PRESENT and CREATE_NO_WINDOW.
     private const uint CreationFlags = 0x00000004 | 0x00000400 | 0x00080000 | 0x08000000;
@@ -340,6 +342,24 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             }
 
             return groups;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(information);
+        }
+    }
+
+    // The identifier of the token's logon session, its AuthenticationId, as one 64-bit number: WorkerDesktop names the
+    // desktop of a logon after it. Win32Exception when the token cannot give it.
+    internal static unsafe ulong LogonOf(SafeAccessTokenHandle token)
+    {
+        nint information = TokenInformation(token, TokenStatisticsClass);
+
+        try
+        {
+            Luid logon = ((TokenStatistics*)information)->AuthenticationId;
+
+            return ((ulong)(uint)logon.HighPart << 32) | logon.LowPart;
         }
         finally
         {
