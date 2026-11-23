@@ -37,6 +37,8 @@ internal sealed class LabRun : IAsyncDisposable
     // The account under which the agent runs the workers of its base, or null for its own.
     private readonly LabAccount? _workerAccount;
 
+    private readonly ComWorkerLauncher _launcher;
+
     private LabRun(LabAgent agent)
     {
         _key = agent.Key;
@@ -44,11 +46,8 @@ internal sealed class LabRun : IAsyncDisposable
         _workerPath = agent.WorkerPath;
         _workerAccount = agent.WorkerAccount;
         Server = new LabServer(agent.ServerKey, agent.AgentKey, agent.Agent, agent.Clock);
-        Workers = new ObservedLauncher(new ComWorkerLauncher(
-            agent.WorkerPath,
-            agent.WorkerPath,
-            ComWorkerLauncher.ComConnector,
-            agent.Job));
+        _launcher = new ComWorkerLauncher(agent.WorkerPath, agent.WorkerPath, ComWorkerLauncher.ComConnector, agent.Job);
+        Workers = new ObservedLauncher(_launcher);
 
         AgentParts parts = new(
             agent.Folders,
@@ -162,6 +161,7 @@ internal sealed class LabRun : IAsyncDisposable
     {
         _stop.Cancel();
         await ((Task)_exit).WaitAsync(LabAgent.Deadline).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        _launcher.Dispose();
         _stop.Dispose();
     }
 

@@ -17,7 +17,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 // view of 64 bits; the pool's clock is a fake one at TestTimes.Start. Its policy holds accounting, read and written,
 // one worker in each mode, with the run limits of TestPool and the default retryDelayMax of 30 seconds. The launcher is
 // wrapped in TestSupport's ObservedLauncher, so that a test moves the clock, or asks for a free worker, only after it
-// observed what it waits for. Disposing it disposes the pool, then the job, then the class.
+// observed what it waits for. Disposing it disposes the pool, then the launcher, then the job, then the class.
 [SupportedOSPlatform("windows")]
 internal sealed class ComWorkerPool : IAsyncDisposable
 {
@@ -27,11 +27,14 @@ internal sealed class ComWorkerPool : IAsyncDisposable
 
     private readonly WorkerJob _job;
 
+    private readonly ComWorkerLauncher _launcher;
+
     private ComWorkerPool(TestConnector connector, WorkerJob job)
     {
         _connector = connector;
         _job = job;
-        Launcher = new ObservedLauncher(new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, connector.ProgId, job));
+        _launcher = new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, connector.ProgId, job);
+        Launcher = new ObservedLauncher(_launcher);
 
         AgentPolicy policy = new(
             90,
@@ -122,6 +125,7 @@ internal sealed class ComWorkerPool : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await Pool.DisposeAsync();
+        _launcher.Dispose();
         _job.Dispose();
         _connector.Dispose();
     }

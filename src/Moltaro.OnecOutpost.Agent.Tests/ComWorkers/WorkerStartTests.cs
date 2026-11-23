@@ -22,7 +22,7 @@ public sealed class WorkerStartTests
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         using TestConnector connector = TestConnector.Register(RegistryView.Registry64);
         using WorkerJob job = new();
-        ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, connector.ProgId, job);
+        using ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, connector.ProgId, job);
         WorkerConnectionLine connection = TestLines.Connection();
         using IWorkerProcess worker = launcher.Start("accounting", TestCommands.ModeOf(modeWord));
 

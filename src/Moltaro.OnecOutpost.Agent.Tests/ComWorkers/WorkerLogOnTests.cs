@@ -43,7 +43,7 @@ public sealed class WorkerLogOnTests : IDisposable
     public void The_logon_of_an_account_that_does_not_exist_fails_naming_the_base_the_account_and_the_message_of_1326()
     {
         using WorkerJob job = new();
-        ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, NoConnector, job);
+        using ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, NoConnector, job);
 
         AgentStopException exception = Assert.Throws<AgentStopException>(() => launcher.LogOn("accounting", _account, _password));
 
@@ -67,11 +67,12 @@ public sealed class WorkerLogOnTests : IDisposable
         using ECDsa serverKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         FakeServer server = new(serverKey, clock);
         using WorkerJob job = new();
+        using ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, NoConnector, job);
         AgentParts parts = new(
             _data.Folders,
             new FakeAccessLists(),
             new MachineDpapi(),
-            new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, NoConnector, job),
+            launcher,
             PairedFolder.Programs,
             TestHost.Executor,
             (_, _) => server,

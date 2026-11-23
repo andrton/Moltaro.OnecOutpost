@@ -19,15 +19,16 @@ namespace Moltaro.OnecOutpost.Agent.Workers;
 // thread before any Start, so the tokens are only read once workers start. Start may run on several slots' tasks at
 // once, without a lock: it reads the registry and the tokens, and a worker inherits the ends of its own two pipes alone,
 // never those of another started at the same moment. Nothing else in the agent starts a process, which would inherit
-// every handle that may be inherited, those ends included, while they are open. The tokens live as long as the
-// launcher, which the program never disposes, so Windows closes them when the agent ends.
+// every handle that may be inherited, those ends included, while they are open. The tokens and the desktops of the
+// workers live as long as the launcher, which closes them when disposed; the program never disposes it, so Windows
+// closes them when the agent ends.
 //
 // Limitations of a script without safe mode, whose boundary is the rights of the worker account (D12): it can leave a
 // process outside the job through a service that the account may use, such as Task Scheduler or WMI; and the workers of
 // one base run under one account, so they can read each other's memory, commands and 1C passwords included, and forge
 // each other's lines through duplicated handles.
 [SupportedOSPlatform("windows")]
-internal sealed partial class ComWorkerLauncher : IWorkerLauncher
+internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 {
     // The ProgID of the COM connector that the platform registers.
     public const string ComConnector = "V83.COMConnector";
@@ -164,6 +165,26 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
             token.Dispose();
             throw;
         }
+    }
+
+    // Makes every later Start of the base start its workers under the token, on the desktop that lpDesktop names as
+    // desktop.Name. The launcher owns both from then on and closes them when disposed. LogOn calls it after its checks,
+    // with the desktop that WorkerDesktop.Make gives for the token; a test calls it with its own token and a desktop of
+    // its own. Like LogOn, it runs before any Start.
+    public void Use(string baseKey, SafeAccessTokenHandle token, WorkerDesktop desktop)
+    {
+        throw new NotSupportedException();
+    }
+
+    // Closes the tokens of the logged-on bases, their desktops and the agent's own token.
+    public void Dispose()
+    {
+        foreach (SafeAccessTokenHandle token in _tokens.Values)
+        {
+            token.Dispose();
+        }
+
+        _agentToken.Dispose();
     }
 
     // Reads the registry at each start (concept §5, O8): the x64 program when the connector is registered for 64 bits,

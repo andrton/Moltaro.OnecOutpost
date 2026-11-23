@@ -4753,9 +4753,19 @@ implementer work on `xhigh`.
     {
         public static bool IsOrdinary(IReadOnlyCollection<string> groups, IReadOnlyCollection<string> privileges);
     }
-    // ComWorkerLauncher keeps its constructor and constants and becomes IDisposable, closing its tokens, station and
-    // desktops; each struct of its calls in ComWorkerLauncher.{Struct}.cs; tokens are SafeAccessTokenHandle; every call
-    // through LibraryImport.
+    // ComWorkerLauncher keeps its constructor and constants and becomes IDisposable, closing its tokens and desktops;
+    // each struct of its calls in ComWorkerLauncher.{Struct}.cs; tokens are SafeAccessTokenHandle; all through LibraryImport.
+    [SupportedOSPlatform("windows")]
+    internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
+    {
+        public void Use(string baseKey, SafeAccessTokenHandle token, WorkerDesktop desktop); // the test author's seam, PQ2
+    }
+    [SupportedOSPlatform("windows")]
+    internal sealed partial class WorkerDesktop : IDisposable
+    {
+        public static WorkerDesktop Make(string baseKey, SafeAccessTokenHandle token);
+        public string Name { get; } // "{station}\OnecOutpost-{base key}"
+    }
     [SupportedOSPlatform("windows")]
     internal sealed partial class WorkerJob : IDisposable
     {
@@ -4841,7 +4851,10 @@ implementer work on `xhigh`.
       its first line, since a .NET program loads user32 before `Main` and could not
       connect to the station and desktop that `lpDesktop` `""` names. Decision, since a
       desktop of the agent's own admits only that logon and needs no undocumented step:
-      after step 3, once per worker logon, `CreateWindowStationW(null, …)` gives the
+      after step 3, once per worker logon, `LogOn` calls `WorkerDesktop.Make` and then
+      `Use(baseKey, token, desktop)`, which makes every `Start` of the base use that token
+      and `desktop.Name`, so that a test reaches the desktop with its own token (the
+      coordinator, PQ2). `Make`: `CreateWindowStationW(null, …)` gives the
       agent's own non-interactive station, refused unless its name starts with
       `Service-0x`; it gains one ACE for the worker token's logon SID, 0x123 (enumerate
       desktops and the station, read attributes, global atoms); `CreateDesktopW` makes
@@ -4849,7 +4862,8 @@ implementer work on `xhigh`.
       `D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;0xC7;;;{logon SID})`, 0xC7 as measured. A failure,
       such as no `WRITE_DAC` on the station: `the worker account {account} of the base
       {key} cannot get a desktop: {the Win32 message}`. Invariant: the worker account is
-      never granted WinSta0 or its `Default` desktop.
+      never granted WinSta0 or its `Default` desktop. The launcher owns what `Use` gets
+      and closes it in `Dispose`, which every test that makes a launcher calls.
     - **`WorkerAccountRule.IsOrdinary`**, apart so that it is tested on every platform:
       true only when no group SID is Administrators, `S-1-5-32-544`, and each privilege is
       one of Users': `SeChangeNotifyPrivilege`, `SeShutdownPrivilege`, `SeUndockPrivilege`,
@@ -4897,10 +4911,9 @@ implementer work on `xhigh`.
         message of 1326; through `AgentHost.RunAsync` with the real launcher, `DiskFolder`
         and `FakeAccessLists` admitting its `Programs`, `started`'s error, the exit
         `Error`, and no data file holding the generated password. Never the current user;
-      - with the process's own token: a start on a desktop that the test made and that
-        admits the token's logon SID succeeds, and the test program's new script
-        `desktop` gives that desktop's name; one that does not admit it gives no worker;
-        the station the launcher picks is never WinSta0;
+      - with the process's own token: `Make`, `Use` and `Start` give a worker whose new
+        script `desktop` gives `Name`; a desktop that does not admit the token's logon SID,
+        given to `Use`, gives an open of false; `Name` starts with `Service-0x`;
       - `Writers`: read and run for Users give nothing; a write entry two folders down, an
         owner not admitted and a parent giving Everyone `Delete` are reported; an
         inherit-only entry gives nothing; a junction inside is not entered.

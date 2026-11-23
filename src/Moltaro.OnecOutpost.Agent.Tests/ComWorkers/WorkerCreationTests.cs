@@ -36,7 +36,8 @@ public sealed class WorkerCreationTests : IDisposable
     public async Task A_worker_of_a_base_that_was_not_logged_on_runs_under_the_account_of_the_agent()
     {
         using WindowsIdentity agent = WindowsIdentity.GetCurrent();
-        using IWorkerProcess worker = await OpenAsync(Launcher());
+        using ComWorkerLauncher launcher = Launcher();
+        using IWorkerProcess worker = await OpenAsync(launcher);
 
         JsonElement user = await RunAsync(worker, "user");
 
@@ -49,7 +50,8 @@ public sealed class WorkerCreationTests : IDisposable
     [Fact]
     public async Task A_worker_of_a_base_that_was_not_logged_on_runs_on_the_desktop_of_the_agent()
     {
-        using IWorkerProcess worker = await OpenAsync(Launcher());
+        using ComWorkerLauncher launcher = Launcher();
+        using IWorkerProcess worker = await OpenAsync(launcher);
 
         JsonElement desktop = await RunAsync(worker, "desktop");
 
@@ -64,7 +66,8 @@ public sealed class WorkerCreationTests : IDisposable
     [Fact]
     public async Task A_worker_is_in_the_job_before_its_program_runs()
     {
-        using IWorkerProcess worker = await OpenAsync(Launcher());
+        using ComWorkerLauncher launcher = Launcher();
+        using IWorkerProcess worker = await OpenAsync(launcher);
 
         int pid = (await RunAsync(worker, "pid")).GetInt32();
         JsonElement job = await RunAsync(worker, "job");
@@ -93,7 +96,8 @@ public sealed class WorkerCreationTests : IDisposable
             Assert.EndsWith(name, (await RunAsync(control.Worker, script)).GetString(), StringComparison.OrdinalIgnoreCase);
         }
 
-        using IWorkerProcess worker = await OpenAsync(Launcher());
+        using ComWorkerLauncher launcher = Launcher();
+        using IWorkerProcess worker = await OpenAsync(launcher);
         JsonElement named = await RunAsync(worker, script);
 
         Assert.True(
