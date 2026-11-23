@@ -1351,7 +1351,7 @@ The release
 | S9b | The agent runs the COM workers | Full | Done, 23 November 2026: the agent runs the COM workers of each base and mode with the bitness of the registered connector, inside a job object, ends a worker at its run limit and starts it again with a growing delay, and serves a base whose Writes run without safe mode for Read only until S9c; guide G2 with a lab test of every script. The internal contract was reviewed in two rounds and approved under PQ2; the code review took three rounds (six P3s of round 1, two of round 2, all fixed). 2430 tests passed here. On the lab, 23 November 2026, 1C:Enterprise 8.3.17.1851, the test base built again: 73 of 73 tests of `Moltaro.OnecOutpost.OneC.Tests` passed (S9's 45, G2's 25, the agent's 3), in 7 min 05 s. The agent, the COM worker and 1C were real, the server the test's; the real server against the agent is proven in CI over loopback (S6c) |
 | S9c | The account of the workers without safe mode | Full | Done, 23 November 2026: `write.workerAccount` in `policy.json` and its password in `secrets.dat`; the agent logs each such account on once at the start and runs every COM worker of its base, Reads included, under it (`LogonUserW`, `CreateProcessAsUserW` suspended, in the job, only its two pipe ends inherited); the program folder and the folders above it checked at the start. The internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P2 of the job test, fixed). The lab run of 106e58f gave 71 of 76 (the lab agent removed its program folder while workers ran, and gave no reason when a worker did not open), that of bc53229 gave 73 of 76 (the worker under its account ended 0xC0000142: it could not connect to the window station or desktop that `""` names); after a study the worker gets a desktop of the agent's own on its non-interactive station, never WinSta0, reviewed in two rounds (a P2 of the tests, fixed). The third lab run, of 849574f, gave 76 of 76 |
 | S10a | The console's setup: `install`, `uninstall`, `pair`, `secret`, `connector register` | Full | Done, 23 November 2026: the console on Spectre.Console.Cli with `install`, `uninstall`, `pair`, `secret` and `connector register`, and one finder of the COM connector in the agent, which its launcher and the console use. The study read actions/runner and Octopus Tentacle; the internal contract was reviewed in two rounds and approved under PQ2, round 2's fixes (a P2 of the contract step and six P3) taken without a third round. The code review took three rounds: three P1 of round 1 (the lists of `audit` and `outcomes`, tests that expected an order of entries, colour forced on in CI), five P3 of round 2, none in round 3. 2697 tests passed here; CI passed with the tests of `Requires=Administrator` on its elevated `windows` job. The manual run of its commands is on the lab with S10b. What it changes in the public contract is listed in the S10 brief for the owner |
-| S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 | Refactoring | Not started |
+| S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 and entry 1 of review 2 | Refactoring | Not started |
 | S10b | The console's check, the metadata report and guide G1 | Full | Not started |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
@@ -5117,6 +5117,25 @@ implementer work on `xhigh`.
     - the connection line of a worker and the judgment of its output move out of
       `WorkerPool` into statics, from `WorkerConnectionLine.For`, so that `check` and
       `metadata` run a worker outside a pool.
+- **From the architect's review 2** (after S10a; the planner, 23 November 2026), for
+  S10b, joined to the entries above:
+  - with the answer to an `outcome` as a record: the console's sentences for an answer it
+    does not accept, today private to `pair`, are one table that `pair` and the server's
+    line of `check` read, and the record names its cause in the same terms; S10b's
+    contract author chooses whether pairing's enum or the reason of §9 is the shared
+    cause;
+  - with the launcher's steps: the agent's two privileges are named once, in the agent's
+    `Workers`, for the launcher and the console, and `ServiceAccount.Name` replaces the
+    three spellings of `NT SERVICE\{name}`;
+  - with the checks of `AgentStart`: `AgentFolders.OnDisk(dataFolder)` and the layout of
+    the program folder (`x64\`, `x86\`, the worker's file, the executor) are named once
+    too, since the console spells the data folder again and `check` needs `audit\`,
+    `outcomes\` and the program folder;
+  - one wording, with one remedy that exists, for the reasons of `started` and of
+    `check` where they share a step: today the start's reasons for `secrets.dat` say to
+    write the secrets with the console, which `secret` refuses then, and the launcher's
+    reason for an administrator as the worker account names `install`, which touches no
+    worker account. The change of the audit log's text is a draft for the owner.
 - **Q14** (the planner, 23 November 2026): the rule stays strict. A file of the data
   folder whose owner is not Administrators, SYSTEM or the agent's account counts as
   somebody else, since an owner can always change the file's access list. `install` makes
@@ -5478,8 +5497,8 @@ implementer work on `xhigh`.
 **Track:** refactoring · **Branch:** `epic-1/sprint-10ar-refactoring` · **Needs:** S10a,
 merged.
 
-- **Goal.** The entries of the architect's review 1 that the planner took (23 November
-  2026) are carried out, as the [development process](process.md#the-refactoring-sprint)
+- **Goal.** The entries of the architect's reviews 1 and 2 that the planner took (23
+  November 2026) are carried out, as the [development process](process.md#the-refactoring-sprint)
   says, and nothing else.
 - **Entries**, each its own commit, each keeping what is named:
   - *8.* `OutpostStore` repeats its transaction frame in 18 operations and rebuilds its
@@ -5502,7 +5521,11 @@ merged.
   - *11.* small cleanups: the overload of `OutpostCodec.ReadOutcomeRequest` that only tests
     call goes; the protocol's `InternalsVisibleTo` for the shell goes, since the shell
     depends on the server (principle 12); the server's `CommandChecks` becomes
-    `ParameterChecks`; the comment of `WorkerExitCodes` names who reads the exit code.
+    `ParameterChecks`; the comment of `WorkerExitCodes` names who reads the exit code;
+  - *review 2's 1* (after S10a; the planner, 23 November 2026): `InstallOnWindowsTests`
+    copies the console's private `Program.MachineParts` by hand: `MachineParts(serviceName,
+    source, programFolder, dataFolder)` becomes internal, the test calls it and its copy
+    goes. Unchanged: the parts the console's program runs with.
 - **Refused** (the planner, 23 November 2026): splitting `Moltaro.OnecOutpost.TestSupport`
   by side, so that the tests that need 1C do not reference the server's store. A
   referenced assembly is not a test that needs PostgreSQL: the rule of
@@ -5540,6 +5563,11 @@ merged.
   real agent with the fake worker, `LoopbackAgent` and its fakes, moves from
   `Moltaro.OnecOutpost.Agent.Tests` to `Moltaro.OnecOutpost.TestSupport`, where the shell's
   tests reach it.
+- **From the architect's review 2** (the planner, 23 November 2026): the shell writes a
+  redirected output as the console does, its `Program` and `RedirectedOutputTests` the
+  model: a UTF-8 writer, Spectre's default enrichers off, so that CI's variables force no
+  colour, no wrapping of a line, and the end line. The twenty lines are written twice; the
+  two programs share no project (principle 12).
 - **Out of scope.** The release.
 
 ### S12 · Documents, packages and the archive
