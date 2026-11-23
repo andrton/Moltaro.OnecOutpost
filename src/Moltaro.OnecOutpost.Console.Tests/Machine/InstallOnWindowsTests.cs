@@ -29,11 +29,10 @@ public sealed class InstallOnWindowsTests
     [Fact]
     public async Task Install_then_uninstall_register_and_remove_the_service_under_its_virtual_account_and_leave_its_folders()
     {
-        TestService service = new();
-        WindowsAccountRights rights = new();
-
-        try
+        await TestService.RunAsync(async service =>
         {
+            WindowsAccountRights rights = new();
+
             Directory.CreateDirectory(service.Archive);
             File.WriteAllText(Path.Combine(service.Archive, "Moltaro.OnecOutpost.Agent.exe"), "a stand-in for the agent");
             ConsoleParts parts = PartsOf(service);
@@ -49,8 +48,8 @@ public sealed class InstallOnWindowsTests
             Assert.Contains(AccountRightNames.AssignPrimaryToken, rights.Held(service.Sid));
             Assert.Contains(AccountRightNames.IncreaseQuota, rights.Held(service.Sid));
             Assert.Equal(
-                $"O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;FR;;;{service.Sid})",
-                TestService.SddlOf(service.DataFolder));
+                TestService.Unordered($"O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;FR;;;{service.Sid})"),
+                TestService.ListsOf(service.DataFolder));
             Assert.Empty(new WindowsAccessLists(service.DataFolder, new SecurityIdentifier(service.Sid)).Others(""));
 
             CommandAppResult removed = await RunAsync(parts, "uninstall");
@@ -61,11 +60,7 @@ public sealed class InstallOnWindowsTests
             Assert.DoesNotContain(AccountRightNames.IncreaseQuota, rights.Held(service.Sid));
             Assert.True(Directory.Exists(service.ProgramFolder));
             Assert.True(Directory.Exists(service.DataFolder));
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     // The parts as Program makes them of the machine, with the service, the folders and the source of the test.

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
@@ -12,9 +13,9 @@ namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 // brief, "Tests with Requires=Windows and Requires=Administrator"); and its own folders: the program folder under
 // %ProgramFiles%, whose parents admit nobody else, the data folder under %ProgramData%, and the folder of the unpacked
 // archive under the temporary folder. A test creates the service through the console's boundary and reads it back with
-// its own calls, QueryServiceConfigW and QueryServiceConfig2W. Remove, which a test calls in finally, deletes the
-// service if it exists, takes every right of its account through LSA, and removes the three folders; each part of it
-// runs whatever the others did.
+// its own calls, QueryServiceConfigW and QueryServiceConfig2W. A test runs through Run or RunAsync, which remove in
+// finally the service if it exists, every right of its account through LSA, and the three folders, each part whatever
+// the others did. A removal that fails never hides the test's own failure: the test fails with both, its own first.
 [SupportedOSPlatform("windows")]
 internal sealed partial class TestService
 {
@@ -81,8 +82,64 @@ internal sealed partial class TestService
 
     public string Archive { get; }
 
-    // The owner and the access list of a folder or a file in SDDL, as Windows writes them.
-    public static string SddlOf(string path)
+    // Runs the test on a service of its own, and removes the service, its rights and its folders in finally.
+    public static void Run(Action<TestService> test)
+    {
+        TestService service = new();
+        Exception? failure = null;
+
+        try
+        {
+            test(service);
+        }
+        catch (Exception exception)
+        {
+            failure = exception;
+        }
+        finally
+        {
+            service.Remove(failure);
+        }
+    }
+
+    public static async Task RunAsync(Func<TestService, Task> test)
+    {
+        TestService service = new();
+        Exception? failure = null;
+
+        try
+        {
+            await test(service);
+        }
+        catch (Exception exception)
+        {
+            failure = exception;
+        }
+        finally
+        {
+            service.Remove(failure);
+        }
+    }
+
+    // The owner, the control flags and each entry of the access list of a descriptor in SDDL, one per line, the entries
+    // in ordinal order, so that two descriptors compare alike whatever the order of their entries and nothing else: the
+    // order of allow entries changes no access, and .NET reads explicit entries sorted by their SIDs, SYSTEM before
+    // Administrators, whatever the order they were written in.
+    public static string Unordered(string sddl)
+    {
+        RawSecurityDescriptor descriptor = new(sddl);
+        IEnumerable<string> entries = descriptor.DiscretionaryAcl!
+            .Cast<GenericAce>()
+            .Select(entry => entry is KnownAce known
+                ? $"{known.AceType} {known.AceFlags} 0x{known.AccessMask:x} {known.SecurityIdentifier}"
+                : $"{entry.AceType} {entry.AceFlags}")
+            .Order(StringComparer.Ordinal);
+
+        return string.Join('\n', [$"owner {descriptor.Owner}", $"control {descriptor.ControlFlags}", .. entries]);
+    }
+
+    // The owner and the access list of a folder or a file, as Unordered gives them.
+    public static string ListsOf(string path)
     {
         const AccessControlSections OwnerAndAccess = AccessControlSections.Owner | AccessControlSections.Access;
 
@@ -90,7 +147,7 @@ internal sealed partial class TestService
             ? new DirectoryInfo(path).GetAccessControl(OwnerAndAccess)
             : new FileInfo(path).GetAccessControl(OwnerAndAccess);
 
-        return security.GetSecurityDescriptorSddlForm(OwnerAndAccess);
+        return Unordered(security.GetSecurityDescriptorSddlForm(OwnerAndAccess));
     }
 
     // Whether the service controller knows the service and has not marked it for deletion.
@@ -239,8 +296,9 @@ internal sealed partial class TestService
     }
 
     // Deletes the service if it exists, takes every right of its account, and removes the folders, each whatever the
-    // others did; a part that fails fails the test after the others ran.
-    public void Remove()
+    // others did. Then the test's failure passes as it was, or, when a part failed too, with the failures of the parts
+    // beside it; without a failure of the test, a part that failed fails it.
+    private void Remove(Exception? failure)
     {
         List<Exception> failures = [];
 
@@ -250,10 +308,24 @@ internal sealed partial class TestService
         Try(failures, () => RemoveFolder(DataFolder));
         Try(failures, () => RemoveFolder(Archive));
 
-        if (failures.Count > 0)
+        if (failures.Count == 0)
+        {
+            if (failure is not null)
+            {
+                ExceptionDispatchInfo.Throw(failure);
+            }
+
+            return;
+        }
+
+        if (failure is null)
         {
             throw new AggregateException("The test's service, rights or folders were not all removed.", failures);
         }
+
+        throw new AggregateException(
+            "The test failed, and its service, rights or folders were not all removed.",
+            [failure, .. failures]);
     }
 
     private static void Try(List<Exception> failures, Action part)

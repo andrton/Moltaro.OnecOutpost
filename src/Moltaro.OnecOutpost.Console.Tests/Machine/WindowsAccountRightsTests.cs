@@ -18,11 +18,10 @@ public sealed class WindowsAccountRightsTests
     [Fact]
     public void Grant_and_Revoke_change_the_rights_that_Held_reads_and_neither_fails_when_it_changes_nothing()
     {
-        TestService service = new();
-        string[] every = [AccountRightNames.AssignPrimaryToken, AccountRightNames.IncreaseQuota, AccountRightNames.BatchLogon];
-
-        try
+        TestService.Run(service =>
         {
+            string[] every = [AccountRightNames.AssignPrimaryToken, AccountRightNames.IncreaseQuota, AccountRightNames.BatchLogon];
+
             _rights.Revoke(service.Sid, every);
             _rights.Grant(service.Sid, every);
             _rights.Grant(service.Sid, every);
@@ -36,10 +35,6 @@ public sealed class WindowsAccountRightsTests
             _rights.Revoke(service.Sid, [AccountRightNames.BatchLogon]);
 
             Assert.Empty(_rights.Held(service.Sid));
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 }

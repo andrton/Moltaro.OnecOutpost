@@ -13,7 +13,8 @@ namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 // data folder gets O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;FR;;;{agent}), and audit\ and outcomes\ inherit it
 // with (A;OICI;0x1301bf;;;{agent}) of their own, so that the agent's rule finds nobody else; a data folder is created
 // only where nothing is. Administrators become the owner of a file the console writes. Kind tells a folder from a
-// reparse point, which it never follows.
+// reparse point, which it never follows. The lists are compared without the order of their entries, which changes no
+// access and which .NET does not keep: it reads explicit entries sorted by their SIDs.
 [Trait("Requires", "Windows")]
 [Trait("Requires", "Administrator")]
 [SupportedOSPlatform("windows")]
@@ -26,6 +27,9 @@ public sealed class WindowsFolderSetupTests
 
     private const int ModifyAccess = 0x1301BF;
 
+    // The lists of the program folder.
+    private const string ProgramFolderLists = "O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;0x1200a9;;;BU)";
+
     private static readonly SecurityIdentifier System = new(WellKnownSidType.LocalSystemSid, null);
 
     private readonly WindowsFolderSetup _folders = new();
@@ -33,33 +37,25 @@ public sealed class WindowsFolderSetupTests
     [Fact]
     public void The_program_folder_gets_the_content_of_the_source_its_lists_and_Administrators_as_the_owner_of_every_entry()
     {
-        TestService service = new();
-
-        try
+        TestService.Run(service =>
         {
             WriteArchive(service, ("Moltaro.OnecOutpost.Agent.exe", "agent"), (@"x64\Moltaro.OnecOutpost.ComWorker.exe", "worker"));
 
             _folders.ApplyProgramFolder(service.ProgramFolder, service.Archive);
 
-            Assert.Equal("O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;0x1200a9;;;BU)", TestService.SddlOf(service.ProgramFolder));
+            Assert.Equal(TestService.Unordered(ProgramFolderLists), TestService.ListsOf(service.ProgramFolder));
             Assert.Equal("agent", File.ReadAllText(Path.Combine(service.ProgramFolder, "Moltaro.OnecOutpost.Agent.exe")));
             Assert.Equal("worker", File.ReadAllText(Path.Combine(service.ProgramFolder, "x64", "Moltaro.OnecOutpost.ComWorker.exe")));
             AssertOwnedByAdministratorsAndInherited(service.ProgramFolder);
             Assert.Empty(new WindowsAccessLists(service.DataFolder, new SecurityIdentifier(service.Sid)).Writers(service.ProgramFolder));
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     // An update empties the program folder before it copies, so a file that the new archive no longer has goes.
     [Fact]
     public void The_program_folder_applied_with_a_source_holds_only_its_content_and_without_one_keeps_what_it_holds()
     {
-        TestService service = new();
-
-        try
+        TestService.Run(service =>
         {
             WriteArchive(service, ("old.dll", "old"));
             _folders.ApplyProgramFolder(service.ProgramFolder, service.Archive);
@@ -70,77 +66,53 @@ public sealed class WindowsFolderSetupTests
             _folders.ApplyProgramFolder(service.ProgramFolder, null);
 
             Assert.Equal(["new.dll"], Directory.EnumerateFileSystemEntries(service.ProgramFolder).Select(Path.GetFileName));
-            Assert.Equal("O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;0x1200a9;;;BU)", TestService.SddlOf(service.ProgramFolder));
+            Assert.Equal(TestService.Unordered(ProgramFolderLists), TestService.ListsOf(service.ProgramFolder));
             AssertOwnedByAdministratorsAndInherited(service.ProgramFolder);
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     [Fact]
     public void A_data_folder_created_admits_Administrators_SYSTEM_and_the_agent_which_may_modify_only_audit_and_outcomes()
     {
-        TestService service = new();
-
-        try
+        TestService.Run(service =>
         {
             _folders.ApplyDataFolder(service.DataFolder, service.Sid, create: true);
 
             AssertDataFolder(service);
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     // A folder that a local user made under %ProgramData% before install, which install judged by the agent's rule.
     [Fact]
     public void A_data_folder_that_exists_gets_its_lists_again()
     {
-        TestService service = new();
-
-        try
+        TestService.Run(service =>
         {
             Directory.CreateDirectory(Path.Combine(service.DataFolder, "audit"));
 
             _folders.ApplyDataFolder(service.DataFolder, service.Sid, create: false);
 
             AssertDataFolder(service);
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     // 183: only a folder that was judged is ever given the lists.
     [Fact]
     public void A_data_folder_is_not_created_where_one_exists()
     {
-        TestService service = new();
-
-        try
+        TestService.Run(service =>
         {
             Directory.CreateDirectory(service.DataFolder);
 
             Assert.ThrowsAny<IOException>(() => _folders.ApplyDataFolder(service.DataFolder, service.Sid, create: true));
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     // Q14: a file whose owner is somebody else stops the agent, since its owner can always change its list.
     [Fact]
     public void A_file_the_console_writes_gets_Administrators_as_its_owner()
     {
-        TestService service = new();
-
-        try
+        TestService.Run(service =>
         {
             _folders.ApplyDataFolder(service.DataFolder, service.Sid, create: true);
             string file = Path.Combine(service.DataFolder, "secrets.dat");
@@ -153,20 +125,14 @@ public sealed class WindowsFolderSetupTests
             _folders.OwnByAdministrators(file);
 
             Assert.Equal(TestService.Administrators, new FileInfo(file).GetAccessControl(AccessControlSections.Owner).GetOwner(typeof(SecurityIdentifier)));
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     // A symbolic link to a folder is a reparse point, as a junction is.
     [Fact]
     public void Kind_tells_a_folder_from_a_reparse_point_and_from_nothing()
     {
-        TestService service = new();
-
-        try
+        TestService.Run(service =>
         {
             string folder = Directory.CreateDirectory(Path.Combine(service.Archive, "folder")).FullName;
             string link = Path.Combine(service.Archive, "link");
@@ -175,11 +141,7 @@ public sealed class WindowsFolderSetupTests
             Assert.Equal(FolderKindEnum.Folder, _folders.Kind(folder));
             Assert.Equal(FolderKindEnum.ReparsePoint, _folders.Kind(link));
             Assert.Equal(FolderKindEnum.Absent, _folders.Kind(Path.Combine(service.Archive, "absent")));
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     // The data folder admits nobody else by the agent's rule, and has the entries of the brief: its own, protected, and
@@ -187,8 +149,8 @@ public sealed class WindowsFolderSetupTests
     private static void AssertDataFolder(TestService service)
     {
         Assert.Equal(
-            $"O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;FR;;;{service.Sid})",
-            TestService.SddlOf(service.DataFolder));
+            TestService.Unordered($"O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;FR;;;{service.Sid})"),
+            TestService.ListsOf(service.DataFolder));
 
         SecurityIdentifier agent = new(service.Sid);
         WindowsAccessLists lists = new(service.DataFolder, agent);
@@ -204,8 +166,8 @@ public sealed class WindowsFolderSetupTests
             Assert.False(security.AreAccessRulesProtected);
             Assert.Equal([(agent, ModifyAccess)], Entries(security, inherited: false));
             Assert.Equal(
-                [(TestService.Administrators, FullAccess), (System, FullAccess), (agent, ReadAccess)],
-                Entries(security, inherited: true));
+                BySid([(TestService.Administrators, FullAccess), (System, FullAccess), (agent, ReadAccess)]),
+                BySid(Entries(security, inherited: true)));
             Assert.Empty(lists.Others(name));
         }
     }
@@ -220,6 +182,13 @@ public sealed class WindowsFolderSetupTests
             .Where(rule => rule.AccessControlType == AccessControlType.Allow
                 && rule.InheritanceFlags == (InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit))
             .Select(rule => ((SecurityIdentifier)rule.IdentityReference, (int)rule.FileSystemRights));
+    }
+
+    // The entries in the order of their SIDs and rights, so that two lists compare alike whatever the order of their
+    // entries, which changes no access.
+    private static IEnumerable<(SecurityIdentifier Account, int Access)> BySid(IEnumerable<(SecurityIdentifier Account, int Access)> entries)
+    {
+        return entries.OrderBy(entry => entry.Account.Value, StringComparer.Ordinal).ThenBy(entry => entry.Access);
     }
 
     // Every entry inside the folder is owned by Administrators and has no entry of its own in its list.

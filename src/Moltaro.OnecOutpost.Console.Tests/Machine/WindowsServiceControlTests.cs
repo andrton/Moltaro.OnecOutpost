@@ -27,9 +27,7 @@ public sealed class WindowsServiceControlTests
     [Fact]
     public void Install_creates_the_service_as_the_agent_runs_and_again_reconfigures_it_keeping_its_failure_actions()
     {
-        TestService service = new();
-
-        try
+        TestService.Run(service =>
         {
             string binaryPath = BinaryPath(service.ProgramFolder);
 
@@ -58,74 +56,60 @@ public sealed class WindowsServiceControlTests
             Assert.Equal(3600u, resetPeriod);
             Assert.Equal([(TestService.Restart, 120000u)], actions);
             Assert.Empty(service.RequiredPrivileges());
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     // 1072: a handle that the test holds, as the Services console or Event Viewer holds one, keeps a deleted service.
     [Fact]
     public void A_service_marked_for_deletion_counts_as_deleted_and_is_not_installed_again_until_it_is_gone()
     {
-        TestService service = new();
-        nint held = 0;
-
-        try
+        TestService.Run(service =>
         {
-            _services.Install(service.Name, DisplayName, BinaryPath(service.ProgramFolder));
-            held = service.Open();
+            nint held = 0;
 
-            _services.Delete(service.Name);
-            _services.Delete(service.Name);
+            try
+            {
+                _services.Install(service.Name, DisplayName, BinaryPath(service.ProgramFolder));
+                held = service.Open();
 
-            Win32Exception refused = Assert.Throws<Win32Exception>(() =>
-                _services.Install(service.Name, DisplayName, BinaryPath(service.ProgramFolder)));
-            Assert.Equal(1072, refused.NativeErrorCode);
-        }
-        finally
-        {
-            TestService.Close(held);
-            service.Remove();
-        }
+                _services.Delete(service.Name);
+                _services.Delete(service.Name);
+
+                Win32Exception refused = Assert.Throws<Win32Exception>(() =>
+                    _services.Install(service.Name, DisplayName, BinaryPath(service.ProgramFolder)));
+                Assert.Equal(1072, refused.NativeErrorCode);
+            }
+            finally
+            {
+                TestService.Close(held);
+            }
+        });
     }
 
     [Fact]
     public async Task A_stop_of_a_stopped_service_gives_Stopped_and_of_an_unknown_one_NotInstalled()
     {
-        TestService service = new();
-        TestService unknown = new();
-
-        try
+        await TestService.RunAsync(async service =>
         {
+            TestService unknown = new();
+
             _services.Install(service.Name, DisplayName, BinaryPath(service.ProgramFolder));
 
             Assert.Equal(ServiceStopEnum.Stopped, await StopAsync(service));
             Assert.Equal(ServiceStopEnum.NotInstalled, await StopAsync(unknown));
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     // ServiceAccount.Sid computes the SID without Windows, before the service exists (the agent's tests).
     [Fact]
     public void Windows_translates_the_account_of_the_service_it_created_to_the_SID_of_ServiceAccount()
     {
-        TestService service = new();
-
-        try
+        TestService.Run(service =>
         {
             _services.Install(service.Name, DisplayName, BinaryPath(service.ProgramFolder));
 
             Assert.Equal(ServiceAccount.Sid(service.Name), new NTAccount(service.Account).Translate(typeof(SecurityIdentifier)).Value);
-        }
-        finally
-        {
-            service.Remove();
-        }
+        });
     }
 
     private static string BinaryPath(string programFolder)
