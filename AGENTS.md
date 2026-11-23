@@ -34,8 +34,8 @@ with `service`; a proxy that asks for authentication is not supported yet), and 
 worker with the executor, which the agent now starts for its bases with the bitness of the
 registered connector, inside a job object, ended at the run limit and started again with a
 growing delay. Until S9c a base whose Writes run without safe mode is served for Read
-only, and the tests of the agent against a real 1C are ready for the lab but have not run
-there yet. The server is the one
+only, and the tests of the agent against a real 1C passed on the lab, with a server of the
+test. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions

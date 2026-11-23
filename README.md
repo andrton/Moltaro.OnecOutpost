@@ -79,8 +79,9 @@ safe mode off for its Writes is served for Read only: the agent starts no Write 
 it, and a Write to it is Refused, since the agent would run it under its own account,
 which can read the agent's secrets. The tests that run a Read and a Write through the
 agent and the worker against the repository's test base, and every script of
-[Writing scripts](docs/guides/scripts.md), are ready for the lab machine with
-1C:Enterprise 8.3.17.1851 and have not run there yet.
+[Writing scripts](docs/guides/scripts.md), passed on the lab machine with
+1C:Enterprise 8.3.17.1851 on 23 November 2026, the server being the test's own; a Read and
+a Write from a real server on another machine come with the console and the shell.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from

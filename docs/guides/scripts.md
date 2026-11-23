@@ -7,7 +7,7 @@ to write the 1C script that a command runs, what it receives, what it may return
 the base, except a Write of a base whose Writes run without safe mode, as
 [What a command is](#what-a-command-is) says. Every script in this guide is run from this file by a test on the lab
 machine, through the COM worker, against the repository's test base on 1C:Enterprise 8.3.17.1851 in the
-compatibility mode 8.2.13. These tests are ready and have not run on the lab yet.
+compatibility mode 8.2.13. These tests passed on the lab on 23 November 2026.
 
 ## Before you start
 
