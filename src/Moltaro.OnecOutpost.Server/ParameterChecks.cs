@@ -11,7 +11,7 @@ namespace Moltaro.OnecOutpost.Server;
 // The nesting and the size are those of the protocol, which the codec computes: the levels of docs/protocol.md §2,
 // and the size of §7, the text of the script between its quotes plus the text of the parameters, `{}` when there are
 // none, both as the command carries them, in UTF-8 with every escape counted as it is written.
-internal static class CommandChecks
+internal static class ParameterChecks
 {
     // Gives the parameters as the call wrote them, which the checks passed: the command is made of exactly these, so a
     // later change of the caller's object has no effect on it. The caller disposes the document.

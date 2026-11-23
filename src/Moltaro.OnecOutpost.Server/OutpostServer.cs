@@ -101,7 +101,7 @@ internal sealed class OutpostServer : IOutpostServer
         }
 
         OutpostNames.CheckScript(request.Script, nameof(request.Script));
-        JsonDocument parameters = CommandChecks.Check(request.Script, request.Parameters, _options.CommandSizeLimit);
+        JsonDocument parameters = ParameterChecks.Check(request.Script, request.Parameters, _options.CommandSizeLimit);
 
         return CallAsync(
             OutpostModeEnum.Read,
@@ -119,7 +119,7 @@ internal sealed class OutpostServer : IOutpostServer
         OutpostNames.CheckBaseKey(request.BaseKey, nameof(request.BaseKey));
         OutpostNames.CheckCallerKey(request.CallerKey, nameof(request.CallerKey));
         OutpostNames.CheckScript(request.Script, nameof(request.Script));
-        JsonDocument parameters = CommandChecks.Check(request.Script, request.Parameters, _options.CommandSizeLimit);
+        JsonDocument parameters = ParameterChecks.Check(request.Script, request.Parameters, _options.CommandSizeLimit);
 
         return CallAsync(
             OutpostModeEnum.Write,

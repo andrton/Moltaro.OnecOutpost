@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Signing;
@@ -149,6 +150,11 @@ public sealed class OutcomeRequestTests : IDisposable
     {
         byte[] signature = OutpostSignatures.SignRequest(_agentKey, OutpostRequestKindEnum.Outcome, Sample.Agent, body);
 
-        return OutpostCodec.ReadOutcomeRequest(_agentKey, Sample.Agent, body, signature);
+        OutpostOutcomeRequest request =
+            OutpostCodec.ReadOutcomeRequest(_agentKey, Sample.Agent, body, signature, out JsonDocument document);
+
+        document.Dispose();
+
+        return request;
     }
 }

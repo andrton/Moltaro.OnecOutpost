@@ -402,22 +402,11 @@ internal static class OutpostCodec
 
     // Reads the body of an `outcome` request (§6.3), after it verified the signature with the agent's key. It reads
     // the whole body by §2, the `outcome` member included (step 1 of §6.3), and keeps that member as a slice of
-    // `body`, without a copy. It throws `signature`, then `form`. The server reads with the overload below instead.
-    public static OutpostOutcomeRequest ReadOutcomeRequest(
-        ECDsa agentKey,
-        Guid agent,
-        ReadOnlyMemory<byte> body,
-        ReadOnlySpan<byte> signature)
-    {
-        OutpostOutcomeRequest request = ReadOutcomeRequest(agentKey, agent, body, signature, out JsonDocument document);
-        document.Dispose();
-
-        return request;
-    }
-
-    // The same, and it gives the document of the body that it read by §2, which reads `body` in place, so that
-    // ReadRequestOutcome applies §8 to the `outcome` member once its size is checked, without reading it again. The
-    // caller disposes the document; it is disposed already when the reader throws.
+    // `body`, without a copy. It throws `signature`, then `form`.
+    //
+    // It gives the document of the body that it read by §2, which reads `body` in place, so that ReadRequestOutcome
+    // applies §8 to the `outcome` member once its size is checked, without reading it again. The caller disposes the
+    // document; it is disposed already when the reader throws.
     public static OutpostOutcomeRequest ReadOutcomeRequest(
         ECDsa agentKey,
         Guid agent,

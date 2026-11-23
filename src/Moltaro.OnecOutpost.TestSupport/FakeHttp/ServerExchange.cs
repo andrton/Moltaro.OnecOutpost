@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
@@ -130,7 +131,12 @@ internal sealed class ServerExchange
     // The outcome request, verified with the agent's key and read as the server reads it (§6.3).
     public OutpostOutcomeRequest ReadOutcome()
     {
-        return OutpostCodec.ReadOutcomeRequest(AgentKey, Agent, Body, Signature);
+        OutpostOutcomeRequest request =
+            OutpostCodec.ReadOutcomeRequest(AgentKey, Agent, Body, Signature, out JsonDocument document);
+
+        document.Dispose();
+
+        return request;
     }
 
     // The exact bytes of the outcome object that the outcome request carries.

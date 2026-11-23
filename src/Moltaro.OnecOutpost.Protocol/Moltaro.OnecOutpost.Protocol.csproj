@@ -10,7 +10,6 @@
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Server" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Agent" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Console" />
-    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Shell" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Protocol.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Server.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Agent.Tests" />
