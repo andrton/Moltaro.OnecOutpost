@@ -24,7 +24,7 @@ public sealed class SignalHostTests(PostgreSqlFixture postgres) : IClassFixture<
             postgres,
             "signals_call_rejoins",
             _ => { },
-            signals,
+            signals.Client,
             cancellationToken);
         using TestAgent agent = await server.PairAgentAsync(cancellationToken);
         (Task<OutpostOutcome> write, OutpostCommandMessage command) = await HandOutWriteAsync(
@@ -54,7 +54,7 @@ public sealed class SignalHostTests(PostgreSqlFixture postgres) : IClassFixture<
             postgres,
             "signals_poll_rejoins",
             _ => { },
-            signals,
+            signals.Client,
             cancellationToken);
         using TestAgent agent = await server.PairAgentAsync(cancellationToken);
         DateTimeOffset start = server.Clock.GetUtcNow();
@@ -85,7 +85,7 @@ public sealed class SignalHostTests(PostgreSqlFixture postgres) : IClassFixture<
             postgres,
             "signals_lost_set",
             _ => { },
-            signals,
+            signals.Client,
             cancellationToken);
         using TestAgent agent = await server.PairAgentAsync(cancellationToken);
         DateTimeOffset start = server.Clock.GetUtcNow();

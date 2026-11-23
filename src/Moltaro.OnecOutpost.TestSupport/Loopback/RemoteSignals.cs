@@ -3,9 +3,10 @@ using Moltaro.Signals;
 
 namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 
-// A Signals host over loopback TCP, apart from the node, and the SignalClient through which the node reaches it: the
-// setup of an application whose Signals host runs in a process of its own. A test stops the host and starts another on
-// the same port while the node runs, as when the host restarts. The client connects to the new host by itself and
+// A Signals host over loopback TCP and the SignalClient through which a node reaches it: the setup of an application
+// whose Signals host runs in a process of its own, or in one of its nodes, which takes Host as its ISignals, as the first
+// of TwoNodes does. A test stops the host and starts another on the same port while the node runs, as when the host
+// restarts. The client connects to the new host by itself and
 // opens every subscription of the node on it again, and each wait on such a subscription then returns Joined. While no
 // host runs, a set of the node gives Unavailable and is lost.
 //
@@ -27,8 +28,11 @@ internal sealed class RemoteSignals : IAsyncDisposable
         Client = client;
     }
 
-    // The ISignals of the node.
+    // The ISignals of a node that reaches the host through a client.
     public SignalClient Client { get; }
+
+    // The host that runs, as the ISignals of the node that embeds it, or null while the test has stopped it.
+    public SignalHost? Host => _host;
 
     // Starts a host on a free port of the loopback address and a client of it, and completes once the client is
     // connected, so that the node's first sets and subscriptions reach the host.

@@ -43,6 +43,17 @@ Write runs once also needs the agent's audit log. A command that no poll took in
 as Expired, and revoking an agent ends its commands. All of this is tested over loopback
 HTTP with a test agent, and with the agent below.
 
+Several nodes keep these rules when messages are lost or held. Over loopback, with two
+server nodes on one PostgreSQL, the signals host in one node and a client in the other, the
+real agent with a fake in place of the COM worker, and a proxy that drops and holds chosen
+requests and answers, the tests show: a call on one node wakes a poll held on the other; a
+poll that waits on a node that stops ends, and the next poll on the other node takes the
+command made meanwhile; the command of a lost poll answer is handed out again and runs once; an older
+poll and an exact replay take nothing; a lost confirmation sends the outcome again and it is
+counted once; a command delivered after a lost answer stays taken; with the signals host
+stopped, waits end at their deadlines and nothing is lost; and a poll replayed after the
+agent's clock was set back is older. The latency is measured in the next sprint.
+
 The agent keeps its files. At a start it checks that the access lists of its data folder
 admit nobody else, reads `policy.json`, `agent.json` with its identity and the pinned
 server key, and the secrets, encrypted with DPAPI for the machine. It writes its audit log

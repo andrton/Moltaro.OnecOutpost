@@ -19,9 +19,10 @@ namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 // One node of the server as an application embeds it, reached over loopback HTTP: Kestrel on port 0 of 127.0.0.1, the
 // store in a schema of its own that the library migrated, a signing key made for the node, the fake clock as the
 // TimeProvider of the options, the endpoints of the agents at /outpost, and an in-process SignalHost as its ISignals,
-// or the client of a host apart that the test gives. A test starts one and drives it through the public API and
-// through test agents, or through the agent itself. In front of the endpoints, it can play a hop whose body limit
-// refuses an outcome with a bare 413 and an HTML page of its own.
+// or the ISignals that the test gives. A test starts one and drives it through the public API and through test agents,
+// or through the agent itself. Another node of the same server, on the same store, with the same signing key, clock and
+// options, starts from it, as TwoNodes does. In front of the endpoints, it can play a hop whose body limit refuses an
+// outcome with a bare 413 and an HTML page of its own.
 //
 // Every wait of a test on the node has a deadline, reached only when the node never does what the test waits for: on
 // loopback, every answer, every timer and every end of a request comes well within it. A test that reaches it fails
@@ -42,12 +43,19 @@ internal sealed class LoopbackServer : IAsyncDisposable
     // is none. A test sets it before it lets the agent send the requests it concerns.
     private readonly StrongBox<long?> _pathLimit;
 
+    // What another node of the same server starts with: the key in PEM and the change of the options.
+    private readonly string _signingKeyPem;
+
+    private readonly Action<OutpostServerOptions> _configure;
+
     private bool _stopped;
 
     private LoopbackServer(
         WebApplication app,
         ChannelReader<EndedRequest> ended,
         StrongBox<long?> pathLimit,
+        string signingKeyPem,
+        Action<OutpostServerOptions> configure,
         FakeClock clock,
         MigratedSchema schema,
         OutpostServerOptions options)
@@ -55,6 +63,8 @@ internal sealed class LoopbackServer : IAsyncDisposable
         _app = app;
         _ended = ended;
         _pathLimit = pathLimit;
+        _signingKeyPem = signingKeyPem;
+        _configure = configure;
         Clock = clock;
         Schema = schema;
         Options = options;
@@ -111,22 +121,30 @@ internal sealed class LoopbackServer : IAsyncDisposable
         Action<OutpostServerOptions> configure,
         CancellationToken cancellationToken)
     {
-        return StartNodeAsync(postgres, schemaName, configure, null, cancellationToken);
+        return StartNewAsync(postgres, schemaName, configure, null, cancellationToken);
     }
 
-    // Starts a node that reaches the Signals host through the ISignals given, which the test owns and disposes after
-    // the node.
+    // Starts a node that reaches the Signals host through the ISignals given, such as the client of RemoteSignals, which
+    // the test owns and disposes after the node.
     public static Task<LoopbackServer> StartAsync(
         PostgreSqlFixture postgres,
         string schemaName,
         Action<OutpostServerOptions> configure,
-        RemoteSignals signals,
+        ISignals signals,
         CancellationToken cancellationToken)
     {
-        return StartNodeAsync(postgres, schemaName, configure, signals.Client, cancellationToken);
+        return StartNewAsync(postgres, schemaName, configure, signals, cancellationToken);
     }
 
-    private static async Task<LoopbackServer> StartNodeAsync(
+    // Starts another node of the same server as this one, which may have stopped: on its store, with its signing key,
+    // its clock and the same change of the options, at a port of its own, reaching the Signals host through the ISignals
+    // given, which the test owns and disposes after the node. So a second node, and a node started again after a stop.
+    public Task<LoopbackServer> StartAnotherAsync(ISignals signals, CancellationToken cancellationToken)
+    {
+        return StartNodeAsync(Schema, Clock, _signingKeyPem, _configure, signals, cancellationToken);
+    }
+
+    private static async Task<LoopbackServer> StartNewAsync(
         PostgreSqlFixture postgres,
         string schemaName,
         Action<OutpostServerOptions> configure,
@@ -134,11 +152,22 @@ internal sealed class LoopbackServer : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         MigratedSchema schema = await MigratedSchema.CreateAsync(postgres, schemaName, cancellationToken);
-        FakeClock clock = new();
-        OutpostServerOptions? options = null;
 
         using ECDsa signingKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         string signingKeyPem = signingKey.ExportPkcs8PrivateKeyPem();
+
+        return await StartNodeAsync(schema, new FakeClock(), signingKeyPem, configure, signals, cancellationToken);
+    }
+
+    private static async Task<LoopbackServer> StartNodeAsync(
+        MigratedSchema schema,
+        FakeClock clock,
+        string signingKeyPem,
+        Action<OutpostServerOptions> configure,
+        ISignals? signals,
+        CancellationToken cancellationToken)
+    {
+        OutpostServerOptions? options = null;
 
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
@@ -214,7 +243,7 @@ internal sealed class LoopbackServer : IAsyncDisposable
             throw;
         }
 
-        return new LoopbackServer(app, ended.Reader, pathLimit, clock, schema, options!);
+        return new LoopbackServer(app, ended.Reader, pathLimit, signingKeyPem, configure, clock, schema, options!);
     }
 
     // A new agent with a pairing token of its own, not paired yet.

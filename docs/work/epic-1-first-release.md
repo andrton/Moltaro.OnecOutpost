@@ -1178,7 +1178,7 @@ The tunnel, with a fake in place of the worker
 The agent with 1C
   S9b the agent runs the workers ── lab ── S9c the account of the workers ── lab
 Several nodes, and the refactoring
-  S7 nodes, losses ── S8 refactoring ── lab
+  S7a nodes, losses ── S7b measurements, explanations ── S8 refactoring ── lab
 The tools
   S10 console ── S11 shell
 The release
@@ -1226,7 +1226,12 @@ The release
   without HTTP; the transport, pairing, the loop and the service are a strict zone of
   their own. Each review can then be exhaustive.
 - **S7, several nodes and lost messages,** on its own, because it needs a test proxy that
-  drops and holds messages, and because it is where a wrong rule shows.
+  drops and holds messages, and because it is where a wrong rule shows. It runs as two
+  sprints (the coordinator, 23 November 2026, under the planner's standing instruction to
+  cut a sprint too large for one exhaustive review): S7a, the proxy and the scenarios of
+  several nodes and lost messages; S7b, the measurements and the explanations E1 and E2,
+  which describe what S7a proved. S7a and S7b do not wait for S9c, which needs nothing of them and
+  waits for its own lab run; S9c is merged after it (the planner, 23 November 2026).
 - **S8, refactoring,** after S7, the middle of the epic, before the console and the shell
   build on the agent.
 - **L1 right after S2.** Its answers to O1–O8 can change decisions D3, D12 and D14. They
@@ -1258,7 +1263,8 @@ The release
 | S6a | The agent's files | Full | Done, 22 November 2026: the policy with the changes carried over from S2, `agent.json` and the secrets read through DPAPI for the machine, the access lists of the data folder, the audit log written in order to the disk with its lock, torn entries, start and retention, the outbox, the order of a command's records, the reservation of poll numbers and the start after a restart; the agent program still runs nothing. The internal contract of S6 was reviewed in two rounds and approved under PQ2; the code review took three rounds (a P1 and a P2, then a P2 of retention, then a P3 moved to S8 by the planner). What it changes in the public contract is listed in the S6 brief for the owner |
 | S6b | The agent's checks of commands and poll answers, its workers and run limits | Full | Done, 22 November 2026: `CommandChecks` with the checks of rule 1 in the order of §7 and the checks of a poll answer, the worker boundary with its fake, and `WorkerPool` with workers, the deadline to open, run limits, the size comparison of S9 and the executor's object; no HTTP, and the agent program still runs nothing. The contract of S6b and S6c was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P3 on what `Kill` promises, fixed), with P4s left in the S6 brief |
 | S6c | The agent's loop: the transport, pairing, polls, outcomes, the host and the service | Full | Done, 22 November 2026: the transport with the addresses of §11, the waits and read limits, pairing, numbered polls through the proxy, the loop that records every command before it runs and sends outcomes until confirmed, the replacement for size, `connection` and `bases`, retention and the reservation called after verified answers, the in-process host and the Windows service by the `service` argument; end to end against the server of S5 over loopback with a fake in place of the COM worker, through a test proxy. The code review took two rounds (three P3s of round 1 fixed). The manual acceptance of the service is the owner's, on a lab or test machine. What it changes in the public contract is listed in the S6 brief for the owner |
-| S7 | Several nodes and lost messages | Full | Not started |
+| S7a | Several nodes and lost messages | Full | Done, 23 November 2026, merged before S9c, which waits for its lab run (the planner, 23 November 2026): the proxy that drops and holds requests and answers and the host of two nodes in TestSupport, and a test of every line under "With two server nodes", all of which passed against the code as it was, so no implementation step; the code review closed in one round, with P4s left in the S7 brief |
+| S7b | The measurements and the explanations E1 and E2 | Full | Not started |
 | S8 | Refactoring of the code base after S7 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Done, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. The code review took three rounds, and its last finding, confirmed on the lab, was fixed by a query of the executor before the commit of a Write, reviewed once more. On the lab, 1C:Enterprise 8.3.17.1851, the first run gave 43 of 44 tests that need 1C passed; the failed one, `A_write_whose_commit_raises_gives_unknown_transaction_ended`, was removed, since 8.3.17 gave no way to provoke the case. The second run, with the `.epf` rebuilt after the fix, gave 45 of 45 passed, on the test base and one copy of a typical base, which ran with one account for both modes. No manual scenario, since every line of the Acceptance has a test. What it changed in the public contract is listed in its brief for the owner |
@@ -3887,12 +3893,105 @@ documents step.
 
 ### S7 · Several nodes and lost messages
 
-**Track:** full · **Branch:** `epic-1/sprint-07-nodes` · **Needs:** S6.
+**Track:** full · **Needs:** S6, and S9c by the order. One brief, run as two sprints (the
+coordinator, 23 November 2026), each with its own tests, implementation, code review, pull
+request and merge under PQ1:
+
+- **S7a, several nodes and lost messages.** Branch `epic-1/sprint-07a-nodes`. The proxy of
+  the contract step and every line of the Acceptance under "With two server nodes".
+- **Left by S7a's review** (P4, the coordinator, 23 November 2026), for S7b or S8: the
+  proxy answers `100 Continue` itself, so the refusal for size before the body no longer
+  runs end to end through it; its comment's reason for `Connection: close` is not what .NET
+  10 does; two signature lines make it throw; the `RestartAsync` branch for the second node
+  and some hop headers are unused; `FirstDelay` and a wait on the signals' state are
+  duplicated.
+- **S7b, the measurements and the explanations.** Branch `epic-1/sprint-07b-measurements`,
+  cut from `main` after S7a merges. The program `Moltaro.OnecOutpost.Measurements` and the
+  lines *Reported*, explanations E1 and E2, and the documents step with the figures.
 
 - **Goal.** Several server nodes and an agent keep every rule when messages are lost or
   held, and when a node or the signals host stops. The latency target is measured.
 - **Contract.** No public change. In `Moltaro.OnecOutpost.TestSupport`, a loopback proxy
   that can drop or hold a chosen request or answer, written in the contract step.
+  - *Internal* (the contract author, 23 November 2026). In folder and namespace
+    `Moltaro.OnecOutpost.TestSupport.Loopback`, every type `internal`, working from this
+    step, with no tests of its own (`AGENTS.md`). S6c's `TestProxy` grows into the proxy,
+    and a second node starts from `LoopbackServer`; no interface is added.
+
+    ```csharp
+    internal sealed partial class TestProxy // its CONNECT, 407 and TLS for outpost.test unchanged
+    {
+        public LoopbackServer? Node { get; set; }               // where each request read from then on goes; null: the port of the CONNECT
+        public IReadOnlyList<ProxiedRequest> Requests { get; }  // every request read, in order, whatever was done with it
+        public Task<ProxiedRequest> DropNextRequestAsync(Func<ProxiedRequest, bool> match, CancellationToken cancellationToken);
+        public Task<AgentAnswer> DropNextAnswerAsync(Func<ProxiedRequest, bool> match, CancellationToken cancellationToken);
+        public Task<HeldRequest> HoldNextAsync(Func<ProxiedRequest, bool> match, CancellationToken cancellationToken);
+        public Task<AgentAnswer> ReplayAsync(ProxiedRequest request, LoopbackServer node, CancellationToken cancellationToken);
+    }
+    internal sealed record ProxiedRequest(OutpostRequestKindEnum Kind, string Path, IReadOnlyList<(string Name, string Value)> Headers, byte[] Body)
+    {
+        public byte[] Signature { get; } // of its Outpost-Signature; empty for none
+    }
+    internal sealed class HeldRequest
+    {
+        public ProxiedRequest Request { get; }
+        public Task<AgentAnswer> ReleaseAsync(LoopbackServer node, CancellationToken cancellationToken);
+    }
+    internal sealed class TwoNodes : IAsyncDisposable
+    {
+        public static Task<TwoNodes> StartAsync(PostgreSqlFixture postgres, string schemaName, Action<OutpostServerOptions> configure, CancellationToken cancellationToken);
+        public LoopbackServer First { get; }  // embeds the Signals host
+        public LoopbackServer Second { get; } // a SignalClient of that host
+        public FakeClock Clock { get; }       // of both
+        public Task StopAsync(LoopbackServer node, CancellationToken cancellationToken);
+        public Task<LoopbackServer> RestartAsync(LoopbackServer node, CancellationToken cancellationToken);
+    }
+    // LoopbackServer: + StartAnotherAsync(ISignals signals, CancellationToken cancellationToken); its overload with
+    // RemoteSignals takes an ISignals. RemoteSignals: + SignalHost? Host, the host that runs.
+    ```
+
+    - **The relay.** Inside the tunnel the proxy reads each request whole, its head and
+      its body by `Content-Length`, and answers `Expect: 100-continue` with `100 Continue`
+      itself, as a hop that reads a body before it forwards it does. It forwards the
+      request over HTTP to the node with its header lines, less those of one hop, and the
+      exact bytes of its body. It writes back what the agent reads of an answer: the
+      status, `Content-Type`, `Outpost-Signature` and body. Every answer carries
+      `Connection: close`, so each request comes on a tunnel of its own. On a reused
+      connection that closes unanswered, .NET can send a request again by itself, and a
+      dropped request would then reach a node after all. An agent that closes its
+      connection while its request is at the node ends that request there too, as the
+      byte pipe of S6c did.
+    - **Choosing a request.** Each of the three methods sets a rule at once and gives a
+      task that completes when the rule took effect, within `LoopbackServer.Deadline`.
+      The rule takes the next request read after it that `match` accepts, once. Rules are
+      tried in the order they were set. A test chooses by `Kind`, `pair`, `poll` or
+      `outcome`, and by order: the next one, or the number or command it reads from
+      `Body`.
+    - **Drop the request:** it reaches no node, and the proxy closes the agent's connection
+      without an answer. The task gives the request.
+    - **Drop the answer:** the node handles the request, and the proxy closes the agent's
+      connection in place of the answer. The task gives the node's answer, and fails when
+      the node gave none.
+    - **Hold:** the request reaches no node, and the agent's connection stays open until
+      the agent closes it, as when its wait ends or it stops. `ReleaseAsync` sends it to
+      the node given and gives the answer. The answer also reaches the agent while the
+      agent still waits on that connection, and reaches only the test otherwise. A hold
+      never released never reaches a node.
+    - **Replay:** `ReplayAsync` sends a request of `Requests` again to a node, exact bytes
+      and headers, and gives the answer to the test alone. The poll that §13 captures
+      while the agent's clock is ahead is such a request. The newest poll replayed exactly
+      is one too.
+    - **Two nodes.** They share one schema, one signing key, the same options and one fake
+      clock, on which both arm their timers. The Signals host of `RemoteSignals` is the
+      `ISignals` of `First`, and its client that of `Second`, so a set on either node
+      wakes the other. `Node` of the proxy says which node takes each request; a call is
+      made on either node's `Server`. `StopAsync` stops a node as its host stops. For
+      `First` the Signals host stops with it, as when its process ends: `Second`'s client
+      loses the host and tries again by itself.
+      `RestartAsync` starts the node again, stopping it first if it runs. The new node is
+      a new `LoopbackServer` at a new port, which `First` or `Second` gives from then on.
+      For `First` a new host starts on the old port, which the client reaches on its next
+      attempt.
 - **To read.** The [concept](../concept.md), §3 rules 7, 10 and 11, §4 and §11 (20
   November 2026); this plan.
 - **Acceptance.**
