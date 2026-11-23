@@ -52,10 +52,6 @@ internal sealed class LabAgent : IDisposable
 
     public static readonly TimeSpan RetryDelayMax = TimeSpan.FromSeconds(1);
 
-    // How long a test waits for an event of 1C, such as an open or an outcome: the first connection of a Windows account
-    // that never used 1C took twenty seconds on the lab machine (concept §12).
-    public static readonly TimeSpan Deadline = TimeSpan.FromMinutes(2);
-
     private const string WorkerName = "Moltaro.OnecOutpost.ComWorker";
 
     private readonly DirectoryInfo _temporary;
@@ -164,8 +160,8 @@ internal sealed class LabAgent : IDisposable
             AgentKey.Dispose();
 
             Assert.True(
-                LabJob.WaitUntilEnded(running, handles, Deadline),
-                $"The workers of the agent did not end within {Deadline} after its job closed: processes {string.Join(", ", running)}.");
+                LabJob.WaitUntilEnded(running, handles, LabLimits.Deadline),
+                $"The workers of the agent did not end within {LabLimits.Deadline} after its job closed: processes {string.Join(", ", running)}.");
         }
         finally
         {

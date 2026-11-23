@@ -30,7 +30,7 @@ public sealed class AgentRunLimitTests
         await run.RanAsync(OutpostModeEnum.Read);
         await run.RanAsync(OutpostModeEnum.Write);
         DateTimeOffset now = agent.Clock.GetUtcNow();
-        await agent.Clock.WaitForTimersAsync(now + LabAgent.RunLimit, 2, cancellationToken).WaitAsync(LabAgent.Deadline, cancellationToken);
+        await agent.Clock.WaitForTimersAsync(now + LabAgent.RunLimit, 2, cancellationToken).WaitAsync(LabLimits.Deadline, cancellationToken);
         agent.Clock.Advance(LabAgent.RunLimit);
         OutpostOutcomeMessage readEnded = await run.OutcomeAsync(read);
         OutpostOutcomeMessage writeEnded = await run.OutcomeAsync(write);
@@ -40,7 +40,7 @@ public sealed class AgentRunLimitTests
 
         TimeSpan delay = LabAgent.RetryDelayMax / 10;
         now = agent.Clock.GetUtcNow();
-        await agent.Clock.WaitForTimersAsync(now + delay, 2, cancellationToken).WaitAsync(LabAgent.Deadline, cancellationToken);
+        await agent.Clock.WaitForTimersAsync(now + delay, 2, cancellationToken).WaitAsync(LabLimits.Deadline, cancellationToken);
         agent.Clock.Advance(delay);
         Assert.True(await run.OpenedAsync(OutpostModeEnum.Read, 2));
         Assert.True(await run.OpenedAsync(OutpostModeEnum.Write, 2));

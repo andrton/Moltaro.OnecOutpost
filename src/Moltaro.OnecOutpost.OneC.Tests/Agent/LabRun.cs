@@ -118,7 +118,7 @@ internal sealed class LabRun : IAsyncDisposable
 
         if (_workerAccount is not null)
         {
-            parts.Add(LabWorkerProbe.Describe(_workerAccount, _workerPath, _key, LabAgent.Deadline));
+            parts.Add(LabWorkerProbe.Describe(_workerAccount, _workerPath, _key, LabLimits.Deadline));
         }
 
         return string.Join("; ", parts);
@@ -160,7 +160,7 @@ internal sealed class LabRun : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _stop.Cancel();
-        await ((Task)_exit).WaitAsync(LabAgent.Deadline).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        await ((Task)_exit).WaitAsync(LabLimits.Deadline).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         _launcher.Dispose();
         _stop.Dispose();
     }
@@ -192,12 +192,12 @@ internal sealed class LabRun : IAsyncDisposable
 
     private static Task<T> Within<T>(Task<T> wait)
     {
-        return wait.WaitAsync(LabAgent.Deadline, TestContext.Current.CancellationToken);
+        return wait.WaitAsync(LabLimits.Deadline, TestContext.Current.CancellationToken);
     }
 
     private static Task Within(Task wait)
     {
-        return wait.WaitAsync(LabAgent.Deadline, TestContext.Current.CancellationToken);
+        return wait.WaitAsync(LabLimits.Deadline, TestContext.Current.CancellationToken);
     }
 
     // Whether the agent runs, or how its run ended.
