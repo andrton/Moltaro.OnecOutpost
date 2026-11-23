@@ -6,7 +6,7 @@ namespace Moltaro.OnecOutpost.ComWorker.Tests;
 // where size is the length in bytes of the UTF-8 text of the object alone.
 internal static class ExecutorLine
 {
-    public const string SucceededOutcome =
+    private const string SucceededOutcome =
         """{"kind":"succeeded","code":null,"result":1,"errorText":null,"messages":[],"messagesTrimmed":false}""";
 
     public static string Succeeded => Of(SucceededOutcome);

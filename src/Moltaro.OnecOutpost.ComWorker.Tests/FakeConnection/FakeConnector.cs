@@ -4,8 +4,6 @@ namespace Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
 // one session, or throws Failure as a session that does not open.
 internal sealed class FakeConnector(FakeSession session) : IOneCConnector
 {
-    public FakeSession Session => session;
-
     public Exception? Failure { get; init; }
 
     public List<(string Location, string User, string Password)> Connections { get; } = [];
