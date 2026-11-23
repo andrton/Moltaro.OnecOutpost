@@ -4554,6 +4554,7 @@ the contract of the executor and the COM worker approved.
       members as an object; any other succeeds with `null`. S9c's tests step adds `job`,
       the process ids of its immediate job when its `Main` began, which `Main` asks first,
       or `null` in no job (S9c's code review, round 1);
+      `desktop`, the window station and desktop it runs on as `{station}\{desktop}`;
       `user`, the SID of the account it runs under; and `handle <n>`, the final path of the
       file that its handle of value n names, or `null`.
     - **The tests with `Requires=Windows`**, `Moltaro.OnecOutpost.Agent.Tests`, folder

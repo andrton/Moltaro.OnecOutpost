@@ -24,7 +24,8 @@ namespace Moltaro.OnecOutpost.TestWorker;
 // line as an object; any other script succeeds with null. For the start of S9c: job succeeds with the process ids of
 // the immediate job of the process when its Main began, which Main asks before anything else, as an array, or null
 // when the process was in no job, so that a test tells the job of the launcher from any other, such as one that the
-// test host runs in; user succeeds with the SID of the account the process runs under; handle <n>
+// test host runs in; desktop succeeds with the window station and the desktop that the process runs on, as
+// "{station}\{desktop}", the form of lpDesktop; user succeeds with the SID of the account the process runs under; handle <n>
 // succeeds with the final path of the file that the handle of value n names in this process, or null when n names no
 // file here, so that a test sees whether a handle of its own was inherited.
 internal static partial class Program
@@ -228,6 +229,10 @@ internal static partial class Program
                 WriteUser(writer);
                 break;
 
+            case "desktop":
+                WriteDesktop(writer);
+                break;
+
             case string when script.StartsWith(HandlePrefix, StringComparison.Ordinal):
                 WriteFinalPath(writer, long.Parse(script[HandlePrefix.Length..], CultureInfo.InvariantCulture));
                 break;
@@ -292,6 +297,44 @@ internal static partial class Program
         writer.WriteEndArray();
     }
 
+    // The window station of the process and the desktop of its first thread, as "{station}\{desktop}", or null when
+    // Windows cannot name either. The handles that Windows gives for them are not to be closed.
+    private static void WriteDesktop(Utf8JsonWriter writer)
+    {
+        string? station = NameOf(GetProcessWindowStation());
+        string? desktop = NameOf(GetThreadDesktop(GetCurrentThreadId()));
+
+        if (station is null || desktop is null)
+        {
+            writer.WriteNullValue();
+
+            return;
+        }
+
+        writer.WriteStringValue($"{station}\\{desktop}");
+    }
+
+    // The name of a window station or a desktop: GetUserObjectInformationW with UOI_NAME.
+    private static unsafe string? NameOf(IntPtr userObject)
+    {
+        const int NameIndex = 2;
+
+        char[] name = new char[256];
+        uint needed;
+
+        fixed (char* start = name)
+        {
+            if (userObject == IntPtr.Zero
+                || !GetUserObjectInformationW(userObject, NameIndex, start, (uint)(name.Length * sizeof(char)), out needed))
+            {
+                return null;
+            }
+        }
+
+        // The length counts bytes, the closing null included.
+        return new string(name, 0, Math.Max(0, ((int)needed / sizeof(char)) - 1));
+    }
+
     // The SID of the account that the process runs under. The program runs only on Windows.
     private static void WriteUser(Utf8JsonWriter writer)
     {
@@ -340,6 +383,19 @@ internal static partial class Program
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     private static unsafe partial uint GetFinalPathNameByHandleW(IntPtr file, char* path, uint length, uint flags);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    private static partial IntPtr GetProcessWindowStation();
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    private static partial IntPtr GetThreadDesktop(uint thread);
+
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetCurrentThreadId();
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static unsafe partial bool GetUserObjectInformationW(IntPtr userObject, int index, char* information, uint length, out uint needed);
 
     // The line with its LF in one write, as the worker writes one.
     private static void WriteLine(Stream output, string line)

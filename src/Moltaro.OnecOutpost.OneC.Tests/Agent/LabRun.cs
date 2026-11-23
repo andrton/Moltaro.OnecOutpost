@@ -119,7 +119,7 @@ internal sealed class LabRun : IAsyncDisposable
 
         if (_workerAccount is not null)
         {
-            parts.Add(LabWorkerProbe.Describe(_workerAccount, _workerPath, LabAgent.Deadline));
+            parts.Add(LabWorkerProbe.Describe(_workerAccount, _workerPath, _key, LabAgent.Deadline));
         }
 
         return string.Join("; ", parts);

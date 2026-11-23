@@ -43,6 +43,19 @@ public sealed class WorkerCreationTests : IDisposable
         Assert.Equal(agent.User!.Value, user.GetString());
     }
 
+    // The desktop of a worker (the S9c brief): only a logged-on base gets a desktop of the agent's own; a worker under
+    // the agent's own token keeps lpDesktop "", so it runs on the desktop of the agent's logon session, as the process of
+    // the tests does. The test program names its own through the script desktop.
+    [Fact]
+    public async Task A_worker_of_a_base_that_was_not_logged_on_runs_on_the_desktop_of_the_agent()
+    {
+        using IWorkerProcess worker = await OpenAsync(Launcher());
+
+        JsonElement desktop = await RunAsync(worker, "desktop");
+
+        Assert.Equal(TestDesktop.OfTheTests(), desktop.GetString(), ignoreCase: true);
+    }
+
     // S9b's limitation goes: a worker joins the job before it runs, so that no worker outlives an agent that ended
     // between its start and its join. The order, the job before the worker's first instruction, is held by the code:
     // created suspended, put into the job, then resumed. What the test shows is that the worker is in the launcher's
