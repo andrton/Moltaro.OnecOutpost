@@ -5067,8 +5067,9 @@ implementer work on `xhigh`.
   - *S10b, before the code that calls them,* each keeping what the architect's list says
     must stay unchanged:
     - `ComWorkerLauncher`'s three steps, finding the connector, logging a worker account on
-      and judging it, and creating the worker's process, get one home each in `Workers`,
-      which the launcher composes and `check` calls alone; the copies in the lab tests go.
+      and judging it, and creating the worker's process, get one home each, the first in
+      the agent's `Connector` since S10a and the others in `Workers`, which the launcher
+      composes and `check` calls alone; the copies in the lab tests go.
       A strict zone: its implementer and reviewer work on `xhigh`;
     - the checks of `AgentStart` become internal and free of the open audit log, whose lock
       the running service holds, so that `check` reports each; the layout of the data
@@ -5100,9 +5101,10 @@ implementer work on `xhigh`.
   report starts from the owner's collector and rewrites it to the rules of this repository
   (PQ5).
   - *Internal of S10a* (the contract author, 23 November 2026, from S10's study, with the
-    coordinator's decisions under PQ2; with round 1's fixes). Every type is `internal`;
-    `Commands` uses the agent and the boundaries `Service`, `Rights`, `Folders` and
-    `Connector`, which use nothing of each other. `sid` is `ServiceAccount.Sid(ServiceName)`.
+    coordinator's decisions under PQ2; reviewed in two rounds; approved by the coordinator
+    under PQ2, 23 November 2026, with round 2's fixes, which no further round reviews).
+    Every type is `internal`; `Commands` uses the agent and `Service`, `Rights`, `Folders`
+    and `Connector`, which use nothing of each other. `sid` is `ServiceAccount.Sid(ServiceName)`.
 
     ```csharp
     // Moltaro.OnecOutpost.Agent.Connector, the one finder of the COM connector, which the launcher and the console use
@@ -5113,18 +5115,16 @@ implementer work on `xhigh`.
     // ComConnector, V83.COMConnector, moves here; Machine() is HKLM's SOFTWARE\Classes in both views and both 1cv8 folders.
     [SupportedOSPlatform("windows")]
     internal sealed class ConnectorFinder(RegistryKey classes64, RegistryKey classes32, string progId, IReadOnlyList<string> platformFolders) : IConnectorFinder { }
-    // Moltaro.OnecOutpost.Agent.Access
-    internal static class ServiceAccount { public static SecurityIdentifier Sid(string serviceName); } // NT SERVICE\{name}, derived
+    internal static class ServiceAccount { public static string Sid(string serviceName); } // Agent.Access; computed without Windows
 
     // Moltaro.OnecOutpost.Console.Commands. A command takes (IAnsiConsole, ConsoleParts); its own settings in {Command}.Settings.cs.
     internal sealed record ConsoleParts(bool Elevated, string ServiceName, string Source, string ProgramFolder, string DataFolder,
         IAgentFolder Data, IServiceControl Services, IAccountRights Rights, IFolderSetup Folders, Func<string, IAccessLists> AccessLists,
         IMachineProtection Protection, IConnectorFinder Connectors, IConnectorRegistration Registration,
-        Func<Uri, Uri?, HttpMessageHandler> Handlers, TextReader Input, TimeProvider Clock, string Version);
+        Func<Uri, Uri?, HttpMessageHandler> Handlers, TextReader? Input, TimeProvider Clock, string Version); // Input: null for a console
     internal static class ConsoleApp { public static void Configure(IConfigurator config, ConsoleParts parts); }
-    internal static class ConsoleExitCodes { } // the table below
+    internal static class ConsoleExitCodes { } // the table below; StopTimeoutConverter : TypeConverter, by TryReadTimeSpan
     internal sealed class ServiceSettings : CommandSettings { public TimeSpan StopTimeout { get; init; } } // --stop-timeout <TIME>
-    internal sealed class StopTimeoutConverter : TypeConverter { } // the constant form, by AgentPolicyReader.TryReadTimeSpan
     // InstallCommand and UninstallCommand : AsyncCommand<ServiceSettings>; PairCommand : AsyncCommand<PairCommand.Settings>,
     // <SERVER> <TOKEN>; SecretCommand, <BASE> <KIND>, likewise; ConnectorRegisterCommand : AsyncCommand<EmptyCommandSettings>.
 
@@ -5171,16 +5171,16 @@ implementer work on `xhigh`.
 
     - **The program** gives `NotWindows` elsewhere, else runs a `CommandApp` with: `Elevated`
       by `WindowsPrincipal.IsInRole`, false for UAC's filtered token; `MoltaroOnecOutpost`;
-      `AppContext.BaseDirectory`; `%ProgramFiles%` and `%ProgramData%`'s
-      `Moltaro.OnecOutpost`; `ConnectorFinder.Machine()`; standard input as UTF-8, a byte
-      order mark skipped; its product version. Whether it is interactive, and so prompts,
-      is Spectre's own detection, as `AGENTS.md` asks (*limitation:* with the output
-      redirected and the input the console, a password typed there is echoed; G1 gives it
-      through the input instead; the coordinator, 23 November 2026). `RunAsync` gets a token that
-      `Console.CancelKeyPress` cancels, setting `Cancel`. `Configure` registers the parts,
-      sets `UseStrictParsing` and the name, and by `SetExceptionHandler` gives `Cancelled`
-      for an `OperationCanceledException` once that token is cancelled, `Usage` for
-      Spectre's parse and validation errors, `Failure` for any other. Waits show a spinner.
+      `AppContext.BaseDirectory`; `%ProgramFiles%` and `%ProgramData%`'s `Moltaro.OnecOutpost`;
+      `AccessLists` making the string a `SecurityIdentifier`; `ConnectorFinder.Machine()`; a
+      redirected standard input as UTF-8, a byte order mark skipped; its product version.
+      Whether it is interactive, and so prompts, is Spectre's own detection, as `AGENTS.md`
+      asks. `RunAsync` gets a token that `Console.CancelKeyPress` cancels, setting `Cancel`,
+      which each command checks before each step, so Ctrl+C ends it between two steps.
+      `Configure` registers the parts, sets `UseStrictParsing` and the name, and by
+      `SetExceptionHandler` gives `Cancelled` for an `OperationCanceledException` whose token
+      is cancelled, `Usage` for Spectre's parse and validation errors, `Failure` for any
+      other. Waits show a spinner.
     - **Output.** A step done writes one line; any other end writes, in red, `{Kind}
       ({code}): {reason}`, a failed step `Failure (1): the step "{step}" failed: {message}`
       and `(Windows error {code})`. Nothing writes a password, a token or unverified text.
@@ -5203,12 +5203,12 @@ implementer work on `xhigh`.
       | 13 | `NotPaired` | `secret` | `secrets.dat` is absent |
       | 14 | `NotInPolicy` | `secret` | The policy names no such base, mode or worker account |
       | 15 | `UnknownAccount` | `secret` | The worker account is not a local user |
-      | 16 | `ConnectorNotRegistered` | `connector register` | No bitness ends with a registered connector: several installed, or none |
-      | 17 | `RegistrationFailed` | `connector register` | regsvr32 failed, or HKLM shows no registration after it |
+      | 16 | `NotInteractive` | `secret` | The input is the console, the output redirected |
+      | 17 | `ConnectorNotRegistered` | `connector register` | No bitness ends with a registered connector: several installed, or none |
+      | 18 | `RegistrationFailed` | `connector register` | regsvr32 failed, or HKLM shows no registration after it |
 
-    - **`install [--stop-timeout <TIME>]`**, `TIME` in the constant form of `policy.json`
-      from `00:00:01` to `01:00:00`, `00:01:00` when absent. Its steps, each idempotent and
-      named in its failure, without rollback, so that a second run completes them:
+    - **`install [--stop-timeout <TIME>]`**, `TIME` in `policy.json`'s constant form, `00:00:01`
+      to `01:00:00`, `00:01:00` when absent; each step idempotent, named in its failure:
       1. *elevation*: `install needs a console run as administrator; nothing was changed`;
          a `Source` whose `FinalPath` lies inside that of `ProgramFolder` gives `Usage`,
          `unpack the archive outside {folder} and run install from there`;
@@ -5219,125 +5219,123 @@ implementer work on `xhigh`.
          `Set …`; then `AccessLists(sid).Writers(ProgramFolder)`, before any service exists,
          entries giving `ProgramFolderWriters` with a table of them;
       4. *service*: `Install(name, "Moltaro OnecOutpost agent", "\"{ProgramFolder}\Moltaro.OnecOutpost.Agent.exe\" service")`,
-         `Registered` or `Reconfigured the service {name} under NT SERVICE\{name}.`; 1072
-         gives `Failure` with the remedy `close the Services console and Event Viewer,
-         which hold the service, and run install again`;
+         `Registered` or `Reconfigured the service {name} under NT SERVICE\{name}.`; 1072 gives
+         `Failure` and `close the Services console and Event Viewer, and run install again`;
       5. *rights*: `Grant(sid, [AssignPrimaryToken, IncreaseQuota])`, `Granted NT SERVICE\{name}
          "Replace a process level token" and "Adjust memory quotas for a process".`;
       6. *data folder*: `Kind` of the folder, `audit` and `outcomes`; a `ReparsePoint`, or
          the accounts of `Others` of a `Folder`, give `DataFolderAdmitsOthers`, `{entry} of
-         the data folder {folder} is a reparse point | admits {accounts}; install does not
-         repair it: inspect it, remove it and run install again`; then
-         `ApplyDataFolder(DataFolder, sid, create)`, `create` when it was `Absent`:
-         `Created` or `Set the access lists of the data folder {folder}.`
+         {folder} is a reparse point | admits {accounts}; install does not repair it: inspect
+         it, remove it and run install again`; then `ApplyDataFolder(DataFolder, sid,
+         create)`, `create` when `Absent`: `Created` or `Set the access lists of {folder}.`
 
       Then `Installed; the service is not started. Start it once policy.json, the pairing
       and the passwords are written; an update keeps those written before.`
-    - **`uninstall [--stop-timeout <TIME>]`**: elevation; `StopAsync`, `NotInstalled`
-      giving `NotInstalled`, `the service {name} is not installed; nothing was changed`,
-      and `TimedOut` `StopTimedOut`; `Revoke(sid, [AssignPrimaryToken, IncreaseQuota])`,
-      `Delete`; then `Removed the service {name} and its account's two rights. Left {both
-      folders}, with the audit log; the worker accounts keep "Log on as a batch job".`
+    - **`uninstall [--stop-timeout <TIME>]`**: elevation; `StopAsync`, `NotInstalled` giving
+      `NotInstalled`, `… nothing was changed`, `TimedOut` `StopTimedOut`; `Revoke(sid, [the
+      two])`, `Delete`; then `Removed the service {name} and its account's two rights. Left
+      {both folders}, with the audit log; the worker accounts keep "Log on as a batch job".`
     - **The steps `pair` and `secret` share**, written once: elevation; the data folder's
       `Kind`, `Absent` giving `NotInstalled`, `… run install first`, and `ReparsePoint`
       `DataFolderAdmitsOthers`; `AccessLists(sid).Others("")`, accounts giving
-      `DataFolderAdmitsOthers`, since DPAPI for the machine lets every local process
-      decrypt and only the folder's list keeps the secrets (*limitation:* an entry that
-      only the folder's content inherits, which only an administrator can add, reaches a
-      file written there, which the agent's start then refuses); `policy.json` by `ReadFile`,
-      `PolicyInvalid` with the agent's reason. Files go by `Data.Replace`, then
-      `OwnByAdministrators` (Q14).
+      `DataFolderAdmitsOthers`, since DPAPI for the machine lets every local process decrypt
+      and only the folder's list keeps the secrets (*limitation:* an entry that only the
+      folder's content inherits, which only an administrator can add, reaches a file written
+      there, which the agent's start then refuses); `policy.json` by `ReadFile`,
+      `PolicyInvalid` with the agent's reason. Files go by `Data.Replace`, then `OwnByAdministrators` (Q14).
     - **`pair <SERVER> <TOKEN>`**, `SERVER` absolute and allowed by `ServerRoute.IsAllowed`,
       `TOKEN` read by `OutpostPairingTokenText.TryRead`, else `Usage` naming the rule and
       quoting neither. After the shared steps:
       1. `agent.json` exists: `AlreadyPaired`, `the agent is paired; to pair it anew,
          remove agent.json; what its outbox holds then reaches the server under the new
-         identity, which drops it as another agent's (§6.3)`, nothing sent;
-      2. `AgentPairing.PairAsync` with `Version`, `Handlers(server, policy.Proxy)`, disposed
-         after, and `policy.RequestTimeout`;
-      3. a failure: `PairingFailed`, `HTTP {status}: ` when one came and the reason by
-         `AgentPairingFailureEnum` in §6.1's words; nothing written;
-      4. `secrets.dat` with the new key alone, replacing one a failed pairing left, then
-         `agent.json`, which so exists only with its key; a failure gives `Failure`, `the
-         server paired the agent, but {file} could not be written: {message}; the
-         application revokes it and gives a new token`. Then `Paired with {server} as {id}.`
+         identity, which drops it as another agent's (§6.3); pairing anew writes secrets.dat
+         with the new key alone, so the passwords are written again with secret`;
+      2. `AgentPairing.PairAsync` with `Version`, `Handlers(server, policy.Proxy)` and
+         `policy.RequestTimeout`; a failure gives `PairingFailed`, `HTTP {status}: ` when one
+         came and the reason by `AgentPairingFailureEnum` in §6.1's words, writing nothing;
+      3. `secrets.dat` with the new key alone, replacing one a failed pairing left, then
+         `agent.json`, which so exists only with its key; a failure gives `Failure`, `the server
+         paired the agent, but {file} could not be written: {message}; the application revokes
+         it and gives a new token`. Then `Paired with {server} as {id}; write the passwords with secret.`
     - **`secret <BASE> <KIND>`**, `BASE` by `OutpostNames.IsBaseKey`, `KIND` exactly `read`,
       `write` or `worker`, else `Usage`. After the shared steps: `secrets.dat` absent gives
       `NotPaired`, `… pair the agent first`, one that does not read or decrypt `Failure`;
-      `NotInPolicy`: `the policy names no base {key} | does not let it be written | names
-      no worker account for it`. For `worker`: `UserSid("{machine}\{workerAccount}")`, null
+      `NotInPolicy`: `the policy names no base {key} | does not let it be written | names no
+      worker account for it`. For `worker`: `UserSid("{machine}\{workerAccount}")`, null
       giving `UnknownAccount`, `{account} of the base {key} is not a local user of this
-      machine`, then `Grant(sid, [BatchLogon])`, `Granted {account} "Log on as a batch
-      job".` The password: when `Profile.Capabilities.Interactive`, a `TextPrompt<string>`
-      with `Secret(null)`, `Password of {account} for {the read mode | the write mode | the
-      workers} of the base {key}:`, else one line of `Input`. An empty password is one for
-      `read` and `write`, a real case of 1C, and `Usage` for `worker`, whose blank password
-      Windows refuses outside its own console (the coordinator, 23 November 2026), as is
-      the end of the input. `secrets.dat` is written with every other secret as it was:
-      `Wrote the password … ; the service uses it from its next start.`
+      machine`, then `Grant(sid, [BatchLogon])`, `Granted {account} "Log on as a batch job".`
+      The password: when `Profile.Capabilities.Interactive`, a `TextPrompt<string>` with
+      `Secret(null)`, `Password of {account} for {the read mode | the write mode | the
+      workers} of the base {key}:`; else one line of `Input`; else, `Input` being null,
+      `NotInteractive`, `run secret in a terminal, or give the password through standard
+      input`, reading nothing. An empty password is one for `read` and `write`, a real case
+      of 1C, and `Usage` for `worker`, whose blank password Windows refuses outside its
+      console (the coordinator, 23 November 2026), as is the end of the input. Every other
+      secret is kept: `Wrote the password …; the service uses it from its next start.`
     - **`connector register`**: elevation; then per finding, `{bits}-bit: {path}, {version},
       is registered.`, or without `Registered`: one `Unregistered` is registered and `Find`
-      read again, `{bits}-bit: registered {path}, {version}.`, else `RegistrationFailed`
-      with regsvr32's code and kind (1 arguments, 2 `OleInitialize`, 3 loading the DLL, 4
-      no `DllRegisterServer`, 5 `DllRegisterServer` failed) or `regsvr32 ended with 0, yet
-      HKLM shows no registration`; several, `… none is registered, and the connector has
-      to match the version of the 1C cluster, so register that one:` and `{version}:
-      {CommandOf}` each; none, `… none is registered or installed`; `ConnectorNotRegistered`
-      only when no bitness ends with a registered one.
-    - **`WindowsServiceControl`**, by `LibraryImport`, failing with `Win32Exception`; its
-      service handle has `SERVICE_START`, which restart actions need. `Install`:
-      `ChangeServiceConfigW` of an existing service, never a delete, its failure actions
-      kept as the administrator set them; else `CreateServiceW` (own process, automatic
-      start, `NT SERVICE\{name}`, no password) with the failure actions, constants of the
-      class: restart after 1 minute, three times, reset after a day, the flag for a stop
-      with an error false, as `AgentService` stops so. Both set the description and no
-      required privileges. `StopAsync`: 1060 `NotInstalled`; `SERVICE_CONTROL_STOP`, 1062
-      as stopped, 1061 waiting; `QueryServiceStatusEx` every tenth of the wait hint, 1 to
-      10 seconds, until stopped or the timeout by the clock. `Delete`: 1072 counts as done.
+      read again, `{bits}-bit: registered {path}, {version}.`, else `RegistrationFailed` with
+      regsvr32's code and kind (1 arguments, 2 `OleInitialize`, 3 loading the DLL, 4 no
+      `DllRegisterServer`, 5 `DllRegisterServer` failed) or `regsvr32 ended with 0, yet HKLM
+      shows no registration`; several, `… none is registered, and the connector has to match
+      the version of the 1C cluster, so register that one:` and `{version}: {CommandOf}`
+      each; none, `… none is registered or installed`. The exit is `RegistrationFailed` when
+      a run of regsvr32 failed, else `ConnectorNotRegistered` when no bitness ends with a
+      registered connector, else `Success`.
+    - **`WindowsServiceControl`**, by `LibraryImport`, failing with `Win32Exception`, its
+      handle with `SERVICE_START`. `Install`: `ChangeServiceConfigW` of an existing service,
+      never a delete, keeping its failure actions; else `CreateServiceW` (own process,
+      automatic start, `NT SERVICE\{name}`, no password) with the failure actions, class
+      constants: restart after 1 minute, three times, reset after a day, the flag for a stop
+      with an error false; both set the description and no required privileges. `StopAsync`:
+      1060 `NotInstalled`; `SERVICE_CONTROL_STOP`, 1062 stopped, 1061 waiting;
+      `QueryServiceStatusEx` every tenth of the wait hint, 1 to 10 seconds, until stopped or
+      the timeout by the clock. `Delete`: 1072 counts as done.
     - **`WindowsAccountRights`**: `LsaOpenPolicy(POLICY_LOOKUP_NAMES | POLICY_CREATE_ACCOUNT)`;
       `LsaAddAccountRights`, idempotent; `LsaRemoveAccountRights` without `AllRights`, an
       account unknown to LSA no error; `Held` by `LsaEnumerateAccountRights`.
       **`ServiceAccount.Sid`** is `S-1-5-80-` and the SHA-1 of the upper-cased name in
-      UTF-16 as five sub-authorities, as Windows derives it, TrustedInstaller's included.
-    - **`WindowsFolderSetup`** makes Administrators the owner of every entry it writes, as
-      an elevated token may. `ApplyDataFolder` creates, when `create`, the folder by
+      UTF-16 as five sub-authorities, as Windows derives it.
+    - **`WindowsFolderSetup`** makes Administrators the owner of every entry it writes, as an
+      elevated token may. `ApplyDataFolder` creates, when `create`, the folder by
       `CreateDirectoryW` with `O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;FR;;;{agent})`,
       which fails with 183 when the folder exists, giving `Failure`, so that only a folder
       judged by `Others` is ever applied to; otherwise it applies that descriptor; `audit\`
       and `outcomes\` inherit it plus `(A;OICI;0x1301bf;;;{agent})`, created so or applied,
-      files untouched. `ApplyProgramFolder` makes or applies `O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;0x1200a9;;;BU)`;
-      with a `source`, it empties the folder and copies `source`'s content in; then every
-      entry gets Administrators as owner and only inherited entries.
-    - **`ConnectorFinder`** never reads HKCR, which merges in the administrator's own
-      classes, unseen by the service. Per view, 64 bits only on a 64-bit Windows,
-      `{progId}\CLSID` and `CLSID\{class}\InprocServer32` give the path, expanded,
-      `Registered` only when its file exists. `Unregistered`: each other
-      `{platformFolder}\*\bin\comcntr.dll` by ordinal path, its bitness by the PE header's
-      `Machine` (0x8664, 0x14C), its version its `FileVersion`. *Limitation:* a platform
-      installed elsewhere is found only by its registration. `ComWorkerLauncher` takes an
-      `IConnectorFinder` for its ProgID and starts the program of the first `Registered`
-      finding, 64 bits first, nothing else of it changing. `RegSvr32Registration` runs
-      `%SystemRoot%\System32\regsvr32.exe /s "{path}"`, `SysWOW64`'s for 32 bits, with the
-      token and no deadline, since `/s` ends with `DllRegisterServer`; `CommandOf` omits `/s`.
+      files untouched. `ApplyProgramFolder` makes or applies
+      `O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;0x1200a9;;;BU)`; with a `source`, it
+      empties the folder and copies `source`'s content in; then every entry gets
+      Administrators as owner and only inherited entries.
+    - **`ConnectorFinder`** never reads HKCR, which merges in the administrator's own classes,
+      unseen by the service. Per view, 64 bits only on a 64-bit Windows, `{progId}\CLSID` and
+      `CLSID\{class}\InprocServer32` give the path, expanded, `Registered` only when its file
+      exists. `Unregistered`: each other `{platformFolder}\*\bin\comcntr.dll` by ordinal
+      path, its bitness by the PE header's `Machine` (0x8664, 0x14C), its version its
+      `FileVersion`. `Find` throws nothing and may run on several slots at once: a key,
+      folder or file it cannot read is not `Registered`, or left out of `Unregistered`, as the
+      launcher reads today; a platform installed elsewhere is found only by its registration.
+      `ComWorkerLauncher` takes an `IConnectorFinder` for its ProgID and starts the first
+      `Registered` finding's program, 64 bits first, nothing else changing.
+      `RegSvr32Registration` runs `%SystemRoot%\System32\regsvr32.exe /s "{path}"`, `SysWOW64`'s
+      for 32 bits, with the token and no deadline; `CommandOf` omits `/s`.
     - **Tests on every platform**, `Moltaro.OnecOutpost.Console.Tests`, by `CommandAppTester`
-      with `ConsoleApp.Configure` and fakes recording their calls in one list, those the
-      agent's tests have, such as the folder in memory, moved to `TestSupport`. Each
-      command's steps in order, each failure at its step with its code and line and nothing after; also
-      `install` from the program folder and from inside it, `--stop-timeout` at both bounds
-      and `00:00:00`, `01:00:01` and `1:00`; `pair` against a stub of the pair endpoint
-      signed with a test key, the policy's proxy and `requestTimeout` on a fake clock, each
-      `AgentPairingFailureEnum`, the stub's unverified body never in the output; `secret`
-      by an interactive `TestConsole`'s prompt and by `Input`, every other secret kept, the
-      batch right first, the password never in the output; `Usage`, `Failure`, and
-      `Cancelled` by `RunAsync` with a cancelled token; the built console's assembly run by
-      `dotnet` giving `NotWindows` off Windows, which the build job runs.
-    - **Tests with `Requires=Windows`**, in the agent's tests: `ConnectorFinder` over two
-      test keys under HKCU and a temporary platform folder holding the x64 and x86 worker
-      programs as `comcntr.dll`; no worker for a registration whose file is gone,
-      `TestConnector` now registering a file that exists; `ServiceAccount.Sid` of
-      TrustedInstaller. In the console's: the built console as a child process with
-      redirected streams, as `ProgramTests` run the agent, each command with `--help` and
-      with one refused argument, which change nothing, each its code and no `\x1b[`.
+      with `ConsoleApp.Configure` and fakes recording their calls in one list, the agent's
+      tests' moved to `TestSupport`: each command's steps in order, each failure at its step
+      with its code and line and nothing after; `install` from the program folder and from inside it, `--stop-timeout` at
+      both bounds and `00:00:00`, `01:00:01` and `1:00`; `pair` against a stub of the pair
+      endpoint signed with a test key, the policy's proxy and `requestTimeout` on a fake
+      clock, each `AgentPairingFailureEnum`, the stub's unverified body never in the output;
+      `secret` by an interactive `TestConsole`'s prompt and by `Input`, every other secret
+      kept, the batch right first, `NotInteractive`, the password never in the output;
+      `Usage`, `Failure`, and `Cancelled` by `RunAsync` with a cancelled token; in the agent's,
+      `ServiceAccount.Sid` of TrustedInstaller. `NotWindows` has no test, as the agent's has
+      none: no platform runs both branches.
+    - **Tests with `Requires=Windows`**, in the agent's tests: `ConnectorFinder` over two test
+      keys under HKCU and a temporary platform folder holding the x64 and x86 worker programs
+      as `comcntr.dll`; no worker for a registration whose file is gone, `TestConnector` now
+      registering a file that exists. In the console's: the built console as a child process
+      with redirected streams, as `ProgramTests` run the agent, each command with `--help`
+      and with one refused argument, which change nothing, each its code and no `\x1b[`.
     - **Tests with `Requires=Windows` and `Requires=Administrator`**, each with its own
       service `MoltaroOnecOutpostTest-{guid:N}`, whose virtual account stands for the
       agent's and gets every right, the batch right too, so that no local user is made, and
@@ -5349,25 +5347,29 @@ implementer work on `xhigh`.
       folders by their SDDL and `WindowsAccessLists`; `install` then `uninstall` through
       `CommandAppTester`. Stopping a running service is the fakes' and S10b's lab's.
     - **The steps.** Contract: the two projects, on Spectre.Console and Spectre.Console.Cli
-      0.57.2, the tests also on Spectre.Console.Testing and Spectre.Console.Cli.Testing
-      0.57.2. Settings, validation, `ConsoleExitCodes`, `ConsoleApp`, `Program` and
-      `ServiceAccount` work; the commands, the finder and the Windows implementations throw
-      `NotSupportedException`. Edits that state nothing new, made there:
-      `WindowsAccessLists(string dataFolder, SecurityIdentifier agent)`, the agent's
+      0.57.2, the tests also on their Testing packages 0.57.2. Settings, validation,
+      `ConsoleExitCodes`, `ConsoleApp`, `Program` and `ServiceAccount` work; the commands and
+      the Windows implementations throw `NotSupportedException`. Edits that state nothing
+      new, made there: `Find` gives each
+      view's `Registered` from the classes it is given as the launcher reads them today,
+      without the file check, and no `Unregistered`, since it replaces a working member; the
+      file check and `Unregistered` come with the implementation, their tests skipped until
+      then; `WindowsAccessLists(string dataFolder, SecurityIdentifier agent)`, the agent's
       `Program` giving its own account, other callers the current user's and
-      `ProgramWritersTests` ANONYMOUS LOGON's, so `AnonymousLogon` goes;
-      `AgentPolicyReader.ReadFile(byte[])` takes `AgentStart`'s UTF-8 and byte order mark,
-      `TryReadTimeSpan(string, out TimeSpan)` its constant form; `AgentStart`'s file names
-      become `public const`; the agent's `InternalsVisibleTo` names the console and its
-      tests; the launcher's callers pass a finder. Tests step: `AGENTS.md`, "Tests And
-      Samples", after the line on time, gains "A test that needs the rights of an administrator, such as one that registers a
-      service, grants a right through LSA or makes Administrators the owner of a file, has
-      the trait `Requires=Administrator` with `Requires=Windows`. CI's `windows` job runs
-      elevated and runs it; a developer whose shell is not elevated adds
-      `--filter-not-trait "Requires=Administrator"`."; the comment of the `windows` job's
-      test step in `ci.yml` gains "Its runner is elevated, so the tests with
-      Requires=Administrator run here too." Documents: `README.md` names the setup
-      commands; "The files of the agent" and the contract of stage 3 take the drafts below.
+      `ProgramWritersTests` ANONYMOUS LOGON's, so `AnonymousLogon` goes, and TrustedInstaller's
+      SID from `ServiceAccount.Sid`; `AgentPolicyReader.ReadFile(byte[])` takes `AgentStart`'s
+      UTF-8 and byte order mark, `TryReadTimeSpan(string, out TimeSpan)` its constant form;
+      `AgentStart`'s file names become `public const`; the agent's `InternalsVisibleTo` names
+      the console and its tests; the launcher's callers pass a finder. Tests step:
+      `AGENTS.md`, "Tests And Samples", after the line on time, gains "A test that needs the
+      rights of an administrator, such as one that registers a service, grants a right
+      through LSA or makes Administrators the owner of a file, has the trait
+      `Requires=Administrator` with `Requires=Windows`. CI's `windows` job runs elevated and
+      runs it; a developer whose shell is not elevated adds `--filter-not-trait
+      "Requires=Administrator"`."; the comment of the `windows` job's test step in `ci.yml`
+      gains "Its runner is elevated, so the tests with Requires=Administrator run here too."
+      Documents: `README.md` names the setup commands; "The files of the agent" and the
+      contract of stage 3 take the drafts below.
 - **What S10a changes in the public contract, as a draft for the owner** (the contract
   author, 23 November 2026). Each holds until the owner overturns it:
   - the commands `install [--stop-timeout <TIME>]`, `uninstall [--stop-timeout <TIME>]`,
@@ -5377,12 +5379,11 @@ implementer work on `xhigh`.
     deletes an existing service, writes the failure actions above only when it creates
     it, does not start it, and refuses a data folder that exists and admits anyone else;
   - "Log on as a batch job" of a worker account, a local user, is granted by `secret <base
-    key> worker`, not by `install` as S9c's draft and "The files of the agent" say, since
-    the policy names the account only after `install`;
-  - `uninstall` takes the two rights of the agent's account before it removes the service,
-    and leaves both folders and the batch right of the worker accounts;
+    key> worker`, not by `install` as S9c's draft said: the policy names it after `install`;
+  - `uninstall` takes the agent's two rights, then removes the service, leaving both folders;
   - `pair` refuses an agent that is paired and writes `secrets.dat` with the key alone;
-    `pair` and `secret` refuse a data folder that admits anyone else;
+    `pair` and `secret` refuse a data folder that admits anyone else; `secret` refuses to
+    read a password at a console whose output is redirected (`NotInteractive`);
   - `connector register` registers only where exactly one version of a bitness is
     installed; the agent judges the connector from HKLM as the console does, and a
     registration whose file is gone no longer picks that bitness;
