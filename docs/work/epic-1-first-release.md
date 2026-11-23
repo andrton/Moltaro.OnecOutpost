@@ -4095,6 +4095,21 @@ request and merge under PQ1:
   repeat in `AuditLog.RemoveExpired` the check that `WaitsForOthers` makes, and are
   removed, with a review, the retention tests unchanged. The P4s left there and in the S5
   brief are looked at too.
+- **The survey** (the refactorer, agreed by the coordinator, 23 November 2026; the planner's
+  order of that day): 42 items of debt, in the coordinator's notes. The 23 that touch no
+  file of S9c's branch are built first, on `epic-1/sprint-08-refactoring` from `main`, each
+  its own commit with every test green; they are merged only after S9c, and the 19 that
+  touch S9c's code are added on top once it is merged. Twin theories are not merged into
+  one, so that the names stating a behavior stay.
+- **Not refactorings, for the owner or a later sprint** (the survey): which outcome
+  `PassCommandAsync` gives for a command the purge removed (Q15); an index on
+  `commands(agent_id)`, a migration, and the copies of a 64 MiB poll answer, each changed
+  only with a measurement; the sets of a revocation and of Expired sent whatever the
+  caller's cancellation; an `ended` appended at every start while the clock is behind; the
+  reason of a stop after `started`, which the audit log does not record (Q16); tests for
+  the behaviors S6b's review found untested; forwarding `Expect: 100-continue` through
+  `TestProxy`; `Requires=Windows` on every class of `Moltaro.OnecOutpost.ComWorker.Tests`;
+  README's sentence on a node that stops.
 
 ### L1 · The lab check of open items O1–O8
 
