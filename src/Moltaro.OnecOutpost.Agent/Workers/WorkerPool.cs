@@ -283,7 +283,9 @@ internal sealed partial class WorkerPool : IAsyncDisposable
             }
 
             worker.Process.Dispose();
-            delay = opened ? _firstDelay : Doubled(delay);
+            // The first worker of a slot waits for none; the delay before the next is a tenth of retryDelayMax after a
+            // worker that opened, and doubles otherwise.
+            delay = opened ? _firstDelay : _policy.NextRetryDelay(delay);
 
             await Task.Delay(delay, _clock, stop).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 
@@ -292,15 +294,6 @@ internal sealed partial class WorkerPool : IAsyncDisposable
                 return;
             }
         }
-    }
-
-    // Twice the delay before a worker whose open did not give true, from a tenth of retryDelayMax up to retryDelayMax:
-    // 3, 6, 12, 24, 30, 30 … seconds by default, the first worker of a slot having waited none.
-    private TimeSpan Doubled(TimeSpan before)
-    {
-        long ticks = Math.Clamp(before.Ticks * 2, _firstDelay.Ticks, _policy.RetryDelayMax.Ticks);
-
-        return TimeSpan.FromTicks(ticks);
     }
 
     // The open of one worker, raced with the run limit of its mode, its deadline; true when it gave true in time. The

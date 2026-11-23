@@ -13,4 +13,13 @@ internal sealed record AgentPolicy(
 {
     // A tenth of RetryDelayMax: the first delay after an error, and the shortest.
     public TimeSpan FirstRetryDelay => RetryDelayMax / 10;
+
+    // The delay after another error: twice the one before, from FirstRetryDelay up to RetryDelayMax, so 3, 6, 12, 24,
+    // 30, 30 … seconds by default (concept §4, §5).
+    public TimeSpan NextRetryDelay(TimeSpan before)
+    {
+        long ticks = Math.Clamp(before.Ticks * 2, FirstRetryDelay.Ticks, RetryDelayMax.Ticks);
+
+        return TimeSpan.FromTicks(ticks);
+    }
 }
