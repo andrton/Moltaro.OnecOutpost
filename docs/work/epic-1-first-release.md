@@ -4684,39 +4684,232 @@ the contract of the executor and the COM worker approved.
 the lab and merged. A strict zone: secrets and the local policy. The test author and the
 implementer work on `xhigh`.
 
-- **Goal** (the planner, 22 November 2026). A base whose `write` has `safeMode: false` is
-  served for Write. Its Write workers run under a local Windows account of their own,
-  inside the job object, so that a script without safe mode can read neither the agent's
-  secrets nor its audit log (D12, principle 9).
-- **Contract.**
-  - *Public, a draft for the owner:* the member `write.workerAccount` of `policy.json`,
-    the name of a local Windows account, required when `safeMode` is false and refused
-    otherwise. Its password is a secret in `secrets.dat`, which the console writes in S10
-    as it writes the 1C passwords; a served mode without it stops the start, as a missing
-    1C password does. A draft for S10: `secret` gains a form for that password.
-  - *Internal:* written into this brief after the study: how the agent starts such a
-    worker under that account inside the job object, with its standard streams, and the
-    way of logging on that the study settles.
-- **Study.** Short. Questions: how a service under a virtual account starts a process
-  under another local account with redirected standard streams, and which rights each way
-  needs (`CreateProcessWithLogonW`, or `LogonUserW` with `CreateProcessAsUserW`); how the
-  process joins the job object before it runs; what the account needs of its profile, the
-  program folder and the executor, and that it needs nothing of the data folder.
+- **Goal** (the planner, 22 November 2026, and the coordinator, 23 November 2026). A base
+  whose `write` has `safeMode: false` is served for Write. All its COM workers run under a
+  local Windows account of their own, inside the job object, so that a script without
+  safe mode can read neither the agent's secrets nor its audit log (D12, principle 9).
+- **Contract.** The public part is the drafts below.
+  - *Internal* (the contract author, 23 November 2026, from S9c's study, with the
+    coordinator's decisions under PQ2; reviewed in two rounds and approved by the
+    coordinator under PQ2, 23 November 2026). Every type is `internal`, and the folders depend
+    as S6 says. The boundary of the workers stays S6's `IWorkerLauncher`, which gains the
+    logon, so that the start is tested on every platform with S6b's fake; the program
+    folder is read through S6a's `IAccessLists`, as the data folder is.
+
+    ```csharp
+    // Moltaro.OnecOutpost.Agent.Policy
+    internal sealed record AgentModePolicy(string Account, int Workers, TimeSpan RunLimit, bool SafeMode, string? WorkerAccount);
+
+    // Moltaro.OnecOutpost.Agent.Secrets: PrivateKey and Passwords stay
+    internal sealed class AgentSecrets
+    {
+        public AgentSecrets(byte[] privateKey, IReadOnlyDictionary<(string Base, OutpostModeEnum Mode), string> passwords, IReadOnlyDictionary<string, string> workerPasswords);
+        public IReadOnlyDictionary<string, string> WorkerPasswords { get; } // by base key
+    }
+
+    // Moltaro.OnecOutpost.Agent.Access
+    internal interface IAccessLists
+    {
+        IReadOnlyList<string> Others(string path); // S6a's, unchanged
+        IReadOnlyList<(string Path, IReadOnlyList<string> Accounts)> Writers(string folder);
+    }
+
+    // Moltaro.OnecOutpost.Agent.Workers
+    internal interface IWorkerLauncher
+    {
+        void LogOn(string baseKey, string account, string password);
+        IWorkerProcess Start(string baseKey, OutpostModeEnum mode); // unchanged
+    }
+    internal static class WorkerAccountRule
+    {
+        public static bool IsOrdinary(IReadOnlyCollection<string> groups, IReadOnlyCollection<string> privileges);
+    }
+    // ComWorkerLauncher keeps its constructor and constants; each struct of its calls in ComWorkerLauncher.{Struct}.cs;
+    // tokens are SafeAccessTokenHandle; every call through LibraryImport.
+    [SupportedOSPlatform("windows")]
+    internal sealed partial class WorkerJob : IDisposable
+    {
+        public void Add(SafeProcessHandle process); // replaces Add(Process)
+    }
+    [SupportedOSPlatform("windows")]
+    internal sealed partial class ComWorkerProcess : IWorkerProcess
+    {
+        public ComWorkerProcess(SafeProcessHandle process, Stream input, Stream output); // replaces (Process)
+    }
+
+    // Moltaro.OnecOutpost.Agent.Start, which now uses Workers, an edge that S6's list gains
+    internal static class AgentStart
+    {
+        public static AgentRun Open(AgentFolders folders, IAccessLists access, IMachineProtection protection, IWorkerLauncher workers, string programs, TimeProvider clock, string version);
+    }
+
+    // Moltaro.OnecOutpost.Agent.Host: AgentHost.Served goes
+    internal sealed record AgentParts(AgentFolders Folders, IAccessLists Access, IMachineProtection Protection, IWorkerLauncher Workers, string Programs, string Executor, Func<Uri, Uri?, HttpMessageHandler> Handlers, TimeProvider Clock, string Version);
+    ```
+
+    - **`write.workerAccount`**. `AgentPolicyReader` reads it into `WorkerAccount` of the
+      write mode, null otherwise. Required when `safeMode` is false, refused when it is
+      true or absent, an unknown member in `read`. 1 to 20 characters, none of
+      `" / \ [ ] : ; | = , + * ? < > @` or a control character, not only periods and
+      spaces, so never a domain account or a UPN; unique across bases, ignoring case, so
+      that the scripts of one base cannot reach the workers of another. Errors as Q1 says,
+      quoting no value: `bases[0].write: "safeMode" is false without "workerAccount";
+      expected the name of a local Windows account that runs the workers of the base`,
+      `bases[0].write.workerAccount: given while "safeMode" is true; remove it, or set
+      "safeMode" to false`, `bases[2].write.workerAccount: the account of bases[0] again;
+      expected an account of its own for each base`.
+    - **`secrets.dat`** gains `"workers":[{"base":…,"password":…},…]` after `passwords`,
+      required, empty when unused (0.x), read and written as S6a's `passwords` are, with a
+      base key against its rule or given twice a `FormatException`.
+    - **`AgentStart.Open`** adds to S6a's steps: after step 3, `access.Writers(programs)`,
+      whose first entry fails with `the access list of {path} lets {accounts} change it;
+      expected nobody but Administrators, SYSTEM, TrustedInstaller and the agent's account,
+      as the console's install sets it`, and its `IOException` with `the access lists of
+      the program folder cannot be read`; in step 6, a worker password for each base with
+      a `WorkerAccount`, else `secrets.dat holds no password for the worker account of the
+      base {key}; write it with the console`; a step 7, `workers.LogOn(key, account,
+      password)` for each such base in the policy's order, whose `AgentStopException`
+      fails it before any worker starts. `started.withoutSafeMode` is as before; no new
+      audit entry.
+    - **The program folder** (the coordinator, 23 November 2026), since an account that
+      could replace code the agent's account runs would get the secrets. `programs` is
+      `AppContext.BaseDirectory` in `Program`. `Writers(folder)` gives, by full path, with
+      its accounts named as `Others` names them, each entry that an account other than
+      Administrators, SYSTEM, `NT SERVICE\TrustedInstaller` and the agent's account owns,
+      or that an allow entry applying to the entry itself gives:
+      - on each parent, from the volume's root down, `Delete`,
+        `DeleteSubdirectoriesAndFiles`, `ChangePermissions`, `TakeOwnership` or
+        `GenericAll`; adding a subfolder, which `C:\` gives Authenticated Users, plants a
+        name only after one of these, so it is not judged by itself;
+      - on the folder and everything in it, a folder before its entries by ordinal name,
+        any right beyond `ReadAndExecute`, `Synchronize` and the generic rights to read
+        and to run; a reparse point is judged by its own list and not entered.
+
+      `IOException` when a list cannot be read or a folder listed. S6a's limitation of an
+      administrator's own account holds. *Limitations:* the connector's folder is S10's
+      `check`; a volume whose root gives Authenticated Users Modify fails the parents.
+    - **`ComWorkerLauncher.LogOn`** runs before any `Start`. Each failure closes the token
+      and throws `AgentStopException`, never with the password:
+      1. `LogonUserW(account, ".", password, LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT)`,
+         the password in `Marshal.StringToHGlobalUni`, zeroed in a `finally`; BATCH, since
+         a service logon adds SERVICE with `SeImpersonatePrivilege`. Failure: `the worker
+         account {account} of the base {key} cannot log on: {the Win32 message}`;
+      2. the token's groups, whatever their attributes, and privileges, enabled or not,
+         judged by `WorkerAccountRule`: `the worker account {account} of the base {key} is
+         an administrator or holds a privilege beyond an ordinary user's; expected a local
+         user that is not in Administrators, as the console's install prepares it`;
+      3. the agent's token holds `SeAssignPrimaryTokenPrivilege` and
+         `SeIncreaseQuotaPrivilege`, enabled or not, since `CreateProcessAsUserW` enables
+         them: `the agent's account lacks the right "Replace a process level token" or
+         "Adjust memory quotas for a process"; install the agent with the console`.
+
+      The logon comes first, so that a missing account gives 1326 whatever the agent
+      holds. The token lives as long as the launcher; one logon per start, so no retries
+      lock the account out.
+    - **`WorkerAccountRule.IsOrdinary`**, apart so that it is tested on every platform:
+      true only when no group SID is Administrators, `S-1-5-32-544`, and each privilege is
+      one of Users': `SeChangeNotifyPrivilege`, `SeShutdownPrivilege`, `SeUndockPrivilege`,
+      `SeIncreaseWorkingSetPrivilege`, `SeTimeZonePrivilege`.
+    - **The account of a worker** (the coordinator, 23 November 2026: concept §3, D12).
+      Invariant, in the launcher's comment: every COM worker of a logged-on base runs
+      under its token, Reads included; the agent's own token runs only bases without a
+      `workerAccount`. `AgentHost` drops `Served` and S9b's "Writes without safe mode".
+    - **The start** replaces S9b's bullet; the choice of the program stays. Two
+      `AnonymousPipeServerStream`s; `CreateProcessAsUserW` with the worker's token (the
+      agent's own opened by the constructor), the full path, `"{program}" {base key}
+      {read|write}`, `CREATE_SUSPENDED | CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT |
+      EXTENDED_STARTUPINFO_PRESENT`, `CreateEnvironmentBlock(token, false)`, the program's
+      folder, `lpDesktop` `""`, the client ends as standard input and output, a null
+      standard error, and a `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` of the two client ends
+      alone, so that a worker inherits nothing else. Then the client ends close,
+      `WorkerJob.Add`, `ResumeThread`. A failure gives a `NoProcess`, after
+      `TerminateProcess` of a created process; no lock. A worker is in the job before it
+      runs, so S9b's limitation goes; no `JOB_OBJECT_LIMIT_BREAKAWAY_OK`.
+      `ComWorkerProcess` owns its streams and handle; `Kill` is `TerminateProcess`.
+    - **Limitations**, each in its code's comment: the profile is not loaded (below); a
+      script without safe mode can leave a process outside the job through a service the
+      account may use, such as Task Scheduler or WMI, so the account's rights are the
+      boundary (D12); the workers of one base can read each other's memory, commands and
+      1C passwords included, and forge each other's lines through duplicated handles; the
+      password string stays in `AgentSecrets`; a worker that does not start keeps no
+      diagnostics.
+    - **The risk of the profile** (the coordinator, 23 November 2026). The agent cannot
+      load the profile, so HKCU is the default hive and TEMP the system's; the first lab
+      test shows whether 1C opens and posts so, and whether such a worker joins the job of
+      the lab tests, which run in the owner's session. If not, the coordinator decides then
+      on `CreateProcessWithLogonW` with `LOGON_WITH_PROFILE`, and records it here.
+    - **The tests with `Requires=Windows`**, `Moltaro.OnecOutpost.Agent.Tests`:
+      - S9b's launcher tests, unchanged, now with the test's own token, needing no right;
+      - the test program reports `IsProcessInJob` of itself as the first thing its `Main`
+        does, before it reads a line, and its new script `job` gives it: true;
+      - `LogOn` of a random account that does not exist: the base, the account and the
+        message of 1326; through `AgentHost.RunAsync` with the real launcher, `DiskFolder`
+        and `FakeAccessLists` admitting its `Programs`, `started`'s error, the exit
+        `Error`, and no data file holding the generated password. Never the current user;
+      - `Writers`: read and run for Users give nothing; a write entry two folders down, an
+        owner not admitted and a parent giving Everyone `Delete` are reported; an
+        inherit-only entry gives nothing; a junction inside is not entered.
+    - **The tests on every platform**, with S6b's fake launcher recording `LogOn` or
+      throwing, and `FakeAccessLists` answering `Writers`: the rule of `workerAccount` and
+      its errors; `workers` in `secrets.dat`; the start without a worker password, with a
+      `LogOn` that throws, a writer in the program folder or an unreadable list, each
+      stopping with its reason; `LogOn` for each base with an account, in order, before
+      `started`, and for no other; through `TestHost`, in place of `WithoutSafeModeTests`,
+      such a base declares its `write` and runs a Write with `SafeMode` false;
+      `WorkerAccountRule` as a table.
+    - **The lab tests**, `Moltaro.OnecOutpost.OneC.Tests`, folder `Agent`, through
+      `LabAgent`, with `workerAccount` in `lab.local.json` as a `LabAccount`; `LabAgent`
+      copies the worker and the executor into a program folder that admits nobody else and
+      lets Users read and run, and gives it as `Programs` and as the launcher's programs:
+      - first, the profile's probe: on each typical base with `writeSafeMode` false, its
+        latest posted document of `documentType`, posted again under the account, keeps
+        its movements, as `RepostingTests` compares them;
+      - on the test base with `safeMode: false`, a Write reading `secrets.dat` of the data
+        folder gives false, and on a control file the account may read, true.
+    - **The steps.** Contract: the new members; `LogOn` and `Writers` of the real types
+      throw `NotSupportedException`; `WorkerAccountRule` works, being a table;
+      `AgentPolicyReader` gives `WorkerAccount` null, as in S6a; `AgentStart.Open` leaves
+      its new parameters unused; `WorkerJob.Add` and `ComWorkerProcess` work at once, as
+      S9b's tests use them. Edits that state nothing new, there: the fake launcher and
+      `ObservedLauncher` take `LogOn`; `FakeAccessLists` answers `Writers` empty; the new
+      arguments in `Program`, `PairedFolder`, `StoppedStart`, `TestHost`, `DiskHostTests`,
+      `DiskStartTests`, `LabRun` and `PolicyValuesTests`; `StartedWorker` and `TestProgram`
+      give the handle and streams. Tests step: `lab.local.example.json` names
+      `workerAccount`, and `job` joins S9b's list of scripts. Implementation: `AgentHost`'s
+      "until S9c" goes. Documents: `README.md` and G2 drop S9b's limitation and state
+      these; "The files of the agent" takes the drafts; §6.2 of `docs/protocol.md` drops
+      "Until sprint S9c".
+- **What S9c changes in the public contract, as a draft for the owner** (the planner, 22
+  November 2026, and the contract author, 23 November 2026). Each holds until the owner
+  overturns it:
+  - `policy.json`: the row `workerAccount`, in `write`, the account of all the base's
+    workers, with the rule above; the `safeMode` row drops S9b's sentence;
+  - concept §5 and D13, `secrets.dat`: the secrets add each base's worker password,
+    without which a served base stops the start;
+  - S10's `secret <base key> worker` writes that password, asked without echo;
+  - S10's `install` grants `NT SERVICE\MoltaroOnecOutpost` "Replace a process level
+    token" and "Adjust memory quotas for a process", in effect from its next start, and
+    each worker account "Log on as a batch job"; a worker account is a local user outside
+    Administrators with no privilege beyond Users'. `install` and G1 put the program
+    under `%ProgramFiles%` with its list's inheritance off, full control for Administrators
+    and SYSTEM, read and run for Users, and Administrators owning every entry it writes;
+  - S10's `check` judges the connector's folder by the rule of the program folder;
+  - "The files of the agent": the agent refuses a program folder that others may change,
+    by "The program folder" above;
+  - the limitations, in `README.md`, G2 and the `safeMode` row: a script without safe
+    mode does what the worker account can, can leave a process outside the job through
+    Task Scheduler or WMI, and can read and forge what the other workers of its base do.
+- **What the owner prepares on the lab machine** (the coordinator, 23 November 2026), since
+  it changes the lab machine: a new local account outside Administrators with "Log on as a
+  batch job", in `lab.local.json` as `workerAccount`, which never signs in, so it has no
+  profile, as one that `install` prepares; "Replace a process level token" for the lab
+  user, in effect after a new logon, which an elevated administrator lacks.
+- **Study.** Done, 23 November 2026; it stays in the coordinator's notes.
 - **To read.** The [concept](../concept.md), D12, §5 and §12 (O1); `AGENTS.md`, principles
   4, 8 and 9; this plan, "The files of the agent"; the briefs of S9 and S9b.
-- **Acceptance.**
-  - Automated: the rule of `workerAccount`, its password in `secrets.dat`, a start that
-    stops without it, and the start under the account behind a boundary that tests replace.
-  - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine, through the agent as S9b's lab
-    tests drive it, with the account and its password from `lab.local.json`:
-    - a document of a typical configuration, of the type that `lab.local.json` names,
-      posted again without safe mode under the account, with the movements of a person's
-      posting, as S9's line on the typical base says;
-    - a script without safe mode cannot read the agent's data folder: the real data folder
-      of a temporary test install on the lab disk, with its access lists, as S9b's lab
-      tests set it, never a folder in memory.
-  - The documents step: `README.md` and G2 drop S9b's limitation; "The files of the agent"
-    takes `workerAccount`.
+- **Acceptance.** The tests above, the lab's on a real data folder as S9b's set it. No
+  manual line: the real service is S10's (the coordinator, 23 November 2026), whose
+  console writes its data folder.
 - **Out of scope.** The console's `install`, which prepares the account (S10); a domain
   account; a service account that Windows manages.
 
@@ -4731,12 +4924,14 @@ implementer work on `xhigh`.
   - checks the agent machine;
   - writes a metadata report of a base.
 - **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says, and `secret`
-  gains a form for the password of a base's worker account (S9c's draft). The metadata
+  gains a form for the password of a base's worker account, with S9c's drafts for
+  `install` (the two privileges, the batch right, `%ProgramFiles%`, the folder's access
+  list and owner) and for `check` (the connector's folder). The metadata
   report starts from the owner's collector and rewrites it to the rules of this repository
   (PQ5).
 - **To read.** The [concept](../concept.md), §3 "Pairing" and §5 (20 November 2026);
-  `docs/protocol.md`; `AGENTS.md`, principles 9 and 12; this plan, "The files of the agent"
-  and the contract of stage 2.
+  `docs/protocol.md`; `AGENTS.md`, principles 9 and 12; this plan, "The files of the agent",
+  the contract of stage 2 and S9c's brief.
 - **Acceptance.**
   - Automated, with `Requires=Windows` where Windows is needed:
     - `install` and `uninstall` register and remove the service under
@@ -4757,6 +4952,14 @@ implementer work on `xhigh`.
     server's part against a stub; `metadata` writes a report of each.
   - Manual, on the lab machine: the owner runs every command in a terminal and accepts
     how it looks.
+  - Manual, on the lab machine, S9c's line (the coordinator, 23 November 2026): `install`
+    registers the service and then grants its account the two privileges; the console
+    writes the data folder with its list, `agent.json` and `secrets.dat` with `workers`;
+    the policy names the test base with `safeMode: false` and its `workerAccount`. The
+    service records `started` without an error, and each worker of that base runs under
+    the worker account and keeps its process past the policy's `runLimit`, set to a
+    minute, so its open gave true and 1C opened. Without the privileges, and with an administrator as the worker
+    account, it records `started` with its reason and stops.
   - **Guide G1**, "Installing and running an agent", as
     [The user guides](#the-user-guides) lists it. Manual, on the lab machine: the owner
     installs, pairs and checks an agent from the built archive by the guide alone, and
