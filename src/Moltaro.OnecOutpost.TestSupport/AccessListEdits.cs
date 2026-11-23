@@ -2,10 +2,11 @@ using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
 
-namespace Moltaro.OnecOutpost.Agent.Tests;
+namespace Moltaro.OnecOutpost.TestSupport;
 
-// Changes of the access lists of a test's own temporary folder, for the tests that read them on Windows. The account
-// that runs the tests stands for the agent's account, as WindowsIdentity.GetCurrent() is the agent's own.
+// Changes of the access lists of a test's own temporary folder, for the tests that read them on Windows: those of the
+// agent's tests with Requires=Windows and the lab's. The account that runs the tests stands for the agent's account,
+// as WindowsIdentity.GetCurrent() is the agent's own.
 [SupportedOSPlatform("windows")]
 internal static class AccessListEdits
 {

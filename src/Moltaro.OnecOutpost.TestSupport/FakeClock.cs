@@ -3,14 +3,15 @@ using Microsoft.Extensions.Time.Testing;
 namespace Moltaro.OnecOutpost.TestSupport;
 
 // The fake clock of the tests: a FakeTimeProvider, whose time moves only when a test advances it, wrapped so that every
-// timer the code under test creates or changes is reported to the clock. A test waits until the code under test has
-// armed its timer before it advances the time; advanced earlier, the time would pass before the timer is armed, and the
-// timer would fire late.
+// timer the code under test creates, changes or disposes is reported to the clock. A test waits until the code under
+// test has armed its timer before it advances the time; advanced earlier, the time would pass before the timer is
+// armed, and the timer would fire late. A test also waits until a timer has ended, disposed or changed to fire never,
+// when the code under test ends it right after something the test cannot see otherwise, such as the end of a race.
 public sealed class FakeClock : TimeProvider
 {
     private readonly FakeTimeProvider _time;
 
-    // Guards _timers and _waits. FakeTimeProvider is never called under it.
+    // Guards _timers, _waits, _ended and _endWaits. FakeTimeProvider is never called under it.
     private readonly Lock _lock = new();
 
     // Every timer of this clock as it was last armed: when it was due first, and its period.
@@ -18,6 +19,12 @@ public sealed class FakeClock : TimeProvider
 
     // The waits of WaitForTimersAsync that not enough armed timers have completed yet.
     private readonly List<(DateTimeOffset DueBy, int Count, TaskCompletionSource Armed)> _waits = [];
+
+    // The times that the timers which ended, disposed or changed to fire never, were last armed to fire first at.
+    private readonly List<DateTimeOffset> _ended = [];
+
+    // The waits of WaitForTimerEndedAsync that no ended timer has completed yet.
+    private readonly List<(DateTimeOffset DueAt, TaskCompletionSource Ended)> _endWaits = [];
 
     // A clock at the start time of FakeTimeProvider.
     public FakeClock()
@@ -71,6 +78,26 @@ public sealed class FakeClock : TimeProvider
         return armed.Task.WaitAsync(cancellationToken);
     }
 
+    // Completes once a timer of this clock that was armed to fire first at dueAt has ended, disposed or changed to fire
+    // never, at once if one has, whether it fired before or not.
+    public Task WaitForTimerEndedAsync(DateTimeOffset dueAt, CancellationToken cancellationToken)
+    {
+        // Asynchronous continuations, so that the test never goes on inside the call of the code that ended the timer.
+        TaskCompletionSource ended = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        lock (_lock)
+        {
+            if (_ended.Contains(dueAt))
+            {
+                return Task.CompletedTask;
+            }
+
+            _endWaits.Add((dueAt, ended));
+        }
+
+        return ended.Task.WaitAsync(cancellationToken);
+    }
+
     // Whether a timer of this clock is armed to fire at or before dueBy, now. With WaitForTimerAsync, a test states when
     // the code under test armed its timer to fire: armed by a moment, and not by the moment before.
     public bool HasTimerDueBy(DateTimeOffset dueBy)
@@ -102,7 +129,7 @@ public sealed class FakeClock : TimeProvider
         {
             if (dueTime == Timeout.InfiniteTimeSpan)
             {
-                _timers.Remove(timer);
+                End(timer);
             }
             else
             {
@@ -124,7 +151,27 @@ public sealed class FakeClock : TimeProvider
     {
         lock (_lock)
         {
-            _timers.Remove(timer);
+            End(timer);
+        }
+    }
+
+    // Records the end of a timer that was armed, under the lock, and completes the waits for it.
+    private void End(ITimer timer)
+    {
+        if (!_timers.Remove(timer, out (DateTimeOffset DueAt, TimeSpan Period) armed))
+        {
+            return;
+        }
+
+        _ended.Add(armed.DueAt);
+
+        for (int index = _endWaits.Count - 1; index >= 0; index--)
+        {
+            if (_endWaits[index].DueAt == armed.DueAt)
+            {
+                _endWaits[index].Ended.SetResult();
+                _endWaits.RemoveAt(index);
+            }
         }
     }
 

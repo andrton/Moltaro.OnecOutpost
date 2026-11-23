@@ -31,8 +31,11 @@ manage agents and base keys, the agent end to end against the server with a fake
 of the COM worker (its files, numbered polls through its proxy, the checks, the audit log,
 the outbox with outcomes sent until confirmed, pairing, and the Windows service started
 with `service`; a proxy that asks for authentication is not supported yet), and the COM
-worker with the executor, which no agent starts until S9b, so nothing runs a script in 1C
-through the library yet. The server is the one
+worker with the executor, which the agent now starts for its bases with the bitness of the
+registered connector, inside a job object, ended at the run limit and started again with a
+growing delay. Until S9c a base whose Writes run without safe mode is served for Read
+only, and the tests of the agent against a real 1C passed on the lab, with a server of the
+test. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions
@@ -52,13 +55,13 @@ in code, tests, samples or documents.
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | The wire protocol, extended by the sprint that introduces a part of it |
 | `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
-| `docs/guides` | Planned: the user guides, how to install and run an agent, how to write scripts and how to embed the server. Every command and script they show is run by a test |
+| `docs/guides` | The user guides: how to write scripts (`scripts.md`); planned, how to install and run an agent and how to embed the server. Every command and script they show is run by a test |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
 Each project is created by the sprint that first needs it, under the name the plan of the
 first epic fixes. The protocol, the server, the agent, the COM worker, the executor's
-sources, the samples, the test support, the test projects of these four and the tests that
-need 1C exist; the others are planned. Only the server is packed;
+sources, the samples, the test support, the test worker, the test projects of these four
+and the tests that need 1C exist; the others are planned. Only the server is packed;
 every other project is not.
 
 | Project | Contents |
@@ -75,6 +78,7 @@ every other project is not.
 | `src/*.Tests` | Tests, one project per library or program |
 | `Moltaro.OnecOutpost.OneC.Tests` | The tests that need 1C, run only on the lab machine. It is not in the solution, so `dotnet test` from `src` never runs it; CI builds it and checks its format |
 | `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake clock, the PostgreSQL fixture and the fake of the COM worker. Never shipped; no tests |
+| `Moltaro.OnecOutpost.TestWorker` | The test program that stands in for the COM worker in the agent's tests on Windows: it speaks the worker's lines without 1C. Never shipped |
 
 The repository root holds only repository-level files. Code never lives there.
 

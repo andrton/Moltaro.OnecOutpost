@@ -6,6 +6,7 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
+using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 

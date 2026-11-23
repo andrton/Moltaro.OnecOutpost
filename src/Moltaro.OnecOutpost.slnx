@@ -9,4 +9,5 @@
   <Project Path="Moltaro.OnecOutpost.Server/Moltaro.OnecOutpost.Server.csproj" />
   <Project Path="Moltaro.OnecOutpost.Server.Tests/Moltaro.OnecOutpost.Server.Tests.csproj" />
   <Project Path="Moltaro.OnecOutpost.TestSupport/Moltaro.OnecOutpost.TestSupport.csproj" />
+  <Project Path="Moltaro.OnecOutpost.TestWorker/Moltaro.OnecOutpost.TestWorker.csproj" />
 </Solution>

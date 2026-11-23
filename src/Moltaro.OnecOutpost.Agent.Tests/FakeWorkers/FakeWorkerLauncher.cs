@@ -9,10 +9,15 @@ namespace Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 // the opens, the runs and the kills of its processes, so that a test asserts the order of the workers' operations
 // among the writes of the audit log and the outbox. Opens decides what the open of each process gives, by its base,
 // its mode and its number among the starts of that base and mode, from 1; Runs, the outcome function, decides what
-// each run gives, by its command line. A test sets them before the pool asks. Start is called by one task at a time.
+// each run gives, by its command line. A test sets them before the pool asks. Started, when a test sets it, runs once a
+// process is started and listed, before Start returns it, so that a test acts at that moment. Start may run on several
+// tasks at once, since every slot of the pool starts its workers on a task of its own (the S9b brief).
 internal sealed class FakeWorkerLauncher : IWorkerLauncher
 {
     private readonly MemoryDataFolder _data;
+
+    // Guards the list. Nothing of a test runs under it.
+    private readonly Lock _lock = new();
 
     private readonly List<FakeWorkerProcess> _processes = [];
 
@@ -25,16 +30,33 @@ internal sealed class FakeWorkerLauncher : IWorkerLauncher
 
     public Func<WorkerCommandLine, FakeRun> Runs { get; set; } = _ => FakeRun.Gives(TestOutcomes.Succeeded());
 
-    // Every process started, in the order of their starts.
-    public IReadOnlyList<FakeWorkerProcess> Processes => _processes;
+    public Action<FakeWorkerProcess>? Started { get; set; }
+
+    // Every process started, in the order of their starts, copied under the lock.
+    public IReadOnlyList<FakeWorkerProcess> Processes
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return [.. _processes];
+            }
+        }
+    }
 
     public IWorkerProcess Start(string baseKey, OutpostModeEnum mode)
     {
-        int number = _processes.Count(process => process.Base == baseKey && process.Mode == mode) + 1;
-        FakeWorkerProcess started = new(this, baseKey, mode, number);
+        FakeWorkerProcess started;
 
-        _processes.Add(started);
+        lock (_lock)
+        {
+            int number = _processes.Count(process => process.Base == baseKey && process.Mode == mode) + 1;
+            started = new FakeWorkerProcess(this, baseKey, mode, number);
+            _processes.Add(started);
+        }
+
         Note($"start {started.Name}");
+        Started?.Invoke(started);
 
         return started;
     }
@@ -42,7 +64,7 @@ internal sealed class FakeWorkerLauncher : IWorkerLauncher
     // The number-th process started for a base and mode, from 1.
     public FakeWorkerProcess Process(string baseKey, OutpostModeEnum mode, int number = 1)
     {
-        return _processes.Single(process => process.Base == baseKey && process.Mode == mode && process.Number == number);
+        return Processes.Single(process => process.Base == baseKey && process.Mode == mode && process.Number == number);
     }
 
     internal void Note(string line)

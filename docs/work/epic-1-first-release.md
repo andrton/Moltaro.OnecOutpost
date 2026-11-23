@@ -79,12 +79,12 @@ without it. "Today" is the state on 20 November 2026: no code exists.
 | R10 | The wake-ups through the `ISignals` the application provides: keys under a prefix, a group of its own for every waiting poll and call, every wait reading the store again when it rejoins | Concept §5, D9 | Must | Absent | S5, S7 |
 | R11 | Several nodes, a stopped node, a lost poll answer, an older or replayed poll, a lost outcome and an outage of the signals behave as the rules say | Concept §4, §11 | Must | Absent | S7 |
 | R12 | The agent as a Windows service under its own virtual account, with the data folder that only it and administrators can use, the local policy, the secrets protected with DPAPI for the machine, and the audit log with its retention | Concept §5, D6, D13 | Must | Absent | S1, S6, S10 |
-| R13 | The COM worker and the executor: the external connection under the account of the mode, a fresh executor per command in safe mode unless D12 turns it off for the Writes of a base, the JSON rules, the user messages, the Write transaction with its checks before the commit, the connector's bitness, the workers ending with the agent, a worker ended at its run limit | Concept §3, §5, D3, D11, D12, D14 | Must | Absent | S9, S9b |
+| R13 | The COM worker and the executor: the external connection under the account of the mode, a fresh executor per command in safe mode unless D12 turns it off for the Writes of a base, the JSON rules, the user messages, the Write transaction with its checks before the commit, the connector's bitness, the workers ending with the agent, a worker ended at its run limit | Concept §3, §5, D3, D11, D12, D14 | Must | Absent | S9, S9b, S9c |
 | R14 | The console: install, uninstall, pair, write a secret, check, write a metadata report | Concept §5 | Must | Absent | S10 |
 | R15 | The shell: a server of its own, pairing tokens, Read and Write by hand | Concept §2, §5 | Must | Absent | S11 |
 | R16 | Every timeout and limit that an application or an administrator can observe is an option with a default, validated when it is set; time comes from `TimeProvider` | `AGENTS.md`, principle 10 | Must | Absent | S1–S11 |
 | R17 | Tests as concept §11 and `AGENTS.md` require: a deterministic test of every numbered rule, the transport over loopback HTTP, the store against a real PostgreSQL, a fake clock, no sleeps; 1C only in the tests of `Moltaro.OnecOutpost.OneC.Tests` on the lab machine, never in CI | Concept §11; `AGENTS.md` | Must | Absent | S1–S11 |
-| R18 | The answers to open items O1–O8, from the lab check, written into the concept; the tests that need 1C and the manual acceptance of S9, S10 and S11 on the lab machine, on the test base and on each copy of a typical base | Concept §11, §12; OD1 | Must | Absent | L1, S9, S10, S11 |
+| R18 | The answers to open items O1–O8, from the lab check, written into the concept; the tests that need 1C and the manual acceptance of S9, S10 and S11 on the lab machine, on the test base and on each copy of a typical base | Concept §11, §12; OD1 | Must | Absent | L1, S9, S9b, S9c, S10, S11 |
 | R19 | The measurement program for the latency target of concept §11, with the figures under [Measured results](#measured-results) | Concept §11 | Release | Absent | S7, S12 |
 | R20 | The explanations E1 "The path of a command" (animated), E2 "Why a command never runs twice" (animated), E3 "How the library is built" (a still figure), each as Markdown and HTML | `AGENTS.md`, "Documentation" | Release | Absent | S7, S12 |
 | R21 | The packages of PQ6, published from a version tag through nuget.org Trusted Publishing; the archive of the agent on GitHub Releases with its SHA-256 checksum | Concept D15, D16; PQ4 | Release | The workflows of the packages exist; no package | S1, S12 |
@@ -740,7 +740,9 @@ folder.
 
 Text marked *(S6)* holds as a draft of the contract, until the owner overturns it: the
 changes "Carried over from S2" that S6 builds, and the list "What S6 changes in the public
-contract", both in [S6's brief](#s6--the-agent).
+contract", both in [S6's brief](#s6--the-agent). Text marked *(S9b)* holds the same way:
+the list "What S9b changes in the public contract, as a draft for the owner" in
+[S9b's brief](#s9b--the-agent-runs-the-com-workers).
 
 - **The data folder admits nobody else.** The console's `install` creates it with
   inheritance off:
@@ -810,7 +812,7 @@ contract", both in [S6's brief](#s6--the-agent).
 | `write` | Present only when the base may be written |
 | `account` | The 1C account of the mode; its password is a secret that the console writes |
 | `workers` | 1 to 8; 1 when absent |
-| `safeMode` | In `write` only: whether the Writes of the base run in the 1C safe mode; `true` when absent. With `false`, the COM workers of the base run under a Windows account of their own (D12). In `read` it is an unknown member: a Read always runs in safe mode |
+| `safeMode` | In `write` only: whether the Writes of the base run in the 1C safe mode; `true` when absent. With `false`, the COM workers of the base run under a Windows account of their own (D12). *(S9b)* Until S9c, the agent starts its COM workers under its own account, so it serves a base with `false` for Read only: it starts no Write worker for it, declares its `write` as `null` in its polls, and refuses a Write that reaches it with `not-served`. In `read` it is an unknown member: a Read always runs in safe mode |
 | `runLimit` | A .NET `TimeSpan` in its constant form `[d.]hh:mm:ss`, from 1 second to 1 day (`1.00:00:00`); 10 minutes when absent. *(S6)* It is also the deadline for a worker of the mode to open its session: a worker that has not opened by then is ended and never runs a command |
 
 - **An invalid file serves nothing.** An unknown member, a member given twice, a wrong
@@ -842,7 +844,7 @@ Each line is one JSON object in UTF-8, written and flushed before the agent goes
 
 | `entry` | Further members | When |
 | --- | --- | --- |
-| `started` | `version`, *(S6)* `withoutSafeMode` (the keys of the bases whose Writes run without safe mode, an array, empty when there is none and when there is an `error`), `error` (when it stops at once) | The agent started |
+| `started` | `version`, *(S6)* `withoutSafeMode` (*(S9b)* the keys of the bases whose policy turns safe mode off for Writes, an array, empty when there is none and when there is an `error`), `error` (when it stops at once) | The agent started |
 | `policy` | `valid`, `error` (when not valid) | The agent read its policy |
 | `connection` | `state` (`connected` or `lost`), `reason` (when lost) | The agent's connection to the server changed. *(S6)* Once per change of the state of its polls, which answers to outcomes do not change, with the `reason` of §9 of `docs/protocol.md`: the code of a verified refusal, `protocol-version`, `status-` and the HTTP status, `status-407` from a proxy included, or `unreachable` |
 | `bases` | `held` (the keys the server granted), `claimed` (the keys another agent holds) | The server's answer changed what this agent holds (rule 14) |
@@ -1079,7 +1081,8 @@ The concept fixes the principles; S2 fixes the bytes.
   From the first release on, a sprint that finds the contract should change stops, and
   the change goes to the owner. Before it, the sprint makes the change, lists it for the
   owner and goes on, as the [development process](process.md#the-plan) says.
-- **Internal contracts after the study.** S2, S3, S4, S5, S6 and S9 build mechanisms.
+- **Internal contracts after the study.** S2, S3, S4, S5, S6, S9, S9b, whose study is S9's,
+  and S9c build mechanisms.
   - Each begins with the study that the
     [development process](process.md#a-study-comes-before-a-design) requires, answering
     the questions its brief names.
@@ -1171,10 +1174,13 @@ The contract and the wire
 The riskiest unknown: a script in a real 1C
   L1 lab check ── S9 executor, COM worker
 The tunnel, with a fake in place of the worker
-  S3 store ── S4 pairing ── S5a commands in the store ── S5b calls ── S6a agent's files ── S6b agent checks, workers ── S6c agent loop ── S7 nodes, losses
-  S8 refactoring
-The agent with 1C, and the tools
-  S9b the agent runs the workers ── S10 console ── S11 shell
+  S3 store ── S4 pairing ── S5a commands in the store ── S5b calls ── S6a agent's files ── S6b agent checks, workers ── S6c agent loop
+The agent with 1C
+  S9b the agent runs the workers ── lab ── S9c the account of the workers ── lab
+Several nodes, and the refactoring
+  S7 nodes, losses ── S8 refactoring ── lab
+The tools
+  S10 console ── S11 shell
 The release
   S12 documents, packages, archive
 ```
@@ -1184,6 +1190,11 @@ The release
   which can still change D3, D12 and D14. So L1 and S9 follow S2 at once: if 1C does not
   behave as the concept expects, it is known before the server and the agent are built.
   The sprints keep their numbers and branches; only their order changes.
+- **1C first, again** (the owner, 22 November 2026; written by the planner). After S6c come
+  S9b, the lab, S9c, the lab, then S7 and S8, and after S8 the tests of
+  `Moltaro.OnecOutpost.OneC.Tests` run once more on the lab, since the refactoring touches
+  code already proven on 1C. So the agent meets a real 1C as soon as it exists, before the
+  nodes and the refactoring build on it.
 - **The tunnel without 1C.** Every guarantee of the tunnel, from the signature to the
   cases of a doubled run, is still built and tested in CI, with a fake behind the COM
   worker's boundary.
@@ -1216,16 +1227,21 @@ The release
   their own. Each review can then be exhaustive.
 - **S7, several nodes and lost messages,** on its own, because it needs a test proxy that
   drops and holds messages, and because it is where a wrong rule shows.
-- **S8, refactoring,** after stage 1, the middle of the epic, before stage 2 builds on the
-  agent.
+- **S8, refactoring,** after S7, the middle of the epic, before the console and the shell
+  build on the agent.
 - **L1 right after S2.** Its answers to O1–O8 can change decisions D3, D12 and D14. They
   can also add members to `policy.json`: an account of its own for COM workers after O1,
   or a connector per base after O8. They reach the briefs of S9 and S6 through the owner.
 - **S9, the executor and the COM worker together.** They are one piece of acceptance on
   the lab machine; split, each half could not be accepted. Its tests drive the worker
   program directly, so it needs no agent.
-- **S9b, the agent runs the workers,** after S8: what of the old S9 needs the agent of S6.
-  It is where a command first travels from `ReadAsync` to a real 1C and back.
+- **S9b, the agent runs the workers,** right after S6c: what of the old S9 needs the agent
+  of S6. It is where a command first travels from `ReadAsync` to a real 1C and back.
+- **S9c, the account of the workers without safe mode, apart from S9b** (the planner, 22
+  November 2026). Starting a worker under a Windows account of its own, whose password is
+  a secret, is a strict zone of its own: secrets and the local policy. Meanwhile S9b
+  serves no Write that runs without safe mode, so nothing runs under the service account
+  without it.
 - **S10 and S11.** The console works on the agent machine, the shell next to a server.
   They share nothing.
 
@@ -1243,10 +1259,11 @@ The release
 | S6b | The agent's checks of commands and poll answers, its workers and run limits | Full | Done, 22 November 2026: `CommandChecks` with the checks of rule 1 in the order of §7 and the checks of a poll answer, the worker boundary with its fake, and `WorkerPool` with workers, the deadline to open, run limits, the size comparison of S9 and the executor's object; no HTTP, and the agent program still runs nothing. The contract of S6b and S6c was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P3 on what `Kill` promises, fixed), with P4s left in the S6 brief |
 | S6c | The agent's loop: the transport, pairing, polls, outcomes, the host and the service | Full | Done, 22 November 2026: the transport with the addresses of §11, the waits and read limits, pairing, numbered polls through the proxy, the loop that records every command before it runs and sends outcomes until confirmed, the replacement for size, `connection` and `bases`, retention and the reservation called after verified answers, the in-process host and the Windows service by the `service` argument; end to end against the server of S5 over loopback with a fake in place of the COM worker, through a test proxy. The code review took two rounds (three P3s of round 1 fixed). The manual acceptance of the service is the owner's, on a lab or test machine. What it changes in the public contract is listed in the S6 brief for the owner |
 | S7 | Several nodes and lost messages | Full | Not started |
-| S8 | Refactoring of the code base after stage 1 | Refactoring | Not started |
+| S8 | Refactoring of the code base after S7 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Done, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. The code review took three rounds, and its last finding, confirmed on the lab, was fixed by a query of the executor before the commit of a Write, reviewed once more. On the lab, 1C:Enterprise 8.3.17.1851, the first run gave 43 of 44 tests that need 1C passed; the failed one, `A_write_whose_commit_raises_gives_unknown_transaction_ended`, was removed, since 8.3.17 gave no way to provoke the case. The second run, with the `.epf` rebuilt after the fix, gave 45 of 45 passed, on the test base and one copy of a typical base, which ran with one account for both modes. No manual scenario, since every line of the Acceptance has a test. What it changed in the public contract is listed in its brief for the owner |
-| S9b | The agent runs the COM workers | Full | Not started |
+| S9b | The agent runs the COM workers | Full | Done, 23 November 2026: the agent runs the COM workers of each base and mode with the bitness of the registered connector, inside a job object, ends a worker at its run limit and starts it again with a growing delay, and serves a base whose Writes run without safe mode for Read only until S9c; guide G2 with a lab test of every script. The internal contract was reviewed in two rounds and approved under PQ2; the code review took three rounds (six P3s of round 1, two of round 2, all fixed). 2430 tests passed here. On the lab, 23 November 2026, 1C:Enterprise 8.3.17.1851, the test base built again: 73 of 73 tests of `Moltaro.OnecOutpost.OneC.Tests` passed (S9's 45, G2's 25, the agent's 3), in 7 min 05 s. The agent, the COM worker and 1C were real, the server the test's; the real server against the agent is proven in CI over loopback (S6c) |
+| S9c | The account of the workers without safe mode | Full | Not started |
 | S10 | The console | Full | Not started |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
@@ -3077,7 +3094,7 @@ documents step.
     internal sealed class WorkerPool : IAsyncDisposable
     {
         public WorkerPool(AgentPolicy policy, AgentSecrets secrets, IWorkerLauncher launcher, string executor, TimeProvider clock);
-        public void Open(CancellationToken cancellationToken);
+        public void Open();
         public int Free(string baseKey, OutpostModeEnum mode);
         public Task<WorkerRun> RunAsync(OutpostCommandMessage command, CancellationToken cancellationToken);
         public void Release(Guid command);
@@ -3920,14 +3937,16 @@ documents step.
 
 **Track:** refactoring · **Branch:** `epic-1/sprint-08-refactoring` · **Needs:** S7.
 
-- **Goal.** The code base after stage 1 has no technical debt worth removing before stage
-  2 builds on the agent.
+- **Goal.** The code base after S7 has no technical debt worth removing before the console
+  and the shell build on the agent.
 - **Contract.** None; nothing public or asserted changes.
 - **To read.** `AGENTS.md`; the [development process](process.md#a-refactoring-sprint), "A
   refactoring sprint"; the whole code base; the briefs of S9–S12.
 - **Acceptance.** Build, format and every test green after every commit. No public member
   and no assertion changed. Each change makes the code simpler to read or to change. The
-  documents and the explanations still agree with the code.
+  documents and the explanations still agree with the code. After S8 the tests of
+  `Moltaro.OnecOutpost.OneC.Tests` run again on the lab (OD1), every one passed, since the
+  refactoring touches code already proven on 1C (the owner, 22 November 2026).
 - **Out of scope.** Behavior, the contract, anything for a future need.
 - KISS (`AGENTS.md`, "Keep It Simple") holds here as everywhere. The task is to remove
   technical debt where it is worth it, so that the code stays clean, easy to understand,
@@ -4252,18 +4271,255 @@ the contract of the executor and the COM worker approved.
 
 ### S9b · The agent runs the COM workers
 
-**Track:** full · **Branch:** `epic-1/sprint-09b-workers` · **Needs:** S8, S9.
+**Track:** full · **Branch:** `epic-1/sprint-09b-workers` · **Needs:** S6, S9.
 
 - **Goal.** A command travels from `ReadAsync` and `WriteAsync` to a real 1C and back. The
   agent starts the workers of each base and mode with the connector's bitness, inside a
   job object that ends them with the agent. It ends a worker at its run limit, and starts
   it again with a growing delay, up to `retryDelayMax`.
-- **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says. The planner
-  writes the internal types into this brief when the sprint is prepared. To settle
-  then: the worker writes some outcomes itself in the form of the executor's line
-  (`base-unreachable`, `connection-lost`, `result-type` for a line break), so the agent
-  cannot hold every line of a worker to `IsExecutorOutcome`; and the name of the test
-  program that stands in for the worker.
+- **Limitation** (the planner, 22 November 2026). The agent starts the COM workers under
+  its own account, for Reads and for Writes in safe mode. A base whose `write` has
+  `safeMode: false` is not served for Write: its mode is closed at the start and recorded,
+  never run under the service account. S9c serves it.
+- **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says.
+  - *Internal* (the contract author, 22 November 2026, from S9's study and lines and the
+    code of S6 on `main`; reviewed in two rounds and approved by the coordinator under
+    PQ2, 22 November 2026). Every type is `internal`; the new ones are in `Moltaro.OnecOutpost.Agent.Workers`,
+    and the folders depend as S6 says. The one interface stays S6's `IWorkerLauncher`: a
+    test registers a connector class of its own for the current user, and the job object
+    lies behind the launcher, which the pool's tests replace with S6b's fake.
+
+    ```csharp
+    // Moltaro.OnecOutpost.Protocol.Outcomes: IsComWorkerOutcome replaces IsExecutorOutcome
+    internal static class OutpostOutcomeCodes
+    {
+        public static bool IsComWorkerOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code);
+    }
+
+    // Moltaro.OnecOutpost.Agent.Workers
+    [SupportedOSPlatform("windows")]
+    internal sealed partial class WorkerJob : IDisposable // its struct in WorkerJob.ExtendedLimitInformation.cs
+    {
+        public WorkerJob();
+        public void Add(Process process);
+        public void Dispose();
+    }
+    [SupportedOSPlatform("windows")]
+    internal sealed partial class ComWorkerLauncher : IWorkerLauncher // S6's type, now real; NoProcess stays
+    {
+        public const string ComConnector = "V83.COMConnector";
+        public const string WorkerFile = "Moltaro.OnecOutpost.ComWorker.exe";
+        public ComWorkerLauncher(string x64Program, string x86Program, string connectorProgId, WorkerJob job);
+    }
+    [SupportedOSPlatform("windows")]
+    internal sealed class ComWorkerProcess : IWorkerProcess
+    {
+        public ComWorkerProcess(Process process);
+    }
+    // WorkerPool, IWorkerLauncher and IWorkerProcess keep their members; WorkerPool's behavior grows below.
+    ```
+
+    - **The lines the pool accepts.** `IsComWorkerOutcome` is true for what the executor
+      hands over (§8, "The executor") and for the outcomes of S9's worker itself (S9,
+      "The outcomes the worker writes itself"): Failed `base-unreachable` in either mode,
+      Failed `connection-lost` for a Read, Unknown `connection-lost` and Unknown
+      `result-type` for a Write; false otherwise. The pool calls it where it called
+      `IsExecutorOutcome`, its one caller, and the rest of S6b's check stays. So a Write
+      whose executor did not open stays Failed `base-unreachable`.
+    - **Starting again** (concept §5; the `retryDelayMax` row).
+      - `Open` gives each mode `workers` slots, each with a task of its own, holding one
+        worker at a time. Each start is one `Start` and its open, raced with the run limit
+        as S6b says; every slot's first start happens before `Open` returns, in the
+        policy's order.
+      - A worker is dropped as S6b says, and also when its open gives false, comes late or
+        is cancelled. Its end is one task, completed by its open when the open did not give
+        true, and otherwise by the run that dropped it, in a `finally` after the run's last
+        use of the process. On it the slot disposes the process, waits a delay on the
+        pool's clock, and starts a new worker. The old process was killed and may still be
+        closing its 1C session; the new one may be free before the old command's `Release`.
+      - The delay is a tenth of `retryDelayMax` after a worker whose open gave true;
+        after one whose open did not, twice the delay before it, from a tenth up to
+        `retryDelayMax` (3, 6, 12, 24, 30, 30 … seconds by default). So a worker that opens
+        and then fails every command comes back after a tenth each time.
+      - Lifetimes: the pool holds one `CancellationTokenSource` of its own, which only
+        `DisposeAsync` cancels and which its slots pass to their delays and opens; `Open`
+        takes no token (the coordinator, 23 November 2026, from S9b's code review, round 2). `DisposeAsync` cancels it first,
+        then awaits every slot, and disposes nothing itself. On it a slot kills its current
+        worker, waits for its open and for the run that holds it, if any, disposes it and
+        ends; a worker it starts after the cancellation it kills and disposes at once. The
+        host disposes the pool after the loop ended, so no run begins after that, and a
+        slot reads the `Running` task the loop set only after the cancellation.
+      - Threads: `Start` may run on several slots' tasks at once. A slot publishes its
+        worker with `Volatile.Write`, and `Free` and `RunAsync` read it with
+        `Volatile.Read`, so a worker read late is one not yet opened and `free` is only
+        under-declared. A slot publishes a worker whose open gave true before it ends that
+        open's deadline, so a test sees `Free` count it once that timer is gone (the
+        coordinator, 23 November 2026, from S9b's code review, round 1). `IsHeld` stays the
+        loop's; a slot reads `IsDropped` only after the worker's end. The pool's class
+        comment states this ownership.
+      - *Limitation:* a worker whose process ends while it holds no command is seen only
+        when a command reaches it, which gets `connection-lost`, Unknown for a Write,
+        though its script never started; the worker is then started again. S9's worker ends
+        by itself only after a command, so this needs the program to crash while it waits.
+    - **The bitness** (concept §5, O8). `Start` reads the registry each time: the x64
+      program when the connector is registered for 64 bits, otherwise the x86 program when
+      it is for 32 bits, otherwise a `NoProcess`, whose open gives false, so the slot tries
+      again after its delay. Registered for a bitness: `HKEY_CLASSES_ROOT`, opened with
+      `RegistryKey.OpenBaseKey` in the view `Registry64` or `Registry32`, gives a class
+      identifier as the default value of `{connectorProgId}\CLSID`, and
+      `CLSID\{that}\InprocServer32` has a default value that is not empty; never 64 bits on
+      a 32-bit Windows. A key that cannot be read is not registered. No file or version is
+      checked; the console's `check` does (S10). The agent program gives `x64\` and `x86\`
+      beside its own file, each holding `WorkerFile` with the files of its build, and
+      `ComConnector`.
+    - **The start.** `Process.Start` of the program with `ArgumentList` the base key and
+      `read` or `write`, standard input and output redirected and standard error not, `UseShellExecute` false and
+      `CreateNoWindow` true, then `WorkerJob.Add`. The connection with its password travels
+      only in the first input line, never on the command line or in the environment. A
+      program that does not start, and a process the job does not take, killed at once,
+      give a `NoProcess`: `Start` throws nothing. *Limitation:* a process is in the job
+      from just after it starts; if the agent ends in between, it ends at the end of its
+      input, as S9's worker does.
+    - **`ComWorkerProcess`** speaks S9's lines over the raw streams, as S9's lab helper does.
+      - `OpenAsync` writes the connection line and reads one line of at most 1 KiB: true
+        only for an object whose one member is `"ready":true`; anything else, the end of
+        the output included, kills the process and gives false.
+      - `RunAsync` writes the command line, `ParametersJson` as it is, and reads one line of
+        at most `OutcomeLimit` plus 64 bytes. An object with exactly `size`, an integer from
+        0, then `outcome`, any JSON value, read to `OutpostProtocol.MaxMessageDepth`, gives
+        `size` and the exact bytes of `outcome`. The end of the output before a whole
+        line, a longer line and any other line kill the process and give null.
+      - A failed write gives false or null; cancellation kills and throws
+        `OperationCanceledException`. `Kill` is `Process.Kill`, an ended process ignored.
+      - The standard error is not redirected: the worker inherits the agent's, which a
+        service has none of. *Limitation:* the agent keeps no diagnostics of a worker; the console's `check`
+        shows why one does not open (S10).
+    - **`WorkerJob`**: `CreateJobObjectW` with null attributes, so its handle is not
+      inheritable, then `SetInformationJobObject` with `JobObjectExtendedLimitInformation`
+      and `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`; `Add` is `AssignProcessToJobObject`; through
+      `LibraryImport`, in a `SafeHandle`, no package (principle 12); a failure is a
+      `Win32Exception`. The agent program makes one job and never disposes it, so Windows
+      closes it when the agent ends, however it ends. A test disposes its own.
+    - **Writes without safe mode.** `AgentHost.RunAsync` gives the pool, the checks and the
+      loop the policy that `AgentStart` read without the `write` of each base whose `write`
+      has `SafeMode` false: no worker of that mode starts, a poll declares its `write` as
+      `null` (§6.2), the server refuses a Write with `mode-closed`, and one that reaches
+      the agent is Refused `not-served`. `started.withoutSafeMode` records those bases.
+    - **The test program** `src/Moltaro.OnecOutpost.TestWorker`: a console program in the
+      solution, `net10.0`, `IsPackable` false, nothing outside .NET, written by the test
+      author, referenced by `Moltaro.OnecOutpost.Agent.Tests` as the lab project references
+      the worker. It speaks S9's lines, command line and exit codes, each outcome as the
+      executor's line with its true size. A `location` of `line <text>` gets `<text>` as its ready
+      line, any other `{"ready":true}`. Scripts: `wait` writes nothing until the input ends
+      or a kill; `exit <n>` ends with `n` and no outcome; `line <text>` writes `<text>`;
+      `pid`, `path`, `arguments` and `connection` succeed with its process identity, its
+      `Environment.ProcessPath`, its arguments as an array and its connection line's
+      members as an object; any other succeeds with `null`.
+    - **The tests with `Requires=Windows`**, `Moltaro.OnecOutpost.Agent.Tests`, folder
+      `ComWorkers`: the real launcher, a `WorkerJob` of the test, the test program, the pool
+      on the fake clock, and a class identifier that the test registers under
+      `HKEY_CURRENT_USER\Software\Classes` in the views it needs and removes after:
+      - disposing the job ends a running worker, seen by its `pid`;
+      - a `wait` past the run limit gives `run-limit` and its process has ended; after the
+        slot's delay a new process, another `pid`, runs a command;
+      - `arguments` gives the base key and the mode alone, `connection` the line given to
+        `OpenAsync`, password included;
+      - the program copied into `x64\` and `x86\` of a temporary folder: `path` names the
+        x64 copy when the class is in both views, the x86 copy when only in `Registry32`;
+        with none, or a program that does not exist, the open gives false;
+      - by `line`: a ready line other than `{"ready":true}`, one over 1 KiB, an outcome line
+        over `OutcomeLimit` plus 64, one not `size` then `outcome`, and a `size` that is not
+        an integer each give false or null, and the process ends.
+    - **The tests on every platform**, with S6b's fake launcher and the fake clock: each
+      line of the worker's own accepted byte for byte, with its drop; the delays, a tenth,
+      doubled, capped and back to a tenth; nothing started during or after `DisposeAsync`;
+      through `TestHost`, a base whose `write` has `safeMode: false`: no start of its write
+      workers, `write` `null` in the polls, a Write Refused `not-served`. The table test of
+      `IsComWorkerOutcome`, in `Moltaro.OnecOutpost.Protocol.Tests`.
+    - **The lab tests** (the planner, 22 November 2026), `Moltaro.OnecOutpost.OneC.Tests`,
+      folder `Agent`, Windows and 1C only. A test writes `policy.json`, `agent.json` through
+      `AgentPairingFile` and `secrets.dat` through `SecretsFile` with `MachineDpapi` into a
+      temporary data folder on the lab disk, outside the repository and removed after each
+      test, whose access list `AdmitNobodyElse` sets: inheritance off, and full control for
+      Administrators, SYSTEM and the account that runs the tests only. The policy names the test base as `test`, one worker per mode, a run limit of a minute
+      and a `retryDelayMax` of a second; the 1C passwords come from `lab.local.json`, never
+      from a file in Git. It runs `AgentHost.RunAsync` on `FakeClock` with
+      `DiskFolder`, `WindowsAccessLists`, `MachineDpapi`, the real `ComWorkerLauncher` with
+      the worker beside the tests as both programs (x64 on the lab) and
+      `Repository.ExecutorPath`. Its handler is `LabServer`, an in-process server of the
+      test, an `HttpMessageHandler` with the real codec and signatures under a server key
+      pinned in `agent.json`: it verifies the agent's requests, hands a signed command once
+      a poll declares its mode free, answers a held poll at once when a command comes,
+      holds an empty one until then, and confirms each outcome, which it gives the test.
+      No pairing request, no command of the samples. A launcher of the test wraps the real
+      one only to report when a run began, so that a test moves the clock only after it
+      observed the script running (`AGENTS.md`: the COM worker's timeouts on a fake clock).
+      - A Write that creates a product with a name the test generated, and a Read that
+        counts the products of that name: Succeeded, and 1.
+      - A loop of ten minutes by `CurrentDate()`: once it runs, the test moves the clock past
+        the run limit, and the Read is Failed `run-limit` and the Write Unknown
+        `run-limit`; then past the slot's delay, and a command of the same mode succeeds on
+        the worker started again, so 1C gives it a session.
+      - Once a poll shows the looping Write as received and not yet confirmed, and its run
+        began, the test stops the host, which exits with `Stopped`; a second host on the
+        folder sends Unknown `agent-stopped`.
+
+      This proves the agent, the worker and 1C real, with the test's server; the real
+      server against the agent is proven in CI over loopback (S6c), and from another
+      machine in S11. `AccessListEdits` moves to `Moltaro.OnecOutpost.TestSupport`, marked
+      `[SupportedOSPlatform("windows")]`; the lab project references TestSupport and the
+      agent, which with the protocol and TestSupport give it their internals. No test of the lab project
+      uses PostgreSQL, Testcontainers or a server's store.
+    - **Guide G2**, `docs/guides/scripts.md`. A script is a fenced block with the info
+      string `bsl read` or `bsl write`, followed by the kind and code it gives when it does
+      not succeed, such as `bsl read failed script-error`. Its parameters are the next
+      `json parameters` block before the next script, `{}` without one; a `json result`
+      block is shown, not compared, since the data come from the base. Each script gives
+      what its info string says on the test base whatever it holds.
+      `Guides/ScriptGuideTests` reads the file through `Repository`, runs each script in a
+      worker of the test base as `LabWorkers` starts one, a Write with a new caller key,
+      and asserts its kind and code; a `bsl` block without a mode, and a guide without a
+      script of each mode, fail it. For its recipes the tests step makes `Products`
+      hierarchical and gives `GoodsReceipt` a `Comment` of 200 characters, where an
+      idempotent Write keeps its caller key; the lab builds the test base again.
+    - **The steps and their edits of existing code.** The guide comes after the
+      implementation ([The user guides](#the-user-guides)).
+      - Contract step: the new types throwing `NotSupportedException`, and
+        `IsComWorkerOutcome` working, being a table; `IsExecutorOutcome` and the pool stay.
+        It removes `AgentHostTests.With_the_programs_launcher_every_mode_declares_free_0`,
+        which calls the constructor S9b replaces, of a type now Windows only, on every
+        platform, and asserts S6c's "free 0 until S9b"; the real launcher's tests replace it.
+      - Tests step: the test program, the test configuration, the tests; the table test of
+        `IsComWorkerOutcome` replaces `ExecutorOutcomeTests`; S6b's fake launcher takes a
+        lock around its list; in `WorkerRunTests.cs` the class comment (line 13) and the test
+        of lines 132–137 say that the mode has one worker fewer until its slot starts it
+        again, its name too, its assertions unchanged, provided it passes no clock past the
+        delay; the comment of `WorkerOutcomeTests.cs`, line 75, says that S9b admits the
+        worker's codes.
+      - Implementation: the pool calls `IsComWorkerOutcome`, `IsExecutorOutcome` goes, and
+        the comments that name it or say "until S9b" are corrected: `OutpostCodec.cs` line
+        761, `WorkerPool`, `ComWorkerLauncher`, and `NoProcess`, now the process for no
+        registered connector or a program that did not start.
+      - Edits that state nothing new: the references and `InternalsVisibleTo` above;
+        `Repository` names the guide; the README of `src/OneC.TestConfiguration` lists the
+        two changes; the test program in the projects table of `AGENTS.md`.
+    - **The documents step:** `README.md` says that the agent runs scripts in 1C, states
+      the limitation and leads to G2, which states it too; "The files of the agent" takes
+      the drafts below; "What exists today" in `AGENTS.md` says that the agent starts the
+      COM worker.
+- **What S9b changes in the public contract, as a draft for the owner** (the contract
+  author, 22 November 2026). Each holds until the owner overturns it:
+  - until S9c, a base whose `write` has `safeMode: false` is served for Read only, as
+    "Writes without safe mode" says. The `safeMode` row of `policy.json` says so, and
+    `started.withoutSafeMode` becomes "the keys of the bases whose policy turns safe mode
+    off for Writes";
+  - the archive (stage 3): the COM worker of each bitness lies in `x64\` and `x86\` beside
+    the agent's program, each with the files of its build; S12 builds it so;
+  - the bitness: 64-bit workers when a 64-bit connector is registered, otherwise 32-bit,
+    judged at every start; with neither, the mode is never free. In concept §5 it replaces
+    "An agent machine then serves the bases of one platform version per bitness" with: an
+    agent machine serves the bases of one platform version, that of its 64-bit connector
+    when one is registered, otherwise that of its 32-bit one.
 - **Study.** The study of S9 answers its questions; none of its own.
 - **To read.** The [concept](../concept.md), rules 3, 8 and 9 and §5; `AGENTS.md`,
   principle 8; the brief of S9.
@@ -4272,22 +4528,88 @@ the contract of the executor and the COM worker approved.
     the worker:
     - the job object;
     - ending at the run limit;
-    - starting again with a growing delay;
+    - starting again: one start after a delay with the test program, and the growth of the
+      delay with S6b's fake on every platform;
     - bitness chosen from the registered connector.
-  - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine (OD1), against the test base:
+  - Automated, with S6b's fake: a base whose `write` has `safeMode: false` starts no Write
+    worker, declares its `write` as `null`, and refuses a Write that reaches it with
+    `not-served`.
+  - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine (OD1), against the test base,
+    through the real agent and worker with the server of the test:
+    - a Read and a Write reach the test base and return their outcomes;
     - a script beyond its run limit: a Read fails and a Write is Unknown;
     - stopping the agent during a Write gives Unknown.
-  - Manual, on the lab machine: a Read and a Write sent from a server on another machine
-    reach the test base through the agent and return their outcomes.
+  - No manual line: a Read and a Write from a server on another machine are S11's manual
+    line, since S10's console pairs the agent and S11's shell runs the server (the
+    planner, 22 November 2026).
   - **Guide G2**, "Writing scripts", as [The user guides](#the-user-guides) lists it. A test
     of `Moltaro.OnecOutpost.OneC.Tests` reads each of its scripts from the guide's
     Markdown and runs it against the test base.
   - The documents step: `README.md` says the agent works with 1C, and leads to G2.
-- **Out of scope.** The console, the shell.
+    `README.md` and G2 state the limitation.
+- **The lab run** (the owner, 23 November 2026), on the lab machine with 1C:Enterprise
+  8.3.17.1851, from the archive of the branch at 45b505f: `Build-TestBase.ps1` built
+  `outpost_test` again, then `dotnet test --project Moltaro.OnecOutpost.OneC.Tests` gave 73
+  of 73 passed, none failed or skipped, in 7 min 05 s. It proves that the agent, the COM
+  worker and 1C work together; the server was the test's in-process one, and the real
+  server against the agent is proven in CI over loopback (S6c). A Read and a Write from a
+  server on another machine are S11's.
+- **Notes of S9b's review** (the coordinator, 23 November 2026):
+  - guide G2 was written by the test author in the tests step, before the implementation,
+    so that its scripts could be read by their lab test from the start; a documents agent
+    with no other role reviewed its prose after the implementation and changed no script,
+    and the independent review found that it matches the code. A departure from "The user
+    guides", recorded here;
+  - concept §5 says an agent machine serves "one platform version per bitness"; the code
+    uses the 64-bit connector when both are registered, as S9b's draft for the owner says.
+    The concept is the owner's to change with that draft.
+- **Out of scope.** The console, the shell, the account of S9c.
+
+### S9c · The account of the workers without safe mode
+
+**Track:** full · **Branch:** `epic-1/sprint-09c-worker-account` · **Needs:** S9b, run on
+the lab and merged. A strict zone: secrets and the local policy. The test author and the
+implementer work on `xhigh`.
+
+- **Goal** (the planner, 22 November 2026). A base whose `write` has `safeMode: false` is
+  served for Write. Its Write workers run under a local Windows account of their own,
+  inside the job object, so that a script without safe mode can read neither the agent's
+  secrets nor its audit log (D12, principle 9).
+- **Contract.**
+  - *Public, a draft for the owner:* the member `write.workerAccount` of `policy.json`,
+    the name of a local Windows account, required when `safeMode` is false and refused
+    otherwise. Its password is a secret in `secrets.dat`, which the console writes in S10
+    as it writes the 1C passwords; a served mode without it stops the start, as a missing
+    1C password does. A draft for S10: `secret` gains a form for that password.
+  - *Internal:* written into this brief after the study: how the agent starts such a
+    worker under that account inside the job object, with its standard streams, and the
+    way of logging on that the study settles.
+- **Study.** Short. Questions: how a service under a virtual account starts a process
+  under another local account with redirected standard streams, and which rights each way
+  needs (`CreateProcessWithLogonW`, or `LogonUserW` with `CreateProcessAsUserW`); how the
+  process joins the job object before it runs; what the account needs of its profile, the
+  program folder and the executor, and that it needs nothing of the data folder.
+- **To read.** The [concept](../concept.md), D12, §5 and §12 (O1); `AGENTS.md`, principles
+  4, 8 and 9; this plan, "The files of the agent"; the briefs of S9 and S9b.
+- **Acceptance.**
+  - Automated: the rule of `workerAccount`, its password in `secrets.dat`, a start that
+    stops without it, and the start under the account behind a boundary that tests replace.
+  - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine, through the agent as S9b's lab
+    tests drive it, with the account and its password from `lab.local.json`:
+    - a document of a typical configuration, of the type that `lab.local.json` names,
+      posted again without safe mode under the account, with the movements of a person's
+      posting, as S9's line on the typical base says;
+    - a script without safe mode cannot read the agent's data folder: the real data folder
+      of a temporary test install on the lab disk, with its access lists, as S9b's lab
+      tests set it, never a folder in memory.
+  - The documents step: `README.md` and G2 drop S9b's limitation; "The files of the agent"
+    takes `workerAccount`.
+- **Out of scope.** The console's `install`, which prepares the account (S10); a domain
+  account; a service account that Windows manages.
 
 ### S10 · The console
 
-**Track:** full · **Branch:** `epic-1/sprint-10-console` · **Needs:** S9b.
+**Track:** full · **Branch:** `epic-1/sprint-10-console` · **Needs:** S9c, S8.
 
 - **Goal.** The administrator does everything for an agent from the console:
   - installs the service under its virtual account, with the data folder and its access
@@ -4295,7 +4617,8 @@ the contract of the executor and the COM worker approved.
   - pairs it and writes its secrets;
   - checks the agent machine;
   - writes a metadata report of a base.
-- **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says. The metadata
+- **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says, and `secret`
+  gains a form for the password of a base's worker account (S9c's draft). The metadata
   report starts from the owner's collector and rewrites it to the rules of this repository
   (PQ5).
 - **To read.** The [concept](../concept.md), §3 "Pairing" and §5 (20 November 2026);
@@ -4348,8 +4671,9 @@ the contract of the executor and the COM worker approved.
     `dotnet run`; with the output redirected, every command writes plain text, tested.
   - Manual: the shell runs on a machine with PostgreSQL, the agent on the lab machine
     reaches it over HTTPS, and a Read and a Write of S9's scenarios are typed in the shell
-    against the test base. The owner runs every command in a terminal and accepts how it
-    looks. The shell has no test that needs 1C: it would need PostgreSQL and 1C on one
+    against the test base. This is also S9b's manual line, moved here by the planner, 22
+    November 2026: S10's console pairs the agent, and the shell runs the real server. The
+    owner runs every command in a terminal and accepts how it looks. The shell has no test that needs 1C: it would need PostgreSQL and 1C on one
     machine, and the automated session with the fake worker and S9's tests cover the
     rest.
   - **Guide G3**, its first part: a first session with the shell, as
@@ -4419,7 +4743,7 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   - after D12 changed: the agent tells it whether its mode runs in safe mode, and it opens
     the executor so. A worker of a base whose Writes run without safe mode runs under a
     Windows account of its own, which can read neither the agent's secrets nor its audit
-    log. S9 builds the worker's side, S9b the account and how the agent starts a worker
+    log. S9 builds the worker's side, S9c the account and how the agent starts a worker
     under it, and the console's `install` prepares the account.
 - **The console**, a program that references the agent, the protocol, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says, with
@@ -4460,6 +4784,9 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   - its name is `Moltaro.OnecOutpost-<version>-win.zip`;
   - it holds the agent, the COM worker for x64 and for x86, the console, the executor
     `.epf`, the licence and the notices;
+  - *(S9b, a draft for the owner)* the COM worker of each bitness lies in `x64\` and
+    `x86\` beside the agent's program, each with the files of its build, since the agent
+    starts it from there; S12 builds the archive so;
   - every program in it is self-contained, so that no .NET runtime of either bitness has to
     be installed;
   - its SHA-256 checksum is on the release page;

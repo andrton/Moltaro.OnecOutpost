@@ -98,7 +98,7 @@ internal sealed class TestPool : IAsyncDisposable
     // so that the only timer a run waits on is its own.
     public void OpenAll()
     {
-        Pool.Open(TestContext.Current.CancellationToken);
+        Pool.Open();
 
         IEnumerable<AgentModePolicy> modes = Policy.Bases
             .SelectMany(served => served.Write is null ? [served.Read] : new[] { served.Read, served.Write });
@@ -118,6 +118,29 @@ internal sealed class TestPool : IAsyncDisposable
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
         return Clock.WaitForTimerAsync(dueBy, cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
+    }
+
+    // Waits until the pool has armed a timer due by the delay from now, states that none is due a millisecond earlier,
+    // and moves the clock by the delay.
+    public async Task PassExactlyAsync(TimeSpan delay)
+    {
+        DateTimeOffset now = Clock.GetUtcNow();
+
+        await WaitForTimerAsync(now + delay);
+        Assert.False(Clock.HasTimerDueBy(now + delay - Millisecond), $"The pool waits less than {delay}.");
+
+        Clock.Advance(delay);
+    }
+
+    // Completes once the deadline of an open has ended: the timer that the pool armed on the clock to fire at dueAt,
+    // the time the open began plus the run limit of its mode. A slot publishes a worker whose open gave true before it
+    // ends that timer (the S9b brief, "Threads"), so Free counts the worker from then on. It fails the test when the
+    // timer does not end within the deadline of the tests.
+    public static Task WaitForOpenDeadlineEndedAsync(FakeClock clock, DateTimeOffset dueAt)
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+
+        return clock.WaitForTimerEndedAsync(dueAt, cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
     }
 
     public ValueTask DisposeAsync()
