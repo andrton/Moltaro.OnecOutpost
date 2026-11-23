@@ -84,17 +84,17 @@ not connected through such a proxy.
 
 The agent runs its commands in 1C through the COM workers it starts. For each mode of each
 base it starts the workers that `policy.json` asks for, with the bitness of the registered
-COM connector: the 64-bit worker from `x64\` beside its program when a 64-bit connector is
-registered, otherwise the 32-bit one from `x86\`. Every worker runs inside a job object,
-so it ends with the agent, however the agent ends. A worker whose script runs past the run
-limit of its mode is ended: the Read fails and the Write is Unknown, both with
+COM connector: the 64-bit worker from `x64\` beside its program when the classes of HKLM
+register a 64-bit connector whose file exists, otherwise the 32-bit one from `x86\`.
+Every worker runs inside a job object, so it ends with the agent, however the agent ends.
+A worker whose script runs past the run limit of its mode is ended: the Read fails and the Write is Unknown, both with
 `run-limit`. A worker that ends or does not open its session is started again after a
 delay, which grows while its session does not open, up to `retryDelayMax`. This is tested
 on Windows with a test program in place of the worker. The tests that run a Read and a
 Write through the agent and the worker against the repository's test base, and every
 script of [Writing scripts](docs/guides/scripts.md), passed on the lab machine with
 1C:Enterprise 8.3.17.1851 on 23 November 2026, the server being the test's own; a Read and
-a Write from a real server on another machine come with the console and the shell.
+a Write from a real server on another machine come with the shell.
 
 A base whose policy turns safe mode off for its Writes is served for Write too. All its
 COM workers, those of its Reads included, run under a local Windows account of its own,
@@ -112,8 +112,8 @@ an account that does not exist. Its tests on the lab machine, under a real worke
 against the test base and a copy of a typical base, passed on 23 November 2026: a document
 of the typical copy was posted again under the worker account with its movements
 unchanged, and a Write without safe mode could not read the agent's secrets. The console's
-`install` will grant the agent's account and each worker account their rights, and
-prepare the program folder. Limitations:
+`install` prepares the program folder and grants the agent's account its rights, and
+`secret` grants each worker account its own, as below. Limitations:
 
 - the folder of the COM connector is not checked by the agent; the console's `check` will
   judge it by the rule of the program folder;
@@ -123,6 +123,30 @@ prepare the program folder. Limitations:
 - the workers of one base run under one account, so a script without safe mode can read
   the commands of the other workers of its base, their 1C passwords included, and forge
   what they report.
+
+The console, `Moltaro.OnecOutpost.Console`, sets an agent up on its machine. Each command
+needs a console run as administrator, and ends with an exit code that says why:
+
+- `install [--stop-timeout <TIME>]`, run from the folder the program was unpacked to,
+  copies it into `%ProgramFiles%\Moltaro.OnecOutpost` and refuses that folder when someone
+  else may change it; it registers the service under `NT SERVICE\MoltaroOnecOutpost`
+  without starting it, grants that account "Replace a process level token" and "Adjust
+  memory quotas for a process", and creates the data folder
+  `%ProgramData%\Moltaro.OnecOutpost` with its access lists, refusing one that admits
+  anyone else. Run again, it updates the program and keeps what was written;
+- `pair <SERVER> <TOKEN>` pairs the agent with the server and writes `agent.json` and
+  `secrets.dat`;
+- `secret <BASE> <KIND>`, `KIND` being `read`, `write` or `worker`, writes a password into
+  `secrets.dat`, asked without echo in a terminal or read as one line of standard input;
+  for `worker` it first grants the base's worker account "Log on as a batch job";
+- `connector register` registers the COM connector of each bitness that has none
+  registered and exactly one version installed;
+- `uninstall [--stop-timeout <TIME>]` takes the two rights back and removes the service,
+  leaving both folders with the audit log.
+
+These are tested against fakes of Windows, and in CI's elevated Windows job against the
+service controller, LSA and the access lists. Planned next: `check`, `metadata`, their
+run on the lab machine and the guide on installing and running an agent.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from

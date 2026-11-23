@@ -9,10 +9,9 @@ the path. The same explanation, animated, is [`command-path.html`](command-path.
 **Status:** built. The path works end to end. It is tested over loopback HTTP with one
 server node and with two on one PostgreSQL, with the real agent and a fake in place of the
 COM worker. The agent with its COM workers ran Reads and Writes in a real
-1C:Enterprise 8.3.17.1851 on the lab machine, with the test's own server. Intended, not
-built yet: the console that installs and pairs an agent on its machine, and the shell. A
-Write to a base whose local policy turns safe mode off is refused until the workers of
-such a base run under a Windows account of their own.
+1C:Enterprise 8.3.17.1851 on the lab machine, with the test's own server, a Write without
+safe mode under the Windows account of its base included. The console installs and pairs
+an agent on its machine; its check and the shell are not built yet.
 
 ## The parts
 
@@ -26,7 +25,9 @@ such a base run under a Windows account of their own.
   HTTPS, and keeps one poll open at a time.
 - **The audit log** is the agent's record of every command, on the disk of its machine.
 - **The COM worker** is a process of the agent that holds a session in one base under one
-  1C account, and runs scripts there through the executor.
+  1C account, and runs scripts there through the executor. It runs under the agent's
+  Windows account, or, in a base whose Writes run without safe mode, under the Windows
+  account of that base.
 
 ## The path
 
@@ -68,8 +69,11 @@ such a base run under a Windows account of their own.
    its outcome.
 7. **The worker.** The agent gives the command to a free COM worker of its base and mode,
    a process of its own that holds a 1C session under the account of that mode. The
-   worker runs the script whole, in 1C's safe mode: a Read outside a transaction, a Write
-   inside one transaction, committed or rolled back as a whole. The executor writes the
+   worker runs the script whole, in 1C's safe mode unless the local policy turns it off
+   for the Writes of the base: a Read outside a transaction, a Write inside one
+   transaction, committed or rolled back as a whole. Every worker of a base whose Writes
+   run without safe mode runs under a Windows account of its own, which can read neither
+   the agent's secrets nor its audit log. The executor writes the
    result as JSON, and checks the result's type and the outcome's size before a Write
    commits. A script that passes the run limit of its mode ends with its worker.
 8. **The outcome.** The agent keeps the outcome in a file on its disk, records how the

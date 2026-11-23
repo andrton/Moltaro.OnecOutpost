@@ -758,7 +758,9 @@ contract", both in [S6's brief](#s6--the-agent). Text marked *(S9b)* holds the s
 the list "What S9b changes in the public contract, as a draft for the owner" in
 [S9b's brief](#s9b--the-agent-runs-the-com-workers). Text marked *(S9c)* holds the same way:
 the list "What S9c changes in the public contract, as a draft for the owner" in
-[S9c's brief](#s9c--the-account-of-the-workers-without-safe-mode).
+[S9c's brief](#s9c--the-account-of-the-workers-without-safe-mode). Text marked *(S10a)*
+holds the same way: the list "What S10a changes in the public contract, as a draft for the
+owner" in [S10's brief](#s10--the-console).
 
 - **The data folder admits nobody else.** The console's `install` creates it with
   inheritance off:
@@ -767,6 +769,14 @@ the list "What S9c changes in the public contract, as a draft for the owner" in
     `outcomes\`;
   - nobody else has any right. `%ProgramData%` lets every local user create
   files, so without this a local user could plant a policy, a pinned key or an outcome.
+
+  *(S10a)* A data folder that exists already is given these lists again only when neither
+  it, `audit\` nor `outcomes\` is a reparse point or admits anyone else; otherwise
+  `install` refuses it and repairs nothing, and `pair` and `secret` refuse it too. An owner
+  other than Administrators, SYSTEM or the agent's account counts as somebody else, since an
+  owner can always change the access list (Q14 in [S10's brief](#s10--the-console)), so
+  `install`, `pair` and `secret` make Administrators the owner of the folder and of every
+  file they write.
 - **The agent refuses a folder that admits anybody else.** When it starts, it checks the
   access lists of the folder and of every file it reads, since a file moved into the
   folder keeps its own. If one of them admits anyone else, it records `started` with an
@@ -780,19 +790,38 @@ the list "What S9c changes in the public contract, as a draft for the owner" in
   `started` with an error that names the entry and the accounts, and stops. The console's
   `install` puts the program under `%ProgramFiles%` with inheritance off, full control for
   Administrators and SYSTEM, read and run for Users, and Administrators owning every entry
-  it writes. The folder of the COM connector is judged by the same rule by the console's
+  it writes. *(S10a)* That folder is `%ProgramFiles%\Moltaro.OnecOutpost`: `install`, run
+  from outside it, replaces its content with that of the unpacked archive, or, run from
+  that folder itself, sets its lists alone; then it judges it by the agent's rule before
+  any service exists, and refuses, without repairing, a folder that someone else may
+  change. The folder of the COM connector is judged by the same rule by the console's
   `check`, not by the agent.
+- *(S10a)* **The COM connector** is the one that the classes of HKLM register, in the
+  64-bit view and in the 32-bit one, never HKCR, which merges in the classes of the user
+  who runs the console, unseen by the service; a registration counts only when its file
+  exists. The agent and the console read it through one finder. The agent starts its
+  workers with the bitness of the first registered connector, 64 bits first, so a
+  registration whose file is gone picks no bitness. `connector register` registers a
+  connector only where exactly one version of a bitness is installed, since the connector
+  has to match the version of the 1C cluster.
 - **The agent's account** is the virtual service account `NT SERVICE\MoltaroOnecOutpost`,
   which needs no password. *(S9c)* The console's `install` grants it "Replace a process
   level token" and "Adjust memory quotas for a process", which it needs to start a worker
-  under a worker account; they take effect from its next start.
+  under a worker account; they take effect from its next start. *(S10a)* `install`
+  registers the service `MoltaroOnecOutpost` under that account with an automatic start,
+  and does not start it; it reconfigures a service that exists, never deletes it, and
+  writes the failure actions, a restart after a minute for the first three failures, the
+  count reset after a day, only when it creates it. `uninstall` takes the two rights back,
+  then removes the service, and leaves both folders.
 - *(S9c)* **A worker account** runs every COM worker of a base whose `write` has
   `safeMode: false`, Reads included. It is a local user outside Administrators, with no
-  privilege beyond those of Users, and "Log on as a batch job", which the console's
-  `install` grants. The agent logs it on at its start, before any worker starts, and stops
-  with an error when it cannot. Its profile is not loaded. A script without safe mode does
-  what that account can, can leave a process outside the job object through Task Scheduler
-  or WMI, and can read and forge what the other workers of its base do.
+  privilege beyond those of Users, and "Log on as a batch job", which *(S10a)* the
+  console's `secret <base key> worker` grants, not `install`, since the policy names the
+  account only after `install`; `uninstall` leaves it that right. The agent logs it on at
+  its start, before any worker starts, and stops with an error when it cannot. Its profile
+  is not loaded. A script without safe mode does what that account can, can leave a
+  process outside the job object through Task Scheduler or WMI, and can read and forge
+  what the other workers of its base do.
 - *(S6)* **The agent program** takes one argument, `service`, and runs only as the
   Windows service. It exits with 0 when stopped; 1 when it stops on its own, recorded in
   the audit log when the log can be written; 2 when the log was not opened, as for a
@@ -806,7 +835,7 @@ the list "What S9c changes in the public contract, as a draft for the owner" in
 | `policy.json` | The administrator | Yes | The local policy, below |
 | `audit\YYYY-MM-DD.jsonl` | The agent | Yes | The audit log, one file per UTC day, below |
 | `agent.json` | The console, when it pairs | No | The server's address, the agent's identity, the pinned server key, and the poll timeout and lease grace of the pairing answer |
-| `secrets.dat` | The console | No | The agent's private key and the 1C passwords, *(S9c)* and the password of the worker account of each base that names one, encrypted with DPAPI for the machine |
+| `secrets.dat` | The console | No | The agent's private key and the 1C passwords, *(S9c)* and the password of the worker account of each base that names one, encrypted with DPAPI for the machine. *(S10a)* `pair` writes it with the key alone, and `secret` writes each password, keeping the others |
 | `outcomes\` | The agent | No | The outbox: outcomes not yet confirmed by the server, one file per command |
 
 #### `policy.json`
@@ -4996,10 +5025,11 @@ implementer work on `xhigh`.
   - S10's `secret <base key> worker` writes that password, asked without echo;
   - S10's `install` grants `NT SERVICE\MoltaroOnecOutpost` "Replace a process level
     token" and "Adjust memory quotas for a process", in effect from its next start, and
-    each worker account "Log on as a batch job"; a worker account is a local user outside
-    Administrators with no privilege beyond Users'. `install` and G1 put the program
-    under `%ProgramFiles%` with its list's inheritance off, full control for Administrators
-    and SYSTEM, read and run for Users, and Administrators owning every entry it writes;
+    each worker account "Log on as a batch job" (S10a moved that right to `secret <base
+    key> worker`); a worker account is a local user outside Administrators with no
+    privilege beyond Users'. `install` and G1 put the program under `%ProgramFiles%` with
+    its list's inheritance off, full control for Administrators and SYSTEM, read and run
+    for Users, and Administrators owning every entry it writes;
   - S10's `check` judges the connector's folder by the rule of the program folder;
   - "The files of the agent": the agent refuses a program folder that others may change,
     by "The program folder" above;
@@ -5578,13 +5608,17 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     the executor so. A worker of a base whose Writes run without safe mode runs under a
     Windows account of its own, which can read neither the agent's secrets nor its audit
     log. S9 builds the worker's side, S9c the account and how the agent starts a worker
-    under it, and the console's `install` prepares the account.
+    under it, and the console's `secret <base key> worker` grants the account its right.
 - **The console**, a program that references the agent, the protocol, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says, with
-  these commands and their exit codes:
-  - `install` and `uninstall`;
+  these commands and their exit codes. *(S10a)* The commands of S10a are built; their
+  steps, messages and exit codes are those of "Internal of S10a" in
+  [S10's brief](#s10--the-console), with the list "What S10a changes in the public
+  contract", and each needs a console run as administrator:
+  - `install [--stop-timeout <TIME>]` and `uninstall [--stop-timeout <TIME>]`;
   - `pair <server address> <token>`;
-  - `secret <base key> <read|write>`, which asks for the password without echoing it;
+  - `secret <base key> <read|write|worker>`, which asks for the password without echoing
+    it, or reads it as one line of a redirected standard input;
   - `check`, which reports, each as passed or failed with its reason:
     - the COM connector and its version: whether one is registered for each bitness, and
       where a `comcntr.dll` that is not registered lies (the owner, 21 November 2026, after
@@ -5614,7 +5648,7 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     Every cause of a failure that a lab run finds becomes a line of `check` with its test
     (the owner, 23 November 2026).
   - `connector register`, after L1, which registers the COM connector of the installed
-    platform for its bitness, and says so when it lacks the rights of an administrator;
+    platform for each bitness that has none registered and exactly one version installed;
   - `metadata <base key> <file>`.
 - **The shell**, a program that references the server, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says:
@@ -5638,6 +5672,9 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   - *(S9b, a draft for the owner)* the COM worker of each bitness lies in `x64\` and
     `x86\` beside the agent's program, each with the files of its build, since the agent
     starts it from there; S12 builds the archive so;
+  - *(S10a)* the console lies beside the agent's program, since `install`, run from the
+    unpacked archive, copies its whole content into `%ProgramFiles%\Moltaro.OnecOutpost`
+    and registers the service as `Moltaro.OnecOutpost.Agent.exe` there;
   - every program in it is self-contained, so that no .NET runtime of either bitness has to
     be installed;
   - its SHA-256 checksum is on the release page;

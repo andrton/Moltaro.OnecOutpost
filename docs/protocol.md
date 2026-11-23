@@ -14,6 +14,7 @@ all three requests: `pair`, `poll` with the commands it hands out, and `outcome`
 sends all three, keeps its audit log as §13 says, gives poll numbers with the reservation
 of §6.2, and runs its commands in the COM workers it starts, which hand over the
 executor's outcomes of §8; the tests of that path against a real 1C passed on the lab.
+The console's `pair` pairs an agent by §5 and §6.1; its check of §12 is not built yet.
 
 ## 1. Overview
 
