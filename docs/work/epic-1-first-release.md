@@ -5452,6 +5452,295 @@ S8.
       gains "Its runner is elevated, so the tests with Requires=Administrator run here too."
       Documents: `README.md` names the setup commands; "The files of the agent" and the
       contract of stage 3 take the drafts below.
+  - *Internal of S10b* (the contract author, 24 November 2026, from S10b's study, with the
+    coordinator's decisions under PQ2; not yet reviewed). `check` alone; `metadata` is S10c's.
+    Every type is `internal`. The console gains one boundary folder, `Workers`, which uses the
+    agent and nothing else of the console; `Commands` uses it as it uses the other four.
+
+    ```csharp
+    // Moltaro.OnecOutpost.Agent.Start: the layouts named once (review 2), the start's steps free of the log (review 1, 2)
+    internal sealed record AgentFolders(IAgentFolder Root, IAgentFolder Audit, IAgentFolder Outcomes)
+    {
+        // consts, one per line in code: Name "Moltaro.OnecOutpost", AuditName, OutcomesName, and PolicyName, PairingName and
+        // SecretsName, which leave AgentStart
+        public static string OnMachine();                     // %ProgramData%\Moltaro.OnecOutpost
+        public static AgentFolders OnDisk(string dataFolder); // DiskFolders of the root, audit\ and outcomes\
+    }
+    internal static class ProgramFolderLayout // consts WorkerFile, which leaves ComWorkerLauncher, and ExecutorFile, OutpostExecutor.epf
+    {
+        public static string WorkerOf(string programFolder, ConnectorBitnessEnum bitness); // {folder}\x64\ or \x86\, then WorkerFile
+        public static string ExecutorOf(string programFolder);
+    }
+    internal static class StartChecks
+    {
+        public static IReadOnlyList<string> DataPaths(IReadOnlyList<string> rootNames, IEnumerable<string> auditFiles, IReadOnlyList<string> outboxFiles);
+        public static string? AccessReason(string path, OtherAccounts others); // null when others IsEmpty
+        public static string WritersReason(string path, IReadOnlyList<string> accounts);
+        public static AgentPairingSettings ReadPairing(IAgentFolder root, IReadOnlyList<string> rootNames);                       // AgentStopException
+        public static AgentSecrets ReadSecrets(IAgentFolder root, IReadOnlyList<string> rootNames, IMachineProtection protection); // AgentStopException
+        public static AgentPolicy ReadPolicy(IAgentFolder root, IReadOnlyList<string> rootNames);                                 // AgentPolicyException
+        public static IReadOnlyList<string> MissingPasswords(AgentPolicy policy, AgentSecrets secrets);                           // all, in the policy's order
+    }
+
+    // Moltaro.OnecOutpost.Agent.Access: IAccessLists.Others returns this, Writers is unchanged; ServiceAccount gains Name(serviceName)
+    // IsEmpty: no other owner and no entry; All: the owner, then the entries, each once, Others' list of today
+    internal sealed record OtherAccounts(string FullPath, string? Owner, IReadOnlyList<string> Entries) { public bool IsEmpty { get; } public IReadOnlyList<string> All { get; } }
+
+    // Moltaro.OnecOutpost.Agent.Workers: the launcher's steps, one home each (review 1, 1; review 2, 3)
+    internal static class AccountRightNames { /* its three consts, from the console */ public static readonly IReadOnlyList<string> AgentPrivileges; }
+    internal static class WorkerAccountReasons { /* consts NotOrdinary, AgentLacksPrivileges */ public static string CannotLogOn(string baseKey, int error); }
+    [SupportedOSPlatform("windows")]
+    internal static partial class WorkerLogon
+    {
+        public static SafeAccessTokenHandle? LogOn(string account, string password, out int error); // LogonUserW, BATCH, DEFAULT
+        public static bool IsOrdinary(SafeAccessTokenHandle token); // WorkerAccountRule over Groups and Privileges; Win32Exception
+    }
+    internal enum WorkerCallEnum { AsUser, WithToken } // CreateProcessAsUserW; CreateProcessWithTokenW through Secondary Logon
+    [SupportedOSPlatform("windows")]
+    internal static partial class WorkerCreation
+    {
+        public static (SafeProcessHandle Process, nint Thread) CreateSuspended(WorkerCallEnum call, SafeAccessTokenHandle token,
+            string program, string commandLine, string desktop, SafePipeHandle input, SafePipeHandle output, SafePipeHandle? error);
+        public static void JoinAndResume(WorkerJob job, SafeProcessHandle process, nint thread); // a failure kills, then throws
+    }
+    internal sealed class WorkerConnectionLine { public static WorkerConnectionLine For(AgentBasePolicy served, AgentModePolicy mode, string password, string executor); }
+    internal sealed record JudgedOutcome(byte[] Outcome, bool EndsWorker);
+    internal static class WorkerOutcome { public static JudgedOutcome Judge(OutpostModeEnum mode, (long Size, byte[] Outcome)? given); }
+
+    // Moltaro.OnecOutpost.Agent.Transport (review 1, 4; review 2, 2): AgentPairingFailureEnum goes, AgentPairingResult.Failure takes the cause
+    internal enum ServerAnswerCauseEnum { Unreachable, ProtocolVersion, ServerKey, Signature, Refusal, Bare, Answer }
+    internal sealed record OutcomeAnswer(OutcomeResultEnum Result, DateTimeOffset? Time, int? Status, ServerAnswerCauseEnum? Cause, string? Code);
+
+    // Moltaro.OnecOutpost.Console.Workers: the COM workers that check starts
+    internal interface IWorkerStarts
+    {
+        IWorkerAccount LogOn(string baseKey, string account, string password); // Win32Exception with LogonUserW's code
+        Task<uint?> ProbeAsync(IWorkerAccount account, string program, string baseKey, TimeSpan deadline, CancellationToken cancellationToken);
+        CheckWorker Start(IWorkerAccount? account, string program, string baseKey); // read mode; null: the console's own token
+    }
+    internal interface IWorkerAccount : IDisposable { bool IsOrdinary(); string Desktop(); } // each a Win32Exception
+    internal sealed record CheckWorker(IWorkerProcess Process, Task<string> Diagnostics);
+    [SupportedOSPlatform("windows")] internal sealed class WindowsWorkerStarts(TimeProvider clock) : IWorkerStarts
+    { public IWorkerAccount Account(string baseKey, SafeAccessTokenHandle token); } // the test author's seam, as Use was S9c's
+
+    // Moltaro.OnecOutpost.Console.Commands. ConsoleParts: string AgentSid after ServiceName, Data an AgentFolders, IWorkerStarts
+    // Workers after Registration. IAccountRights gains Held(string sid), today WindowsAccountRights' own.
+    internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings> { } // Settings: TimeSpan ClockSkew
+    internal enum CheckLineEnum { Connector, Connection, Subscriptions, ReadRights, Server, ClockSkew, WorkerAccount, AgentRights, WorkerStart, AccessLists, Files }
+    internal sealed record CheckLine(CheckLineEnum Kind, string Subject, bool Passed, string Reason);
+    internal static class ServerAnswerSentences { public static string Of(OutpostRequestKindEnum request, ServerAnswerCauseEnum cause, int? status, string? code); }
+    internal abstract class TimeOptionConverter(string rule) : TypeConverter { } // StopTimeoutConverter and ClockSkewConverter derive
+    ```
+
+    - **The refactorings**, each keeping what the architect's list names:
+      - *The launcher's steps.* `LogOn` is `WorkerLogon.LogOn`, `IsOrdinary`, the agent's token
+        against `AgentPrivileges`, `Make` and `Use`; `Start` the finder, two pipes,
+        `CreateSuspended(AsUser, …, error: null)` and `JoinAndResume`, a `Win32Exception` or
+        `IOException` giving a `NoProcess`. `AsUser` is today's call, its handle list the ends
+        given, two or three. `WithToken` is `CreateProcessWithTokenW`, logon flags 0, the flags
+        but `EXTENDED_STARTUPINFO_PRESENT`, the token's environment, the program's folder,
+        `STARTF_USESTDHANDLES`: the Secondary Logon service creates the process and gives it the
+        standard handles alone [Win32 docs; the lab proves it]. Unchanged: the password reaches
+        only `LogonUserW`, from native memory zeroed after it, and no message holds it; a worker
+        of the agent inherits only its two pipe ends; it joins the job before its thread
+        resumes, and a process the job refuses is killed; `LogOn`'s four checks keep their order.
+      - *The start's checks*, in today's order: `Others` of each of `DataPaths(rootNames,
+        log.Files, outbox names)`, an `IOException` today's `cannot be read`, the first
+        `AccessReason` stopping it; the first entry of `Writers(programFolder)`; `ReadPairing`,
+        `ReadSecrets`, the outbox, records and numbers, `ReadPolicy`, the first of
+        `MissingPasswords`, the logons. `AuditLog.IsAuditFile` becomes internal. Unchanged: the
+        order; the log read and cut before any entry; `started` and `policy` with their reasons,
+        but for the wording below; a failed start writes nothing else.
+      - *The answer to an outcome*, computed once by §9's order: no status `Unreachable`, a
+        proxy's `Answer`; a verified `200` `Confirmed` with its `time`; a `200` whose signature
+        does not verify `Signature`, any other unverified `200` `Answer`; a verified refusal
+        `Refusal` with its `time` and code, `TooLarge` for `result-too-large`; the unsigned
+        `protocol-version` body `ProtocolVersion`; a 401, 403 or 413 without a signature that
+        verifies `Bare`, the 413 `TooLarge`; else `Answer`. `AgentPairing` gives `Bare` for its
+        403, today's `Refused`. Unchanged: §9's table for an outcome; answers to outcomes never
+        change the connection; the loop reads `Result` alone.
+      - *The pool's statics.* `For` is `LocationOf`, the quoting and the mode's `Account` and
+        `SafeMode`; `Judge` is `Accept` without the `Drop`, which the pool makes for `EndsWorker`.
+        Unchanged: the password only in the first line; an outcome accepted only when its size is
+        its length, `ReadOutcome` reads it for the mode and `IsComWorkerOutcome` allows it, else
+        `result-type`, Failed for a Read and Unknown for a Write; the drops of today.
+      - *Names.* `SharedSteps.AgentPrivileges` and the launcher's constants go; `Name` replaces the
+        three spellings; `OnDisk` and `OnMachine` the programs' paths, `LabAgent.Folders` and
+        `DiskDataFolder`; `LabLogon` goes for `WorkerLogon.LogOn`. Unchanged: the rights granted and
+        revoked, the lines of `install`, `uninstall` and `secret`.
+      - *One wording, with a remedy that exists* (review 2 and its note to the planner), for the
+        reasons that `started` and `check` share; its change of the audit log's text is a draft:
+        - `AccessReason`: `{entry} is owned by {owner}, who can change its access list; make
+          Administrators its owner with icacls "{FullPath}" /setowner *S-1-5-32-544, run as
+          administrator` (Q14); for entries, today's sentence ending `: {remedy}`, for the folder,
+          `audit` and `outcomes` `inspect it, remove it and run install again`, for a file `reset
+          it to its folder's with icacls "{FullPath}" /reset, run as administrator`;
+        - `WritersReason`: today's sentence ending `…the agent's account: remove their entries,
+          and make Administrators the owner of what they own`;
+        - `agent.json is absent: the agent is not paired; pair it with the console's pair`;
+          `secrets.dat is absent | cannot be decrypted on this machine; to pair the agent anew,
+          remove agent.json, if any, and run the console's pair`, since `pair` refuses while
+          `agent.json` exists; `MissingPasswords`, `…; write it with secret {key} read | write |
+          worker`;
+        - `NotOrdinary`, `is an administrator or holds a privilege beyond an ordinary user's; take
+          it out of Administrators and of every group that grants a privilege, or name another
+          local user in the policy`; `AgentLacksPrivileges`, `lacks "Replace a process level
+          token" or "Adjust memory quotas for a process"; install grants them, and the service has
+          them from its next start`;
+        - `CannotLogOn`, the start's step 1 too: 1326 `unknown account or wrong password; check
+          workerAccount in the policy, or write the password again with secret {key} worker`;
+          1385 `it lacks "Log on as a batch job", or a "Deny log on as a batch job" names it;
+          secret {key} worker grants the right`; 1909, 1331 and 1793 `the account is locked out |
+          disabled | expired`; 1330 `its password has expired` and 1907 `its password must be changed`, each
+          `; set a new one and write it with secret {key} worker`; 1327 `an account restriction
+          refuses it, such as a blank password outside the console`; 1328 and 1329 its logon hours
+          and its computer; any other `{the Win32 message} (Windows error {code})`;
+        - `pair` and `secret` read through `StartChecks`, and their copies go; their codes stay.
+    - **`check [--clock-skew <TIME>]`**, `TIME` in `policy.json`'s constant form, `MinClockSkew` to
+      `MaxClockSkew`, `00:02:00`, the server's default `ClockSkew`, when absent, since the console
+      cannot read the server's (principle 10): `--clock-skew: expected a time of the form
+      [d.]hh:mm:ss from 00:00:01 to 01:00:00, such as 00:02:00`. It writes nothing to a base or the
+      data folder, runs Reads alone, never polls, and works while the service runs. Steps, each
+      behind a spinner, the token checked before each: elevation; `Kind(DataFolder)`, `Absent`
+      giving `NotInstalled`, `the data folder {folder} does not exist; run install first`; `Files`,
+      `Connector`, `AccessLists`, `AgentRights`; per base `WorkerAccount`, `WorkerStart`,
+      `Connection` read then write, `Subscriptions`, `ReadRights`; `Server` and `ClockSkew`. A line
+      whose input failed fails as `not checked: {subject} failed`. Then one table, `Check`,
+      `Result` (`passed` green, `failed` red) and `Reason`, by `CheckLineEnum`, the stage contract's
+      order, then the policy's; `Every line passed.` and `Success`, else `CheckFailed (19): {n} of
+      {m} lines failed`, beside S10a's codes that apply: `| 19 | CheckFailed | check | A line
+      failed, or was not checked |`, and `NotInstalled` gains `check`.
+
+      | Line, rows | Passed | Failed |
+      | --- | --- | --- |
+      | `Connector` | `{bits}-bit: {path}, {version}, is registered; the workers start with it`, the first `Registered`, 64 bits first, every other copy named | `none is registered`, each unregistered `{bits}-bit: {path}, {version}` named, `; register it with connector register` |
+      | `Connection`, per base, read then write account | `opened as {user} ({fullName})` | `{program} did not start: {message} (Windows error {code})`; `1C opened no session: {diagnostics}`, or `the worker gave no reason`; `… within {runLimit}, the mode's runLimit`; `the script of the check ended {kind} {code}: {errorText}`, or `did not end within {runLimit}`; `the session's user is {user}, not {account} of the policy`; `the base has no users, so every connection has every right` |
+      | `Subscriptions`, per base | `every event subscription's common module is available to an external connection` | `a Write that reaches these fails: {subscription} ({event}) in {module}, …; set "External connection" of each module`, or `{module}, which is not a common module` |
+      | `ReadRights`, per base | `{account} holds no right to change data` | `{account} holds rights to change data: {global rights}; {right} on {count} {category}, …: {first ten full names} and {n} more` |
+      | `Server` | `{server} confirmed an outcome of a made-up command from {agent}: it is reachable and accepts the agent's key` | `ServerAnswerSentences.Of(Outcome, …)` |
+      | `ClockSkew` | `the server's clock is ahead of this machine's by {skew} ms ± {uncertainty} ms, within {allowed}`, or behind | `… beyond {allowed}; the agent refuses every command with clock-skew while the clocks are further apart than the server's ClockSkew: set the clocks`; `cannot be judged within {allowed}: the round trip took {rtt} ms` |
+      | `WorkerAccount`, per base with a `workerAccount` | `{account} logs on for a batch job, and its token is an ordinary user's` | `CannotLogOn`, for a token that cannot be read too; `{account} {NotOrdinary}` |
+      | `AgentRights` | `{ServiceAccount.Name} holds "Replace a process level token" and "Adjust memory quotas for a process"` | `… {AgentLacksPrivileges}`; `… cannot be read: {message} (Windows error {code})` |
+      | `WorkerStart`, per `workerAccount` | `the worker started under {account} on {desktop} and ended at the end of its input` | the probe's sentences below |
+      | `AccessLists`: the data folder, the program folder, each registered connector's folder | `admits nobody else, nor do its {n} files`; `nobody else may change it` | every `AccessReason` or `WritersReason`, one per line; `{folder} is a reparse point; inspect it, remove it and run install again` |
+      | `Files`: `policy.json`, `agent.json`, `secrets.dat` | `{n} bases`; `paired with {server} as {agent}`; `decrypts and holds every password the policy needs` | the reason of `ReadPolicy`, `ReadPairing` or `ReadSecrets`, and every `MissingPasswords` |
+
+      The audit files are `Audit.Names()` by `IsAuditFile`; one gone between its listing and its
+      list, a `FileNotFoundException`, counts as gone, the one difference from the start, which
+      owns the folder. Reads share writing and `READ_CONTROL` shares all, so the service's lock
+      changes nothing [Win32 docs]. *Limitations:* LSA shows `AgentRights` only a grant to the
+      account itself, not one through a group such as `NT SERVICE\ALL SERVICES`, and the service
+      has a right granted after its start from its next start; a connector's folder and its
+      parents are judged, not its siblings such as `conf`.
+    - **The probe**, `ProbeAsync`, after its account's line passed: `Desktop()`, which makes
+      `WorkerDesktop.Make(baseKey, token)` as it is, on the console's own `Service-0x…$` station,
+      once per account; two pipes; `WithToken`, `"{WorkerOf}" {base key} write`, `lpDesktop` that
+      name; the console's end of the input disposed before the resume, so the worker reads null
+      and ends with `WorkerExitCodes.Ended` before any COM call; the output read to its end, no
+      standard error; `JoinAndResume` into a `WorkerJob` of its own, since a process already in a
+      job, the Secondary Logon service's or a terminal's, joins only an empty job or one of its
+      hierarchy [Win32 docs];
+      its exit raced with `Task.Delay(deadline, clock)`, the write mode's `runLimit`,
+      `TerminateProcess` at it. Lines:
+      0 the passed one; 0xC0000142 `the worker failed to initialise on its desktop
+      (STATUS_DLL_INIT_FAILED): the account or the desktop lacks access`; 1 `the worker refused its
+      command line (exit code 1): the program folder holds another build`; another `the worker
+      ended with exit code 0x{code:X8}`; null `the worker did not end within {runLimit} and was
+      ended`; the call's 1314 `the console lacks "Impersonate a client after authentication"`,
+      1058 `the Secondary Logon service is disabled; check does not start it`, 2 or 3 `{program}
+      is missing`, 5 `{account} may not read or run {program}`; `Desktop()`'s `{account} cannot get
+      a desktop: {message}`; any other `{message} (Windows error {code})`. One logon per account per
+      run, never retried: each failure counts toward a lockout. *Limitations:* the probe runs in
+      the console's session and station, so S9c's manual line stays the proof of session 0; the
+      station keeps an ACE for the probe's logon until the administrator signs out.
+    - **The connections**, `Start` with the first `Registered` bitness's `WorkerOf` and
+      `ExecutorOf`: for a base without a `workerAccount` `null`, `AsUser` with the console's own
+      token and `lpDesktop` `""`; else the account, `WithToken` on its desktop, as all workers of
+      such a base run in the service. Three pipes, `"{program}" {base key} read`, a job of its own
+      as above, `Diagnostics` the standard error read to its end as UTF-8, shown when the open
+      gives false. Each account's worker opens with `For(served, mode with { SafeMode = true }, its
+      password, executor)` and runs `WorkerCommandLine(script, "{}", null,
+      OutpostProtocol.MaxOutcomeSizeLimit)`, the outcome staying on the machine; the open and each
+      run raced with the mode's `runLimit`, killed at it; each output by `Judge(Read, …)` and
+      `ReadOutcome`. The read account runs three scripts, the write account the first, in the
+      English variant within compatibility mode 8.2.13 [1C docs; the lab proves each]: `Result =
+      New Structure("user, fullName", UserName(), UserFullName())`, the user compared with the
+      policy's account ignoring case; each of `Metadata.EventSubscriptions` whose module, the
+      second part of `Handler`, `Metadata.CommonModules.Find` misses or finds without
+      `ExternalConnection`, as `subscription`, `event`, `module`, `found`; `AccessRight(right,
+      object)`, no third argument, each in a `Try`, a raise not held: `Administration`,
+      `DataAdministration`, `UpdateDataBaseConfiguration` over `Metadata`; `Insert`, `Update`,
+      `Delete` over catalogs, the three charts, exchange plans, business processes with `Start`,
+      tasks with `Execute`, documents with `Posting` and `UndoPosting`; `Update` over constants,
+      the four register kinds and sequences; as `global`, `categories` of `category`, `right` and
+      `count`, and `objects` by full name. *Limitations:* the write account
+      runs in Read mode and safe mode, so its executor without safe mode is first opened by the
+      service's first Write; each worker of `check` takes a client licence while open (O3); the
+      console's token may reach a file base's folder that the agent's account may not.
+    - **The server and the skew**: `ReadPairing`, `ReadSecrets`' key, an `AgentConnection` on
+      `Handlers(server, policy.Proxy)`, `SendOutcomeAsync(Guid.NewGuid(), OwnOutcome.Write(Refused,
+      not-addressed), policy.RequestTimeout)`, `t0` and `t1` by `Clock.GetUtcNow()` around it.
+      `Server` passes for `Confirmed` alone. With a `Time`, of a confirmation or of a verified
+      refusal, `skew = Time − (t0 + (t1 − t0) / 2)` and `uncertainty = (t1 − t0) / 2 + 1 ms`, the
+      millisecond of §2: passed when `|skew| + uncertainty ≤ allowed`, beyond when `|skew| −
+      uncertainty > allowed`, else not judged; without one, `not checked: no verified answer came`.
+      `ServerAnswerSentences.Of` is pair's sentences as they are, `HTTP {status}: ` first when one
+      came, and for an outcome: `Refusal` `signature`, `the server does not verify the agent's
+      signature: secrets.dat and agent.json come from different pairings`, `form`, `the server
+      refused the form of the request`, `result-too-large`, `the server refused even this small
+      outcome for its size`; `Bare` 401 `the server knows no such agent, or it is still pending`,
+      403 `the agent is revoked, or something on the path refused it`, 413 `something on the path
+      refused even this small body`; `Answer` `an answer that is not a signed answer of §6.3 or §9
+      of the protocol`. Nothing quotes a body.
+    - **Tests on every platform**, `Moltaro.OnecOutpost.Console.Tests`, folder `Check`, by
+      `CommandAppTester` on `TestMachine` with a `FakeWorkerStarts` whose accounts and workers a
+      test scripts, `FakeAccountRights.Held` and a stub of the outcome endpoint signed with test
+      keys: every line passed, in order, `Success`, plain text when redirected; each failed
+      sentence above at its line, with `CheckFailed` and the lines that need it not checked; one
+      logon per account; `AsUser` for a base in safe mode, the account for one without; every
+      command line `read` with `SafeMode` true, the data folder only read; a file gone between
+      listing and list; every missing password; the stub saw no poll; each `ServerAnswerSentences`
+      row, never the body; the skew ahead, behind, beyond and not judged, the stub moving the
+      fake clock; `--clock-skew` at both bounds, `00:00:00`, `01:00:01`, `2:00`, its default `new
+      OutpostServerOptions().ClockSkew`; no password in any output. `Pair/*` unchanged. Agent's:
+      `OutcomeAnswerTests` with the record per row; `WorkerAccountReasons` as a table; `Name`;
+      `OnDisk`; the reworded reasons. `ComWorker.Tests`: the diagnostics come before
+      `{"ready":false}` and the worker's `base-unreachable` line, so a reader ending it there has them.
+    - **Tests with `Requires=Windows`**: `AsUser` with three ends, the error end carrying the test
+      program's diagnostics; with `Requires=Administrator` too, `WithToken` of the process's own
+      token on `Make`'s desktop by `Account`, the probe giving 0, a missing program 2.
+    - **Lab tests**, `Moltaro.OnecOutpost.OneC.Tests`, folder `Console`, built in S10b and run with
+      S10c, by `CommandAppTester` with `LabConsole.Parts(agent)`, `Program.MachineParts` for the
+      agent's folders, its program folder now in the `x64\` layout, `with` the test's account as
+      `AgentSid` and in the lists, the agent's clock in `WindowsWorkerStarts` and a `LabServer` of
+      its keys as the handler; each asserts that the server saw no poll. The test base in safe mode:
+      every line passed but `Subscriptions`, which names `NoteBeforeWrite` in `NoteChecks`, the
+      users those of the session; without safe mode under `outpost-worker`: its account, rights,
+      probe 0 and connections; each typical copy, as its `writeSafeMode` says: its connections
+      pass, `Subscriptions` and `ReadRights` run, nothing of it a literal; the write account named
+      as the read account: `ReadRights` names `Catalog.Products`. Broken on purpose, nothing on
+      the machine changed: a changed worker password and a made-up account give 1326; `Guest`,
+      disabled, with a blank password, 1331, or 1327 if Windows judges the blank password first,
+      which the run records and the test then states; a program folder without Users' entry, the
+      probe's 5. `LabWorkerProbe` goes, `LabRun.WhyNotOpened` giving the probe's line. The test
+      configuration gains the catalog `Notes`, which nothing writes, the common module
+      `NoteChecks`, `Server` without `ExternalConnection`, with `Procedure NoteBeforeWrite(Source,
+      Cancel) Export`, and the event subscription `NoteBeforeWrite`, `BeforeWrite` of
+      `CatalogObject.Notes`; both roles read `Notes` alone, and its `README.md` names the three.
+    - **The steps.** Contract: the members above. What replaces a working member works at once,
+      with today's texts: the layouts, `StartChecks`, `OtherAccounts`, `Held`, `Name`,
+      `AccountRightNames`, `WorkerLogon`, `WorkerCreation` with `AsUser`, `For`, `Judge`, the cause
+      in pairing, `OutcomeAnswer` with `Result` and the rest null. The tables work, being tables:
+      `WorkerAccountReasons` and `ServerAnswerSentences`; so do `CheckCommand.Settings`, the
+      converters, `CheckFailed` and `check` in `ConsoleApp`. `CheckCommand.ExecuteAsync`,
+      `WindowsWorkerStarts` and `WithToken` throw `NotSupportedException`. Edits that state nothing
+      new, made there: the callers of every moved name; `ConsoleParts`' new members, given by
+      `MachineParts`, `TestMachine` and `InstallOnWindowsTests`, the steps using `AgentSid`;
+      `FakeAccessLists` giving `OtherAccounts`; the console's `InternalsVisibleTo` naming
+      `OneC.Tests`, which references the console and Spectre's two Testing packages; `LabLogon`
+      going. Tests step: the tests above, the reworded assertions skipped, and the test
+      configuration. Implementation: the rest, the wording, the worker's order. Documents: `README.md` names
+      `check`; "The files of the agent" and the stage-3 contract take the drafts below.
 - **What S10a changes in the public contract, as a draft for the owner** (the contract
   author, 23 November 2026). Each holds until the owner overturns it:
   - the commands `install [--stop-timeout <TIME>]`, `uninstall [--stop-timeout <TIME>]`,
@@ -5470,6 +5759,29 @@ S8.
     installed; the agent judges the connector from HKLM as the console does, and a
     registration whose file is gone no longer picks that bitness;
   - the trait `Requires=Administrator`, with CI's `windows` job elevated.
+- **What S10b changes in the public contract, as a draft for the owner** (the contract
+  author, 24 November 2026). Each holds until the owner overturns it:
+  - the command `check [--clock-skew <TIME>]`, its lines in the stage contract's order, their
+    messages, and the exit code 19 `CheckFailed`; `--clock-skew` is the allowed skew, two
+    minutes when absent, the server's default `ClockSkew`, since the console cannot read the
+    server's;
+  - `check` reads only: no Write, no script that changes data, no file of the data folder
+    written, no poll; while the service runs it signs one `outcome` of a made-up command with
+    the agent's key, and each COM worker it starts takes a client licence while it is open;
+  - `check` judges the folder of each registered COM connector by the rule of the program
+    folder, and names a file of the data folder whose owner is somebody else with the
+    `icacls "{path}" /setowner *S-1-5-32-544` that restores it (Q14);
+  - the agent's `started` reasons take one wording with a remedy that exists: an owner or an
+    entry of the data folder, a writer of the program folder, `agent.json` or `secrets.dat`
+    absent, a `secrets.dat` that does not decrypt, a missing password, the worker account's
+    logon by its Win32 code, a worker account beyond an ordinary user and the agent's missing
+    privileges; `pair` and `secret` give the same reasons for `policy.json` and `secrets.dat`;
+  - the COM worker writes its diagnostics before `{"ready":false}` and before its own
+    `base-unreachable` line;
+  - the limitations of `check` above: the write account checked in Read mode and safe mode; the
+    probe in the console's session and station; a privilege seen only when granted to the
+    agent's account itself; a connector's siblings not judged; a file base reached with the
+    console's token.
 - **To read.** The [concept](../concept.md), §3 "Pairing" and §5 (20 November 2026);
   `docs/protocol.md`; `AGENTS.md`, principles 9 and 12; this plan, "The files of the agent",
   the contract of stage 2 and S9c's brief.
