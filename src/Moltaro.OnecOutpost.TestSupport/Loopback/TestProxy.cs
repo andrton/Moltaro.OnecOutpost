@@ -296,13 +296,12 @@ internal sealed partial class TestProxy : IAsyncDisposable
     // no request of the agent ends the tunnel: the agent sends none.
     private static OutpostRequestKindEnum KindOf(string path)
     {
-        return path[(path.LastIndexOf('/') + 1)..] switch
+        if (!OutpostForms.TryReadRequestKind(path[(path.LastIndexOf('/') + 1)..], out OutpostRequestKindEnum kind))
         {
-            "pair" => OutpostRequestKindEnum.Pair,
-            "poll" => OutpostRequestKindEnum.Poll,
-            "outcome" => OutpostRequestKindEnum.Outcome,
-            _ => throw new IOException($"The path {path} names no request of the agent."),
-        };
+            throw new IOException($"The path {path} names no request of the agent.");
+        }
+
+        return kind;
     }
 
     // Writes what the agent reads of an answer, its status, Content-Type, Outpost-Signature and body, framed by

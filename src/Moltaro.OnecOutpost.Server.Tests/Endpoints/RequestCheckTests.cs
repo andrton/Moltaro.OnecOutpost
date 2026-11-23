@@ -353,12 +353,12 @@ public sealed class RequestCheckTests(PostgreSqlFixture postgres) : IClassFixtur
 
     private static OutpostRequestKindEnum Kind(string request)
     {
-        return request switch
+        if (!OutpostForms.TryReadRequestKind(request, out OutpostRequestKindEnum kind))
         {
-            "pair" => OutpostRequestKindEnum.Pair,
-            "poll" => OutpostRequestKindEnum.Poll,
-            _ => OutpostRequestKindEnum.Outcome,
-        };
+            throw new ArgumentOutOfRangeException(nameof(request));
+        }
+
+        return kind;
     }
 
     private static List<(string Name, string Value)> Break(

@@ -76,7 +76,7 @@ internal static class OutpostSignatures
     // three digits.
     private static byte[] RequestInput(OutpostRequestKindEnum kind, Guid agent, ReadOnlySpan<byte> body)
     {
-        return Encoding.ASCII.GetBytes($"outpost/1 request {KindWord(kind)} {OutpostForms.WriteId(agent)} {Hash(body)}");
+        return Encoding.ASCII.GetBytes($"outpost/1 request {OutpostForms.WriteRequestKind(kind)} {OutpostForms.WriteId(agent)} {Hash(body)}");
     }
 
     private static byte[] AnswerInput(
@@ -88,7 +88,7 @@ internal static class OutpostSignatures
     {
         string input = string.Create(
             CultureInfo.InvariantCulture,
-            $"outpost/1 answer {KindWord(kind)} {OutpostForms.WriteId(agent)} {status} {Hash(requestBody)} {Hash(answerBody)}");
+            $"outpost/1 answer {OutpostForms.WriteRequestKind(kind)} {OutpostForms.WriteId(agent)} {status} {Hash(requestBody)} {Hash(answerBody)}");
 
         return Encoding.ASCII.GetBytes(input);
     }
@@ -96,17 +96,6 @@ internal static class OutpostSignatures
     private static byte[] CommandInput(ReadOnlySpan<byte> commandBytes)
     {
         return Encoding.ASCII.GetBytes($"outpost/1 command {Hash(commandBytes)}");
-    }
-
-    private static string KindWord(OutpostRequestKindEnum kind)
-    {
-        return kind switch
-        {
-            OutpostRequestKindEnum.Pair => "pair",
-            OutpostRequestKindEnum.Poll => "poll",
-            OutpostRequestKindEnum.Outcome => "outcome",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-        };
     }
 
     // SHA-256 over the exact bytes, as 64 lowercase hexadecimal digits.

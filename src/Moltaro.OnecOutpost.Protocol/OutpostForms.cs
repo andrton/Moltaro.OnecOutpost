@@ -5,8 +5,8 @@ using System.Diagnostics.CodeAnalysis;
 namespace Moltaro.OnecOutpost.Protocol;
 
 // The forms of §2 of docs/protocol.md that the headers, the pairing token and the codec all need: canonical base64url
-// and the 36-character lowercase identity. They live here once, in the root, so that neither the signing types nor
-// the codec needs the other for them.
+// and the 36-character lowercase identity; and the name of a request, which its path (§1) and its signing inputs (§3)
+// carry. They live here once, in the root, so that neither the signing types nor the codec needs the other for them.
 internal static class OutpostForms
 {
     // The alphabet of base64url (RFC 4648 §5), without the padding character.
@@ -72,5 +72,37 @@ internal static class OutpostForms
         }
 
         return Guid.TryParseExact(text, "D", out id);
+    }
+
+    // Writes the name of a request, as its path (§1) and its signing inputs (§3) carry it: pair, poll or outcome.
+    public static string WriteRequestKind(OutpostRequestKindEnum kind)
+    {
+        return kind switch
+        {
+            OutpostRequestKindEnum.Pair => "pair",
+            OutpostRequestKindEnum.Poll => "poll",
+            OutpostRequestKindEnum.Outcome => "outcome",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+    }
+
+    // Reads the name of a request that WriteRequestKind writes. False, without an exception, for any other text.
+    public static bool TryReadRequestKind(string name, out OutpostRequestKindEnum kind)
+    {
+        switch (name)
+        {
+            case "pair":
+                kind = OutpostRequestKindEnum.Pair;
+                return true;
+            case "poll":
+                kind = OutpostRequestKindEnum.Poll;
+                return true;
+            case "outcome":
+                kind = OutpostRequestKindEnum.Outcome;
+                return true;
+            default:
+                kind = default;
+                return false;
+        }
     }
 }

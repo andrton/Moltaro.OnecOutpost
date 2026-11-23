@@ -21,15 +21,7 @@ internal static class ServerRequests
     {
         string prefix = server.AbsoluteUri.EndsWith('/') ? server.AbsoluteUri : server.AbsoluteUri + "/";
 
-        string request = kind switch
-        {
-            OutpostRequestKindEnum.Pair => "pair",
-            OutpostRequestKindEnum.Poll => "poll",
-            OutpostRequestKindEnum.Outcome => "outcome",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-        };
-
-        return new Uri(new Uri(prefix), $"v{OutpostProtocol.Version}/{request}");
+        return new Uri(new Uri(prefix), $"v{OutpostProtocol.Version}/{OutpostForms.WriteRequestKind(kind)}");
     }
 
     // The request of the kind to the address, carrying the body as it was signed and the signature of the agent's key

@@ -51,13 +51,13 @@ internal sealed class ServerExchange
 
         Headers = headers;
         Name = Uri.AbsolutePath[(Uri.AbsolutePath.LastIndexOf('/') + 1)..];
-        Kind = Name switch
+
+        if (!OutpostForms.TryReadRequestKind(Name, out OutpostRequestKindEnum kind))
         {
-            "pair" => OutpostRequestKindEnum.Pair,
-            "poll" => OutpostRequestKindEnum.Poll,
-            "outcome" => OutpostRequestKindEnum.Outcome,
-            _ => throw new InvalidOperationException($"The agent sent a request to {Uri}, which names no request of §1."),
-        };
+            throw new InvalidOperationException($"The agent sent a request to {Uri}, which names no request of §1.");
+        }
+
+        Kind = kind;
     }
 
     // The name of the request in its path: pair, poll or outcome.
