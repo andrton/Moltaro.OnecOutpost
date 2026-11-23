@@ -307,7 +307,7 @@ internal sealed class OutpostStore
 
         await transaction.CommitAsync(cancellationToken);
 
-        return state.Newest == number ? state with { Newest = null } : state;
+        return ForPoll(state, number);
     }
 
     // Every agent, by its creation and identity, with the bases of its newest poll by key and whether it holds each, in
@@ -648,7 +648,7 @@ internal sealed class OutpostStore
 
         await transaction.CommitAsync(cancellationToken);
 
-        return new PollTake(state.Newest == poll.Number ? state with { Newest = null } : state, handed);
+        return new PollTake(ForPoll(state, poll.Number), handed);
     }
 
     // The command that holds the base and caller key, in one short transaction that first makes it Expired when it is
@@ -1204,6 +1204,13 @@ internal sealed class OutpostStore
             OutpostOutcomeKindEnum.Failed => OutpostOutcome.Failed(commandId, code!, null, [], false),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
+    }
+
+    // The state for the answer to the poll of this number: Newest stays the recorded number when it is not this one, and
+    // is null when it is.
+    private static PollState ForPoll(PollState state, long number)
+    {
+        return state.Newest == number ? state with { Newest = null } : state;
     }
 
     // The state of the agent in one statement: Revoked when it is not Paired, or not known; Newest the number of its
