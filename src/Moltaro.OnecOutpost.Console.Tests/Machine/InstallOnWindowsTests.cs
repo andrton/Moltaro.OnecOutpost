@@ -1,15 +1,8 @@
 using System.Runtime.Versioning;
 using System.Security.Principal;
 using Moltaro.OnecOutpost.Agent.Access;
-using Moltaro.OnecOutpost.Agent.Connector;
-using Moltaro.OnecOutpost.Agent.Files;
-using Moltaro.OnecOutpost.Agent.Secrets;
-using Moltaro.OnecOutpost.Agent.Transport;
 using Moltaro.OnecOutpost.Console.Commands;
-using Moltaro.OnecOutpost.Console.Connector;
-using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Rights;
-using Moltaro.OnecOutpost.Console.Service;
 using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 using Spectre.Console.Testing;
@@ -35,7 +28,8 @@ public sealed class InstallOnWindowsTests
 
             Directory.CreateDirectory(service.Archive);
             File.WriteAllText(Path.Combine(service.Archive, "Moltaro.OnecOutpost.Agent.exe"), "a stand-in for the agent");
-            ConsoleParts parts = PartsOf(service);
+            ConsoleParts parts =
+                Program.MachineParts(service.Name, service.Archive, service.ProgramFolder, service.DataFolder);
 
             CommandAppResult installed = await RunAsync(parts, "install");
 
@@ -61,29 +55,6 @@ public sealed class InstallOnWindowsTests
             Assert.True(Directory.Exists(service.ProgramFolder));
             Assert.True(Directory.Exists(service.DataFolder));
         });
-    }
-
-    // The parts as Program makes them of the machine, with the service, the folders and the source of the test.
-    private static ConsoleParts PartsOf(TestService service)
-    {
-        return new ConsoleParts(
-            true,
-            service.Name,
-            service.Archive,
-            service.ProgramFolder,
-            service.DataFolder,
-            new DiskFolder(service.DataFolder),
-            new WindowsServiceControl(TimeProvider.System),
-            new WindowsAccountRights(),
-            new WindowsFolderSetup(),
-            sid => new WindowsAccessLists(service.DataFolder, new SecurityIdentifier(sid)),
-            new MachineDpapi(),
-            ConnectorFinder.Machine(),
-            new RegSvr32Registration(),
-            (server, proxy) => ServerRoute.CreateHandler(server, proxy),
-            null,
-            TimeProvider.System,
-            "0.1.0-test");
     }
 
     private static Task<CommandAppResult> RunAsync(ConsoleParts parts, params string[] arguments)
