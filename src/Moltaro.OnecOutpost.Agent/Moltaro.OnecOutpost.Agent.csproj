@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
     <!-- A program of the agent archive, never a package. -->
     <IsPackable>false</IsPackable>
-    <!-- The marshalling that LibraryImport generates for DPAPI and the rename of the outbox is unsafe code. -->
+    <!-- LibraryImport generates unsafe code for every call to Windows, and the service, DPAPI, the launcher, the desktop and the readers of a token use pointers. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The local policy, the checks of commands and the audit log have no public surface: their tests address them directly. -->
+    <!-- The agent has no public surface: its tests address its types directly. -->
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Agent.Tests" />
     <!-- TestSupport wraps the boundary of the COM workers, and the lab's tests run the agent against a real 1C. -->
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.TestSupport" />

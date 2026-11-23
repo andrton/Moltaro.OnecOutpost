@@ -55,14 +55,9 @@ internal static class AccessListEdits
             AccessControlType.Allow));
     }
 
-    // Adds an entry that allows the account to read the data of the file or the folder at the path.
-    public static void Allow(string path, IdentityReference account)
-    {
-        Allow(path, account, FileSystemRights.ReadData);
-    }
-
-    // Adds an entry that allows the account these rights on the file or the folder at the path, and on nothing inside.
-    public static void Allow(string path, IdentityReference account, FileSystemRights rights)
+    // Adds an entry that allows the account these rights, to read data unless a test gives others, on the file or the
+    // folder at the path, and on nothing inside.
+    public static void Allow(string path, IdentityReference account, FileSystemRights rights = FileSystemRights.ReadData)
     {
         Add(path, new FileSystemAccessRule(account, rights, AccessControlType.Allow));
     }
@@ -91,16 +86,12 @@ internal static class AccessListEdits
         Add(path, new FileSystemAccessRule(account, FileSystemRights.ExecuteFile, AccessControlType.Deny));
     }
 
-    // Adds to a folder an entry that allows the account to read the data of what is created inside it, and that does
-    // not apply to the folder itself.
-    public static void AllowInsideOnly(string folder, IdentityReference account)
-    {
-        AllowInsideOnly(folder, account, FileSystemRights.ReadData);
-    }
-
-    // Adds to a folder an entry that allows the account these rights on what is created inside it, and that does not
-    // apply to the folder itself.
-    public static void AllowInsideOnly(string folder, IdentityReference account, FileSystemRights rights)
+    // Adds to a folder an entry that allows the account these rights, to read data unless a test gives others, on what
+    // is created inside it, and that does not apply to the folder itself.
+    public static void AllowInsideOnly(
+        string folder,
+        IdentityReference account,
+        FileSystemRights rights = FileSystemRights.ReadData)
     {
         Add(folder, new FileSystemAccessRule(
             account,

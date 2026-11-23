@@ -9,4 +9,8 @@ internal sealed record AgentPolicy(
     Uri? Proxy,
     TimeSpan RetryDelayMax,
     TimeSpan RequestTimeout,
-    IReadOnlyList<AgentBasePolicy> Bases);
+    IReadOnlyList<AgentBasePolicy> Bases)
+{
+    // A tenth of RetryDelayMax: the first delay after an error, and the shortest.
+    public TimeSpan FirstRetryDelay => RetryDelayMax / 10;
+}

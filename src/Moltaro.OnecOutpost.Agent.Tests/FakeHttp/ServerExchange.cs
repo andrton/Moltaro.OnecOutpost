@@ -51,13 +51,13 @@ internal sealed class ServerExchange
 
         Headers = headers;
         Name = Uri.AbsolutePath[(Uri.AbsolutePath.LastIndexOf('/') + 1)..];
-        Kind = Name switch
+
+        if (!OutpostForms.TryReadRequestKind(Name, out OutpostRequestKindEnum kind))
         {
-            "pair" => OutpostRequestKindEnum.Pair,
-            "poll" => OutpostRequestKindEnum.Poll,
-            "outcome" => OutpostRequestKindEnum.Outcome,
-            _ => throw new InvalidOperationException($"The agent sent a request to {Uri}, which names no request of §1."),
-        };
+            throw new InvalidOperationException($"The agent sent a request to {Uri}, which names no request of §1.");
+        }
+
+        Kind = kind;
     }
 
     // The name of the request in its path: pair, poll or outcome.
@@ -147,6 +147,16 @@ internal sealed class ServerExchange
     public void Fail(Exception exception)
     {
         Assert.True(_answer.TrySetException(exception), "The request was answered before.");
+    }
+
+    // The request ends as the handler ends it when the proxy answers its CONNECT with 407 (§9).
+    public void FailTunnelRefused()
+    {
+        Fail(new HttpRequestException(
+            HttpRequestError.ProxyTunnelError,
+            "The proxy tunnel request to proxy 'http://proxy.example.com:3128/' failed with status code '407'.",
+            null,
+            HttpStatusCode.ProxyAuthenticationRequired));
     }
 
     // An answer of the library: the status, the body in application/json and its signature for this request.

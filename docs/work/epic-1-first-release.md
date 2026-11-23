@@ -1303,7 +1303,7 @@ The release
 | S6c | The agent's loop: the transport, pairing, polls, outcomes, the host and the service | Full | Done, 22 November 2026: the transport with the addresses of §11, the waits and read limits, pairing, numbered polls through the proxy, the loop that records every command before it runs and sends outcomes until confirmed, the replacement for size, `connection` and `bases`, retention and the reservation called after verified answers, the in-process host and the Windows service by the `service` argument; end to end against the server of S5 over loopback with a fake in place of the COM worker, through a test proxy. The code review took two rounds (three P3s of round 1 fixed). The manual acceptance of the service is the owner's, on a lab or test machine. What it changes in the public contract is listed in the S6 brief for the owner |
 | S7a | Several nodes and lost messages | Full | Done, 23 November 2026, merged before S9c, which waits for its lab run (the planner, 23 November 2026): the proxy that drops and holds requests and answers and the host of two nodes in TestSupport, and a test of every line under "With two server nodes", all of which passed against the code as it was, so no implementation step; the code review closed in one round, with P4s left in the S7 brief |
 | S7b | The measurements and the explanations E1 and E2 | Full | Done, 23 November 2026: the program `Moltaro.OnecOutpost.Measurements`, run by hand, with the figures under Measured results (every p95 within 100 ms); explanations E1 "The path of a command" and E2 "Why a command never runs twice", animated, each as Markdown and HTML. The code review took two rounds (three P3s of documents, fixed) |
-| S8 | Refactoring of the code base after S7 | Refactoring | Not started |
+| S8 | Refactoring of the code base after S7 | Refactoring | Done, 23 November 2026: 37 of the 42 items of the survey, one commit each with every test green, behavior, the public contract and the assertions unchanged; the code review took one round. The tests of `Moltaro.OnecOutpost.OneC.Tests` run once more on the lab after the merge |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Done, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. The code review took three rounds, and its last finding, confirmed on the lab, was fixed by a query of the executor before the commit of a Write, reviewed once more. On the lab, 1C:Enterprise 8.3.17.1851, the first run gave 43 of 44 tests that need 1C passed; the failed one, `A_write_whose_commit_raises_gives_unknown_transaction_ended`, was removed, since 8.3.17 gave no way to provoke the case. The second run, with the `.epf` rebuilt after the fix, gave 45 of 45 passed, on the test base and one copy of a typical base, which ran with one account for both modes. No manual scenario, since every line of the Acceptance has a test. What it changed in the public contract is listed in its brief for the owner |
 | S9b | The agent runs the COM workers | Full | Done, 23 November 2026: the agent runs the COM workers of each base and mode with the bitness of the registered connector, inside a job object, ends a worker at its run limit and starts it again with a growing delay, and serves a base whose Writes run without safe mode for Read only until S9c; guide G2 with a lab test of every script. The internal contract was reviewed in two rounds and approved under PQ2; the code review took three rounds (six P3s of round 1, two of round 2, all fixed). 2430 tests passed here. On the lab, 23 November 2026, 1C:Enterprise 8.3.17.1851, the test base built again: 73 of 73 tests of `Moltaro.OnecOutpost.OneC.Tests` passed (S9's 45, G2's 25, the agent's 3), in 7 min 05 s. The agent, the COM worker and 1C were real, the server the test's; the real server against the agent is proven in CI over loopback (S6c) |
@@ -3982,7 +3982,7 @@ request and merge under PQ1:
         public LoopbackServer Second { get; } // a SignalClient of that host
         public FakeClock Clock { get; }       // of both
         public Task StopAsync(LoopbackServer node, CancellationToken cancellationToken);
-        public Task<LoopbackServer> RestartAsync(LoopbackServer node, CancellationToken cancellationToken);
+        public Task<LoopbackServer> RestartFirstAsync(CancellationToken cancellationToken);
     }
     // LoopbackServer: + StartAnotherAsync(ISignals signals, CancellationToken cancellationToken); its overload with
     // RemoteSignals takes an ISignals. RemoteSignals: + SignalHost? Host, the host that runs.
@@ -3994,9 +3994,10 @@ request and merge under PQ1:
       request over HTTP to the node with its header lines, less those of one hop, and the
       exact bytes of its body. It writes back what the agent reads of an answer: the
       status, `Content-Type`, `Outpost-Signature` and body. Every answer carries
-      `Connection: close`, so each request comes on a tunnel of its own. On a reused
-      connection that closes unanswered, .NET can send a request again by itself, and a
-      dropped request would then reach a node after all. An agent that closes its
+      `Connection: close`, so each request comes on a tunnel of its own, which keeps the
+      relay simple. A dropped request never reaches a node later: .NET sends a request
+      again by itself only while its body has not gone, and the proxy reads every body
+      whole before a rule takes it (the refactorer, S8). An agent that closes its
       connection while its request is at the node ends that request there too, as the
       byte pipe of S6c did.
     - **Choosing a request.** Each of the three methods sets a rule at once and gives a
@@ -4026,10 +4027,9 @@ request and merge under PQ1:
       made on either node's `Server`. `StopAsync` stops a node as its host stops. For
       `First` the Signals host stops with it, as when its process ends: `Second`'s client
       loses the host and tries again by itself.
-      `RestartAsync` starts the node again, stopping it first if it runs. The new node is
-      a new `LoopbackServer` at a new port, which `First` or `Second` gives from then on.
-      For `First` a new host starts on the old port, which the client reaches on its next
-      attempt.
+      `RestartFirstAsync` starts `First` again, stopping it first if it runs. The new node
+      is a new `LoopbackServer` at a new port, which `First` gives from then on, and a new
+      host starts on the old port, which the client reaches on its next attempt.
 - **To read.** The [concept](../concept.md), §3 rules 7, 10 and 11, §4 and §11 (20
   November 2026); this plan.
 - **Acceptance.**
@@ -4095,6 +4095,27 @@ request and merge under PQ1:
   repeat in `AuditLog.RemoveExpired` the check that `WaitsForOthers` makes, and are
   removed, with a review, the retention tests unchanged. The P4s left there and in the S5
   brief are looked at too.
+- **The survey** (the refactorer, agreed by the coordinator, 23 November 2026; the planner's
+  order of that day): 42 items of debt, in the coordinator's notes. The 23 that touch no
+  file of S9c's branch are built first, on `epic-1/sprint-08-refactoring` from `main`, each
+  its own commit with every test green; they are merged only after S9c, and the 19 that
+  touch S9c's code are added on top once it is merged. Twin theories are not merged into
+  one, so that the names stating a behavior stay. Item 34, one shared 30-second deadline of
+  the tests, is left: it would add a type and a `using` to about twenty files to remove
+  three one-line constants. The code review took one round (six P4s left: a reader of a
+  request's kind that only tests call, two shapes of reader, `ArgumentOutOfRangeException`
+  for a value outside an enum where none can reach, a test member keeping the old word,
+  two names in the lab tests, the S2 brief's contract naming the removed
+  `AgentPolicyException.Reason`).
+- **Not refactorings, for the owner or a later sprint** (the survey): which outcome
+  `PassCommandAsync` gives for a command the purge removed (Q15); an index on
+  `commands(agent_id)`, a migration, and the copies of a 64 MiB poll answer, each changed
+  only with a measurement; the sets of a revocation and of Expired sent whatever the
+  caller's cancellation; an `ended` appended at every start while the clock is behind; the
+  reason of a stop after `started`, which the audit log does not record (Q16); tests for
+  the behaviors S6b's review found untested; forwarding `Expect: 100-continue` through
+  `TestProxy`; `Requires=Windows` on every class of `Moltaro.OnecOutpost.ComWorker.Tests`;
+  README's sentence on a node that stops.
 
 ### L1 · The lab check of open items O1–O8
 
@@ -5032,7 +5053,11 @@ implementer work on `xhigh`.
     - with the output redirected, every command writes plain text, tested.
   - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine: `check` against the test base
     and each copy of a typical base, the rights of the read account included, with the
-    server's part against a stub; `metadata` writes a report of each.
+    server's part against a stub; `metadata` writes a report of each; the lines of the
+    worker account, on the lab's `outpost-worker`, each failure case named by a test that
+    breaks it on purpose where that needs no change of the machine (the owner, 23 November
+    2026). How `check` makes the probe start from the console is settled in S10's internal
+    contract.
   - Manual, on the lab machine: the owner runs every command in a terminal and accepts
     how it looks.
   - Manual, on the lab machine, S9c's line (the coordinator, 23 November 2026): `install`
@@ -5163,6 +5188,23 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     - the rights to change data that each read account has;
     - the server;
     - the clock skew;
+    - for each base whose Writes run without safe mode, its worker account: that it logs on
+      with the password of `secrets.dat`, naming a wrong password, a missing "Log on as a
+      batch job" and a locked, disabled or expired account, and that its token passes the
+      rule of the worker account;
+    - that the agent's account holds "Replace a process level token" and "Adjust memory
+      quotas for a process";
+    - a start of the COM worker under each worker account on the desktop the agent makes
+      for it, as the service starts it, which opens no base and reports the exit code or
+      the error of Windows, 0xC0000142 named as a failure to initialise on its desktop;
+    - the access lists of the data folder, its files and the program folder, naming who
+      else may write to them;
+    - that `policy.json` reads and that `secrets.dat` decrypts and holds every password
+      the policy needs.
+
+    `check` only reads: it writes nothing to a base and runs no script that changes data.
+    Every cause of a failure that a lab run finds becomes a line of `check` with its test
+    (the owner, 23 November 2026).
   - `connector register`, after L1, which registers the COM connector of the installed
     platform for its bitness, and says so when it lacks the rights of an administrator;
   - `metadata <base key> <file>`.

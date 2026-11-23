@@ -3,9 +3,9 @@ using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security;
-using System.Security.Principal;
 using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
+using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Agent.Workers;
@@ -44,13 +44,6 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     // TOKEN_ASSIGN_PRIMARY, TOKEN_DUPLICATE and TOKEN_QUERY: what CreateProcessAsUserW and CreateEnvironmentBlock need of
     // a primary token, and what GetTokenInformation needs.
     private const uint AgentTokenAccess = 0x0001 | 0x0002 | 0x0008;
-
-    // TokenGroups, TokenPrivileges and TokenStatistics of TOKEN_INFORMATION_CLASS.
-    private const int TokenGroupsClass = 2;
-
-    private const int TokenPrivilegesClass = 3;
-
-    private const int TokenStatisticsClass = 10;
 
     // CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, EXTENDED_STARTUPINFO_PRESENT and CREATE_NO_WINDOW.
     private const uint CreationFlags = 0x00000004 | 0x00000400 | 0x00080000 | 0x08000000;
@@ -131,9 +124,9 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
             try
             {
-                List<string> groups = [.. Groups(token).Select(group => group.Sid.Value)];
+                List<string> groups = [.. WorkerToken.Groups(token).Select(group => group.Sid.Value)];
 
-                ordinary = WorkerAccountRule.IsOrdinary(groups, Privileges(token));
+                ordinary = WorkerAccountRule.IsOrdinary(groups, WorkerToken.Privileges(token));
             }
             catch (Win32Exception exception)
             {
@@ -150,7 +143,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
             try
             {
-                List<string> agentPrivileges = Privileges(_agentToken);
+                List<string> agentPrivileges = WorkerToken.Privileges(_agentToken);
 
                 agentMayStart = agentPrivileges.Contains(AssignPrimaryToken) && agentPrivileges.Contains(IncreaseQuota);
             }
@@ -249,7 +242,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             desktop = worker.Desktop.Name;
         }
 
-        string commandLine = $"\"{program}\" {baseKey} {(mode == OutpostModeEnum.Write ? "write" : "read")}";
+        string commandLine = $"\"{program}\" {baseKey} {OutpostForms.WriteMode(mode)}";
 
         AnonymousPipeServerStream? input = null;
         AnonymousPipeServerStream? output = null;
@@ -321,113 +314,6 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     {
         return new AgentStopException(
             $"the worker account {account} of the base {baseKey} cannot log on: {new Win32Exception(error).Message}");
-    }
-
-    // The groups of the token, whatever their attributes, deny-only ones included, each with its attributes: LogOn judges
-    // their SIDs, and WorkerDesktop takes the logon SID from them. Win32Exception when the token cannot give them.
-    internal static unsafe List<(SecurityIdentifier Sid, uint Attributes)> Groups(SafeAccessTokenHandle token)
-    {
-        nint information = TokenInformation(token, TokenGroupsClass);
-
-        try
-        {
-            // TOKEN_GROUPS: the count, then the entries at the alignment of their first member, a pointer.
-            uint count = *(uint*)information;
-            SidAndAttributes* entries = (SidAndAttributes*)(information + sizeof(nint));
-            List<(SecurityIdentifier Sid, uint Attributes)> groups = [];
-
-            for (uint index = 0; index < count; index++)
-            {
-                groups.Add((new SecurityIdentifier(entries[index].Sid), entries[index].Attributes));
-            }
-
-            return groups;
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(information);
-        }
-    }
-
-    // The identifier of the token's logon session, its AuthenticationId, as one 64-bit number: WorkerDesktop names the
-    // desktop of a logon after it. Win32Exception when the token cannot give it.
-    internal static unsafe ulong LogonOf(SafeAccessTokenHandle token)
-    {
-        nint information = TokenInformation(token, TokenStatisticsClass);
-
-        try
-        {
-            Luid logon = ((TokenStatistics*)information)->AuthenticationId;
-
-            return ((ulong)(uint)logon.HighPart << 32) | logon.LowPart;
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(information);
-        }
-    }
-
-    // The names of the token's privileges, enabled or not. Win32Exception when the token cannot give them.
-    private static unsafe List<string> Privileges(SafeAccessTokenHandle token)
-    {
-        nint information = TokenInformation(token, TokenPrivilegesClass);
-
-        try
-        {
-            // TOKEN_PRIVILEGES: the count, then the entries at the alignment of a 32-bit integer.
-            uint count = *(uint*)information;
-            LuidAndAttributes* entries = (LuidAndAttributes*)(information + sizeof(uint));
-            List<string> privileges = [];
-
-            for (uint index = 0; index < count; index++)
-            {
-                privileges.Add(PrivilegeName(entries[index].Luid));
-            }
-
-            return privileges;
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(information);
-        }
-    }
-
-    // The information of a class of the token, in native memory that the caller frees with Marshal.FreeHGlobal; its
-    // entries point into that memory. Win32Exception when the token cannot give it.
-    private static nint TokenInformation(SafeAccessTokenHandle token, int informationClass)
-    {
-        // The first call gives the size and fails, with ERROR_INSUFFICIENT_BUFFER.
-        GetTokenInformation(token, informationClass, 0, 0, out int length);
-
-        nint information = Marshal.AllocHGlobal(length);
-
-        if (!GetTokenInformation(token, informationClass, information, length, out _))
-        {
-            int error = Marshal.GetLastPInvokeError();
-
-            Marshal.FreeHGlobal(information);
-
-            throw new Win32Exception(error);
-        }
-
-        return information;
-    }
-
-    // The name of a privilege, such as SeChangeNotifyPrivilege. Win32Exception when Windows does not know it.
-    private static unsafe string PrivilegeName(Luid luid)
-    {
-        // Longer than the name of any privilege of Windows, with its null.
-        const int Capacity = 128;
-
-        char* name = stackalloc char[Capacity];
-        int length = Capacity;
-
-        if (!LookupPrivilegeNameW(null, &luid, name, ref length))
-        {
-            throw new Win32Exception(Marshal.GetLastPInvokeError());
-        }
-
-        return new string(name, 0, length);
     }
 
     // CreateProcessAsUserW as Start says, with the environment block and the list of attributes that only this call
@@ -609,19 +495,6 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
         int logonType,
         int logonProvider,
         out SafeAccessTokenHandle token);
-
-    [LibraryImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool GetTokenInformation(
-        SafeAccessTokenHandle token,
-        int informationClass,
-        nint information,
-        int length,
-        out int returnLength);
-
-    [LibraryImport("advapi32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static unsafe partial bool LookupPrivilegeNameW(string? systemName, Luid* luid, char* name, ref int length);
 
     [LibraryImport("userenv.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -31,7 +31,7 @@ internal static class AgentStart
 
     // Runs the steps of a start, and the first that fails decides: the audit log, whose IOException passes and records
     // nothing; a Fault of the log; the access lists of the data folder, its folders and its files; the access lists of
-    // the program folder, programs, its full path, through which nobody else may change the code that the agent's
+    // the program folder, programFolder, its full path, through which nobody else may change the code that the agent's
     // account runs; agent.json and secrets.dat; the outbox, the records of commands and the poll numbers; policy.json,
     // with a password in the secrets for every mode it serves and for the worker account of every base that names one;
     // and the logon of each such worker account, in the policy's order, before any worker starts. A failed step after
@@ -44,7 +44,7 @@ internal static class AgentStart
         IAccessLists access,
         IMachineProtection protection,
         IWorkerLauncher workers,
-        string programs,
+        string programFolder,
         TimeProvider clock,
         string version)
     {
@@ -57,7 +57,7 @@ internal static class AgentStart
 
             try
             {
-                run = Check(folders, access, protection, workers, programs, clock, log);
+                run = Check(folders, access, protection, workers, programFolder, clock, log);
             }
             catch (AgentStopException exception)
             {
@@ -103,7 +103,7 @@ internal static class AgentStart
         IAccessLists access,
         IMachineProtection protection,
         IWorkerLauncher workers,
-        string programs,
+        string programFolder,
         TimeProvider clock,
         AuditLog log)
     {
@@ -115,7 +115,7 @@ internal static class AgentStart
         IReadOnlyList<string> rootNames = List(folders.Root, "the data folder");
 
         CheckAccess(folders, access, log, rootNames);
-        CheckPrograms(access, programs);
+        CheckProgramFolder(access, programFolder);
 
         AgentPairingSettings pairing = ReadPairing(folders.Root, rootNames);
         AgentSecrets secrets = ReadSecrets(folders.Root, rootNames, protection);
@@ -167,13 +167,13 @@ internal static class AgentStart
 
     // An account that could replace the code that the agent's account runs, the agent's own program, the worker or the
     // executor, would get the agent's secrets; the first entry through which one could stops the start.
-    private static void CheckPrograms(IAccessLists access, string programs)
+    private static void CheckProgramFolder(IAccessLists access, string programFolder)
     {
         IReadOnlyList<(string Path, IReadOnlyList<string> Accounts)> writers;
 
         try
         {
-            writers = access.Writers(programs);
+            writers = access.Writers(programFolder);
         }
         catch (IOException)
         {

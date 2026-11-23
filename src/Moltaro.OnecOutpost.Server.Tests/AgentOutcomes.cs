@@ -2,7 +2,7 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 
-namespace Moltaro.OnecOutpost.Server.Tests.Store;
+namespace Moltaro.OnecOutpost.Server.Tests;
 
 // Outcome objects as an agent sends them (§8 of docs/protocol.md), for the tests of commands. Which ones an agent may
 // send for which mode is the subject of the codec's tests; these tests send only those it may.

@@ -21,7 +21,7 @@ internal static class TestLines
             User = "outpost-read",
             Password = "read \"pw\"",
             SafeMode = true,
-            Executor = TestPool.Executor,
+            Executor = PairedFolder.Executor,
         };
     }
 

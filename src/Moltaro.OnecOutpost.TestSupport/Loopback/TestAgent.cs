@@ -255,7 +255,7 @@ internal sealed class TestAgent : IDisposable
         byte[] signature,
         CancellationToken cancellationToken)
     {
-        using HttpRequestMessage request = new(HttpMethod.Post, "v1/" + RequestName(kind));
+        using HttpRequestMessage request = new(HttpMethod.Post, "v1/" + OutpostForms.WriteRequestKind(kind));
         request.Content = new ByteArrayContent(body);
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(ContentType);
         request.Headers.Add(OutpostProtocol.AgentHeader, OutpostHeaders.FormatAgent(Id));
@@ -264,35 +264,7 @@ internal sealed class TestAgent : IDisposable
 
         using HttpResponseMessage response = await _client.SendAsync(request, cancellationToken);
 
-        string? answerSignature = null;
-
-        if (response.Headers.TryGetValues(OutpostProtocol.SignatureHeader, out IEnumerable<string>? values))
-        {
-            answerSignature = values.Single();
-        }
-
-        byte[] answerBody = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-
-        return new AgentAnswer(
-            kind,
-            (int)response.StatusCode,
-            response.Content.Headers.ContentType?.ToString(),
-            answerSignature,
-            answerBody,
-            body,
-            signature);
-    }
-
-    // The name of a request in its path (§1).
-    private static string RequestName(OutpostRequestKindEnum kind)
-    {
-        return kind switch
-        {
-            OutpostRequestKindEnum.Pair => "pair",
-            OutpostRequestKindEnum.Poll => "poll",
-            OutpostRequestKindEnum.Outcome => "outcome",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-        };
+        return await AgentAnswer.ReadAsync(response, kind, body, signature, cancellationToken);
     }
 
     private ECDsa PinnedKey => _serverKey ?? throw new InvalidOperationException("The agent pinned no server key.");

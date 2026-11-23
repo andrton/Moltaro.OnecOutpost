@@ -1,3 +1,4 @@
+using Moltaro.OnecOutpost.Agent.Outcomes;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Protocol;
@@ -58,7 +59,7 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         _launcher = launcher;
         _executor = executor;
         _clock = clock;
-        _firstDelay = policy.RetryDelayMax / 10;
+        _firstDelay = policy.FirstRetryDelay;
     }
 
     // Gives each mode of every base as many slots as it has workers, each with a task of its own, and returns at once;
@@ -100,9 +101,9 @@ internal sealed partial class WorkerPool : IAsyncDisposable
     // a kind and code that IsComWorkerOutcome refuses give result-type; anything else goes byte for byte. Each code is
     // Failed for a Read and Unknown for a Write, written as CommandRecords writes its own. DurationMs is the clock's
     // time from the call to the outcome. A worker is dropped after null, after a kill, and after it gave
-    // base-unreachable or connection-lost, after which S9's worker ends; its mode has one worker fewer until its slot
-    // starts another. Cancellation kills the worker, waits for its run and throws, recording nothing (rule 3 at the next
-    // start).
+    // base-unreachable or connection-lost, after which the COM worker ends; its mode has one worker fewer until its
+    // slot starts another. Cancellation kills the worker, waits for its run and throws, recording nothing (rule 3 at
+    // the next start).
     public Task<WorkerRun> RunAsync(OutpostCommandMessage command, CancellationToken cancellationToken)
     {
         long started = _clock.GetTimestamp();
@@ -111,7 +112,9 @@ internal sealed partial class WorkerPool : IAsyncDisposable
 
         if (worker is null)
         {
-            byte[] unreachable = Own(OutpostAgentOutcomeKindEnum.Failed, OutpostOutcomeCodes.BaseUnreachable);
+            byte[] unreachable = OwnOutcome.Write(
+                OutpostAgentOutcomeKindEnum.Failed,
+                OutpostOutcomeCodes.BaseUnreachable);
 
             return Task.FromResult(new WorkerRun(unreachable, ElapsedMs(started)));
         }
@@ -154,24 +157,6 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         stop.Dispose();
     }
 
-    // An outcome that the agent writes itself, as CommandRecords writes its own: no result, no error text and no
-    // messages.
-    private static byte[] Own(OutpostAgentOutcomeKindEnum kind, string code)
-    {
-        return OutpostCodec.Write(new OutpostOutcomeMessage(kind, code, null, null, [], false));
-    }
-
-    // The outcome that the agent writes itself for a command that may have run: Failed for a Read, and Unknown for a
-    // Write, whose script may have committed (rule 5).
-    private static byte[] OwnAfterStart(OutpostModeEnum mode, string code)
-    {
-        OutpostAgentOutcomeKindEnum kind = mode == OutpostModeEnum.Write
-            ? OutpostAgentOutcomeKindEnum.Unknown
-            : OutpostAgentOutcomeKindEnum.Failed;
-
-        return Own(kind, code);
-    }
-
     // The object of §8 that the bytes hold for the mode, or null when ReadOutcome refuses them.
     private static OutpostOutcomeMessage? ReadOrNull(OutpostModeEnum mode, byte[] outcome)
     {
@@ -185,17 +170,17 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         }
     }
 
-    // The outcome sent for what a run gave within its limit (§8): the bytes of the executor, or of S9's worker itself,
-    // as they came when the agent may accept them, and otherwise an outcome of the agent's own. The worker is dropped
-    // when it ended, or broke its line, without an outcome, and when it gave base-unreachable or connection-lost, after
-    // which S9's worker ends.
+    // The outcome sent for what a run gave within its limit (§8): the bytes of the executor, or of the COM worker
+    // itself, as they came when the agent may accept them, and otherwise an outcome of the agent's own. The worker is
+    // dropped when it ended, or broke its line, without an outcome, and when it gave base-unreachable or
+    // connection-lost, after which the COM worker ends.
     private static byte[] Accept(Worker worker, OutpostModeEnum mode, (long Size, byte[] Outcome)? given)
     {
         if (given is not (long size, byte[] outcome))
         {
             worker.Drop();
 
-            return OwnAfterStart(mode, OutpostOutcomeCodes.ConnectionLost);
+            return OwnOutcome.AfterStart(mode, OutpostOutcomeCodes.ConnectionLost);
         }
 
         OutpostOutcomeMessage? message = ReadOrNull(mode, outcome);
@@ -205,16 +190,16 @@ internal sealed partial class WorkerPool : IAsyncDisposable
             worker.Drop();
         }
 
-        // S9's requirement: the size the executor measured is the length of the bytes the agent received.
+        // As the brief of S9 requires: the size the executor measured is the length of the bytes the agent received.
         bool accepted = size == outcome.Length
             && message is not null
             && OutpostOutcomeCodes.IsComWorkerOutcome(mode, message.Kind, message.Code);
 
-        return accepted ? outcome : OwnAfterStart(mode, OutpostOutcomeCodes.ResultType);
+        return accepted ? outcome : OwnOutcome.AfterStart(mode, OutpostOutcomeCodes.ResultType);
     }
 
-    // The base as S9's worker completes it into a 1C connection string: Srvr and Ref for a cluster, File for a folder,
-    // each " in a value doubled.
+    // The base as the COM worker completes it into a 1C connection string: Srvr and Ref for a cluster, File for a
+    // folder, each " in a value doubled.
     private static string LocationOf(AgentBasePolicy served)
     {
         if (served.File is string file)
@@ -377,8 +362,9 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         {
             Task<(long Size, byte[] Outcome)?> run;
 
-            // The process is given the caller's token, as its open is. A token already cancelled may end RunAsync before
-            // it returns a task; the worker is then killed all the same.
+            // The process is given the caller's token, as its open is given the pool's: each call passes on the token
+            // it was given, never the race's. A token already cancelled may end RunAsync before it returns a task; the
+            // worker is then killed all the same.
             try
             {
                 run = worker.Process.RunAsync(line, cancellationToken);
@@ -409,7 +395,9 @@ internal sealed partial class WorkerPool : IAsyncDisposable
 
             if (first == limit && limit.IsCompletedSuccessfully)
             {
-                return new WorkerRun(OwnAfterStart(command.Mode, OutpostOutcomeCodes.RunLimit), ElapsedMs(started));
+                return new WorkerRun(
+                    OwnOutcome.AfterStart(command.Mode, OutpostOutcomeCodes.RunLimit),
+                    ElapsedMs(started));
             }
 
             throw new OperationCanceledException(cancellationToken);

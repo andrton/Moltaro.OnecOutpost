@@ -1,4 +1,3 @@
-using System.Net;
 using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Agent.Tests.FakeHttp;
 using Moltaro.OnecOutpost.Agent.Transport;
@@ -24,7 +23,7 @@ public sealed class OutcomeAnswerTests
         Task<OutcomeResultEnum> result = test.SendOutcomeAsync(Guid.NewGuid(), TestOutcomes.Succeeded());
         (await test.Server.NextOutcomeAsync()).Confirm();
 
-        Assert.Equal(OutcomeResultEnum.Confirmed, await EndOf(result));
+        Assert.Equal(OutcomeResultEnum.Confirmed, await TestTimes.EndOf(result));
     }
 
     // "Bare" means without an Outpost-Signature that verifies, whatever the body (§9).
@@ -41,7 +40,7 @@ public sealed class OutcomeAnswerTests
         Task<OutcomeResultEnum> result = test.SendOutcomeAsync(Guid.NewGuid(), TestOutcomes.Succeeded());
         Give(test, await test.Server.NextOutcomeAsync(), answer);
 
-        Assert.Equal(OutcomeResultEnum.TooLarge, await EndOf(result));
+        Assert.Equal(OutcomeResultEnum.TooLarge, await TestTimes.EndOf(result));
     }
 
     // A 413 whose signature verifies is no bare 413, and with another code it is no refusal of the table either.
@@ -65,7 +64,7 @@ public sealed class OutcomeAnswerTests
         Task<OutcomeResultEnum> result = test.SendOutcomeAsync(Guid.NewGuid(), TestOutcomes.Succeeded());
         Give(test, await test.Server.NextOutcomeAsync(), answer);
 
-        Assert.Equal(OutcomeResultEnum.Lost, await EndOf(result));
+        Assert.Equal(OutcomeResultEnum.Lost, await TestTimes.EndOf(result));
     }
 
     // The answer begins after half of requestTimeout and its body stops: the one wait of requestTimeout covers both.
@@ -86,7 +85,7 @@ public sealed class OutcomeAnswerTests
         await stalled.Stalled.WaitAsync(TestTimes.Deadline, TestContext.Current.CancellationToken);
         await test.PassExactlyAsync(RequestTimeout / 2);
 
-        Assert.Equal(OutcomeResultEnum.Lost, await EndOf(result));
+        Assert.Equal(OutcomeResultEnum.Lost, await TestTimes.EndOf(result));
     }
 
     // §10: each limit is accepted at it and refused one byte beyond it. White space after the answer keeps §2.
@@ -103,7 +102,7 @@ public sealed class OutcomeAnswerTests
         Task<OutcomeResultEnum> result = test.SendOutcomeAsync(command, TestOutcomes.Succeeded());
         (await test.Server.NextOutcomeAsync()).AnswerSigned(200, body);
 
-        Assert.Equal(OutcomeResultEnum.Confirmed, await EndOf(result));
+        Assert.Equal(OutcomeResultEnum.Confirmed, await TestTimes.EndOf(result));
     }
 
     [Fact]
@@ -116,7 +115,7 @@ public sealed class OutcomeAnswerTests
         ServerExchange exchange = await test.Server.NextOutcomeAsync();
         exchange.AnswerStreamed(body, declared: true);
 
-        Assert.Equal(OutcomeResultEnum.Lost, await EndOf(result));
+        Assert.Equal(OutcomeResultEnum.Lost, await TestTimes.EndOf(result));
         Assert.Equal(0, body.BytesRead);
     }
 
@@ -130,7 +129,7 @@ public sealed class OutcomeAnswerTests
         ServerExchange exchange = await test.Server.NextOutcomeAsync();
         exchange.AnswerStreamed(body, declared: false);
 
-        Assert.Equal(OutcomeResultEnum.Lost, await EndOf(result));
+        Assert.Equal(OutcomeResultEnum.Lost, await TestTimes.EndOf(result));
     }
 
     private static void Give(TestConnection test, ServerExchange exchange, string answer)
@@ -194,11 +193,7 @@ public sealed class OutcomeAnswerTests
                 exchange.Fail(new HttpRequestException("The connection was reset."));
                 break;
             case "tunnel-refused":
-                exchange.Fail(new HttpRequestException(
-                    HttpRequestError.ProxyTunnelError,
-                    "The proxy tunnel request to proxy 'http://proxy.example.com:3128/' failed with status code '407'.",
-                    null,
-                    HttpStatusCode.ProxyAuthenticationRequired));
+                exchange.FailTunnelRefused();
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(answer), answer, "No such answer.");

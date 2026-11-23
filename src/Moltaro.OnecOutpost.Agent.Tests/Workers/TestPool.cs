@@ -16,19 +16,15 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 // Open returns.
 internal sealed class TestPool : IAsyncDisposable
 {
-    public const string Executor = @"C:\Program Files\Moltaro Outpost\OutpostExecutor.epf";
-
     public static readonly TimeSpan ReadLimit = TimeSpan.FromMinutes(1);
 
     public static readonly TimeSpan WriteLimit = TimeSpan.FromMinutes(2);
-
-    public static readonly TimeSpan Millisecond = TimeSpan.FromMilliseconds(1);
 
     private TestPool(AgentPolicy policy, AgentSecrets secrets)
     {
         Policy = policy;
         Launcher = new FakeWorkerLauncher(Data);
-        Pool = new WorkerPool(policy, secrets, Launcher, Executor, Clock);
+        Pool = new WorkerPool(policy, secrets, Launcher, PairedFolder.Executor, Clock);
     }
 
     public AgentPolicy Policy { get; }
@@ -44,12 +40,7 @@ internal sealed class TestPool : IAsyncDisposable
     // The passwords of the default policy, as the console's secret writes them.
     public static AgentSecrets Secrets => new(
         [],
-        new Dictionary<(string Base, OutpostModeEnum Mode), string>
-        {
-            [("accounting", OutpostModeEnum.Read)] = "read-pw",
-            [("accounting", OutpostModeEnum.Write)] = "write-pw",
-            [("warehouse", OutpostModeEnum.Read)] = "",
-        },
+        PairedFolder.Passwords.ToDictionary(entry => (entry.Base, entry.Mode), entry => entry.Password),
         new Dictionary<string, string>());
 
     // The pool of the default policy, with one worker in each mode of accounting unless a test gives more.
@@ -116,21 +107,14 @@ internal sealed class TestPool : IAsyncDisposable
     // Completes once the pool has armed a timer due at or before dueBy, such as the run limit of a run it started.
     public Task WaitForTimerAsync(DateTimeOffset dueBy)
     {
-        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-
-        return Clock.WaitForTimerAsync(dueBy, cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
+        return TestTimes.WaitForTimerAsync(Clock, dueBy);
     }
 
     // Waits until the pool has armed a timer due by the delay from now, states that none is due a millisecond earlier,
     // and moves the clock by the delay.
-    public async Task PassExactlyAsync(TimeSpan delay)
+    public Task PassExactlyAsync(TimeSpan delay)
     {
-        DateTimeOffset now = Clock.GetUtcNow();
-
-        await WaitForTimerAsync(now + delay);
-        Assert.False(Clock.HasTimerDueBy(now + delay - Millisecond), $"The pool waits less than {delay}.");
-
-        Clock.Advance(delay);
+        return TestTimes.PassExactlyAsync(Clock, delay, "pool");
     }
 
     // Completes once the deadline of an open has ended: the timer that the pool armed on the clock to fire at dueAt,

@@ -137,9 +137,9 @@ internal static class OutpostCodec
         writer.Name("bases");
         writer.StartObject();
         writer.Name("held");
-        WriteStrings(writer, message.Held);
+        writer.Strings(message.Held);
         writer.Name("claimed");
-        WriteStrings(writer, message.Claimed);
+        writer.Strings(message.Claimed);
         writer.EndObject();
 
         writer.Name("commands");
@@ -176,7 +176,7 @@ internal static class OutpostCodec
         writer.Name("base");
         writer.String(message.Base);
         writer.Name("mode");
-        writer.String(ModeWord(message.Mode));
+        writer.String(OutpostForms.WriteMode(message.Mode));
         writer.Name("callerKey");
         writer.NullableString(message.CallerKey);
 
@@ -207,7 +207,7 @@ internal static class OutpostCodec
 
         writer.StartObject();
         writer.Name("kind");
-        writer.String(KindWord(message.Kind));
+        writer.String(OutpostForms.WriteOutcomeKind(message.Kind));
         writer.Name("code");
         writer.NullableString(message.Code);
         writer.Name("result");
@@ -224,7 +224,7 @@ internal static class OutpostCodec
         writer.Name("errorText");
         writer.NullableString(message.ErrorText);
         writer.Name("messages");
-        WriteStrings(writer, message.Messages);
+        writer.Strings(message.Messages);
         writer.Name("messagesTrimmed");
         writer.Boolean(message.MessagesTrimmed);
         writer.EndObject();
@@ -990,18 +990,6 @@ internal static class OutpostCodec
         writer.EndObject();
     }
 
-    private static void WriteStrings(OutpostJsonWriter writer, IReadOnlyList<string> strings)
-    {
-        writer.StartArray();
-
-        foreach (string text in strings)
-        {
-            writer.String(text);
-        }
-
-        writer.EndArray();
-    }
-
     // An agent version of §2: 1 to 64 characters, each one of A-Z a-z 0-9 . - +.
     private static string ReadAgentVersion(JsonElement message)
     {
@@ -1066,49 +1054,16 @@ internal static class OutpostCodec
         return result;
     }
 
-    private static string ModeWord(OutpostModeEnum mode)
-    {
-        return mode switch
-        {
-            OutpostModeEnum.Read => "read",
-            OutpostModeEnum.Write => "write",
-            _ => throw new ArgumentOutOfRangeException(nameof(mode)),
-        };
-    }
-
     private static OutpostModeEnum ReadMode(JsonElement command)
     {
-        return ReadString(command, "mode") switch
-        {
-            "read" => OutpostModeEnum.Read,
-            "write" => OutpostModeEnum.Write,
-            _ => throw Form("The mode is not read or write."),
-        };
-    }
-
-    private static string KindWord(OutpostAgentOutcomeKindEnum kind)
-    {
-        return kind switch
-        {
-            OutpostAgentOutcomeKindEnum.Succeeded => "succeeded",
-            OutpostAgentOutcomeKindEnum.Failed => "failed",
-            OutpostAgentOutcomeKindEnum.Refused => "refused",
-            OutpostAgentOutcomeKindEnum.Unknown => "unknown",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-        };
+        return OutpostForms.ReadMode(ReadString(command, "mode")) ?? throw Form("The mode is not read or write.");
     }
 
     // Only the server sets Expired and Unavailable, so an outcome object never holds them.
     private static OutpostAgentOutcomeKindEnum ReadKind(JsonElement message)
     {
-        return ReadString(message, "kind") switch
-        {
-            "succeeded" => OutpostAgentOutcomeKindEnum.Succeeded,
-            "failed" => OutpostAgentOutcomeKindEnum.Failed,
-            "refused" => OutpostAgentOutcomeKindEnum.Refused,
-            "unknown" => OutpostAgentOutcomeKindEnum.Unknown,
-            _ => throw Form("The kind is not succeeded, failed, refused or unknown."),
-        };
+        return OutpostForms.ReadOutcomeKind(ReadString(message, "kind"))
+            ?? throw Form("The kind is not succeeded, failed, refused or unknown.");
     }
 
     private static OutpostProtocolException NotVerified(string reason)

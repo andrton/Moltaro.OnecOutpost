@@ -96,7 +96,7 @@ public sealed class StartPolicyTests
             .. "\", \"read\": { \"account\": \"outpost-read\" } } ] }"u8,
         ];
         _folder.Data.Root.Seed("policy.json", policy);
-        _folder.SeedSecrets(("warehouse", "read", "read-pw"));
+        _folder.SeedSecrets(("warehouse", OutpostModeEnum.Read, "read-pw"));
 
         List<JsonElement> entries = StoppedStart.Of(_folder, _clock);
 
@@ -110,7 +110,7 @@ public sealed class StartPolicyTests
     [Fact]
     public void A_mode_that_the_policy_serves_without_its_password_stops_the_start_naming_the_base_and_the_mode()
     {
-        _folder.SeedSecrets(("accounting", "read", "read-pw"), ("warehouse", "read", ""));
+        _folder.SeedSecrets(("accounting", OutpostModeEnum.Read, "read-pw"), ("warehouse", OutpostModeEnum.Read, ""));
 
         string error = StoppedStart.Error(StoppedStart.Of(_folder, _clock));
 
@@ -137,13 +137,13 @@ public sealed class StartPolicyTests
             """);
         _folder.SeedSecrets(
             [
-                ("payroll", "read", "pw"),
-                ("payroll", "write", "pw"),
-                ("warehouse", "read", "pw"),
-                ("accounting", "read", "pw"),
-                ("accounting", "write", "pw"),
-                ("stock", "read", "pw"),
-                ("stock", "write", "pw"),
+                ("payroll", OutpostModeEnum.Read, "pw"),
+                ("payroll", OutpostModeEnum.Write, "pw"),
+                ("warehouse", OutpostModeEnum.Read, "pw"),
+                ("accounting", OutpostModeEnum.Read, "pw"),
+                ("accounting", OutpostModeEnum.Write, "pw"),
+                ("stock", OutpostModeEnum.Read, "pw"),
+                ("stock", OutpostModeEnum.Write, "pw"),
             ],
             [("payroll", "pw"), ("accounting", "pw")]);
         int count = _folder.Data.Changes.Count;

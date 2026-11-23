@@ -18,9 +18,6 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Nodes;
 [Trait("Requires", "PostgreSQL")]
 public sealed class NodeTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    // A tenth of the default retryDelayMax of policy.json: the agent's first delay after a lost answer (§9).
-    private static readonly TimeSpan FirstDelay = TimeSpan.FromSeconds(3);
-
     // The clock does not move, so the call returns because each node woke the other (principle 6): the call's set of the
     // agent's key the poll held on the other node, and that node's set of the command's key, once it kept the outcome,
     // the call.
@@ -116,7 +113,10 @@ public sealed class NodeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         DateTimeOffset start = nodes.Clock.GetUtcNow();
         await nodes.Second.WaitForTimerAsync(start + pollTimeout, cancellationToken);
 
-        Task disconnected = WhenStateAsync(nodes.Second.Signals, SignalConnectionStateEnum.Disconnected, cancellationToken);
+        Task disconnected = RemoteSignals.WhenStateAsync(
+            nodes.Second.Signals,
+            SignalConnectionStateEnum.Disconnected,
+            cancellationToken);
         await nodes.StopAsync(nodes.First, cancellationToken);
         await disconnected;
 
@@ -138,8 +138,11 @@ public sealed class NodeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         await agent.Data.WaitForAsync(Operations.Is($"confirmed {outcome.CommandId}"));
         Assert.Single(agent.Workers.Processes.SelectMany(process => process.Commands));
 
-        Task connected = WhenStateAsync(nodes.Second.Signals, SignalConnectionStateEnum.Connected, cancellationToken);
-        LoopbackServer first = await nodes.RestartAsync(nodes.First, cancellationToken);
+        Task connected = RemoteSignals.WhenStateAsync(
+            nodes.Second.Signals,
+            SignalConnectionStateEnum.Connected,
+            cancellationToken);
+        LoopbackServer first = await nodes.RestartFirstAsync(cancellationToken);
         await connected;
 
         // A Read: the poll held now was sent while the Write held the agent's one write worker.
@@ -162,49 +165,15 @@ public sealed class NodeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         CancellationToken cancellationToken)
     {
         using CancellationTokenSource stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        Task delayed = clock.WaitForTimerAsync(clock.GetUtcNow() + FirstDelay, stop.Token);
+        Task delayed = clock.WaitForTimerAsync(clock.GetUtcNow() + TestTimes.FirstDelay, stop.Token);
 
         if (await Task.WhenAny(next, delayed) == delayed)
         {
-            clock.Advance(FirstDelay);
+            clock.Advance(TestTimes.FirstDelay);
         }
 
         stop.Cancel();
 
         return await next;
-    }
-
-    // Completes once the Signals client of a node reports the state, within the deadline of every wait of a test. The
-    // handler is attached at once, before the change that the test then makes.
-    private static Task WhenStateAsync(
-        ISignals signals,
-        SignalConnectionStateEnum state,
-        CancellationToken cancellationToken)
-    {
-        TaskCompletionSource reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        void OnStateChanged(object? sender, SignalConnectionChangedEventArgs change)
-        {
-            if (change.State == state)
-            {
-                reached.TrySetResult();
-            }
-        }
-
-        signals.StateChanged += OnStateChanged;
-
-        return WaitAsync();
-
-        async Task WaitAsync()
-        {
-            try
-            {
-                await reached.Task.WaitAsync(LoopbackServer.Deadline, cancellationToken);
-            }
-            finally
-            {
-                signals.StateChanged -= OnStateChanged;
-            }
-        }
     }
 }

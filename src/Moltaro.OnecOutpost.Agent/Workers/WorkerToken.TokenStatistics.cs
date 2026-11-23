@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace Moltaro.OnecOutpost.Agent.Workers;
 
-internal sealed partial class ComWorkerLauncher
+internal static partial class WorkerToken
 {
     // TOKEN_STATISTICS of winnt.h, which GetTokenInformation gives: only AuthenticationId, the identifier of the token's
     // logon session, is read. The sequential layout aligns each field as the C compiler does, for 64 and for 32 bits.

@@ -69,7 +69,7 @@ public sealed class AgentPairingTests : IDisposable
         Assert.True(OutpostPairingProof.Check(_secret, Agent, request.Key, request.Proof));
 
         exchange.AnswerSigned(200, Answer(request.Key));
-        AgentPairingResult result = await EndOf(pairing);
+        AgentPairingResult result = await TestTimes.EndOf(pairing);
 
         Assert.Null(result.Failure);
         AgentPairingSettings settings = Assert.IsType<AgentPairingSettings>(result.Settings);
@@ -108,7 +108,7 @@ public sealed class AgentPairingTests : IDisposable
         byte[] sentKey = OutpostCodec.ReadPairRequest(Agent, exchange.Body, exchange.Signature).Key;
 
         Give(exchange, answer, sentKey);
-        AgentPairingResult result = await EndOf(pairing);
+        AgentPairingResult result = await TestTimes.EndOf(pairing);
 
         Assert.Null(result.Settings);
         Assert.Null(result.PrivateKey);
@@ -121,7 +121,7 @@ public sealed class AgentPairingTests : IDisposable
     {
         Task<AgentPairingResult> pairing = PairAsync();
         (await _server.NextAsync(OutpostRequestKindEnum.Pair)).Fail(new HttpRequestException("The connection was reset."));
-        AgentPairingResult result = await EndOf(pairing);
+        AgentPairingResult result = await TestTimes.EndOf(pairing);
 
         AssertEnded(result, null, AgentPairingFailureEnum.Unreachable);
     }
@@ -133,10 +133,10 @@ public sealed class AgentPairingTests : IDisposable
 
         Task<AgentPairingResult> pairing = PairAsync();
         await _server.NextAsync(OutpostRequestKindEnum.Pair);
-        await WaitForTimerAsync(start + RequestTimeout);
-        Assert.False(_clock.HasTimerDueBy(start + RequestTimeout - TimeSpan.FromMilliseconds(1)));
+        await TestTimes.WaitForTimerAsync(_clock, start + RequestTimeout);
+        Assert.False(_clock.HasTimerDueBy(start + RequestTimeout - TestTimes.Millisecond));
         _clock.Advance(RequestTimeout);
-        AgentPairingResult result = await EndOf(pairing);
+        AgentPairingResult result = await TestTimes.EndOf(pairing);
 
         AssertEnded(result, null, AgentPairingFailureEnum.Unreachable);
     }
@@ -153,7 +153,7 @@ public sealed class AgentPairingTests : IDisposable
         body.AsSpan(written.Length).Fill((byte)' ');
 
         exchange.AnswerSigned(200, body);
-        AgentPairingResult result = await EndOf(pairing);
+        AgentPairingResult result = await TestTimes.EndOf(pairing);
 
         Assert.NotNull(result.Settings);
         Assert.Null(result.Failure);
@@ -171,7 +171,7 @@ public sealed class AgentPairingTests : IDisposable
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         content.Headers.ContentLength = body.Length;
         exchange.Answer(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
-        AgentPairingResult result = await EndOf(pairing);
+        AgentPairingResult result = await TestTimes.EndOf(pairing);
 
         Assert.Null(result.Settings);
         Assert.Null(result.PrivateKey);
@@ -198,7 +198,7 @@ public sealed class AgentPairingTests : IDisposable
             // only once the agent has the status and waits for the rest of the body.
             byte[] sentKey = OutpostCodec.ReadPairRequest(Agent, exchange.Body, exchange.Signature).Key;
             StalledStream stalled = exchange.AnswerStalled(Answer(sentKey));
-            await WaitForTimerAsync(start + RequestTimeout);
+            await TestTimes.WaitForTimerAsync(_clock, start + RequestTimeout);
             await stalled.Stalled.WaitAsync(TestTimes.Deadline, TestContext.Current.CancellationToken);
             _clock.Advance(RequestTimeout);
         }
@@ -207,7 +207,7 @@ public sealed class AgentPairingTests : IDisposable
             exchange.AnswerStreamed(new GeneratedStream(OutpostProtocol.AnswerLimit + 1L), declared: true);
         }
 
-        AssertEnded(await EndOf(pairing), 200, AgentPairingFailureEnum.Answer);
+        AssertEnded(await TestTimes.EndOf(pairing), 200, AgentPairingFailureEnum.Answer);
     }
 
     private static void AssertEnded(AgentPairingResult result, int? status, AgentPairingFailureEnum failure)
@@ -216,13 +216,6 @@ public sealed class AgentPairingTests : IDisposable
         Assert.Null(result.PrivateKey);
         Assert.Equal(status, result.Status);
         Assert.Equal(failure, result.Failure);
-    }
-
-    private static Task<T> EndOf<T>(Task<T> request)
-    {
-        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-
-        return request.WaitAsync(TestTimes.Deadline, cancellationToken);
     }
 
     private Task<AgentPairingResult> PairAsync()
@@ -235,13 +228,6 @@ public sealed class AgentPairingTests : IDisposable
             RequestTimeout,
             _clock,
             TestContext.Current.CancellationToken);
-    }
-
-    private Task WaitForTimerAsync(DateTimeOffset dueBy)
-    {
-        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-
-        return _clock.WaitForTimerAsync(dueBy, cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
     }
 
     // The answer 200 of §6.1 for the key sent, with options that are not those of agent.json's example.

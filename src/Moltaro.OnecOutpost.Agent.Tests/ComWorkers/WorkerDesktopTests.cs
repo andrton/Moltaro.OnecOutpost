@@ -80,7 +80,8 @@ public sealed class WorkerDesktopTests : IDisposable
     // The station gains one allow entry of 0x123 for the logon, inherited by nothing, and nothing else changes. The
     // station lives as long as the logon session of the tests, and keeps the entries of every Make of that session, so
     // an earlier Make may have added this one already; the list read before Make, without that entry, is the list
-    // after it, without that entry.
+    // after it, without that entry. Limitation: once an earlier Make of the same logon session added the entry, a Make
+    // that does not add it goes unseen (the review of the desktop, round 2).
     [Fact]
     public void The_station_gains_one_entry_of_0x123_for_the_logon_of_the_token_and_nothing_else()
     {

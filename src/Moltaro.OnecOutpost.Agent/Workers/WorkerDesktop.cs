@@ -81,7 +81,7 @@ internal sealed partial class WorkerDesktop : IDisposable
     public static WorkerDesktop Make(string baseKey, SafeAccessTokenHandle token)
     {
         SecurityIdentifier logon = LogonSidOf(token);
-        ulong session = ComWorkerLauncher.LogonOf(token);
+        ulong session = WorkerToken.LogonOf(token);
         StationHandle station = CreateWindowStationW(null, 0, StationAccess, 0);
 
         if (station.IsInvalid)
@@ -128,7 +128,7 @@ internal sealed partial class WorkerDesktop : IDisposable
     // The group of the token that names its logon session, which only the processes of that one logon hold.
     private static SecurityIdentifier LogonSidOf(SafeAccessTokenHandle token)
     {
-        foreach ((SecurityIdentifier sid, uint attributes) in ComWorkerLauncher.Groups(token))
+        foreach ((SecurityIdentifier sid, uint attributes) in WorkerToken.Groups(token))
         {
             if ((attributes & LogonIdGroup) == LogonIdGroup)
             {

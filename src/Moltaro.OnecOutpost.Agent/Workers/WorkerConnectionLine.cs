@@ -1,6 +1,6 @@
 namespace Moltaro.OnecOutpost.Agent.Workers;
 
-// The connection line of a COM worker, the first line of its input, in the form of S9's worker: Location is
+// The connection line of a COM worker, the first line of its input, in the form the COM worker reads: Location is
 // Srvr="{server}";Ref="{database}"; or File="{file}";, each " in a value doubled; User the mode's Account; Password from
 // AgentSecrets.Passwords; SafeMode the mode's; Executor the pool's path of the executor. A class, not a record: it holds
 // a password, and nothing prints it.

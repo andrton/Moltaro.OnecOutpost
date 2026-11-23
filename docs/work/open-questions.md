@@ -113,6 +113,24 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Until answered** | It does: `IAccessLists.Others` names the owning account, and the agent stops with `started` and an error until Administrators own the file, as the S6 brief states in its limitation. S10's console, which writes `agent.json` and `secrets.dat`, sets their owner to Administrators |
 | **Decides** | The planner, before S10, whose console and guide G1 tell the administrator how to edit `policy.json` |
 
+### Q15. The outcome of a command the purge removed
+
+| | |
+| --- | --- |
+| **Found** | 23 November 2026, Epic 1 S8, the refactorer's survey (left by S5a's and S5b's reviews) |
+| **Question** | A repeat of a call that finds its command just as the purge removes it gets `InvalidOperationException` from `PassCommandAsync`. Should it get an outcome instead, and which: the stored one is gone, so Unknown, or a fresh run of the call? |
+| **Until answered** | The exception reaches the caller of the repeat. It needs a repeat within the outcome retention's last moment and is not seen in the tests |
+| **Decides** | The owner: the outcomes of a call are public contract |
+
+### Q16. The reason of a stop after `started`
+
+| | |
+| --- | --- |
+| **Found** | 23 November 2026, Epic 1 S8, the refactorer's survey (left by S6a's review) |
+| **Question** | When the agent stops after its `started` entry, for a failed write of the log or an outbox failure during the run or a cleared log, the audit log records no reason. Should a new entry, or `error` on a second `started`, record it? |
+| **Until answered** | The agent stops with exit code 1 and writes nothing more; the administrator reads the service's exit code |
+| **Decides** | The owner: the audit log is public contract |
+
 ## Answered
 
 ### Q1. Values of `policy.json` that its table does not mention

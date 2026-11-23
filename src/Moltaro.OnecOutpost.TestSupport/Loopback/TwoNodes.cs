@@ -7,10 +7,10 @@ namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 // ISignals, and the second reaches it through a SignalClient, so a set of either node wakes the waits of the other. A
 // test puts a TestProxy in front, whose Node chooses the node of each request, and makes calls on either node.
 //
-// Either node can be stopped and started again. Stopping the first stops the Signals host with it, as when its process
-// ends: the second's client loses its connection and tries again by itself. A node started again is a new
-// LoopbackServer at a new port, which First or Second then gives; the first starts a new Signals host on the port of
-// the old one, which the second's client reaches on its next attempt.
+// Either node can be stopped, and the first started again. Stopping the first stops the Signals host with it, as when
+// its process ends: the second's client loses its connection and tries again by itself. The first started again is a
+// new LoopbackServer at a new port, which First then gives, with a new Signals host on the port of the old one, which
+// the second's client reaches on its next attempt.
 internal sealed class TwoNodes : IAsyncDisposable
 {
     private readonly RemoteSignals _signals;
@@ -26,7 +26,7 @@ internal sealed class TwoNodes : IAsyncDisposable
     public LoopbackServer First { get; private set; }
 
     // The node that reaches the Signals host through a client.
-    public LoopbackServer Second { get; private set; }
+    public LoopbackServer Second { get; }
 
     // The clock of both nodes.
     public FakeClock Clock => First.Clock;
@@ -73,20 +73,13 @@ internal sealed class TwoNodes : IAsyncDisposable
         }
     }
 
-    // Starts the node again, after stopping it if it runs, and gives the new node, which First or Second gives from
-    // now on. The old one is disposed.
-    public async Task<LoopbackServer> RestartAsync(LoopbackServer node, CancellationToken cancellationToken)
+    // Starts the first node again, after stopping it if it runs, and gives the new node, which First gives from now on.
+    // The old one is disposed.
+    public async Task<LoopbackServer> RestartFirstAsync(CancellationToken cancellationToken)
     {
-        bool first = IsFirst(node);
+        LoopbackServer old = First;
 
-        await node.DisposeAsync();
-
-        if (!first)
-        {
-            Second = await node.StartAnotherAsync(_signals.Client, cancellationToken);
-
-            return Second;
-        }
+        await old.DisposeAsync();
 
         if (_signals.Host is not null)
         {
@@ -94,7 +87,7 @@ internal sealed class TwoNodes : IAsyncDisposable
         }
 
         _signals.StartHost();
-        First = await node.StartAnotherAsync(_signals.Host!, cancellationToken);
+        First = await old.StartAnotherAsync(_signals.Host!, cancellationToken);
 
         return First;
     }

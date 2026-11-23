@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
@@ -25,12 +26,10 @@ internal sealed class LabServer : HttpMessageHandler
 
     public static readonly TimeSpan LeaseGrace = OutpostProtocol.MaxLeaseGrace;
 
-    // The take deadline and the skew of a command, the server's defaults, and its outcome limit of 16 MiB.
+    // The take deadline and the skew of a command, the server's defaults; its outcome limit is LabLimits'.
     private static readonly TimeSpan TakeTimeout = TimeSpan.FromSeconds(30);
 
     private static readonly TimeSpan Skew = TimeSpan.FromMinutes(2);
-
-    private const int OutcomeLimit = 16 * 1024 * 1024;
 
     private readonly ECDsa _serverKey;
 
@@ -86,7 +85,7 @@ internal sealed class LabServer : HttpMessageHandler
             now,
             now + TakeTimeout,
             Skew,
-            OutcomeLimit);
+            LabLimits.OutcomeLimit);
 
         byte[] bytes = OutpostCodec.Write(command);
         OutpostSignedCommand signed = new(bytes, OutpostSignatures.SignCommand(_serverKey, bytes));

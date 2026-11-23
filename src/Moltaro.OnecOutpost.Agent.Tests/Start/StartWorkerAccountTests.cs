@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
+using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditEntries;
 
@@ -16,24 +17,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 public sealed class StartWorkerAccountTests
 {
     // PairedFolder's policy with the Writes of accounting out of safe mode under the account outpost-worker.
-    private const string Policy = """
-        {
-          "bases": [
-            {
-              "key": "accounting",
-              "server": "srv-1c:1541",
-              "database": "accounting",
-              "read": { "account": "outpost-read" },
-              "write": { "account": "outpost-write", "safeMode": false, "workerAccount": "outpost-worker" }
-            },
-            {
-              "key": "warehouse",
-              "file": "D:\\1C\\Warehouse",
-              "read": { "account": "outpost-read" }
-            }
-          ]
-        }
-        """;
+    private static readonly string Policy = PairedFolder.PolicyWithWorkerAccount("outpost-worker");
 
     // Four bases in this order: two with worker accounts of their own, one only read and one written in safe mode.
     private const string FourBases = """
@@ -50,15 +34,15 @@ public sealed class StartWorkerAccountTests
     private const string ExpectedNobodyElse =
         "; expected nobody but Administrators, SYSTEM, TrustedInstaller and the agent's account, as the console's install sets it";
 
-    private static readonly (string Base, string Mode, string Password)[] FourBasesPasswords =
+    private static readonly (string Base, OutpostModeEnum Mode, string Password)[] FourBasesPasswords =
     [
-        ("payroll", "read", "pw"),
-        ("payroll", "write", "pw"),
-        ("warehouse", "read", "pw"),
-        ("accounting", "read", "pw"),
-        ("accounting", "write", "pw"),
-        ("stock", "read", "pw"),
-        ("stock", "write", "pw"),
+        ("payroll", OutpostModeEnum.Read, "pw"),
+        ("payroll", OutpostModeEnum.Write, "pw"),
+        ("warehouse", OutpostModeEnum.Read, "pw"),
+        ("accounting", OutpostModeEnum.Read, "pw"),
+        ("accounting", OutpostModeEnum.Write, "pw"),
+        ("stock", OutpostModeEnum.Read, "pw"),
+        ("stock", OutpostModeEnum.Write, "pw"),
     ];
 
     private readonly PairedFolder _folder = PairedFolder.Create();
@@ -90,7 +74,7 @@ public sealed class StartWorkerAccountTests
     public void A_base_whose_worker_account_has_no_password_in_the_secrets_stops_the_start_naming_the_base()
     {
         _folder.Data.Root.Seed("policy.json", Policy);
-        _folder.SeedSecrets(("accounting", "read", "read-pw"), ("accounting", "write", "write-pw"), ("warehouse", "read", ""));
+        _folder.SeedSecrets(PairedFolder.Passwords);
 
         List<JsonElement> entries = StoppedStart.Of(_folder, _clock);
 
@@ -121,7 +105,7 @@ public sealed class StartWorkerAccountTests
     {
         _folder.Start(_clock).Log.Dispose();
 
-        Assert.Equal([PairedFolder.Programs], _folder.Access.ProgramsAsked);
+        Assert.Equal([PairedFolder.ProgramFolder], _folder.Access.ProgramsAsked);
     }
 
     // Somebody who could replace the code that the agent's account runs would get its secrets.

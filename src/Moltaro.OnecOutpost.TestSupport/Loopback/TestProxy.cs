@@ -46,18 +46,14 @@ internal sealed partial class TestProxy : IAsyncDisposable
         + "Content-Length: 0\r\n"
         + "\r\n");
 
-    // The header lines of one hop, which the proxy does not forward: it frames each request and each answer itself.
+    // The header lines of one hop that the agent sends, which the proxy does not forward: it frames each request and
+    // each answer itself.
     private static readonly HashSet<string> HopHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
         "Host",
         "Content-Length",
         "Expect",
         "Connection",
-        "Keep-Alive",
-        "Proxy-Connection",
-        "TE",
-        "Transfer-Encoding",
-        "Upgrade",
     };
 
     // One certificate for outpost.test serves every proxy of the test run.
@@ -67,8 +63,8 @@ internal sealed partial class TestProxy : IAsyncDisposable
 
     private readonly CancellationTokenSource _stop = new();
 
-    // The client through which requests reach the nodes. Every request asks for a connection of its own, so that the
-    // client never sends one again by itself, as .NET can on a pooled connection that closed before any answer came.
+    // The client through which requests reach the nodes. Every request asks for a connection of its own, as each
+    // request of the agent comes on a tunnel of its own, which keeps the relay simple.
     private readonly HttpClient _nodes = new(new SocketsHttpHandler
     {
         AllowAutoRedirect = false,
@@ -296,13 +292,12 @@ internal sealed partial class TestProxy : IAsyncDisposable
     // no request of the agent ends the tunnel: the agent sends none.
     private static OutpostRequestKindEnum KindOf(string path)
     {
-        return path[(path.LastIndexOf('/') + 1)..] switch
+        if (!OutpostForms.TryReadRequestKind(path[(path.LastIndexOf('/') + 1)..], out OutpostRequestKindEnum kind))
         {
-            "pair" => OutpostRequestKindEnum.Pair,
-            "poll" => OutpostRequestKindEnum.Poll,
-            "outcome" => OutpostRequestKindEnum.Outcome,
-            _ => throw new IOException($"The path {path} names no request of the agent."),
-        };
+            throw new IOException($"The path {path} names no request of the agent.");
+        }
+
+        return kind;
     }
 
     // Writes what the agent reads of an answer, its status, Content-Type, Outpost-Signature and body, framed by
@@ -451,9 +446,9 @@ internal sealed partial class TestProxy : IAsyncDisposable
     }
 
     // Ends TLS for the agent, reads its request, does with it what the rule that takes it says or forwards it, and
-    // writes the answer back with Connection: close. So every request comes on a tunnel of its own: on a connection it
-    // reused, the agent's handler could send a request again by itself when the proxy closes it unanswered, and a
-    // dropped request would reach a node after all.
+    // writes the answer back with Connection: close, so that every request comes on a tunnel of its own, which keeps
+    // the relay simple. A request that a rule drops never reaches a node later: .NET sends a request again by itself
+    // only while its body has not gone, and the proxy reads every body whole before a rule takes the request.
     private async Task RelayAsync(NetworkStream agent, int port, CancellationToken cancellationToken)
     {
         SslStream tls = new(agent, leaveInnerStreamOpen: true);
@@ -672,23 +667,8 @@ internal sealed partial class TestProxy : IAsyncDisposable
         }
 
         using HttpResponseMessage response = await _nodes.SendAsync(message, cancellationToken);
-        byte[] body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
 
-        string? signature = null;
-
-        if (response.Headers.TryGetValues(OutpostProtocol.SignatureHeader, out IEnumerable<string>? values))
-        {
-            signature = values.Single();
-        }
-
-        return new AgentAnswer(
-            request.Kind,
-            (int)response.StatusCode,
-            response.Content.Headers.ContentType?.ToString(),
-            signature,
-            body,
-            request.Body,
-            request.Signature);
+        return await AgentAnswer.ReadAsync(response, request.Kind, request.Body, request.Signature, cancellationToken);
     }
 
     // Records the head line and every Proxy-Authorization of a CONNECT, and gives whether it is refused.

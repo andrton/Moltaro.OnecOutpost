@@ -90,7 +90,7 @@ internal sealed class AgentLoop
         _version = version;
         _pollTimeout = run.Pairing.PollTimeout;
         _leaseGrace = run.Pairing.LeaseGrace;
-        _firstDelay = run.Policy.RetryDelayMax / 10;
+        _firstDelay = run.Policy.FirstRetryDelay;
         _pollDelay = _firstDelay;
         _outcomeDelay = _firstDelay;
     }

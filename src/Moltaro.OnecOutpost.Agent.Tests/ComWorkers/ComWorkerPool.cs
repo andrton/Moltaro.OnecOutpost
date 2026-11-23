@@ -51,7 +51,7 @@ internal sealed class ComWorkerPool : IAsyncDisposable
                     new AgentModePolicy("outpost-write", 1, TestPool.WriteLimit, SafeMode: true, WorkerAccount: null)),
             ]);
 
-        Pool = new WorkerPool(policy, TestPool.Secrets, Launcher, TestPool.Executor, Clock);
+        Pool = new WorkerPool(policy, TestPool.Secrets, Launcher, PairedFolder.Executor, Clock);
     }
 
     public FakeClock Clock { get; } = new(TestTimes.Start);
@@ -111,15 +111,9 @@ internal sealed class ComWorkerPool : IAsyncDisposable
 
     // Waits until the pool has armed a timer due by the delay from now, states that none is due a millisecond earlier,
     // and moves the clock by the delay.
-    public async Task PassExactlyAsync(TimeSpan delay)
+    public Task PassExactlyAsync(TimeSpan delay)
     {
-        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        DateTimeOffset now = Clock.GetUtcNow();
-
-        await Clock.WaitForTimerAsync(now + delay, cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
-        Assert.False(Clock.HasTimerDueBy(now + delay - TestPool.Millisecond), $"The pool waits less than {delay}.");
-
-        Clock.Advance(delay);
+        return TestTimes.PassExactlyAsync(Clock, delay, "pool");
     }
 
     public async ValueTask DisposeAsync()

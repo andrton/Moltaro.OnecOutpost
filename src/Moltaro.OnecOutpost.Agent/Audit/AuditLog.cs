@@ -115,7 +115,7 @@ internal sealed class AuditLog : IDisposable
         writer.Name("version");
         writer.String(version);
         writer.Name("withoutSafeMode");
-        WriteStrings(writer, withoutSafeMode);
+        writer.Strings(withoutSafeMode);
 
         if (error is not null)
         {
@@ -166,9 +166,9 @@ internal sealed class AuditLog : IDisposable
         (OutpostJsonWriter writer, DateTimeOffset time) = Begin("bases");
 
         writer.Name("held");
-        WriteStrings(writer, held);
+        writer.Strings(held);
         writer.Name("claimed");
-        WriteStrings(writer, claimed);
+        writer.Strings(claimed);
 
         Append(writer, time);
     }
@@ -183,7 +183,7 @@ internal sealed class AuditLog : IDisposable
         writer.Name("base");
         writer.String(command.Base);
         writer.Name("mode");
-        writer.String(ModeWord(command.Mode));
+        writer.String(OutpostForms.WriteMode(command.Mode));
         writer.Name("callerKey");
         writer.NullableString(command.CallerKey);
         writer.Name("script");
@@ -196,7 +196,7 @@ internal sealed class AuditLog : IDisposable
         writer.Time(command.Deadline);
 
         AuditFile file = Append(writer, time);
-        Apply(file, new AuditCommand(command.Id, command.Mode, true, null, null, null, false));
+        Apply(file, AuditCommand.OfReceived(command.Id, command.Mode));
     }
 
     // Records refused with its code: the command, its base and its mode where they are known, none of them for signature
@@ -219,7 +219,7 @@ internal sealed class AuditLog : IDisposable
         writer.Name("base");
         writer.NullableString(baseKey);
         writer.Name("mode");
-        writer.NullableString(mode is OutpostModeEnum known ? ModeWord(known) : null);
+        writer.NullableString(mode is OutpostModeEnum known ? OutpostForms.WriteMode(known) : null);
         writer.Name("code");
         writer.String(code);
 
@@ -227,7 +227,7 @@ internal sealed class AuditLog : IDisposable
 
         if (command is Guid refused)
         {
-            Apply(file, new AuditCommand(refused, mode, false, OutpostAgentOutcomeKindEnum.Refused, code, null, false));
+            Apply(file, AuditCommand.OfRefused(refused, mode, code));
         }
     }
 
@@ -247,7 +247,7 @@ internal sealed class AuditLog : IDisposable
         writer.NullableInteger(durationMs);
 
         AuditFile file = Append(writer, time);
-        Apply(file, new AuditCommand(command, null, false, kind, code, durationMs, false));
+        Apply(file, AuditCommand.OfEnded(command, kind, code, durationMs));
     }
 
     // Records confirmed: the server keeps the outcome of the command.
@@ -259,7 +259,7 @@ internal sealed class AuditLog : IDisposable
         writer.Id(command);
 
         AuditFile file = Append(writer, time);
-        Apply(file, new AuditCommand(command, null, false, null, null, null, true));
+        Apply(file, AuditCommand.OfConfirmed(command));
     }
 
     // Records reservation: the bound below which the identity sends its poll numbers (§6.2).
@@ -314,13 +314,11 @@ internal sealed class AuditLog : IDisposable
             }
         }
 
-        KeepConfirmed(deletable);
-
         bool removed = false;
 
         // The first file in the order of names that waits for no other: a file that holds a confirmed goes after the
-        // other files of that command, so that a stop or a failed delete never leaves a command with its received or
-        // ended and without its confirmed.
+        // other files of that command, and so stays while one of them stays, so that a stop or a failed delete never
+        // leaves a command with its received or ended and without its confirmed.
         while (true)
         {
             AuditFile? next = _files.Values.FirstOrDefault(file => deletable.Contains(file) && !WaitsForOthers(file));
@@ -338,8 +336,8 @@ internal sealed class AuditLog : IDisposable
             }
             catch (IOException)
             {
-                // The file stays until a later call, and with it the file of the confirmed of each of its commands.
-                KeepConfirmed(deletable);
+                // The file stays until a later call, and with it the file of the confirmed of each of its commands,
+                // which waits for it.
                 continue;
             }
 
@@ -458,32 +456,15 @@ internal sealed class AuditLog : IDisposable
             earlier.Confirmed || later.Confirmed);
     }
 
-    private static string ModeWord(OutpostModeEnum mode)
-    {
-        return mode == OutpostModeEnum.Read ? "read" : "write";
-    }
-
+    // The outcome of an ended: succeeded, failed or unknown, never refused, which a refused records.
     private static string OutcomeWord(OutpostAgentOutcomeKindEnum kind)
     {
-        return kind switch
+        if (kind == OutpostAgentOutcomeKindEnum.Refused)
         {
-            OutpostAgentOutcomeKindEnum.Succeeded => "succeeded",
-            OutpostAgentOutcomeKindEnum.Failed => "failed",
-            OutpostAgentOutcomeKindEnum.Unknown => "unknown",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "An ended has no outcome of this kind."),
-        };
-    }
-
-    private static void WriteStrings(OutpostJsonWriter writer, IReadOnlyList<string> strings)
-    {
-        writer.StartArray();
-
-        foreach (string text in strings)
-        {
-            writer.String(text);
+            throw new ArgumentOutOfRangeException(nameof(kind), kind, "An ended has no outcome of this kind.");
         }
 
-        writer.EndArray();
+        return OutpostForms.WriteOutcomeKind(kind);
     }
 
     // Reading an entry: each reader takes the member of that name only when the entry gives it exactly once, in its
@@ -496,7 +477,7 @@ internal sealed class AuditLog : IDisposable
         return TryReadText(entry, "time", out string? text)
             && DateTimeOffset.TryParseExact(
                 text,
-                OutpostJsonReader.TimeFormat,
+                OutpostForms.TimeFormat,
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal,
                 out time);
@@ -559,50 +540,25 @@ internal sealed class AuditLog : IDisposable
             return false;
         }
 
-        switch (word)
-        {
-            case null:
-                return true;
+        mode = OutpostForms.ReadMode(word);
 
-            case "read":
-                mode = OutpostModeEnum.Read;
-                return true;
-
-            case "write":
-                mode = OutpostModeEnum.Write;
-                return true;
-
-            default:
-                return false;
-        }
+        return word is null || mode is not null;
     }
 
     private static bool TryReadOutcome(JsonElement entry, out OutpostAgentOutcomeKindEnum kind)
     {
         kind = default;
 
-        if (!TryReadText(entry, "outcome", out string? word))
+        if (!TryReadText(entry, "outcome", out string? word)
+            || OutpostForms.ReadOutcomeKind(word) is not OutpostAgentOutcomeKindEnum read
+            || read == OutpostAgentOutcomeKindEnum.Refused)
         {
             return false;
         }
 
-        switch (word)
-        {
-            case "succeeded":
-                kind = OutpostAgentOutcomeKindEnum.Succeeded;
-                return true;
+        kind = read;
 
-            case "failed":
-                kind = OutpostAgentOutcomeKindEnum.Failed;
-                return true;
-
-            case "unknown":
-                kind = OutpostAgentOutcomeKindEnum.Unknown;
-                return true;
-
-            default:
-                return false;
-        }
+        return true;
     }
 
     // A duration of §2, whole milliseconds, or null.
@@ -762,7 +718,7 @@ internal sealed class AuditLog : IDisposable
                     return false;
                 }
 
-                Apply(file, new AuditCommand(received, mode, true, null, null, null, false));
+                Apply(file, AuditCommand.OfReceived(received, mode.Value));
                 break;
 
             case "refused":
@@ -776,8 +732,7 @@ internal sealed class AuditLog : IDisposable
                 // A refusal without an identity, for signature or form, names no command.
                 if (refused is Guid id)
                 {
-                    AuditCommand facts = new(id, refusedMode, false, OutpostAgentOutcomeKindEnum.Refused, refusal, null, false);
-                    Apply(file, facts);
+                    Apply(file, AuditCommand.OfRefused(id, refusedMode, refusal));
                 }
 
                 break;
@@ -791,7 +746,7 @@ internal sealed class AuditLog : IDisposable
                     return false;
                 }
 
-                Apply(file, new AuditCommand(ended, null, false, outcome, code, durationMs, false));
+                Apply(file, AuditCommand.OfEnded(ended, outcome, code, durationMs));
                 break;
 
             case "confirmed":
@@ -800,7 +755,7 @@ internal sealed class AuditLog : IDisposable
                     return false;
                 }
 
-                Apply(file, new AuditCommand(confirmed, null, false, null, null, null, true));
+                Apply(file, AuditCommand.OfConfirmed(confirmed));
                 break;
 
             case "reservation":
@@ -949,42 +904,9 @@ internal sealed class AuditLog : IDisposable
         }
     }
 
-    // Takes out of the files to delete every one that holds the confirmed of a command with an entry in a file that
-    // stays, until none does, so that no command is left with its received or ended and without its confirmed. Only
-    // that direction keeps a file: a received or an ended may go while its confirmed stays, so a file that is never past
-    // the retention keeps no older one.
-    private void KeepConfirmed(HashSet<AuditFile> deletable)
-    {
-        HashSet<Guid> staying = [];
-
-        foreach (AuditFile file in _files.Values.Where(file => !deletable.Contains(file)))
-        {
-            staying.UnionWith(file.Commands.Keys);
-        }
-
-        bool kept = true;
-
-        while (kept)
-        {
-            List<AuditFile> sharing = [.. deletable.Where(file => ConfirmsAny(file, staying))];
-
-            foreach (AuditFile file in sharing)
-            {
-                deletable.Remove(file);
-                staying.UnionWith(file.Commands.Keys);
-            }
-
-            kept = sharing.Count > 0;
-        }
-    }
-
-    // True when the file holds the confirmed of one of these commands.
-    private static bool ConfirmsAny(AuditFile file, HashSet<Guid> commands)
-    {
-        return file.Commands.Values.Any(facts => facts.Confirmed && commands.Contains(facts.Id));
-    }
-
-    // True while another file that is left holds an entry of a command whose confirmed this file holds.
+    // True while another file that is left holds an entry of a command whose confirmed this file holds. Only that
+    // direction keeps a file: a received or an ended may go while its confirmed stays, so a file that is never past the
+    // retention keeps no older one.
     private bool WaitsForOthers(AuditFile file)
     {
         foreach (AuditCommand facts in file.Commands.Values.Where(facts => facts.Confirmed))

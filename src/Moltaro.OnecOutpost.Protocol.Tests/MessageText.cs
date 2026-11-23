@@ -96,6 +96,12 @@ internal sealed class MessageText
         return Quote(time.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture));
     }
 
+    // A duration of §2 as whole milliseconds, moved by the step, made without the codec.
+    public static string Milliseconds(TimeSpan duration, int step = 0)
+    {
+        return ((long)duration.TotalMilliseconds + step).ToString();
+    }
+
     // An object nested the given number of levels, the outer object being level 1: each object but the innermost,
     // which is empty, holds the next under the name "level".
     public static string Nested(int levels)

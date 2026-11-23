@@ -1,11 +1,9 @@
-using System.Buffers.Text;
 using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
-using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
@@ -54,18 +52,11 @@ internal sealed class DiskDataFolder : IDisposable
         using ECDsa agent = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 
         File.WriteAllText(PathOf("policy.json"), policy);
-        File.WriteAllText(
-            PathOf("agent.json"),
-            $$"""{"server":"https://outpost.example.com/agents","agent":"{{PairedFolder.Agent}}","serverKey":"{{Base64Url.EncodeToString(server.ExportSubjectPublicKeyInfo())}}","pollTimeoutMs":25000,"leaseGraceMs":10000}""");
+        File.WriteAllText(PathOf("agent.json"), PairedFolder.AgentJsonOf(server.ExportSubjectPublicKeyInfo()));
 
         AgentSecrets secrets = new(
             agent.ExportPkcs8PrivateKey(),
-            new Dictionary<(string Base, OutpostModeEnum Mode), string>
-            {
-                [("accounting", OutpostModeEnum.Read)] = "read-pw",
-                [("accounting", OutpostModeEnum.Write)] = "write-pw",
-                [("warehouse", OutpostModeEnum.Read)] = "",
-            },
+            PairedFolder.Passwords.ToDictionary(entry => (entry.Base, entry.Mode), entry => entry.Password),
             workers.ToDictionary(entry => entry.Base, entry => entry.Password, StringComparer.Ordinal));
 
         File.WriteAllBytes(PathOf("secrets.dat"), SecretsFile.Write(secrets, new MachineDpapi()));

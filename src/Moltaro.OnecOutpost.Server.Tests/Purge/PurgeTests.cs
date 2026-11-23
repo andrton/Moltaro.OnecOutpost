@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moltaro.OnecOutpost.Protocol.Messages;
-using Moltaro.OnecOutpost.Server.Tests.Store;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Loopback;
 using static Moltaro.OnecOutpost.TestSupport.Loopback.PollRequests;

@@ -1,4 +1,4 @@
-namespace Moltaro.OnecOutpost.Server.Tests.Loopback;
+namespace Moltaro.OnecOutpost.Server.Tests.Endpoints;
 
 // What came back for a request of RawExchange: the status of the final answer, its Outpost-Signature when it has one,
 // its body, and whether the body of the request was sent, which happens only when the server asked for it.

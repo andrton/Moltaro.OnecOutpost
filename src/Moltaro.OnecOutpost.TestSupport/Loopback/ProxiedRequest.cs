@@ -2,8 +2,9 @@ using Moltaro.OnecOutpost.Protocol;
 
 namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 
-// A request of the agent as the TestProxy read it, whole: its kind, the path of its head line, its header lines but
-// Host, and the exact bytes of its body. A rule of the proxy chooses a request by these, and a replay sends them again.
+// A request of the agent as the TestProxy read it, whole: its kind, the path of its head line, its header lines, Host
+// included, and the exact bytes of its body. A rule of the proxy chooses a request by these, and a replay sends them
+// again.
 internal sealed record ProxiedRequest(
     OutpostRequestKindEnum Kind,
     string Path,

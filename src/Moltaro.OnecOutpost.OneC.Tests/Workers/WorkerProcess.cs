@@ -13,13 +13,6 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Workers;
 // worker that still runs, as the agent ends one, and kills it only if it does not end.
 internal sealed class WorkerProcess : IAsyncDisposable
 {
-    // The outcome limit of a command when a test gives none: the default of the server, 16 MiB (concept rule 5).
-    public const long DefaultOutcomeLimit = 16 * 1024 * 1024;
-
-    // How long a test waits for one line of the worker, or for its end. The first connection of a Windows account that
-    // never used 1C took twenty seconds on the lab machine (concept §12).
-    private static readonly TimeSpan Deadline = TimeSpan.FromMinutes(2);
-
     private readonly Process _process;
     private readonly Stream _input;
     private readonly Stream _output;
@@ -102,7 +95,7 @@ internal sealed class WorkerProcess : IAsyncDisposable
         string script,
         string parameters = "{}",
         string? callerKey = null,
-        long outcomeLimit = DefaultOutcomeLimit)
+        long outcomeLimit = LabLimits.OutcomeLimit)
     {
         await WriteLineAsync(writer =>
         {
@@ -160,7 +153,7 @@ internal sealed class WorkerProcess : IAsyncDisposable
 
             if (_end == 0)
             {
-                Assert.False(deadline.IsCancellationRequested, $"The worker wrote no line within {Deadline}. {Diagnostics}");
+                Assert.False(deadline.IsCancellationRequested, $"The worker wrote no line within {LabLimits.Deadline}. {Diagnostics}");
                 Assert.True(line.WrittenCount == 0, "The worker ended its output inside a line.");
 
                 return null;
@@ -214,7 +207,7 @@ internal sealed class WorkerProcess : IAsyncDisposable
         CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(
             TestContext.Current.CancellationToken);
 
-        deadline.CancelAfter(Deadline);
+        deadline.CancelAfter(LabLimits.Deadline);
 
         return deadline;
     }

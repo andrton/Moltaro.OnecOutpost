@@ -116,12 +116,6 @@ internal sealed class FakeServer : HttpMessageHandler
         return NextAsync(OutpostRequestKindEnum.Outcome);
     }
 
-    // Whether a request of the kind came that no test took yet.
-    public bool HasWaiting(OutpostRequestKindEnum kind)
-    {
-        return _queues[kind].Reader.TryPeek(out _);
-    }
-
     // The command as the server's writer writes it, signed with the server's key (§3, §7).
     public OutpostSignedCommand Sign(OutpostCommandMessage command)
     {

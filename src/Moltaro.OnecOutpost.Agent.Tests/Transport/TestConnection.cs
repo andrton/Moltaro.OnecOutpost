@@ -72,29 +72,14 @@ internal sealed class TestConnection : IDisposable
     // Completes once the connection has armed a timer due at or before dueBy.
     public Task WaitForTimerAsync(DateTimeOffset dueBy)
     {
-        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-
-        return Clock.WaitForTimerAsync(dueBy, cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
+        return TestTimes.WaitForTimerAsync(Clock, dueBy);
     }
 
     // Waits until the connection has armed a timer due by the delay from now, states that none is due a millisecond
     // earlier, and moves the clock by the delay.
-    public async Task PassExactlyAsync(TimeSpan delay)
+    public Task PassExactlyAsync(TimeSpan delay)
     {
-        DateTimeOffset now = Clock.GetUtcNow();
-
-        await WaitForTimerAsync(now + delay);
-        Assert.False(Clock.HasTimerDueBy(now + delay - TimeSpan.FromMilliseconds(1)), $"The connection waits less than {delay}.");
-
-        Clock.Advance(delay);
-    }
-
-    // The result of a request, which has to end within the deadline of the tests.
-    public static Task<T> EndOf<T>(Task<T> request)
-    {
-        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-
-        return request.WaitAsync(TestTimes.Deadline, cancellationToken);
+        return TestTimes.PassExactlyAsync(Clock, delay, "connection");
     }
 
     public void Dispose()

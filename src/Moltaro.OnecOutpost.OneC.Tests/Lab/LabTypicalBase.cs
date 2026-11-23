@@ -6,6 +6,9 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Lab;
 // repository.
 internal sealed class LabTypicalBase
 {
+    // The key of a copy in the tests' policies and commands.
+    public const string Key = "typical";
+
     // The address of the cluster, such as localhost:1541.
     public required string Server { get; init; }
 

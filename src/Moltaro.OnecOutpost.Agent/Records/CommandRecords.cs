@@ -8,9 +8,8 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 namespace Moltaro.OnecOutpost.Agent.Records;
 
 // The one place for the order of the records of a command that touch both the audit log and the outbox (rules 2, 3
-// and 11); the loop writes received with AuditLog.Received. An outcome that the agent writes itself is
-// OutpostCodec.Write of one with no result, no error text and no messages. Not thread-safe: one task makes every change
-// of the agent's files.
+// and 11); the loop writes received with AuditLog.Received. An outcome that the agent writes itself is an OwnOutcome.
+// Not thread-safe: one task makes every change of the agent's files.
 internal sealed class CommandRecords
 {
     private readonly AuditLog _log;
@@ -101,16 +100,17 @@ internal sealed class CommandRecords
             if (facts.Kind == OutpostAgentOutcomeKindEnum.Refused)
             {
                 // A stop between a refused and its file.
-                _outbox.Put(facts.Id, OwnOutcome(OutpostAgentOutcomeKindEnum.Refused, facts.Code!));
+                _outbox.Put(facts.Id, OwnOutcome.Write(OutpostAgentOutcomeKindEnum.Refused, facts.Code!));
             }
             else if (facts.Received && facts.Kind is null)
             {
                 // Rule 3: a received command without an outcome ran, or may have, and nobody knows how it ended.
-                (OutpostAgentOutcomeKindEnum kind, string code) = facts.Mode == OutpostModeEnum.Write
-                    ? (OutpostAgentOutcomeKindEnum.Unknown, OutpostOutcomeCodes.AgentStopped)
-                    : (OutpostAgentOutcomeKindEnum.Failed, OutpostOutcomeCodes.Lost);
+                OutpostAgentOutcomeKindEnum kind = OwnOutcome.KindAfterStart(facts.Mode);
+                string code = kind == OutpostAgentOutcomeKindEnum.Unknown
+                    ? OutpostOutcomeCodes.AgentStopped
+                    : OutpostOutcomeCodes.Lost;
 
-                _outbox.Put(facts.Id, OwnOutcome(kind, code));
+                _outbox.Put(facts.Id, OwnOutcome.Write(kind, code));
                 _log.Ended(facts.Id, kind, code, null);
             }
         }
@@ -124,7 +124,7 @@ internal sealed class CommandRecords
 
         if (command is Guid id)
         {
-            _outbox.Put(id, OwnOutcome(OutpostAgentOutcomeKindEnum.Refused, code));
+            _outbox.Put(id, OwnOutcome.Write(OutpostAgentOutcomeKindEnum.Refused, code));
         }
     }
 
@@ -145,11 +145,9 @@ internal sealed class CommandRecords
     {
         AuditCommand facts = _log.Find(command)!;
 
-        OutpostAgentOutcomeKindEnum kind = facts.Mode == OutpostModeEnum.Write
-            ? OutpostAgentOutcomeKindEnum.Unknown
-            : OutpostAgentOutcomeKindEnum.Failed;
+        OutpostAgentOutcomeKindEnum kind = OwnOutcome.KindAfterStart(facts.Mode);
 
-        _outbox.Put(command, OwnOutcome(kind, OutpostOutcomeCodes.ResultTooLarge));
+        _outbox.Put(command, OwnOutcome.Write(kind, OutpostOutcomeCodes.ResultTooLarge));
         _log.Ended(command, kind, OutpostOutcomeCodes.ResultTooLarge, facts.DurationMs);
     }
 
@@ -158,11 +156,6 @@ internal sealed class CommandRecords
     {
         _log.Confirmed(command);
         _outbox.Remove(command);
-    }
-
-    private static byte[] OwnOutcome(OutpostAgentOutcomeKindEnum kind, string code)
-    {
-        return OutpostCodec.Write(new OutpostOutcomeMessage(kind, code, null, null, [], false));
     }
 
     // The outcome file of a command, read for the mode of its command, or for either mode when no entry names one, as

@@ -3,7 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using Moltaro.OnecOutpost.TestSupport.Loopback;
 
-namespace Moltaro.OnecOutpost.Server.Tests.Loopback;
+namespace Moltaro.OnecOutpost.Server.Tests.Endpoints;
 
 // HTTP/1.1 written by hand, one request on a connection of its own, for the checks of §9 of docs/protocol.md that the
 // server makes before it reads a body. The header lines go exactly as the test gives them, a header repeated on two

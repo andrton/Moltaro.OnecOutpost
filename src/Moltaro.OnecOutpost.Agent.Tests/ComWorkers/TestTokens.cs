@@ -8,9 +8,8 @@ namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
 // Tokens of the process of the tests, which stands for the agent, for the tests of the worker's desktop: its own
 // primary token, as the launcher opens the agent's; its logon SID and the identifier of its logon session; and a
-// restricted version of it that holds some of
-// its groups for deny only, which a process may start a child with as with its own token, and which an allow entry for
-// those groups does not admit.
+// restricted version of it that holds some of its groups for deny only, which a process may start a child with as
+// with its own token, and which an allow entry for those groups does not admit.
 [SupportedOSPlatform("windows")]
 internal static partial class TestTokens
 {

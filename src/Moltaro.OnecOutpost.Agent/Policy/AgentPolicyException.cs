@@ -9,10 +9,7 @@ internal sealed class AgentPolicyException : Exception
         : base(path.Length == 0 ? reason : $"{path}: {reason}")
     {
         Path = path;
-        Reason = reason;
     }
 
     public string Path { get; }
-
-    public string Reason { get; }
 }

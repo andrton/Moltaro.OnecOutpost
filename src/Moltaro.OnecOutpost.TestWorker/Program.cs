@@ -1,13 +1,14 @@
 using System.Buffers;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 
 namespace Moltaro.OnecOutpost.TestWorker;
 
-// The test program that stands in for the COM worker of S9 in the agent's tests with Requires=Windows (the S9b brief).
+// The test program that stands in for the COM worker in the agent's tests with Requires=Windows (the S9b brief).
 // It speaks the worker's lines, command line and exit codes over its raw standard streams, one JSON object per line in
 // UTF-8 ended with LF, and runs no 1C:
 // - the command line is <base key> <read|write>, and anything else ends it with exit code 1;
@@ -21,13 +22,14 @@ namespace Moltaro.OnecOutpost.TestWorker;
 // The scripts: wait writes nothing until the input ends or a kill ends the program; exit <n> ends it with n and no
 // outcome; line <text> writes <text> as the line of its outcome; pid, path, arguments and connection succeed with the
 // identity of the process, its Environment.ProcessPath, its command line as an array and the members of its connection
-// line as an object; any other script succeeds with null. For the start of S9c: job succeeds with the process ids of
-// the immediate job of the process when its Main began, which Main asks before anything else, as an array, or null
-// when the process was in no job, so that a test tells the job of the launcher from any other, such as one that the
-// test host runs in; desktop succeeds with the window station and the desktop that the process runs on, as
-// "{station}\{desktop}", the form of lpDesktop; user succeeds with the SID of the account the process runs under; handle <n>
-// succeeds with the final path of the file that the handle of value n names in this process, or null when n names no
-// file here, so that a test sees whether a handle of its own was inherited.
+// line as an object; job succeeds with the process ids of the immediate job of the process when its Main began, which
+// Main asks before anything else, as an array, or null when the process was in no job, so that a test tells the job of
+// the launcher from any other, such as one that the test host runs in; desktop succeeds with the window station and the
+// desktop that the process runs on, as "{station}\{desktop}", the form of lpDesktop; user succeeds with the SID of the
+// account the process runs under; handle <n> succeeds with the final path of the file that the handle of value n names
+// in this process, or null when n names no file here, so that a test sees whether a handle of its own was inherited;
+// any other script succeeds with null. The program runs only on Windows.
+[SupportedOSPlatform("windows")]
 internal static partial class Program
 {
     private const string LinePrefix = "line ";
@@ -338,13 +340,6 @@ internal static partial class Program
     // The SID of the account that the process runs under. The program runs only on Windows.
     private static void WriteUser(Utf8JsonWriter writer)
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            writer.WriteNullValue();
-
-            return;
-        }
-
         using WindowsIdentity identity = WindowsIdentity.GetCurrent();
 
         writer.WriteStringValue(identity.User!.Value);

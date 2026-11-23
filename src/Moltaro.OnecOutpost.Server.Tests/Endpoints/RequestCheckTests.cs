@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.Server.Tests.Loopback;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Loopback;
 using Moltaro.OnecOutpost.TestSupport.Store;
@@ -353,12 +352,12 @@ public sealed class RequestCheckTests(PostgreSqlFixture postgres) : IClassFixtur
 
     private static OutpostRequestKindEnum Kind(string request)
     {
-        return request switch
+        if (!OutpostForms.TryReadRequestKind(request, out OutpostRequestKindEnum kind))
         {
-            "pair" => OutpostRequestKindEnum.Pair,
-            "poll" => OutpostRequestKindEnum.Poll,
-            _ => OutpostRequestKindEnum.Outcome,
-        };
+            throw new ArgumentOutOfRangeException(nameof(request));
+        }
+
+        return kind;
     }
 
     private static List<(string Name, string Value)> Break(

@@ -3,7 +3,7 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 namespace Moltaro.OnecOutpost.Agent.Workers;
 
 // The boundary of the COM workers (principle 8): it logs on the worker account of a base and starts the worker process
-// of one base and mode. The COM worker of S9 implements it, and a fake in tests.
+// of one base and mode. ComWorkerLauncher implements it, and a fake in tests.
 internal interface IWorkerLauncher
 {
     // Logs on the local Windows account that runs every COM worker of the base, Reads included, before any Start: the

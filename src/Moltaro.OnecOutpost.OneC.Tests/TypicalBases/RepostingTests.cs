@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.OneC.Tests.Workers;
@@ -13,44 +12,6 @@ namespace Moltaro.OnecOutpost.OneC.Tests.TypicalBases;
 // scripts through the agent, and compares the movements as this test does.
 public sealed class RepostingTests
 {
-    // Gives the identifier of the latest posted document of the type.
-    internal const string LatestPostedDocument = """
-        Query = New Query;
-        Query.Text = "SELECT TOP 1 Documents.Ref AS Ref FROM Document." + Parameters["documentType"] + " AS Documents WHERE Documents.Posted ORDER BY Documents.Date DESC";
-        Selection = Query.Execute().Select();
-        If Not Selection.Next() Then
-            Raise "The base has no posted document of the type.";
-        EndIf;
-        Result = String(Selection.Ref.UUID());
-        """;
-
-    // Gives the movements of the document: for each register of its register records, by the full name of the
-    // register, its records in their order, each as the list of its columns with their values in the internal string
-    // form of 1C, which tells apart any two values, references included.
-    internal const string MovementsOfTheDocument = """
-        Document = Documents[Parameters["documentType"]].GetRef(New UUID(Parameters["id"])).GetObject();
-        Movements = New Map;
-        For Each RecordSet In Document.RegisterRecords Do
-            RecordSet.Read();
-            Table = RecordSet.Unload();
-            Records = New Array;
-            For Each Row In Table Do
-                Columns = New Array;
-                For Each Column In Table.Columns Do
-                    Columns.Add(Column.Name + "=" + ValueToStringInternal(Row[Column.Name]));
-                EndDo;
-                Records.Add(Columns);
-            EndDo;
-            Movements.Insert(RecordSet.Metadata().FullName(), Records);
-        EndDo;
-        Result = Movements;
-        """;
-
-    internal const string PostTheDocumentAgain = """
-        Document = Documents[Parameters["documentType"]].GetRef(New UUID(Parameters["id"])).GetObject();
-        Document.Write(DocumentWriteMode.Posting);
-        """;
-
     [Fact]
     public async Task The_latest_posted_document_posted_again_by_the_tunnel_has_the_movements_it_had_before()
     {
@@ -72,7 +33,7 @@ public sealed class RepostingTests
         await using WorkerProcess writer = await LabWorkers.TypicalBaseWriteAsync(typicalBase);
 
         OutcomeLine latest = await reader.RunAsync(
-            LatestPostedDocument,
+            TypicalBaseScripts.LatestPostedDocument,
             new JsonObject { ["documentType"] = typicalBase.DocumentType }.ToJsonString());
 
         latest.AssertIs("succeeded", null);
@@ -83,9 +44,9 @@ public sealed class RepostingTests
             ["id"] = latest.Result.GetString(),
         }.ToJsonString();
 
-        OutcomeLine before = await reader.RunAsync(MovementsOfTheDocument, document);
-        OutcomeLine posted = await writer.RunAsync(PostTheDocumentAgain, document);
-        OutcomeLine after = await reader.RunAsync(MovementsOfTheDocument, document);
+        OutcomeLine before = await reader.RunAsync(TypicalBaseScripts.MovementsOfTheDocument, document);
+        OutcomeLine posted = await writer.RunAsync(TypicalBaseScripts.PostTheDocumentAgain, document);
+        OutcomeLine after = await reader.RunAsync(TypicalBaseScripts.MovementsOfTheDocument, document);
 
         before.AssertIs("succeeded", null);
         posted.AssertIs("succeeded", null);
@@ -95,31 +56,7 @@ public sealed class RepostingTests
             before.Result.EnumerateObject().Any(register => register.Value.GetArrayLength() > 0),
             $"{about}: the latest posted document has no movements to compare.");
 
-        string[] changed = [.. Changed(before.Result, after.Result)];
+        string[] changed = [.. TypicalBaseScripts.Changed(before.Result, after.Result)];
         Assert.True(changed.Length == 0, $"{about}: the movements changed in {string.Join(", ", changed)}.");
-    }
-
-    // The registers whose records differ before and after, or that only one side holds.
-    internal static IEnumerable<string> Changed(JsonElement before, JsonElement after)
-    {
-        Dictionary<string, JsonElement> registersAfter = after
-            .EnumerateObject()
-            .ToDictionary(register => register.Name, register => register.Value);
-
-        foreach (JsonProperty register in before.EnumerateObject())
-        {
-            bool same = registersAfter.Remove(register.Name, out JsonElement records)
-                && JsonElement.DeepEquals(register.Value, records);
-
-            if (!same)
-            {
-                yield return register.Name;
-            }
-        }
-
-        foreach (string register in registersAfter.Keys)
-        {
-            yield return register;
-        }
     }
 }
