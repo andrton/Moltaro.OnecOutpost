@@ -3,6 +3,7 @@ using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
 using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Pairing;
 using Moltaro.OnecOutpost.Agent.Secrets;
@@ -24,12 +25,20 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 // accounts come from lab.local.json and never from a file in Git. Its Writes run in safe mode, or without it under the
 // worker account of lab.local.json, whose password secrets.dat holds as well (the S9c brief).
 //
-// Beside the data folder is its program folder, as the console's install sets one (the S9c brief): inheritance off,
-// full control for Administrators, SYSTEM and the account that runs the tests, read and run for Users, holding a copy
-// of the worker beside the tests, with the files of its build, and of the executor of the repository, so that a worker
-// account may run them. Its clock is a fake one, which its runs and their servers share, and its workers are in one job
-// of the test. A test starts a run of the agent on it, and another after the first stopped, as a restart does.
-// Disposing it disposes the job, which ends every worker left, and removes the folders.
+// Its program folder (the S9c brief) is a folder of its own directly under the root of the system drive, as the
+// console's install will put the program under %ProgramFiles%: there the worker account may read and run the program,
+// which it may not inside the profile of the account that runs the tests, and the start's check of the program folder
+// and its parents passes, since the root lets others add a folder only. It is made with inheritance off and the list
+// that the install sets: full control for Administrators, SYSTEM and the account that runs the tests, which stands for
+// the agent's, and read and run for Users, the worker account among them. It holds a copy of the worker beside the
+// tests, with the files of its build, and of the executor of the repository.
+//
+// Its clock is a fake one, which its runs and their servers share, and its workers are in one job of the test. A test
+// starts a run of the agent on it, and another after the first stopped, as a restart does. Disposing it disposes the
+// job, which ends every worker left, waits until every process of the job ended, and then removes both folders:
+// closing a job ends its processes asynchronously, and the file of a program that still runs cannot be removed. The
+// process of the tests joins LabJob first, through which it finds the workers and waits for their end, those under a
+// worker account included.
 [SupportedOSPlatform("windows")]
 internal sealed class LabAgent : IDisposable
 {
@@ -51,16 +60,22 @@ internal sealed class LabAgent : IDisposable
 
     private readonly DirectoryInfo _temporary;
 
-    private LabAgent(DirectoryInfo temporary, string key)
+    private LabAgent(DirectoryInfo temporary, string key, LabAccount? workerAccount)
     {
         _temporary = temporary;
         Key = key;
+        WorkerAccount = workerAccount;
         DataPath = Path.Combine(temporary.FullName, "data");
-        ProgramsPath = Path.Combine(temporary.FullName, "programs");
+        ProgramsPath = Path.Combine(
+            Path.GetPathRoot(Environment.SystemDirectory)!,
+            $"outpost-lab-programs-{Guid.NewGuid():N}");
     }
 
     // The key of the base in the policy.
     public string Key { get; }
+
+    // The account under which the agent runs the workers of its base, or null when they run under its own.
+    public LabAccount? WorkerAccount { get; }
 
     public string DataPath { get; }
 
@@ -137,16 +152,32 @@ internal sealed class LabAgent : IDisposable
 
     public void Dispose()
     {
-        Job.Dispose();
-        ServerKey.Dispose();
-        AgentKey.Dispose();
+        // Every process that the tests started and that runs is the agent's, its workers, since the tests run one at a
+        // time and each waits for its own.
+        IReadOnlyList<long> running = LabJob.Others();
+        List<SafeProcessHandle> handles = LabJob.Open(running, WorkerAccount);
 
-        foreach (string file in Directory.EnumerateFiles(_temporary.FullName, "*", SearchOption.AllDirectories))
+        try
         {
-            File.SetAttributes(file, FileAttributes.Normal);
+            Job.Dispose();
+            ServerKey.Dispose();
+            AgentKey.Dispose();
+
+            Assert.True(
+                LabJob.WaitUntilEnded(running, handles, Deadline),
+                $"The workers of the agent did not end within {Deadline} after its job closed: processes {string.Join(", ", running)}.");
+        }
+        finally
+        {
+            // Closed before the removal: a handle of a process keeps the file of its program.
+            foreach (SafeProcessHandle handle in handles)
+            {
+                handle.Dispose();
+            }
         }
 
-        _temporary.Delete(recursive: true);
+        Remove(_temporary.FullName);
+        Remove(ProgramsPath);
     }
 
     private static LabAgent Create(
@@ -161,11 +192,13 @@ internal sealed class LabAgent : IDisposable
             File.Exists(Repository.ExecutorPath),
             $"{Repository.ExecutorPath} is missing: it is built from the sources in src/Executor with the Designer.");
 
-        LabAgent agent = new(Directory.CreateTempSubdirectory("outpost-lab-agent-"), key);
+        LabJob.EnsureJoined();
+
+        LabAgent agent = new(Directory.CreateTempSubdirectory("outpost-lab-agent-"), key, workerAccount);
 
         try
         {
-            agent.WriteFiles(server, database, read, write, workerAccount);
+            agent.WriteFiles(server, database, read, write);
             agent.WritePrograms();
 
             return agent;
@@ -177,14 +210,30 @@ internal sealed class LabAgent : IDisposable
         }
     }
 
-    private void WriteFiles(string server, string database, LabAccount read, LabAccount write, LabAccount? workerAccount)
+    // A folder of the agent with everything in it, read-only files included, when it was made.
+    private static void Remove(string folder)
+    {
+        if (!Directory.Exists(folder))
+        {
+            return;
+        }
+
+        foreach (string file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+        {
+            File.SetAttributes(file, FileAttributes.Normal);
+        }
+
+        Directory.Delete(folder, recursive: true);
+    }
+
+    private void WriteFiles(string server, string database, LabAccount read, LabAccount write)
     {
         Directory.CreateDirectory(DataPath);
         AccessListEdits.AdmitNobodyElse(DataPath);
         Directory.CreateDirectory(Path.Combine(DataPath, "audit"));
         Directory.CreateDirectory(Path.Combine(DataPath, "outcomes"));
 
-        File.WriteAllBytes(Path.Combine(DataPath, "policy.json"), Policy(server, database, read.User, write.User, workerAccount?.User));
+        File.WriteAllBytes(Path.Combine(DataPath, "policy.json"), Policy(server, database, read.User, write.User, WorkerAccount?.User));
 
         AgentPairingSettings pairing = new(
             new Uri("https://outpost.example.com/agents"),
@@ -197,9 +246,9 @@ internal sealed class LabAgent : IDisposable
 
         Dictionary<string, string> workerPasswords = [];
 
-        if (workerAccount is not null)
+        if (WorkerAccount is not null)
         {
-            workerPasswords[Key] = workerAccount.Password;
+            workerPasswords[Key] = WorkerAccount.Password;
         }
 
         AgentSecrets secrets = new(

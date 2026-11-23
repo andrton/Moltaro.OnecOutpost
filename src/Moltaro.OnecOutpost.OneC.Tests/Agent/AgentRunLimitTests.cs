@@ -22,8 +22,8 @@ public sealed class AgentRunLimitTests
         string parameters = new JsonObject { ["description"] = TestBaseScripts.NewDescription() }.ToJsonString();
         using LabAgent agent = LabAgent.Create();
         await using LabRun run = agent.Start();
-        Assert.True(await run.OpenedAsync(OutpostModeEnum.Read));
-        Assert.True(await run.OpenedAsync(OutpostModeEnum.Write));
+        Assert.True(await run.OpenedAsync(OutpostModeEnum.Read), run.WhyNotOpened(OutpostModeEnum.Read));
+        Assert.True(await run.OpenedAsync(OutpostModeEnum.Write), run.WhyNotOpened(OutpostModeEnum.Write));
 
         Guid read = run.Send(OutpostModeEnum.Read, TestBaseScripts.LoopForTenMinutes);
         Guid write = run.Send(OutpostModeEnum.Write, TestBaseScripts.LoopForTenMinutes);
