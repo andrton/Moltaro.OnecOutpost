@@ -13,9 +13,6 @@ namespace Moltaro.OnecOutpost.Protocol.Codec;
 // ParseJson, TryGetMember and the Try readers, and CheckText afterwards.
 internal static class OutpostJsonReader
 {
-    // The one form of a time of §2, which OutpostJsonWriter writes times in as well.
-    public const string TimeFormat = "yyyy-MM-dd'T'HH:mm:ss.fff'Z'";
-
     private static readonly JsonDocumentOptions MessageOptions = new() { MaxDepth = OutpostProtocol.MaxMessageDepth };
 
     public static OutpostProtocolException Form(string reason)
@@ -250,7 +247,7 @@ internal static class OutpostJsonReader
 
         if (!DateTimeOffset.TryParseExact(
             text,
-            TimeFormat,
+            OutpostForms.TimeFormat,
             CultureInfo.InvariantCulture,
             DateTimeStyles.AssumeUniversal,
             out DateTimeOffset time))

@@ -484,7 +484,7 @@ internal sealed class AuditLog : IDisposable
         return TryReadText(entry, "time", out string? text)
             && DateTimeOffset.TryParseExact(
                 text,
-                OutpostJsonReader.TimeFormat,
+                OutpostForms.TimeFormat,
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal,
                 out time);

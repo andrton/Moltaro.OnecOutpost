@@ -4,11 +4,15 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Moltaro.OnecOutpost.Protocol;
 
-// The forms of §2 of docs/protocol.md that the headers, the pairing token and the codec all need: canonical base64url
-// and the 36-character lowercase identity; and the name of a request, which its path (§1) and its signing inputs (§3)
-// carry. They live here once, in the root, so that neither the signing types nor the codec needs the other for them.
+// The forms of §2 of docs/protocol.md that the headers, the pairing token, the codec and the audit log need: canonical
+// base64url, the 36-character lowercase identity and the form of a time; and the name of a request, which its path
+// (§1) and its signing inputs (§3) carry. They live here once, in the root, so that neither the signing types nor the
+// codec needs the other for them.
 internal static class OutpostForms
 {
+    // The one form of a time of §2, UTC as yyyy-MM-ddTHH:mm:ss.fffZ, which times are written and read in.
+    public const string TimeFormat = "yyyy-MM-dd'T'HH:mm:ss.fff'Z'";
+
     // The alphabet of base64url (RFC 4648 §5), without the padding character.
     private static readonly SearchValues<char> Base64UrlAlphabet =
         SearchValues.Create("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_");
