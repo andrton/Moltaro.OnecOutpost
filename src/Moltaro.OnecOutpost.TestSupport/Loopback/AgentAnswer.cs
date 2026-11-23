@@ -15,6 +15,34 @@ internal sealed record AgentAnswer(
     byte[] RequestBody,
     byte[] RequestSignature)
 {
+    // The answer that the response gives to the request of the kind, with its body read whole. A response with two
+    // lines of Outpost-Signature throws, which no node sends.
+    public static async Task<AgentAnswer> ReadAsync(
+        HttpResponseMessage response,
+        OutpostRequestKindEnum kind,
+        byte[] requestBody,
+        byte[] requestSignature,
+        CancellationToken cancellationToken)
+    {
+        string? signature = null;
+
+        if (response.Headers.TryGetValues(OutpostProtocol.SignatureHeader, out IEnumerable<string>? values))
+        {
+            signature = values.Single();
+        }
+
+        byte[] body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+
+        return new AgentAnswer(
+            kind,
+            (int)response.StatusCode,
+            response.Content.Headers.ContentType?.ToString(),
+            signature,
+            body,
+            requestBody,
+            requestSignature);
+    }
+
     // A status alone, without a body or an Outpost-Signature, as the brief of S4 defines a bare answer.
     public bool IsBare => Signature is null && Body.Length == 0;
 

@@ -671,23 +671,8 @@ internal sealed partial class TestProxy : IAsyncDisposable
         }
 
         using HttpResponseMessage response = await _nodes.SendAsync(message, cancellationToken);
-        byte[] body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
 
-        string? signature = null;
-
-        if (response.Headers.TryGetValues(OutpostProtocol.SignatureHeader, out IEnumerable<string>? values))
-        {
-            signature = values.Single();
-        }
-
-        return new AgentAnswer(
-            request.Kind,
-            (int)response.StatusCode,
-            response.Content.Headers.ContentType?.ToString(),
-            signature,
-            body,
-            request.Body,
-            request.Signature);
+        return await AgentAnswer.ReadAsync(response, request.Kind, request.Body, request.Signature, cancellationToken);
     }
 
     // Records the head line and every Proxy-Authorization of a CONNECT, and gives whether it is refused.

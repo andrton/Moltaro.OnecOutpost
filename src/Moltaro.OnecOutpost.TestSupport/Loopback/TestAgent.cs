@@ -264,23 +264,7 @@ internal sealed class TestAgent : IDisposable
 
         using HttpResponseMessage response = await _client.SendAsync(request, cancellationToken);
 
-        string? answerSignature = null;
-
-        if (response.Headers.TryGetValues(OutpostProtocol.SignatureHeader, out IEnumerable<string>? values))
-        {
-            answerSignature = values.Single();
-        }
-
-        byte[] answerBody = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-
-        return new AgentAnswer(
-            kind,
-            (int)response.StatusCode,
-            response.Content.Headers.ContentType?.ToString(),
-            answerSignature,
-            answerBody,
-            body,
-            signature);
+        return await AgentAnswer.ReadAsync(response, kind, body, signature, cancellationToken);
     }
 
     private ECDsa PinnedKey => _serverKey ?? throw new InvalidOperationException("The agent pinned no server key.");
