@@ -269,9 +269,9 @@ internal sealed class OutpostServer : IOutpostServer
         JsonElement parameters,
         CancellationToken cancellationToken)
     {
-        DateTimeOffset issued = ToMilliseconds(_options.TimeProvider.GetUtcNow());
-        DateTimeOffset deadline = ToMilliseconds(issued + _options.TakeTimeout);
-        TimeSpan skew = _options.ClockSkew - TimeSpan.FromTicks(_options.ClockSkew.Ticks % TimeSpan.TicksPerMillisecond);
+        DateTimeOffset issued = OutpostForms.ToMilliseconds(_options.TimeProvider.GetUtcNow());
+        DateTimeOffset deadline = OutpostForms.ToMilliseconds(issued + _options.TakeTimeout);
+        TimeSpan skew = OutpostForms.ToMilliseconds(_options.ClockSkew);
 
         OutpostCommandMessage message = new(
             OutpostProtocol.Version,
@@ -362,10 +362,5 @@ internal sealed class OutpostServer : IOutpostServer
 
             cancellationToken.ThrowIfCancellationRequested();
         }
-    }
-
-    private static DateTimeOffset ToMilliseconds(DateTimeOffset time)
-    {
-        return time.AddTicks(-(time.Ticks % TimeSpan.TicksPerMillisecond));
     }
 }

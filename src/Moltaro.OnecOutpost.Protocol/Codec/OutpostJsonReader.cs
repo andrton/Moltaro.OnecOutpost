@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Text.Json;
 
 namespace Moltaro.OnecOutpost.Protocol.Codec;
@@ -158,19 +157,21 @@ internal static class OutpostJsonReader
         return value.TryGetInt64(out integer);
     }
 
+    // The text of a string. It may be called before CheckText: a string that is no valid text, holding bytes that are
+    // not UTF-8 or a lone surrogate, is no text.
+    public static bool TryReadText(JsonElement value, [NotNullWhen(true)] out string? text)
+    {
+        text = value.ValueKind == JsonValueKind.String ? TextOf(value) : null;
+
+        return text is not null;
+    }
+
     // An identity of §2. It may be called before CheckText: a string that is no valid text is no identity.
     public static bool TryReadId(JsonElement value, out Guid id)
     {
         id = Guid.Empty;
 
-        if (value.ValueKind != JsonValueKind.String)
-        {
-            return false;
-        }
-
-        string? text = TextOf(value);
-
-        return text is not null && OutpostForms.TryReadId(text, out id);
+        return TryReadText(value, out string? text) && OutpostForms.TryReadId(text, out id);
     }
 
     // A binary value of §2. It may be called before CheckText: a string that is no valid text is no binary value.
@@ -178,14 +179,7 @@ internal static class OutpostJsonReader
     {
         bytes = null;
 
-        if (value.ValueKind != JsonValueKind.String)
-        {
-            return false;
-        }
-
-        string? text = TextOf(value);
-
-        return text is not null && OutpostForms.TryReadBase64Url(text, out bytes);
+        return TryReadText(value, out string? text) && OutpostForms.TryReadBase64Url(text, out bytes);
     }
 
     // The readers of a member of an object whose members were checked: each refuses `null` and a value of the wrong
@@ -245,12 +239,7 @@ internal static class OutpostJsonReader
     {
         string text = ReadString(message, name);
 
-        if (!DateTimeOffset.TryParseExact(
-            text,
-            OutpostForms.TimeFormat,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal,
-            out DateTimeOffset time))
+        if (!OutpostForms.TryReadTime(text, out DateTimeOffset time))
         {
             throw Form($"The member {name} is not a time in the form yyyy-MM-ddTHH:mm:ss.fffZ.");
         }
