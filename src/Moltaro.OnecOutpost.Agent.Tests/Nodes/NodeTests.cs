@@ -142,7 +142,7 @@ public sealed class NodeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
             nodes.Second.Signals,
             SignalConnectionStateEnum.Connected,
             cancellationToken);
-        LoopbackServer first = await nodes.RestartAsync(nodes.First, cancellationToken);
+        LoopbackServer first = await nodes.RestartFirstAsync(cancellationToken);
         await connected;
 
         // A Read: the poll held now was sent while the Write held the agent's one write worker.

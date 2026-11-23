@@ -3982,7 +3982,7 @@ request and merge under PQ1:
         public LoopbackServer Second { get; } // a SignalClient of that host
         public FakeClock Clock { get; }       // of both
         public Task StopAsync(LoopbackServer node, CancellationToken cancellationToken);
-        public Task<LoopbackServer> RestartAsync(LoopbackServer node, CancellationToken cancellationToken);
+        public Task<LoopbackServer> RestartFirstAsync(CancellationToken cancellationToken);
     }
     // LoopbackServer: + StartAnotherAsync(ISignals signals, CancellationToken cancellationToken); its overload with
     // RemoteSignals takes an ISignals. RemoteSignals: + SignalHost? Host, the host that runs.
@@ -4026,10 +4026,9 @@ request and merge under PQ1:
       made on either node's `Server`. `StopAsync` stops a node as its host stops. For
       `First` the Signals host stops with it, as when its process ends: `Second`'s client
       loses the host and tries again by itself.
-      `RestartAsync` starts the node again, stopping it first if it runs. The new node is
-      a new `LoopbackServer` at a new port, which `First` or `Second` gives from then on.
-      For `First` a new host starts on the old port, which the client reaches on its next
-      attempt.
+      `RestartFirstAsync` starts `First` again, stopping it first if it runs. The new node
+      is a new `LoopbackServer` at a new port, which `First` gives from then on, and a new
+      host starts on the old port, which the client reaches on its next attempt.
 - **To read.** The [concept](../concept.md), §3 rules 7, 10 and 11, §4 and §11 (20
   November 2026); this plan.
 - **Acceptance.**

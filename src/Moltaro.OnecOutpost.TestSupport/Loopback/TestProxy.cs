@@ -46,18 +46,14 @@ internal sealed partial class TestProxy : IAsyncDisposable
         + "Content-Length: 0\r\n"
         + "\r\n");
 
-    // The header lines of one hop, which the proxy does not forward: it frames each request and each answer itself.
+    // The header lines of one hop that the agent sends, which the proxy does not forward: it frames each request and
+    // each answer itself.
     private static readonly HashSet<string> HopHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
         "Host",
         "Content-Length",
         "Expect",
         "Connection",
-        "Keep-Alive",
-        "Proxy-Connection",
-        "TE",
-        "Transfer-Encoding",
-        "Upgrade",
     };
 
     // One certificate for outpost.test serves every proxy of the test run.
