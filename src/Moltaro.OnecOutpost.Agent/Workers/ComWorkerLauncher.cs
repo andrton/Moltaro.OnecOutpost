@@ -40,7 +40,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
 
     // Reads the registry at each start (concept §5, O8): the x64 program when the connector is registered for 64 bits,
     // otherwise the x86 program when it is for 32 bits, otherwise a NoProcess. Process.Start of the program with
-    // ArgumentList the base key and read or write, the three standard streams redirected, UseShellExecute false and
+    // ArgumentList the base key and read or write, its standard input and output redirected, UseShellExecute false and
     // CreateNoWindow true, then WorkerJob.Add. The connection with its password travels only in the first input line,
     // never on the command line or in the environment. A program that does not start, and a process the job does not
     // take, killed at once, give a NoProcess: Start throws nothing. Limitation: a process is in the job from just after
@@ -54,11 +54,13 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
             return new NoProcess();
         }
 
+        // The standard error is not redirected: the agent keeps no diagnostics of a worker, so the worker's go where the
+        // agent's own standard error goes, nowhere for the service, and no pipe of the agent fills up or holds a thread
+        // for them.
         ProcessStartInfo start = new(program)
         {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
-            RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };

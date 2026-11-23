@@ -12,11 +12,13 @@ namespace Moltaro.OnecOutpost.Agent.Workers;
 // One COM worker process of the program's launcher, speaking S9's lines over its raw standard streams, as S9's lab
 // helper does: one JSON object per line in UTF-8, ended with LF, each line read as bytes up to its LF. A failed write
 // gives false or null; cancellation kills and throws OperationCanceledException. Every open or run that does not give
-// true or an outcome has killed the process. The standard error is read and dropped, so a worker never waits on a full
-// pipe. Limitation: the agent keeps no diagnostics of a worker; the console's check shows why one does not open (S10).
+// true or an outcome has killed the process. Limitation: the agent keeps no diagnostics of a worker; the console's check
+// shows why one does not open (S10).
 //
 // The pool calls OpenAsync and then RunAsync one at a time; Kill may run beside either, from any thread. A read from
 // the pipe of a process does not end on cancellation, so cancellation kills the process, which ends its output.
+// Limitation: .NET 10 opens the redirected pipes for synchronous I/O, so each open or run holds a pool thread while it
+// waits.
 [SupportedOSPlatform("windows")]
 internal sealed class ComWorkerProcess : IWorkerProcess
 {
@@ -43,15 +45,12 @@ internal sealed class ComWorkerProcess : IWorkerProcess
     // 1 once the first Kill ended the process: Kill is idempotent, and only the first one calls Process.Kill.
     private int _killed;
 
-    // The process the launcher started, with its three standard streams redirected, already in the job.
+    // The process the launcher started, with its standard input and output redirected, already in the job.
     public ComWorkerProcess(Process process)
     {
         _process = process;
         _input = process.StandardInput.BaseStream;
         _output = process.StandardOutput.BaseStream;
-
-        // No handler takes the lines: the standard error is read only so that the worker never blocks on it.
-        process.BeginErrorReadLine();
     }
 
     // Writes the connection line and reads one line of at most 1 KiB: true only for an object whose one member is

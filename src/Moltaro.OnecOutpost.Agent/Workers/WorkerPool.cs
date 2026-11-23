@@ -17,9 +17,9 @@ namespace Moltaro.OnecOutpost.Agent.Workers;
 //   not yet opened and free is only under-declared. Start may run on several slots' tasks at once;
 // - the task of a run changes only its own worker: it drops it, and then completes the worker's end after its last use
 //   of the process. Release reads what it left after the loop awaited the run;
-// - a slot touches its published worker again only after the worker's end, or once the pool's token is cancelled. The
-//   host disposes the pool after the loop ended, so no run begins after that, and a slot reads the Running task that
-//   the loop set only after the cancellation.
+// - a slot touches its published worker again only after the worker's end, or once the pool's token is cancelled. Only
+//   DisposeAsync cancels it, and the host disposes the pool after the loop ended, so no run begins after that, and a
+//   slot reads the Running task that the loop set only after the cancellation.
 internal sealed partial class WorkerPool : IAsyncDisposable
 {
     private readonly AgentPolicy _policy;
@@ -45,7 +45,9 @@ internal sealed partial class WorkerPool : IAsyncDisposable
     // The worker that each command holds, from RunAsync to Release.
     private readonly Dictionary<Guid, Worker> _held = [];
 
-    // Linked to Open's token; the slots pass it to their delays and opens. DisposeAsync cancels it first.
+    // The token of the slots, which they pass to their delays and opens. Only DisposeAsync cancels it, first: a stop of
+    // the host ends the loop, whose runs then kill their workers, and only after that the slots, so that no slot
+    // disposes a process that a run still uses.
     private CancellationTokenSource? _stop;
 
     // The executor is the path of OutpostExecutor.epf that every connection line names.
@@ -63,9 +65,10 @@ internal sealed partial class WorkerPool : IAsyncDisposable
     // every slot's first start happens before it returns, in the policy's order. Each open races
     // Task.Delay(runLimit, clock): the mode's run limit is its deadline (principle 10, concept §5), and a late worker is
     // killed and, like one that gives false, never free. So the loop starts at once, and a slow base holds up no other.
+    // The slots do not take the token given: DisposeAsync ends them, after the loop.
     public void Open(CancellationToken cancellationToken)
     {
-        _stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _stop = new CancellationTokenSource();
 
         foreach (AgentBasePolicy served in _policy.Bases)
         {
@@ -279,12 +282,7 @@ internal sealed partial class WorkerPool : IAsyncDisposable
                 return;
             }
 
-            bool opened = await OpenWorkerAsync(worker, connection, stop);
-
-            if (opened)
-            {
-                slot.Publish(worker);
-            }
+            bool opened = await OpenWorkerAsync(slot, worker, connection, stop);
 
             await worker.Ended.WaitAsync(stop).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
             slot.Publish(null);
@@ -321,10 +319,16 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         return TimeSpan.FromTicks(ticks);
     }
 
-    // The open of one worker, raced with the run limit of its mode, its deadline; true when it gave true in time. A
-    // worker whose open gives false, comes late or is cancelled is dropped, and its end is completed once its open ended
-    // with the process. An open that answers at once has ended when this returns. Its task never fails.
-    private async Task<bool> OpenWorkerAsync(Worker worker, WorkerConnectionLine connection, CancellationToken stop)
+    // The open of one worker, raced with the run limit of its mode, its deadline; true when it gave true in time. The
+    // slot publishes a worker that opened before the timer of the deadline ends, so that once that timer is gone, Free
+    // counts the worker. A worker whose open gives false, comes late or is cancelled is dropped, and its end is
+    // completed once its open ended with the process. An open that answers at once has ended when this returns. Its
+    // task never fails.
+    private async Task<bool> OpenWorkerAsync(
+        Slot slot,
+        Worker worker,
+        WorkerConnectionLine connection,
+        CancellationToken stop)
     {
         using CancellationTokenSource race = CancellationTokenSource.CreateLinkedTokenSource(stop);
 
@@ -335,13 +339,16 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         Task first = await Task.WhenAny(open, deadline);
         bool opened = first == open && open.IsCompletedSuccessfully && open.Result;
 
-        // Ends the timer of the deadline.
-        race.Cancel();
-
+        // Ends the timer of the deadline, after the publish of a worker that opened.
         if (opened)
         {
+            slot.Publish(worker);
+            race.Cancel();
+
             return true;
         }
+
+        race.Cancel();
 
         // The worker ends and never runs a command, and its open ends with the process.
         worker.Drop();
