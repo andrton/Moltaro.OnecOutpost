@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.Protocol.Messages;
-using Moltaro.OnecOutpost.Server.Tests.Store;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Loopback;
 using Moltaro.OnecOutpost.TestSupport.Store;
