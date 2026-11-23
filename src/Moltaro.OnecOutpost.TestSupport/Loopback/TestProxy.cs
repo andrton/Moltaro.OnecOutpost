@@ -67,8 +67,8 @@ internal sealed partial class TestProxy : IAsyncDisposable
 
     private readonly CancellationTokenSource _stop = new();
 
-    // The client through which requests reach the nodes. Every request asks for a connection of its own, so that the
-    // client never sends one again by itself, as .NET can on a pooled connection that closed before any answer came.
+    // The client through which requests reach the nodes. Every request asks for a connection of its own, as each
+    // request of the agent comes on a tunnel of its own, which keeps the relay simple.
     private readonly HttpClient _nodes = new(new SocketsHttpHandler
     {
         AllowAutoRedirect = false,
@@ -450,9 +450,9 @@ internal sealed partial class TestProxy : IAsyncDisposable
     }
 
     // Ends TLS for the agent, reads its request, does with it what the rule that takes it says or forwards it, and
-    // writes the answer back with Connection: close. So every request comes on a tunnel of its own: on a connection it
-    // reused, the agent's handler could send a request again by itself when the proxy closes it unanswered, and a
-    // dropped request would reach a node after all.
+    // writes the answer back with Connection: close, so that every request comes on a tunnel of its own, which keeps
+    // the relay simple. A request that a rule drops never reaches a node later: .NET sends a request again by itself
+    // only while its body has not gone, and the proxy reads every body whole before a rule takes the request.
     private async Task RelayAsync(NetworkStream agent, int port, CancellationToken cancellationToken)
     {
         SslStream tls = new(agent, leaveInnerStreamOpen: true);
