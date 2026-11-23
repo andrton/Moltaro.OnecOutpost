@@ -9,11 +9,14 @@ application that embeds the server. The rules are rules 3, 4, 7, 10 and 11 of th
 explanation, animated, is [`never-twice.html`](never-twice.html); the path of a command
 without losses is [The path of a command](command-path.md).
 
-**Status:** built. Each case below is a test that passes today over loopback HTTP. The
-repeated call runs against the server with a test agent. The other four run with two server
-nodes on one PostgreSQL, the real agent with a fake in place of the COM worker, and a proxy
-between them that drops and holds chosen requests and answers. The cases run without 1C:
-what they show happens before a script starts and after it ends.
+**Status:** built. Each case below is a test that passes today over loopback HTTP, without
+1C: what the cases show happens before a script starts and after it ends. Cases 2 and 3,
+case 4's lost confirmation, and case 5's command that stays taken past the take deadline
+plus the skew and runs once, run with two server nodes on one PostgreSQL, the real agent
+with a fake in place of the COM worker, and a proxy between them that drops and holds
+chosen requests and answers. Case 1, and case 5's expiry by a later poll, run against one
+server node with a test agent. Case 4's sending again after a restart runs in the tests of
+the agent's loop.
 
 Three things carry the rule:
 
@@ -51,8 +54,9 @@ nothing ran, or when its outcome was removed after its retention, 7 days by defa
 3. The server hands the command out again in the answer to poll 42, since the take
    deadline has not passed. The agent records it and runs it once.
 
-A command that the list of a newer poll does not hold had not reached the agent. Should
-the same command ever come twice, the audit log holds its identity, and it does not run
+A command that the list of a newer poll does not hold had not reached the agent by the
+time that poll was sent; it may still arrive, which case 5 handles. Should the same
+command ever come twice, the audit log holds its identity, and it does not run
 again.
 
 ## 3. An older poll
@@ -70,8 +74,8 @@ is set back, because the agent reserves them in its audit log.
 
 ## 4. A lost outcome
 
-1. The command ran. The agent records its outcome, keeps it in a file on its disk, and
-   sends it.
+1. The command ran. The agent keeps its outcome in a file on its disk, records it in its
+   audit log, and sends it.
 2. The server keeps the outcome and the caller gets it, but the confirmation is lost on the
    path.
 3. The agent sends the same outcome again, even after a restart. The server confirms it

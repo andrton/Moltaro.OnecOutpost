@@ -59,10 +59,10 @@
   .head { fill: var(--line); }
   .box rect { fill: var(--box); stroke: var(--line); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
   .box .t { fill: var(--fg); font-size: 15px; font-weight: 600; text-anchor: middle; }
-  .box .s { fill: var(--muted); font-size: 11.5px; text-anchor: middle; }
+  .box .s { fill: var(--muted); font-size: 13px; text-anchor: middle; }
   .box.on rect { fill: var(--box-on); stroke: var(--accent); stroke-width: 2.5; }
   .zone { fill: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-  .note { fill: var(--muted); font-size: 11.5px; }
+  .note { fill: var(--muted); font-size: 13px; }
   .boundary { stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 2 5; }
   .trail { stroke: var(--accent); stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
   .dot { fill: var(--accent); }
@@ -182,12 +182,12 @@ a base run under a Windows account of their own.</p>
 <ol class="steps" id="steps">
   <li><strong>The call.</strong> The application calls <code>WriteAsync</code> or <code>ReadAsync</code> on any node, with the key of the base, the script, its parameters and, for a Write, a caller key. The node looks up the caller key first: a command that already has it is followed, not created again (<a href="never-twice.html">Why a command never runs twice</a>). Then it checks that an agent holds the base and serves the mode, and that this agent is connected, which means that the lease of its newest poll has not run out. If it is not connected, the call returns Unavailable at once and nothing is created.</li>
   <li><strong>The store.</strong> The node signs the command with the server's key and writes it to the store, where it waits to be taken. The signed bytes name the agent, the base, the mode and the caller key, and carry the script, the parameters, the time it was issued, its take deadline (30 seconds by default), the allowed clock skew and the size limit of its outcome. The call now waits for the outcome of that command.</li>
-  <li><strong>The signal.</strong> Once the command is in the store, the node sets a signal for the agent. It wakes whatever waits for that agent, on any node, to read the store. When a signal is lost, every waiter still reads the store when its own deadline comes, so a lost signal costs time, never a command.</li>
+  <li><strong>The signal.</strong> Once the command is in the store, the node sets a signal for the agent. It wakes whatever waits for that agent, on any node, to read the store. When a signal is lost, the command waits for the agent's next poll, at most one poll's hold later. If its take deadline passes meanwhile, it ends as Expired, untaken; a lost signal never makes a command run twice.</li>
   <li><strong>The poll.</strong> A poll of the agent waits on some node, often not the node of the call. Woken, the poll takes the command in one conditional change of the store, if it is still the newest poll of its agent: oldest commands first, and no more than the free workers it declared. Its answer carries the exact bytes of the command and the server's signature over them. A command that no poll takes before its take deadline ends as Expired.</li>
   <li><strong>The agent's checks.</strong> The agent verifies the signature with the server key it pinned at pairing, and looks for the command in its audit log: a command already there never runs again. Then it checks the protocol version, that the command names this agent, that its local policy serves the base and the mode, and, by the agent's own clock, that the command was not issued too far ahead and that its take deadline has not passed by more than the allowed skew. The first check that fails refuses the command with its code, such as <code>not-served</code> or <code>expired</code>. A command whose signature does not verify is only recorded, since nothing in it can be trusted.</li>
   <li><strong>The audit log.</strong> Before the command runs, and before the next poll opens, the agent writes it to its audit log on the disk: the time, the identity, the base, the mode, the caller key, the script and the parameters. A command that cannot be recorded does not run. From then on every poll lists the command as received, until the server confirms its outcome.</li>
   <li><strong>The worker.</strong> The agent gives the command to a free COM worker of its base and mode, a process of its own that holds a 1C session under the account of that mode. The worker runs the script whole, in 1C's safe mode: a Read outside a transaction, a Write inside one transaction, committed or rolled back as a whole. The executor writes the result as JSON, and checks the result's type and the outcome's size before a Write commits. A script that passes the run limit of its mode ends with its worker.</li>
-  <li><strong>The outcome.</strong> The agent records how the command ended in its audit log, keeps the outcome in a file on its disk, and sends it to any node, signed with its own key. The node keeps the first outcome of the command, and only from the agent it handed the command to. It confirms the outcome to the agent with a signed answer and sets a signal for the command. The agent records the confirmation and removes the file; until then it sends the outcome again.</li>
+  <li><strong>The outcome.</strong> The agent keeps the outcome in a file on its disk, records how the command ended in its audit log, and sends the outcome to any node, signed with its own key. The node keeps the first outcome of the command, and only from the agent it handed the command to. It sets a signal for the command and confirms the outcome to the agent with a signed answer. The agent records the confirmation and removes the file; until then it sends the outcome again.</li>
   <li><strong>The caller.</strong> The node where the call waits wakes, reads the outcome from the store and returns it: Succeeded with the result and the user messages of 1C, Failed with a code, Refused with the code of the check, Expired, or Unknown when the effect of a Write cannot be known. The caller may stop waiting at any time. That does not stop the command, and a repeat with the caller key returns its outcome.</li>
 </ol>
 
@@ -215,7 +215,7 @@ a base run under a Windows account of their own.</p>
     { on: ["agent", "audit"], path: [[370, 282], [330, 282]], tag: "received" },
     { on: ["agent", "worker", "onec"], path: [[420, 309], [420, 372], [330, 372]], tag: "the script" },
     { on: ["onec", "worker", "agent", "audit", "node2", "store"], path: [[330, 372], [420, 372], [420, 84], [397, 84], [350, 134]], tag: "the outcome" },
-    { on: ["signals", "node1", "app"], path: [[370, 57], [110, 57]], tag: "the outcome" }
+    { on: ["signals", "node1", "store", "app"], path: [[370, 57], [110, 57]], tag: "the outcome" }
   ];
 
   var items = Array.prototype.slice.call(document.querySelectorAll("#steps > li"));

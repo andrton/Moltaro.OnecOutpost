@@ -44,8 +44,9 @@ such a base run under a Windows account of their own.
    outcome. The call now waits for the outcome of that command.
 3. **The signal.** Once the command is in the store, the node sets a signal for the agent.
    It wakes whatever waits for that agent, on any node, to read the store. When a signal is
-   lost, every waiter still reads the store when its own deadline comes, so a lost signal
-   costs time, never a command.
+   lost, the command waits for the agent's next poll, at most one poll's hold later. If its
+   take deadline passes meanwhile, it ends as Expired, untaken; a lost signal never makes a
+   command run twice.
 4. **The poll.** A poll of the agent waits on some node, often not the node of the call.
    Woken, the poll takes the command in one conditional change of the store, if it is
    still the newest poll of its agent: oldest commands first, and no more than the free
@@ -71,11 +72,11 @@ such a base run under a Windows account of their own.
    inside one transaction, committed or rolled back as a whole. The executor writes the
    result as JSON, and checks the result's type and the outcome's size before a Write
    commits. A script that passes the run limit of its mode ends with its worker.
-8. **The outcome.** The agent records how the command ended in its audit log, keeps the
-   outcome in a file on its disk, and sends it to any node, signed with its own key. The
-   node keeps the first outcome of the command, and only from the agent it handed the
-   command to. It confirms the outcome to the agent with a signed answer and sets a signal
-   for the command. The agent records the confirmation and removes the file; until then it
+8. **The outcome.** The agent keeps the outcome in a file on its disk, records how the
+   command ended in its audit log, and sends the outcome to any node, signed with its own
+   key. The node keeps the first outcome of the command, and only from the agent it handed
+   the command to. It sets a signal for the command and confirms the outcome to the agent
+   with a signed answer. The agent records the confirmation and removes the file; until then it
    sends the outcome again.
 9. **The caller.** The node where the call waits wakes, reads the outcome from the store
    and returns it: Succeeded with the result and the user messages of 1C, Failed with a

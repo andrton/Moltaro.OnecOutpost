@@ -62,7 +62,7 @@
   svg { display: block; width: 100%; height: auto; }
   .lane-box { fill: var(--box); stroke: var(--line); stroke-width: 1.5; }
   .lane-t { fill: var(--fg); font-size: 14px; font-weight: 600; text-anchor: middle; }
-  .lane-s { fill: var(--muted); font-size: 11px; text-anchor: middle; }
+  .lane-s { fill: var(--muted); font-size: 12.5px; text-anchor: middle; }
   .life { stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 3 5; }
   .life-path { stroke: var(--warn); stroke-opacity: .35; stroke-width: 4; stroke-dasharray: none; }
   .msg { stroke: var(--fg); stroke-width: 1.8; fill: none; }
@@ -119,11 +119,14 @@ application that embeds the server. The rules are rules 3, 4, 7, 10 and 11 of th
 The same explanation as text is <a href="never-twice.md"><code>never-twice.md</code></a>; the
 path of a command without losses is <a href="command-path.html">The path of a command</a>.</p>
 
-<p class="status"><strong>Status:</strong> built. Each case below is a test that passes today
-over loopback HTTP. The repeated call runs against the server with a test agent. The other
-four run with two server nodes on one PostgreSQL, the real agent with a fake in place of the
-COM worker, and a proxy between them that drops and holds chosen requests and answers. The
-cases run without 1C: what they show happens before a script starts and after it ends.</p>
+<p class="status"><strong>Status:</strong> built. Each case below is a test that passes today over loopback HTTP, without
+1C: what the cases show happens before a script starts and after it ends. Cases 2 and 3,
+case 4's lost confirmation, and case 5's command that stays taken past the take deadline
+plus the skew and runs once, run with two server nodes on one PostgreSQL, the real agent
+with a fake in place of the COM worker, and a proxy between them that drops and holds
+chosen requests and answers. Case 1, and case 5's expiry by a later poll, run against one
+server node with a test agent. Case 4's sending again after a restart runs in the tests of
+the agent's loop.</p>
 
 <p>Three things carry the rule:</p>
 <ul>
@@ -173,8 +176,9 @@ nothing ran, or when its outcome was removed after its retention, 7 days by defa
   <li>The agent's next poll, 42, does not list the command as received.</li>
   <li>The server hands the command out again in the answer to poll 42, since the take deadline has not passed. The agent records it and runs it once.</li>
 </ol>
-<p>A command that the list of a newer poll does not hold had not reached the agent. Should the
-same command ever come twice, the audit log holds its identity, and it does not run again.</p>
+<p>A command that the list of a newer poll does not hold had not reached the agent by the
+time that poll was sent; it may still arrive, which case 5 handles. Should the same command
+ever come twice, the audit log holds its identity, and it does not run again.</p>
 
 <h2 id="case-3">3. An older poll</h2>
 <ol class="case-steps">
@@ -188,7 +192,7 @@ is set back, because the agent reserves them in its audit log.</p>
 
 <h2 id="case-4">4. A lost outcome</h2>
 <ol class="case-steps">
-  <li>The command ran. The agent records its outcome, keeps it in a file on its disk, and sends it.</li>
+  <li>The command ran. The agent keeps its outcome in a file on its disk, records it in its audit log, and sends it.</li>
   <li>The server keeps the outcome and the caller gets it, but the confirmation is lost on the path.</li>
   <li>The agent sends the same outcome again, even after a restart. The server confirms it and changes nothing: only the first outcome of a command counts, and only from the agent it was handed to.</li>
 </ol>
@@ -363,7 +367,7 @@ is set back, because the agent reserves them in its audit log.</p>
     lanes.forEach(function (lane) {
       var x = X[lane[0]];
       el("line", { "class": lane[0] === "path" ? "life life-path" : "life", x1: x, y1: 46, x2: x, y2: 346 }, lanesLayer);
-      el("rect", { "class": "lane-box", x: x - 52, y: 6, width: 104, height: 40, rx: 7 }, lanesLayer);
+      el("rect", { "class": "lane-box", x: x - 55, y: 6, width: 110, height: 40, rx: 7 }, lanesLayer);
       el("text", { "class": "lane-t", x: x, y: 23 }, lanesLayer).textContent = lane[1];
       el("text", { "class": "lane-s", x: x, y: 38 }, lanesLayer).textContent = lane[2];
     });
