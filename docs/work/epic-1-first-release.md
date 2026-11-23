@@ -772,7 +772,8 @@ owner" in [S10's brief](#s10--the-console).
 
   *(S10a)* A data folder that exists already is given these lists again only when neither
   it, `audit\` nor `outcomes\` is a reparse point or admits anyone else; otherwise
-  `install` refuses it and repairs nothing, and `pair` and `secret` refuse it too. An owner
+  `install` refuses it and repairs nothing. `pair` and `secret` refuse a data folder that is
+  a reparse point or admits anyone else; they judge the folder itself. An owner
   other than Administrators, SYSTEM or the agent's account counts as somebody else, since an
   owner can always change the access list (Q14 in [S10's brief](#s10--the-console)), so
   `install`, `pair` and `secret` make Administrators the owner of the folder and of every
@@ -792,9 +793,10 @@ owner" in [S10's brief](#s10--the-console).
   Administrators and SYSTEM, read and run for Users, and Administrators owning every entry
   it writes. *(S10a)* That folder is `%ProgramFiles%\Moltaro.OnecOutpost`: `install`, run
   from outside it, replaces its content with that of the unpacked archive, or, run from
-  that folder itself, sets its lists alone; then it judges it by the agent's rule before
-  any service exists, and refuses, without repairing, a folder that someone else may
-  change. The folder of the COM connector is judged by the same rule by the console's
+  that folder itself, sets its lists alone; it refuses a run from inside it or from a
+  folder that holds it. Then it judges the folder by the agent's rule before it registers
+  or reconfigures the service, and refuses, without repairing, a folder that someone else
+  may change. The folder of the COM connector is judged by the same rule by the console's
   `check`, not by the agent.
 - *(S10a)* **The COM connector** is the one that the classes of HKLM register, in the
   64-bit view and in the 32-bit one, never HKCR, which merges in the classes of the user
@@ -810,8 +812,8 @@ owner" in [S10's brief](#s10--the-console).
   under a worker account; they take effect from its next start. *(S10a)* `install`
   registers the service `MoltaroOnecOutpost` under that account with an automatic start,
   and does not start it; it reconfigures a service that exists, never deletes it, and
-  writes the failure actions, a restart after a minute for the first three failures, the
-  count reset after a day, only when it creates it. `uninstall` takes the two rights back,
+  writes the failure actions, a restart after a minute at most three times, the count
+  reset after a day, only when it creates it. `uninstall` takes the two rights back,
   then removes the service, and leaves both folders.
 - *(S9c)* **A worker account** runs every COM worker of a base whose `write` has
   `safeMode: false`, Reads included. It is a local user outside Administrators, with no
@@ -5224,7 +5226,7 @@ implementer work on `xhigh`.
       | --- | --- | --- | --- |
       | 0 | `Success` | all | Done, `--help` too |
       | 1 | `Failure` | all | A step failed for a reason of Windows or of the disk, or an unexpected exception |
-      | 2 | `Usage` | all | An unknown command or option, a missing or invalid argument or password, `install` run from inside the program folder |
+      | 2 | `Usage` | all | An unknown command or option, a missing or invalid argument or password, `install` run from inside the program folder or from a folder that holds it |
       | 3 | `NotElevated` | all | Not run as administrator; nothing was changed |
       | 4 | `NotWindows` | all | Not on Windows |
       | 5 | `Cancelled` | all | Ctrl+C |
@@ -5246,12 +5248,15 @@ implementer work on `xhigh`.
       to `01:00:00`, `00:01:00` when absent; each step idempotent, named in its failure:
       1. *elevation*: `install needs a console run as administrator; nothing was changed`;
          a `Source` whose `FinalPath` lies inside that of `ProgramFolder` gives `Usage`,
-         `unpack the archive outside {folder} and run install from there`;
+         `unpack the archive outside {folder} and run install from there`; one whose
+         `FinalPath` holds that of `ProgramFolder` gives `Usage` too, with a message of its
+         own that says to unpack the archive into a folder of its own outside
+         `%ProgramFiles%`;
       2. *stop*: `StopAsync`; `TimedOut` gives `the service {name} did not stop within
          {timeout}; run install again once it has, or with a longer --stop-timeout`;
       3. *program folder*: `ApplyProgramFolder(ProgramFolder, source)`, `source` null for
          equal final paths, `Copied the program to {folder} and set its access lists.` or
-         `Set …`; then `AccessLists(sid).Writers(ProgramFolder)`, before any service exists,
+         `Set …`; then `AccessLists(sid).Writers(ProgramFolder)`, before the service is registered or reconfigured,
          entries giving `ProgramFolderWriters` with a table of them;
       4. *service*: `Install(name, "Moltaro OnecOutpost agent", "\"{ProgramFolder}\Moltaro.OnecOutpost.Agent.exe\" service")`,
          `Registered` or `Reconfigured the service {name} under NT SERVICE\{name}.`; 1072 gives

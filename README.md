@@ -204,7 +204,9 @@ dotnet build
 dotnet test
 ```
 
-The tests that need PostgreSQL start it in Docker through Testcontainers.
+The tests that need PostgreSQL start it in Docker through Testcontainers. A shell that is
+not elevated adds `--filter-not-trait "Requires=Administrator"` to `dotnet test`; CI's
+Windows job runs those tests.
 
 ## Packages and downloads
 

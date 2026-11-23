@@ -37,7 +37,9 @@ growing delay. A base whose Writes run without safe mode is served for Write too
 COM workers under a local Windows account of its own that the agent logs on at its start,
 after it checked that nobody else may change its program folder. The tests of the agent
 against a real 1C passed on the lab, with a server of the test, those of the worker
-account included. The server is the one
+account included. The console installs, pairs and uninstalls an agent, writes its secrets
+and registers the COM connector (`install`, `uninstall`, `pair`, `secret` and `connector
+register`); its check and metadata are planned. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions
