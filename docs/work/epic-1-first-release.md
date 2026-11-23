@@ -1178,7 +1178,7 @@ The tunnel, with a fake in place of the worker
 The agent with 1C
   S9b the agent runs the workers ── lab ── S9c the account of the workers ── lab
 Several nodes, and the refactoring
-  S7 nodes, losses ── S8 refactoring ── lab
+  S7a nodes, losses ── S7b measurements, explanations ── S8 refactoring ── lab
 The tools
   S10 console ── S11 shell
 The release
@@ -1226,7 +1226,11 @@ The release
   without HTTP; the transport, pairing, the loop and the service are a strict zone of
   their own. Each review can then be exhaustive.
 - **S7, several nodes and lost messages,** on its own, because it needs a test proxy that
-  drops and holds messages, and because it is where a wrong rule shows.
+  drops and holds messages, and because it is where a wrong rule shows. It runs as two
+  sprints (the coordinator, 23 November 2026, under the planner's standing instruction to
+  cut a sprint too large for one exhaustive review): S7a, the proxy and the scenarios of
+  several nodes and lost messages; S7b, the measurements and the explanations E1 and E2,
+  which describe what S7a proved.
 - **S8, refactoring,** after S7, the middle of the epic, before the console and the shell
   build on the agent.
 - **L1 right after S2.** Its answers to O1–O8 can change decisions D3, D12 and D14. They
@@ -1258,7 +1262,8 @@ The release
 | S6a | The agent's files | Full | Done, 22 November 2026: the policy with the changes carried over from S2, `agent.json` and the secrets read through DPAPI for the machine, the access lists of the data folder, the audit log written in order to the disk with its lock, torn entries, start and retention, the outbox, the order of a command's records, the reservation of poll numbers and the start after a restart; the agent program still runs nothing. The internal contract of S6 was reviewed in two rounds and approved under PQ2; the code review took three rounds (a P1 and a P2, then a P2 of retention, then a P3 moved to S8 by the planner). What it changes in the public contract is listed in the S6 brief for the owner |
 | S6b | The agent's checks of commands and poll answers, its workers and run limits | Full | Done, 22 November 2026: `CommandChecks` with the checks of rule 1 in the order of §7 and the checks of a poll answer, the worker boundary with its fake, and `WorkerPool` with workers, the deadline to open, run limits, the size comparison of S9 and the executor's object; no HTTP, and the agent program still runs nothing. The contract of S6b and S6c was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P3 on what `Kill` promises, fixed), with P4s left in the S6 brief |
 | S6c | The agent's loop: the transport, pairing, polls, outcomes, the host and the service | Full | Done, 22 November 2026: the transport with the addresses of §11, the waits and read limits, pairing, numbered polls through the proxy, the loop that records every command before it runs and sends outcomes until confirmed, the replacement for size, `connection` and `bases`, retention and the reservation called after verified answers, the in-process host and the Windows service by the `service` argument; end to end against the server of S5 over loopback with a fake in place of the COM worker, through a test proxy. The code review took two rounds (three P3s of round 1 fixed). The manual acceptance of the service is the owner's, on a lab or test machine. What it changes in the public contract is listed in the S6 brief for the owner |
-| S7 | Several nodes and lost messages | Full | Not started |
+| S7a | Several nodes and lost messages | Full | In progress |
+| S7b | The measurements and the explanations E1 and E2 | Full | Not started |
 | S8 | Refactoring of the code base after S7 | Refactoring | Not started |
 | L1 | The lab check of open items O1–O8 | Light | Done, 21 November 2026: the concept has the answers to O1–O8, with D12 as the owner changed it after O1, and the test configuration builds into a base on the lab's cluster. A file base is not tried on the lab, which gives no licence for one |
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Done, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. The code review took three rounds, and its last finding, confirmed on the lab, was fixed by a query of the executor before the commit of a Write, reviewed once more. On the lab, 1C:Enterprise 8.3.17.1851, the first run gave 43 of 44 tests that need 1C passed; the failed one, `A_write_whose_commit_raises_gives_unknown_transaction_ended`, was removed, since 8.3.17 gave no way to provoke the case. The second run, with the `.epf` rebuilt after the fix, gave 45 of 45 passed, on the test base and one copy of a typical base, which ran with one account for both modes. No manual scenario, since every line of the Acceptance has a test. What it changed in the public contract is listed in its brief for the owner |
@@ -3887,7 +3892,15 @@ documents step.
 
 ### S7 · Several nodes and lost messages
 
-**Track:** full · **Branch:** `epic-1/sprint-07-nodes` · **Needs:** S6.
+**Track:** full · **Needs:** S6, and S9c by the order. One brief, run as two sprints (the
+coordinator, 23 November 2026), each with its own tests, implementation, code review, pull
+request and merge under PQ1:
+
+- **S7a, several nodes and lost messages.** Branch `epic-1/sprint-07a-nodes`. The proxy of
+  the contract step and every line of the Acceptance under "With two server nodes".
+- **S7b, the measurements and the explanations.** Branch `epic-1/sprint-07b-measurements`,
+  cut from `main` after S7a merges. The program `Moltaro.OnecOutpost.Measurements` and the
+  lines *Reported*, explanations E1 and E2, and the documents step with the figures.
 
 - **Goal.** Several server nodes and an agent keep every rule when messages are lost or
   held, and when a node or the signals host stops. The latency target is measured.
