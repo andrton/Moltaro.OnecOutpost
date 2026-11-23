@@ -75,8 +75,9 @@ internal sealed class WindowsAccessLists : IAccessLists
     }
 
     // As IAccessLists says. Limitations: an administrator's own account counts as somebody else, as in Others; a volume
-    // whose root gives Authenticated Users Modify fails the parents; the connector's folder is judged by the console's
-    // check (S10), not here.
+    // whose root gives Authenticated Users Modify fails the parents; a junction or symbolic link inside the program
+    // folder is judged by its own list, not by its target's, and only an administrator can plant one; the connector's
+    // folder is judged by the console's check (S10), not here.
     public IReadOnlyList<(string Path, IReadOnlyList<string> Accounts)> Writers(string folder)
     {
         DirectoryInfo programs = new(Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)));

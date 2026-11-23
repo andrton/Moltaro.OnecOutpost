@@ -111,7 +111,8 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
     //    user's; expected a local user that is not in Administrators, as the console's install prepares it;
     // 3. the agent's token holds SeAssignPrimaryTokenPrivilege and SeIncreaseQuotaPrivilege, enabled or not, since
     //    CreateProcessAsUserW enables them: the agent's account lacks the right "Replace a process level token" or
-    //    "Adjust memory quotas for a process"; install the agent with the console.
+    //    "Adjust memory quotas for a process"; install the agent with the console. When the agent's privileges cannot
+    //    be read: the privileges of the agent's account cannot be read: {the Win32 message}.
     // The logon comes first, so that a missing account gives 1326 whatever the agent holds. The token lives as long as
     // the launcher; one logon per start of the agent, so no retries lock the account out.
     public void LogOn(string baseKey, string account, string password)
@@ -121,15 +122,10 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
         try
         {
             bool ordinary;
-            bool agentMayStart;
 
             try
             {
                 ordinary = WorkerAccountRule.IsOrdinary(Groups(token), Privileges(token));
-
-                List<string> agentPrivileges = Privileges(_agentToken);
-
-                agentMayStart = agentPrivileges.Contains(AssignPrimaryToken) && agentPrivileges.Contains(IncreaseQuota);
             }
             catch (Win32Exception exception)
             {
@@ -140,6 +136,19 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
             {
                 throw new AgentStopException(
                     $"the worker account {account} of the base {baseKey} is an administrator or holds a privilege beyond an ordinary user's; expected a local user that is not in Administrators, as the console's install prepares it");
+            }
+
+            bool agentMayStart;
+
+            try
+            {
+                List<string> agentPrivileges = Privileges(_agentToken);
+
+                agentMayStart = agentPrivileges.Contains(AssignPrimaryToken) && agentPrivileges.Contains(IncreaseQuota);
+            }
+            catch (Win32Exception exception)
+            {
+                throw new AgentStopException($"the privileges of the agent's account cannot be read: {exception.Message}");
             }
 
             if (!agentMayStart)
@@ -168,7 +177,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
     // job and its thread resumes, so that a worker is in the job before any of its code runs; the job lets nothing
     // break away from it. The connection with its password travels only in the first input line, never on the command
     // line or in the environment. Any failure, a created process terminated first, gives a NoProcess: Start throws
-    // nothing. Limitations: the profile of a worker account is not loaded, since only an administrator or LocalSystem
+    // nothing but the ObjectDisposedException of a job that was disposed, which only a test does. Limitations: the profile of a worker account is not loaded, since only an administrator or LocalSystem
     // may load one, so its HKCU is the default hive and its TEMP the system's; and a worker that does not start keeps
     // no diagnostics.
     public IWorkerProcess Start(string baseKey, OutpostModeEnum mode)
@@ -427,7 +436,9 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
     }
 
     // Puts the suspended worker into the job and resumes its thread, whose handle it closes. A worker that the job does
-    // not take, which would outlive the agent, or whose thread does not resume is killed and disposed: a NoProcess.
+    // not take, which would outlive the agent, or whose thread does not resume is killed and disposed: a NoProcess. Any
+    // other exception, such as the ObjectDisposedException of a disposed job, passes after the kill as well, so that no
+    // process is ever left outside the job.
     private IWorkerProcess JoinAndResume(ComWorkerProcess worker, SafeProcessHandle process, nint thread)
     {
         bool resumed = false;
@@ -444,15 +455,18 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
         finally
         {
             CloseHandle(thread);
+
+            if (!resumed)
+            {
+                worker.Kill();
+                worker.Dispose();
+            }
         }
 
         if (resumed)
         {
             return worker;
         }
-
-        worker.Kill();
-        worker.Dispose();
 
         return new NoProcess();
     }
