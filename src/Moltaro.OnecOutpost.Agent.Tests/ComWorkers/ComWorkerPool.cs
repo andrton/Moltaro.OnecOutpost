@@ -57,7 +57,8 @@ internal sealed class ComWorkerPool : IAsyncDisposable
 
     public WorkerPool Pool { get; }
 
-    // Opens the workers, and completes once both opened and Free counts them.
+    // Opens the workers, and completes once both opened and the deadlines of their opens, armed when the clock was at
+    // TestTimes.Start, ended, so that Free counts them.
     public static async Task<ComWorkerPool> OpenAsync()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -71,7 +72,8 @@ internal sealed class ComWorkerPool : IAsyncDisposable
             foreach (OutpostModeEnum mode in new[] { OutpostModeEnum.Read, OutpostModeEnum.Write })
             {
                 Assert.True(await test.Launcher.OpenedAsync("accounting", mode, 1).WaitAsync(TestTimes.Deadline, cancellationToken));
-                await TestPool.WaitForFreeAsync(test.Pool, "accounting", mode, 1);
+                await TestPool.WaitForOpenDeadlineEndedAsync(test.Clock, TestTimes.Start + TestPool.LimitOf(mode));
+                Assert.Equal(1, test.Pool.Free("accounting", mode));
             }
 
             return test;

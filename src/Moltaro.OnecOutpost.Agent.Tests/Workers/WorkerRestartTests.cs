@@ -50,16 +50,20 @@ public sealed class WorkerRestartTests
             await test.Data.WaitForAsync(change => change.Line == $"start accounting read {number}");
         }
 
+        DateTimeOffset reopened = test.Clock.GetUtcNow();
         await test.Data.WaitForAsync(change => change.Line == "open accounting read 7");
-        await TestPool.WaitForFreeAsync(test.Pool, "accounting", OutpostModeEnum.Read, 1);
+        await TestPool.WaitForOpenDeadlineEndedAsync(test.Clock, reopened + TestPool.ReadLimit);
+        Assert.Equal(1, test.Pool.Free("accounting", OutpostModeEnum.Read));
         OutpostCommandMessage command = test.Command(OutpostModeEnum.Read);
         await test.Pool.RunAsync(command, cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
         test.Pool.Release(command.Id);
 
         await test.PassExactlyAsync(TimeSpan.FromSeconds(3));
+        reopened = test.Clock.GetUtcNow();
         await test.Data.WaitForAsync(change => change.Line == "start accounting read 8");
         await test.Data.WaitForAsync(change => change.Line == "open accounting read 8");
-        await TestPool.WaitForFreeAsync(test.Pool, "accounting", OutpostModeEnum.Read, 1);
+        await TestPool.WaitForOpenDeadlineEndedAsync(test.Clock, reopened + TestPool.ReadLimit);
+        Assert.Equal(1, test.Pool.Free("accounting", OutpostModeEnum.Read));
 
         Assert.True(test.Launcher.Process("accounting", OutpostModeEnum.Read, 7).IsDisposed);
     }

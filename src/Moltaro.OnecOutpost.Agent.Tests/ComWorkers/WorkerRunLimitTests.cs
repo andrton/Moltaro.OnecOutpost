@@ -43,8 +43,10 @@ public sealed class WorkerRunLimitTests
         await firstProcess.WaitForExitAsync(cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken);
 
         await test.PassExactlyAsync(ComWorkerPool.RetryDelayMax / 10);
+        DateTimeOffset reopened = test.Clock.GetUtcNow();
         Assert.True(await test.Launcher.OpenedAsync("accounting", mode, 2).WaitAsync(TestTimes.Deadline, cancellationToken));
-        await TestPool.WaitForFreeAsync(test.Pool, "accounting", mode, 1);
+        await TestPool.WaitForOpenDeadlineEndedAsync(test.Clock, reopened + limit);
+        Assert.Equal(1, test.Pool.Free("accounting", mode));
         int second = await test.PidAsync(mode);
 
         Assert.NotEqual(first, second);

@@ -30,14 +30,13 @@ internal static class TestProgram
     }
 
     // Starts the program as the launcher starts a worker, with these arguments in place of the base key and the mode:
-    // the three standard streams redirected, no shell and no window, then in the job.
+    // its standard input and output redirected, no shell and no window, then in the job.
     public static Process Start(WorkerJob job, params string[] arguments)
     {
         ProcessStartInfo start = new(Path)
         {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
-            RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
