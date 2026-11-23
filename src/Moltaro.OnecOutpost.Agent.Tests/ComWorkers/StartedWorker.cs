@@ -16,7 +16,7 @@ internal sealed class StartedWorker : IDisposable
     {
         _job = job;
         Process = process;
-        Worker = new ComWorkerProcess(process);
+        Worker = new ComWorkerProcess(process.SafeHandle, process.StandardInput.BaseStream, process.StandardOutput.BaseStream);
     }
 
     public Process Process { get; }

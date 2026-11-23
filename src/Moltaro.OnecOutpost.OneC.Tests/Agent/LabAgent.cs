@@ -128,7 +128,8 @@ internal sealed class LabAgent : IDisposable
             {
                 [(BaseKey, OutpostModeEnum.Read)] = testBase.Read.Password,
                 [(BaseKey, OutpostModeEnum.Write)] = testBase.Write.Password,
-            });
+            },
+            new Dictionary<string, string>());
 
         File.WriteAllBytes(Path.Combine(DataPath, "secrets.dat"), SecretsFile.Write(secrets, new MachineDpapi()));
     }

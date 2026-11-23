@@ -44,6 +44,11 @@ internal sealed class FakeWorkerLauncher : IWorkerLauncher
         }
     }
 
+    // Logs nobody on and gives nothing back.
+    public void LogOn(string baseKey, string account, string password)
+    {
+    }
+
     public IWorkerProcess Start(string baseKey, OutpostModeEnum mode)
     {
         FakeWorkerProcess started;

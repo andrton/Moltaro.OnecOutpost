@@ -49,7 +49,8 @@ internal sealed class TestPool : IAsyncDisposable
             [("accounting", OutpostModeEnum.Read)] = "read-pw",
             [("accounting", OutpostModeEnum.Write)] = "write-pw",
             [("warehouse", OutpostModeEnum.Read)] = "",
-        });
+        },
+        new Dictionary<string, string>());
 
     // The pool of the default policy, with one worker in each mode of accounting unless a test gives more.
     public static TestPool Create(int readWorkers = 1, int writeWorkers = 1)
@@ -76,14 +77,14 @@ internal sealed class TestPool : IAsyncDisposable
                     "srv-1c:1541",
                     "accounting",
                     null,
-                    new AgentModePolicy("outpost-read", readWorkers, ReadLimit, SafeMode: true),
-                    new AgentModePolicy("outpost-write", writeWorkers, WriteLimit, SafeMode: true)),
+                    new AgentModePolicy("outpost-read", readWorkers, ReadLimit, SafeMode: true, WorkerAccount: null),
+                    new AgentModePolicy("outpost-write", writeWorkers, WriteLimit, SafeMode: true, WorkerAccount: null)),
                 new AgentBasePolicy(
                     "warehouse",
                     null,
                     null,
                     @"D:\1C\Warehouse",
-                    new AgentModePolicy("outpost-read", 1, ReadLimit, SafeMode: true),
+                    new AgentModePolicy("outpost-read", 1, ReadLimit, SafeMode: true, WorkerAccount: null),
                     null),
             ]);
     }

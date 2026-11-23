@@ -38,6 +38,7 @@ internal sealed class LabRun : IAsyncDisposable
             new WindowsAccessLists(agent.DataPath),
             new MachineDpapi(),
             Workers,
+            AppContext.BaseDirectory,
             Repository.ExecutorPath,
             (_, _) => Server,
             agent.Clock,

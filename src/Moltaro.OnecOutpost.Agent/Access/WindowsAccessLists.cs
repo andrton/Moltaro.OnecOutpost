@@ -63,6 +63,14 @@ internal sealed class WindowsAccessLists : IAccessLists
         return [.. accounts.Distinct().Where(account => !_admitted.Contains(account)).Select(NameOf)];
     }
 
+    // As IAccessLists says. Limitations: an administrator's own account counts as somebody else, as in Others; a volume
+    // whose root gives Authenticated Users Modify fails the parents; the connector's folder is judged by the console's
+    // check (S10), not here.
+    public IReadOnlyList<(string Path, IReadOnlyList<string> Accounts)> Writers(string folder)
+    {
+        throw new NotSupportedException();
+    }
+
     // The owner and the access entries of a folder or a file. Every failure is an IOException, as the boundary says:
     // the framework reports a file that does not exist with FileNotFoundException, and a list that the agent may not
     // read with UnauthorizedAccessException, which is turned into one.

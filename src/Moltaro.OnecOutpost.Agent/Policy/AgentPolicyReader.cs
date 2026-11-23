@@ -335,7 +335,8 @@ internal static class AgentPolicyReader
             throw MissingMember($"{path}.account", accountRule);
         }
 
-        return new AgentModePolicy(account, workers, runLimit, safeMode);
+        // write.workerAccount is read by S9c's implementation; until then it is an unknown member, as in S6a.
+        return new AgentModePolicy(account, workers, runLimit, safeMode, WorkerAccount: null);
     }
 
     // The members of an object, each with its path. A value that is not an object, or a member given twice, makes the

@@ -42,15 +42,15 @@ public sealed class PolicyValuesTests
         Assert.Equal("srv-1c:1541", cluster.Server);
         Assert.Equal("accounting", cluster.Database);
         Assert.Null(cluster.File);
-        Assert.Equal(new AgentModePolicy("outpost-read", 1, TimeSpan.FromMinutes(10), SafeMode: true), cluster.Read);
-        Assert.Equal(new AgentModePolicy("outpost-write", 1, TimeSpan.FromMinutes(10), SafeMode: true), cluster.Write);
+        Assert.Equal(new AgentModePolicy("outpost-read", 1, TimeSpan.FromMinutes(10), SafeMode: true, WorkerAccount: null), cluster.Read);
+        Assert.Equal(new AgentModePolicy("outpost-write", 1, TimeSpan.FromMinutes(10), SafeMode: true, WorkerAccount: null), cluster.Write);
 
         AgentBasePolicy file = policy.Bases[1];
         Assert.Equal("warehouse-file", file.Key);
         Assert.Null(file.Server);
         Assert.Null(file.Database);
         Assert.Equal(@"D:\1C\Warehouse", file.File);
-        Assert.Equal(new AgentModePolicy("outpost-read", 1, TimeSpan.FromMinutes(10), SafeMode: true), file.Read);
+        Assert.Equal(new AgentModePolicy("outpost-read", 1, TimeSpan.FromMinutes(10), SafeMode: true, WorkerAccount: null), file.Read);
         Assert.Null(file.Write);
     }
 
@@ -77,8 +77,8 @@ public sealed class PolicyValuesTests
 
         Assert.Equal(7, policy.AuditRetentionDays);
         Assert.Equal(TimeSpan.FromMinutes(5), policy.RetryDelayMax);
-        Assert.Equal(new AgentModePolicy("outpost-read", 4, TimeSpan.FromMinutes(45), SafeMode: true), policy.Bases[0].Read);
-        Assert.Equal(new AgentModePolicy("outpost-write", 2, TimeSpan.FromMinutes(150), SafeMode: true), policy.Bases[0].Write);
+        Assert.Equal(new AgentModePolicy("outpost-read", 4, TimeSpan.FromMinutes(45), SafeMode: true, WorkerAccount: null), policy.Bases[0].Read);
+        Assert.Equal(new AgentModePolicy("outpost-write", 2, TimeSpan.FromMinutes(150), SafeMode: true, WorkerAccount: null), policy.Bases[0].Write);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public sealed class PolicyValuesTests
         Assert.Null(policy.Proxy);
         Assert.Equal(TimeSpan.FromSeconds(30), policy.RetryDelayMax);
         Assert.Equal(TimeSpan.FromMinutes(5), policy.RequestTimeout);
-        Assert.Equal(new AgentModePolicy("outpost-read", 1, TimeSpan.FromMinutes(10), SafeMode: true), policy.Bases[0].Read);
+        Assert.Equal(new AgentModePolicy("outpost-read", 1, TimeSpan.FromMinutes(10), SafeMode: true, WorkerAccount: null), policy.Bases[0].Read);
         Assert.Null(policy.Bases[0].Write);
     }
 

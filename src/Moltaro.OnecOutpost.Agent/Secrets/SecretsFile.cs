@@ -48,7 +48,8 @@ internal static class SecretsFile
                 }
             }
 
-            return new AgentSecrets(key, passwords);
+            // The workers of secrets.dat are read by S9c's implementation; until then the file holds none.
+            return new AgentSecrets(key, passwords, new Dictionary<string, string>());
         }
         catch (OutpostProtocolException exception)
         {

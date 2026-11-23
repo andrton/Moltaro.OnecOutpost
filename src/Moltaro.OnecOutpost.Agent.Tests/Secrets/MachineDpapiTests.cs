@@ -47,7 +47,7 @@ public sealed class MachineDpapiTests
         AgentSecrets secrets = new(agent.ExportPkcs8PrivateKey(), new Dictionary<(string Base, OutpostModeEnum Mode), string>
         {
             [("accounting", OutpostModeEnum.Read)] = "S3cret-password",
-        });
+        }, new Dictionary<string, string>());
 
         byte[] file = SecretsFile.Write(secrets, protection);
         AgentSecrets read = SecretsFile.Read(file, protection);

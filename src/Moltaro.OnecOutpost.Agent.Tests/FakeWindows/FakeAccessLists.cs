@@ -27,6 +27,12 @@ internal sealed class FakeAccessLists : IAccessLists
         return _others.TryGetValue(path, out string[]? accounts) ? accounts : [];
     }
 
+    // The program folder lets nobody else change it.
+    public IReadOnlyList<(string Path, IReadOnlyList<string> Accounts)> Writers(string folder)
+    {
+        return [];
+    }
+
     // The entry at the path admits these accounts besides Administrators, SYSTEM and the agent's account.
     public void Admit(string path, params string[] accounts)
     {

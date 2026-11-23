@@ -3,6 +3,8 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
+using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
+using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
@@ -57,6 +59,13 @@ public sealed class DiskStartTests : IDisposable
 
     private AgentRun Start()
     {
-        return AgentStart.Open(_data.Folders, new WindowsAccessLists(_data.Path), new MachineDpapi(), _clock, PairedFolder.Version);
+        return AgentStart.Open(
+            _data.Folders,
+            new WindowsAccessLists(_data.Path),
+            new MachineDpapi(),
+            new FakeWorkerLauncher(new MemoryDataFolder()),
+            PairedFolder.Programs,
+            _clock,
+            PairedFolder.Version);
     }
 }

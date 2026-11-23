@@ -33,7 +33,7 @@ public sealed class SecretsFileTests
             [("accounting", OutpostModeEnum.Read)] = "read-pw",
             [("accounting", OutpostModeEnum.Write)] = "wr\"ite\\ пароль",
             [("warehouse", OutpostModeEnum.Read)] = "",
-        });
+        }, new Dictionary<string, string>());
 
         AgentSecrets read = SecretsFile.Read(SecretsFile.Write(secrets, _protection), _protection);
 
@@ -49,7 +49,7 @@ public sealed class SecretsFileTests
         AgentSecrets secrets = new(_key, new Dictionary<(string Base, OutpostModeEnum Mode), string>
         {
             [("accounting", OutpostModeEnum.Write)] = "wr\"ite\\ пароль",
-        });
+        }, new Dictionary<string, string>());
 
         byte[] plain = _protection.Unprotect(SecretsFile.Write(secrets, _protection));
 
@@ -65,7 +65,7 @@ public sealed class SecretsFileTests
         AgentSecrets secrets = new(_key, new Dictionary<(string Base, OutpostModeEnum Mode), string>
         {
             [("accounting", OutpostModeEnum.Read)] = "S3cret-password",
-        });
+        }, new Dictionary<string, string>());
 
         byte[] file = SecretsFile.Write(secrets, _protection);
 
@@ -81,7 +81,7 @@ public sealed class SecretsFileTests
         AgentSecrets secrets = new(_key, new Dictionary<(string Base, OutpostModeEnum Mode), string>
         {
             [("accounting", OutpostModeEnum.Read)] = "read-pw",
-        });
+        }, new Dictionary<string, string>());
 
         byte[] file = SecretsFile.Write(secrets, _protection);
         _protection.Refuses = true;
@@ -139,7 +139,7 @@ public sealed class SecretsFileTests
         AgentSecrets secrets = new(KeyOf(kind), new Dictionary<(string Base, OutpostModeEnum Mode), string>
         {
             [("accounting", OutpostModeEnum.Read)] = "read-pw",
-        });
+        }, new Dictionary<string, string>());
 
         byte[] file = SecretsFile.Write(secrets, _protection);
 

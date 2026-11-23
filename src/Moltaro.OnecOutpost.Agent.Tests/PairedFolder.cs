@@ -4,6 +4,7 @@ using System.Text;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Agent.Tests.FakeFiles;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
+using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests;
 
@@ -17,6 +18,9 @@ internal sealed class PairedFolder
     public static readonly Guid Agent = Guid.Parse("5f0c3a1e-2b4d-4c6e-8a10-b2c3d4e5f607");
 
     public const string Version = "0.1.0-test";
+
+    // The program folder of the agent, as its start is given it.
+    public const string Programs = @"C:\Program Files\Moltaro Outpost";
 
     // Two bases: one on a cluster that may be read and written, and one in a folder that is only read.
     public const string Policy = """
@@ -101,6 +105,6 @@ internal sealed class PairedFolder
 
     public AgentRun Start(TimeProvider clock)
     {
-        return AgentStart.Open(Data.Folders, Access, Protection, clock, Version);
+        return AgentStart.Open(Data.Folders, Access, Protection, new FakeWorkerLauncher(Data), Programs, clock, Version);
     }
 }

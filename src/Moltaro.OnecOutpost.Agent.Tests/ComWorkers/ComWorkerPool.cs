@@ -44,8 +44,8 @@ internal sealed class ComWorkerPool : IAsyncDisposable
                     "srv-1c:1541",
                     "accounting",
                     null,
-                    new AgentModePolicy("outpost-read", 1, TestPool.ReadLimit, SafeMode: true),
-                    new AgentModePolicy("outpost-write", 1, TestPool.WriteLimit, SafeMode: true)),
+                    new AgentModePolicy("outpost-read", 1, TestPool.ReadLimit, SafeMode: true, WorkerAccount: null),
+                    new AgentModePolicy("outpost-write", 1, TestPool.WriteLimit, SafeMode: true, WorkerAccount: null)),
             ]);
 
         Pool = new WorkerPool(policy, TestPool.Secrets, Launcher, TestPool.Executor, Clock);

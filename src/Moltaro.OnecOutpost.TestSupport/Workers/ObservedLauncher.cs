@@ -31,6 +31,11 @@ internal sealed partial class ObservedLauncher : IWorkerLauncher
         _launcher = launcher;
     }
 
+    public void LogOn(string baseKey, string account, string password)
+    {
+        _launcher.LogOn(baseKey, account, password);
+    }
+
     public IWorkerProcess Start(string baseKey, OutpostModeEnum mode)
     {
         int number;

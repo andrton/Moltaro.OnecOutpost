@@ -38,6 +38,27 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
         _job = job;
     }
 
+    // Logs on the worker account of the base, before any Start. Each failure closes the token and throws
+    // AgentStopException, never with the password:
+    // 1. LogonUserW(account, ".", password, LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT), the password in
+    //    Marshal.StringToHGlobalUni, zeroed in a finally; BATCH, since a service logon adds SERVICE with
+    //    SeImpersonatePrivilege. Failure: the worker account {account} of the base {key} cannot log on: {the Win32
+    //    message};
+    // 2. the token's groups, whatever their attributes, and privileges, enabled or not, judged by WorkerAccountRule:
+    //    the worker account {account} of the base {key} is an administrator or holds a privilege beyond an ordinary
+    //    user's; expected a local user that is not in Administrators, as the console's install prepares it;
+    // 3. the agent's token holds SeAssignPrimaryTokenPrivilege and SeIncreaseQuotaPrivilege, enabled or not, since
+    //    CreateProcessAsUserW enables them: the agent's account lacks the right "Replace a process level token" or
+    //    "Adjust memory quotas for a process"; install the agent with the console.
+    // The logon comes first, so that a missing account gives 1326 whatever the agent holds. The token lives as long as
+    // the launcher; one logon per start of the agent, so no retries lock the account out. Invariant: every COM worker of
+    // a logged-on base runs under its token, Reads included; the agent's own token runs only bases without a
+    // workerAccount.
+    public void LogOn(string baseKey, string account, string password)
+    {
+        throw new NotSupportedException();
+    }
+
     // Reads the registry at each start (concept §5, O8): the x64 program when the connector is registered for 64 bits,
     // otherwise the x86 program when it is for 32 bits, otherwise a NoProcess. Process.Start of the program with
     // ArgumentList the base key and read or write, its standard input and output redirected, UseShellExecute false and
@@ -83,7 +104,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
 
         try
         {
-            _job.Add(process);
+            _job.Add(process.SafeHandle);
         }
         catch (Win32Exception)
         {
@@ -94,7 +115,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher
             return new NoProcess();
         }
 
-        return new ComWorkerProcess(process);
+        return new ComWorkerProcess(process.SafeHandle, process.StandardInput.BaseStream, process.StandardOutput.BaseStream);
     }
 
     // The program of the bitness for which the connector is registered, 64 bits first, or null for none. A 32-bit

@@ -9,6 +9,7 @@ using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Polls;
 using Moltaro.OnecOutpost.Agent.Records;
 using Moltaro.OnecOutpost.Agent.Secrets;
+using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Agent.Start;
@@ -35,10 +36,20 @@ internal static class AgentStart
     // withoutSafeMode empty, records policy invalid when policy.json failed, disposes the log and throws
     // AgentStopException with the same reason. When every step passes, it records started with the bases that write
     // without safe mode and policy as valid, calls Recover and returns the run. version is the agent's version as given.
+    // S9c adds: after step 3, access.Writers(programs), the full path of the program folder, whose first entry fails with
+    // "the access list of {path} lets {accounts} change it; expected nobody but Administrators, SYSTEM,
+    // TrustedInstaller and the agent's account, as the console's install sets it", and whose IOException fails with
+    // "the access lists of the program folder cannot be read"; in step 6, a worker password for each base with a
+    // WorkerAccount, else "secrets.dat holds no password for the worker account of the base {key}; write it with the
+    // console"; and a step 7, workers.LogOn(key, account, password) for each such base in the policy's order, whose
+    // AgentStopException fails the start before any worker starts. Until S9c's implementation, workers and programs
+    // are not used.
     public static AgentRun Open(
         AgentFolders folders,
         IAccessLists access,
         IMachineProtection protection,
+        IWorkerLauncher workers,
+        string programs,
         TimeProvider clock,
         string version)
     {

@@ -24,7 +24,14 @@ internal static class AgentHost
 
         try
         {
-            run = AgentStart.Open(parts.Folders, parts.Access, parts.Protection, parts.Clock, parts.Version);
+            run = AgentStart.Open(
+                parts.Folders,
+                parts.Access,
+                parts.Protection,
+                parts.Workers,
+                parts.Programs,
+                parts.Clock,
+                parts.Version);
         }
         catch (IOException)
         {
