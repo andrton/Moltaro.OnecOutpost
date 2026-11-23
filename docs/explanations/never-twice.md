@@ -9,7 +9,7 @@ application that embeds the server. The rules are rules 3, 4, 7, 10 and 11 of th
 explanation, animated, is [`never-twice.html`](never-twice.html); the path of a command
 without losses is [The path of a command](command-path.md).
 
-**Status:** built. Each case below is a test that passes today over loopback HTTP, without
+**Status:** built. Each case below is a test that passes today, without
 1C: what the cases show happens before a script starts and after it ends. Cases 2 and 3,
 case 4's lost confirmation, and case 5's command that stays taken past the take deadline
 plus the skew and runs once, run with two server nodes on one PostgreSQL, the real agent
