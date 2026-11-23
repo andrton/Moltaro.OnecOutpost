@@ -8,7 +8,7 @@ the base, a Write of a base whose Writes run without safe mode included, as
 [What a command is](#what-a-command-is) says. Every script in this guide is run from this file by a test on the lab
 machine, through the COM worker, against the repository's test base on 1C:Enterprise 8.3.17.1851 in the
 compatibility mode 8.2.13. These tests passed on the lab on 23 November 2026. The lab tests of Writes without safe
-mode under a worker account wait for the lab run.
+mode under a worker account passed there on 23 November 2026.
 
 ## Before you start
 

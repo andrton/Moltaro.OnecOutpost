@@ -109,7 +109,9 @@ above it, and stops when anyone but Administrators, SYSTEM, TrustedInstaller and
 account could change the code that it and its workers run. This is tested on every
 platform with a fake in place of the workers, and on Windows against the access lists and
 an account that does not exist. Its tests on the lab machine, under a real worker account
-against the test base and a copy of a typical base, wait for the lab run. The console's
+against the test base and a copy of a typical base, passed on 23 November 2026: a document
+of the typical copy was posted again under the worker account with its movements
+unchanged, and a Write without safe mode could not read the agent's secrets. The console's
 `install` will grant the agent's account and each worker account their rights, and
 prepare the program folder. Limitations:
 
