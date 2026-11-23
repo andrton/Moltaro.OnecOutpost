@@ -2,7 +2,6 @@ using System.Runtime.Versioning;
 using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
-using Moltaro.OnecOutpost.OneC.Tests.TypicalBases;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
@@ -109,7 +108,7 @@ public sealed class WorkerAccountTests
 
         OutpostOutcomeMessage latest = await run.OutcomeAsync(run.Send(
             OutpostModeEnum.Read,
-            RepostingTests.LatestPostedDocument,
+            TypicalBaseScripts.LatestPostedDocument,
             new JsonObject { ["documentType"] = typicalBase.DocumentType }.ToJsonString()));
 
         AssertSucceeded(latest, $"{about}: the latest posted document");
@@ -120,9 +119,9 @@ public sealed class WorkerAccountTests
             ["id"] = latest.Result!.Value.GetString(),
         }.ToJsonString();
 
-        OutpostOutcomeMessage before = await run.OutcomeAsync(run.Send(OutpostModeEnum.Read, RepostingTests.MovementsOfTheDocument, document));
-        OutpostOutcomeMessage posted = await run.OutcomeAsync(run.Send(OutpostModeEnum.Write, RepostingTests.PostTheDocumentAgain, document));
-        OutpostOutcomeMessage after = await run.OutcomeAsync(run.Send(OutpostModeEnum.Read, RepostingTests.MovementsOfTheDocument, document));
+        OutpostOutcomeMessage before = await run.OutcomeAsync(run.Send(OutpostModeEnum.Read, TypicalBaseScripts.MovementsOfTheDocument, document));
+        OutpostOutcomeMessage posted = await run.OutcomeAsync(run.Send(OutpostModeEnum.Write, TypicalBaseScripts.PostTheDocumentAgain, document));
+        OutpostOutcomeMessage after = await run.OutcomeAsync(run.Send(OutpostModeEnum.Read, TypicalBaseScripts.MovementsOfTheDocument, document));
 
         AssertSucceeded(before, $"{about}: the movements before");
         AssertSucceeded(posted, $"{about}: the posting under the worker account");
@@ -132,7 +131,7 @@ public sealed class WorkerAccountTests
             before.Result!.Value.EnumerateObject().Any(register => register.Value.GetArrayLength() > 0),
             $"{about}: the latest posted document has no movements to compare.");
 
-        string[] changed = [.. RepostingTests.Changed(before.Result.Value, after.Result!.Value)];
+        string[] changed = [.. TypicalBaseScripts.Changed(before.Result.Value, after.Result!.Value)];
         Assert.True(changed.Length == 0, $"{about}: the movements changed in {string.Join(", ", changed)}.");
         Assert.Equal(AgentExitCodes.Stopped, await run.StopAsync());
     }
