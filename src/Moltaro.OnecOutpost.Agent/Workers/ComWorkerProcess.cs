@@ -9,11 +9,11 @@ using Moltaro.OnecOutpost.Protocol.Codec;
 
 namespace Moltaro.OnecOutpost.Agent.Workers;
 
-// One COM worker process of the program's launcher, speaking S9's lines over its raw standard streams, as S9's lab
-// helper does: one JSON object per line in UTF-8, ended with LF, each line read as bytes up to its LF. A failed write
-// gives false or null; cancellation kills and throws OperationCanceledException. Every open or run that does not give
-// true or an outcome has killed the process. Limitation: the agent keeps no diagnostics of a worker; the console's check
-// shows why one does not open (S10).
+// One COM worker process of the program's launcher, speaking the worker's lines over its raw standard streams, as the
+// lab's WorkerProcess does: one JSON object per line in UTF-8, ended with LF, each line read as bytes up to its LF. A
+// failed write gives false or null; cancellation kills and throws OperationCanceledException. Every open or run that
+// does not give true or an outcome has killed the process. Limitation: the agent keeps no diagnostics of a worker; the
+// console's check shows why one does not open (S10).
 //
 // The pool calls OpenAsync and then RunAsync one at a time; Kill may run beside either, from any thread. A read from
 // the pipe of a process does not end on cancellation, so cancellation kills the process, which ends its output.
@@ -137,7 +137,8 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool TerminateProcess(SafeProcessHandle process, uint exitCode);
 
-    // The connection line of S9: location, user, password, safeMode and executor. The password travels only here.
+    // The connection line of the worker: location, user, password, safeMode and executor. The password travels only
+    // here.
     private static byte[] ConnectionLine(WorkerConnectionLine connection)
     {
         OutpostJsonWriter writer = new();
@@ -158,8 +159,9 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
         return WithLineFeed(writer);
     }
 
-    // The command line of S9: script, parameters, callerKey and outcomeLimit. The parameters are the text of the signed
-    // command, which the codec read as JSON; a writer of §2 wrote them without white space, so they hold no LF.
+    // The command line of the worker: script, parameters, callerKey and outcomeLimit. The parameters are the text of
+    // the signed command, which the codec read as JSON; a writer of §2 wrote them without white space, so they hold no
+    // LF.
     private static byte[] CommandLine(WorkerCommandLine command)
     {
         OutpostJsonWriter writer = new();
@@ -237,7 +239,7 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
 
     // Writes one line and reads the one line of the answer, of at most limit bytes, its LF not counted; null when the
     // write fails, when the output ends before a whole line, when the line is longer, and when bytes follow its LF,
-    // which S9's worker never writes before it reads its next line.
+    // which the COM worker never writes before it reads its next line.
     private async Task<byte[]?> ExchangeAsync(byte[] line, long limit)
     {
         try

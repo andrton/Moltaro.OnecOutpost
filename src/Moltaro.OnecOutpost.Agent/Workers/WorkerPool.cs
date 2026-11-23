@@ -101,9 +101,9 @@ internal sealed partial class WorkerPool : IAsyncDisposable
     // a kind and code that IsComWorkerOutcome refuses give result-type; anything else goes byte for byte. Each code is
     // Failed for a Read and Unknown for a Write, written as CommandRecords writes its own. DurationMs is the clock's
     // time from the call to the outcome. A worker is dropped after null, after a kill, and after it gave
-    // base-unreachable or connection-lost, after which S9's worker ends; its mode has one worker fewer until its slot
-    // starts another. Cancellation kills the worker, waits for its run and throws, recording nothing (rule 3 at the next
-    // start).
+    // base-unreachable or connection-lost, after which the COM worker ends; its mode has one worker fewer until its
+    // slot starts another. Cancellation kills the worker, waits for its run and throws, recording nothing (rule 3 at
+    // the next start).
     public Task<WorkerRun> RunAsync(OutpostCommandMessage command, CancellationToken cancellationToken)
     {
         long started = _clock.GetTimestamp();
@@ -170,10 +170,10 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         }
     }
 
-    // The outcome sent for what a run gave within its limit (§8): the bytes of the executor, or of S9's worker itself,
-    // as they came when the agent may accept them, and otherwise an outcome of the agent's own. The worker is dropped
-    // when it ended, or broke its line, without an outcome, and when it gave base-unreachable or connection-lost, after
-    // which S9's worker ends.
+    // The outcome sent for what a run gave within its limit (§8): the bytes of the executor, or of the COM worker
+    // itself, as they came when the agent may accept them, and otherwise an outcome of the agent's own. The worker is
+    // dropped when it ended, or broke its line, without an outcome, and when it gave base-unreachable or
+    // connection-lost, after which the COM worker ends.
     private static byte[] Accept(Worker worker, OutpostModeEnum mode, (long Size, byte[] Outcome)? given)
     {
         if (given is not (long size, byte[] outcome))
@@ -190,7 +190,7 @@ internal sealed partial class WorkerPool : IAsyncDisposable
             worker.Drop();
         }
 
-        // S9's requirement: the size the executor measured is the length of the bytes the agent received.
+        // As the brief of S9 requires: the size the executor measured is the length of the bytes the agent received.
         bool accepted = size == outcome.Length
             && message is not null
             && OutpostOutcomeCodes.IsComWorkerOutcome(mode, message.Kind, message.Code);
@@ -198,8 +198,8 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         return accepted ? outcome : OwnOutcome.AfterStart(mode, OutpostOutcomeCodes.ResultType);
     }
 
-    // The base as S9's worker completes it into a 1C connection string: Srvr and Ref for a cluster, File for a folder,
-    // each " in a value doubled.
+    // The base as the COM worker completes it into a 1C connection string: Srvr and Ref for a cluster, File for a
+    // folder, each " in a value doubled.
     private static string LocationOf(AgentBasePolicy served)
     {
         if (served.File is string file)
