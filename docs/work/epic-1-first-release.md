@@ -4764,7 +4764,7 @@ implementer work on `xhigh`.
     internal sealed partial class WorkerDesktop : IDisposable
     {
         public static WorkerDesktop Make(string baseKey, SafeAccessTokenHandle token);
-        public string Name { get; } // "{station}\OnecOutpost-{base key}"
+        public string Name { get; } // "{station}\OnecOutpost-{base key}-{logon}"
     }
     [SupportedOSPlatform("windows")]
     internal sealed partial class WorkerJob : IDisposable
@@ -4858,7 +4858,9 @@ implementer work on `xhigh`.
       agent's own non-interactive station, refused unless its name starts with
       `Service-0x`; it gains one ACE for the worker token's logon SID, 0x123 (enumerate
       desktops and the station, read attributes, global atoms); `CreateDesktopW` makes
-      `OnecOutpost-{base key}` on it, swapped in and back at once, with the DACL
+      `OnecOutpost-{base key}-{logon}` on it, `{logon}` the worker token's logon LUID in hex
+      so that no desktop of an earlier logon is ever reused (the coordinator, 23 November
+      2026, from the review of the desktop, round 1), swapped in and back at once, with the DACL
       `D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;0xC7;;;{logon SID})`, 0xC7 as measured. A failure,
       such as no `WRITE_DAC` on the station: `the worker account {account} of the base
       {key} cannot get a desktop: {the Win32 message}`. Invariant: the worker account is
@@ -4877,7 +4879,7 @@ implementer work on `xhigh`.
       agent's own opened by the constructor), the full path, `"{program}" {base key}
       {read|write}`, `CREATE_SUSPENDED | CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT |
       EXTENDED_STARTUPINFO_PRESENT`, `CreateEnvironmentBlock(token, false)`, the program's
-      folder, `lpDesktop` `"{station}\OnecOutpost-{base key}"` for a logged-on base and
+      folder, `lpDesktop` `"{station}\OnecOutpost-{base key}-{logon}"` for a logged-on base and
       `""` under the agent's own token, the client ends as standard input and output, a null
       standard error, and a `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` of the two client ends
       alone, so that a worker inherits nothing else. Then the client ends close,
