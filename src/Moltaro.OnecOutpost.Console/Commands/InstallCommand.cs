@@ -68,7 +68,9 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
 
     // Step 1: the elevation, then the folder that install copies the program from, null when it runs from the program
     // folder itself, so that the lists alone are set. A source inside the program folder would be emptied before it is
-    // copied. The final paths make a short name, a subst drive or a junction name the folder it leads to.
+    // copied, and one that holds the program folder, such as an archive unpacked straight into %ProgramFiles%, would be
+    // copied into it with all else it holds. The final paths make a short name, a subst drive or a junction name the
+    // folder it leads to.
     private string? Source()
     {
         SharedSteps.Elevation(_parts, "install");
@@ -91,7 +93,7 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
             return null;
         }
 
-        if (source.StartsWith(programFolder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        if (IsInside(source, programFolder) || IsInside(programFolder, source))
         {
             throw new CommandEndException(
                 ConsoleExitCodes.Usage,
@@ -99,6 +101,14 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
         }
 
         return _parts.Source;
+    }
+
+    // Whether the path lies inside the folder, both final paths; a root, such as C:\, ends with its separator.
+    private static bool IsInside(string path, string folder)
+    {
+        string prefix = Path.EndsInDirectorySeparator(folder) ? folder : folder + Path.DirectorySeparatorChar;
+
+        return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
     // Step 3: the program folder, copied and given its lists, then judged by the agent's own rule before any service

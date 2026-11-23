@@ -9,12 +9,13 @@ namespace Moltaro.OnecOutpost.Console.Folders;
 // The folders as NTFS keeps them. It makes Administrators the owner of every entry it writes, as an elevated token may.
 // The data folder: O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;FR;;;{agent}), which CreateDirectoryW fails to make
 // with 183 when anything is there, so that only a folder judged by the agent's Others is ever applied to; audit\ and
-// outcomes\ inherit it plus (A;OICI;0x1301bf;;;{agent}). The program folder:
-// O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;0x1200a9;;;BU). A descriptor is written by SetNamedSecurityInfo, which
-// passes the entries to inherit on to what the folder holds, so the files of the data folder get them without being
-// written. A failure of Windows in its own calls is an IOException with the Win32Exception inside; those of .NET pass
-// as .NET throws them. Kind counts a file that is not a folder as Absent, so that nothing takes it for a folder, and
-// CreateDirectoryW then fails with 183.
+// outcomes\ inherit it plus (A;OICI;0x1301bf;;;{agent}), made without a descriptor so that they inherit it. The program
+// folder: O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;0x1200a9;;;BU). A descriptor is written by
+// SetNamedSecurityInfo, which passes the entries to inherit on to what the folder holds, so the files of the data folder
+// get them without being written; .NET writes the explicit entries in the order of their SIDs, SYSTEM first, which
+// changes no access. A failure of Windows in its own calls is an IOException with the Win32Exception inside; those of
+// .NET pass as .NET throws them. Kind counts a file that is not a folder as Absent, so that nothing takes it for a
+// folder, and CreateDirectoryW then fails with 183.
 [SupportedOSPlatform("windows")]
 internal sealed partial class WindowsFolderSetup : IFolderSetup
 {
@@ -158,19 +159,17 @@ internal sealed partial class WindowsFolderSetup : IFolderSetup
 
         new DirectoryInfo(folder).SetAccessControl(security);
 
-        // The agent deletes expired audit files and confirmed outcomes, so it may modify these two.
-        DirectorySecurity writable = DirectorySecurityOf($"O:BAD:AI(A;OICI;0x1301bf;;;{agentSid})");
-
+        // The agent deletes expired audit files and confirmed outcomes, so it may modify these two. One that is absent is
+        // made without a descriptor, so that it inherits the data folder's lists: Windows would protect a descriptor
+        // given at its creation, and the folder would then inherit nothing, Administrators' full control included,
+        // without which they may not write its owner. Each gets an object of its own, since a write clears what the
+        // object marks as changed.
         foreach (string name in WritableFolders)
         {
             DirectoryInfo inner = new(Path.Combine(folder, name));
 
-            if (!inner.Exists)
-            {
-                inner.Create(writable);
-            }
-
-            inner.SetAccessControl(writable);
+            inner.Create();
+            inner.SetAccessControl(DirectorySecurityOf($"O:BAD:AI(A;OICI;0x1301bf;;;{agentSid})"));
         }
     }
 

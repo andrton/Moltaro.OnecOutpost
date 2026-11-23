@@ -100,9 +100,11 @@ internal static class Program
 
     // Spectre's console on the standard output. A redirected output gets a writer of UTF-8 in the place of the one of
     // the console's code page, which loses every character the code page lacks, such as §; the writer stays
-    // Console.Out, so that Spectre still sees the output as the redirected standard output and writes neither colour
-    // nor animation. The code page of the console itself is not changed, since a console that the shell shares would
-    // keep it after the run.
+    // Console.Out, so that Spectre still sees the output as the redirected standard output. The code page of the
+    // console itself is not changed, since a console that the shell shares would keep it after the run. Spectre's
+    // default enrichers are off: those of CI systems, such as GitHub Actions by GITHUB_ACTIONS and Azure Pipelines by
+    // TF_BUILD, would turn colour on whatever the output is, so that only Spectre's own detection decides, and an output
+    // that is not an interactive terminal gets neither colour nor animation.
     private static IAnsiConsole MachineConsole()
     {
         bool redirected = System.Console.IsOutputRedirected;
@@ -117,7 +119,10 @@ internal static class Program
             System.Console.SetOut(output);
         }
 
-        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings());
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false },
+        });
 
         if (redirected)
         {

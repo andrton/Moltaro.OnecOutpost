@@ -13,7 +13,17 @@ internal static class BuiltProgram
 {
     // Runs the program, by its file name beside the tests, with the arguments to its end, which comes within the deadline
     // of the tests; a run that does not end then is killed and fails the test.
-    public static async Task<ProgramEnd> RunAsync(string fileName, params string[] arguments)
+    public static Task<ProgramEnd> RunAsync(string fileName, params string[] arguments)
+    {
+        return RunWithVariablesAsync(fileName, new Dictionary<string, string>(), arguments);
+    }
+
+    // The same, the variables of the environment given set for the program, beside those of the tests, as a CI system
+    // or a script sets its own.
+    public static async Task<ProgramEnd> RunWithVariablesAsync(
+        string fileName,
+        IReadOnlyDictionary<string, string> variables,
+        params string[] arguments)
     {
         ProcessStartInfo start = new(Path.Combine(AppContext.BaseDirectory, fileName))
         {
@@ -25,6 +35,11 @@ internal static class BuiltProgram
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
         };
+
+        foreach ((string name, string value) in variables)
+        {
+            start.Environment[name] = value;
+        }
 
         foreach (string argument in arguments)
         {

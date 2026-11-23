@@ -43,6 +43,24 @@ public sealed class InstallRefusalTests
         Assert.Empty(_machine.Operations);
     }
 
+    // The archive unpacked straight into %ProgramFiles%, or into the root of the volume: install would copy all that
+    // folder holds into the program folder, the program folder included.
+    [Theory]
+    [InlineData("Program Files")]
+    [InlineData("")]
+    public async Task Install_run_from_a_folder_that_holds_the_program_folder_ends_with_Usage_before_anything_changes(string folder)
+    {
+        _machine.Source = Path.Combine(TestMachine.Root, folder);
+
+        CommandAppResult result = await _machine.RunAsync("install");
+
+        Assert.Equal(ConsoleExitCodes.Usage, result.ExitCode);
+        Assert.Contains(
+            $"Usage (2): unpack the archive outside {TestMachine.ProgramFolder} and run install from there",
+            TestMachine.LinesOf(result));
+        Assert.Empty(_machine.Operations);
+    }
+
     [Fact]
     public async Task A_service_that_does_not_stop_within_the_stop_timeout_ends_install_with_StopTimedOut()
     {

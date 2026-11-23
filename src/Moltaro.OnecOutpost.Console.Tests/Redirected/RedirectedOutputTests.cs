@@ -79,4 +79,24 @@ public sealed class RedirectedOutputTests
             ["Usage (2): <SERVER>: expected an https address, or an http one on loopback (§11 of the protocol)"],
             end.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
+
+    // The variables by which GitHub Actions and Azure Pipelines name themselves, with which Spectre's default enrichers
+    // would turn colour on whatever the output is: the output is not an interactive terminal, so it stays plain text.
+    [Theory]
+    [InlineData("GITHUB_ACTIONS", "true")]
+    [InlineData("TF_BUILD", "True")]
+    public async Task Under_the_variables_of_a_CI_system_a_redirected_output_is_plain_text(string variable, string value)
+    {
+        ProgramEnd end = await BuiltProgram.RunWithVariablesAsync(
+            ConsoleFile,
+            new Dictionary<string, string> { [variable] = value },
+            "secret",
+            "Accounting",
+            "read");
+
+        Assert.Equal(ConsoleExitCodes.Usage, end.ExitCode);
+        Assert.StartsWith("Usage (2): ", end.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain(Escape, end.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain(Escape, end.Error, StringComparison.Ordinal);
+    }
 }
