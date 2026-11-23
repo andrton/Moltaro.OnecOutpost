@@ -46,7 +46,7 @@ public sealed class DiskHostTests : IDisposable
             new MachineDpapi(),
             new FakeWorkerLauncher(new MemoryDataFolder()),
             PairedFolder.ProgramFolder,
-            TestHost.Executor,
+            PairedFolder.Executor,
             (_, _) => server,
             clock,
             PairedFolder.Version);

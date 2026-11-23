@@ -24,6 +24,9 @@ internal sealed class PairedFolder
     // The program folder of the agent, as its start is given it.
     public const string ProgramFolder = @"C:\Program Files\Moltaro Outpost";
 
+    // The executor in the program folder, as the host and the pool are given it.
+    public const string Executor = ProgramFolder + @"\OutpostExecutor.epf";
+
     // Two bases: one on a cluster that may be read and written, and one in a folder that is only read.
     public const string Policy = """
         {

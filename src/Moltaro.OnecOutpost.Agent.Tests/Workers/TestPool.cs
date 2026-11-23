@@ -16,8 +16,6 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 // Open returns.
 internal sealed class TestPool : IAsyncDisposable
 {
-    public const string Executor = @"C:\Program Files\Moltaro Outpost\OutpostExecutor.epf";
-
     public static readonly TimeSpan ReadLimit = TimeSpan.FromMinutes(1);
 
     public static readonly TimeSpan WriteLimit = TimeSpan.FromMinutes(2);
@@ -26,7 +24,7 @@ internal sealed class TestPool : IAsyncDisposable
     {
         Policy = policy;
         Launcher = new FakeWorkerLauncher(Data);
-        Pool = new WorkerPool(policy, secrets, Launcher, Executor, Clock);
+        Pool = new WorkerPool(policy, secrets, Launcher, PairedFolder.Executor, Clock);
     }
 
     public AgentPolicy Policy { get; }

@@ -74,7 +74,7 @@ public sealed class WorkerLogOnTests : IDisposable
             new MachineDpapi(),
             launcher,
             PairedFolder.ProgramFolder,
-            TestHost.Executor,
+            PairedFolder.Executor,
             (_, _) => server,
             clock,
             PairedFolder.Version);

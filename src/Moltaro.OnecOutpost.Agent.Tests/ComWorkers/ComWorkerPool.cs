@@ -51,7 +51,7 @@ internal sealed class ComWorkerPool : IAsyncDisposable
                     new AgentModePolicy("outpost-write", 1, TestPool.WriteLimit, SafeMode: true, WorkerAccount: null)),
             ]);
 
-        Pool = new WorkerPool(policy, TestPool.Secrets, Launcher, TestPool.Executor, Clock);
+        Pool = new WorkerPool(policy, TestPool.Secrets, Launcher, PairedFolder.Executor, Clock);
     }
 
     public FakeClock Clock { get; } = new(TestTimes.Start);

@@ -16,8 +16,6 @@ namespace Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 // server of its own and, after the clock was set back, a clock of its own.
 internal sealed class TestHost : IAsyncDisposable
 {
-    public const string Executor = @"C:\Program Files\Moltaro Outpost\OutpostExecutor.epf";
-
     private readonly ECDsa _serverKey;
 
     private readonly ECDsa _agentKey;
@@ -42,7 +40,7 @@ internal sealed class TestHost : IAsyncDisposable
             folder.Protection,
             workers,
             PairedFolder.ProgramFolder,
-            Executor,
+            PairedFolder.Executor,
             (_, _) => Server,
             clock,
             PairedFolder.Version);

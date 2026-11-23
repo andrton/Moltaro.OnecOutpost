@@ -102,7 +102,7 @@ internal sealed class LoopbackAgent
             Protection,
             Workers,
             PairedFolder.ProgramFolder,
-            TestHost.Executor,
+            PairedFolder.Executor,
             Handler,
             clock,
             PairedFolder.Version);
