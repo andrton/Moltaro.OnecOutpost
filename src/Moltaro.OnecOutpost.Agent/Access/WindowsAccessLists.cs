@@ -6,9 +6,9 @@ namespace Moltaro.OnecOutpost.Agent.Access;
 
 // The access lists of the data folder and of the program folder as Windows keeps them, read with
 // FileSystemAclExtensions. Each account is named as Windows translates its SID, or by the SID; the agent's own account
-// is WindowsIdentity.GetCurrent() when the lists are made, which is NT SERVICE\MoltaroOnecOutpost as a service. An
-// administrator's own account, as the owner of a file or in an entry, counts as somebody else, so a file that an
-// administrator's account owns stops the agent until Administrators own it.
+// is the one the lists are made for: the agent's own, NT SERVICE\MoltaroOnecOutpost as a service, or the one the
+// console installs the service under. An administrator's own account, as the owner of a file or in an entry, counts as
+// somebody else, so a file that an administrator's account owns stops the agent until Administrators own it.
 [SupportedOSPlatform("windows")]
 internal sealed class WindowsAccessLists : IAccessLists
 {
@@ -37,8 +37,7 @@ internal sealed class WindowsAccessLists : IAccessLists
         ~(FileSystemRights.ReadAndExecute | FileSystemRights.Synchronize | GenericRead | GenericExecute);
 
     // NT SERVICE\TrustedInstaller, whose SID Windows derives from the name of the service.
-    private static readonly SecurityIdentifier TrustedInstaller =
-        new("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464");
+    private static readonly SecurityIdentifier TrustedInstaller = new(ServiceAccount.Sid("TrustedInstaller"));
 
     // The full path of the data folder, against which the paths given to Others are taken.
     private readonly string _dataFolder;
@@ -50,17 +49,16 @@ internal sealed class WindowsAccessLists : IAccessLists
     // Windows installs, such as the root of the system's volume.
     private readonly SecurityIdentifier[] _admittedToProgramFolder;
 
-    public WindowsAccessLists(string dataFolder)
+    // The full path of the data folder, and the account of the agent.
+    public WindowsAccessLists(string dataFolder, SecurityIdentifier agent)
     {
         _dataFolder = dataFolder;
-
-        using WindowsIdentity agent = WindowsIdentity.GetCurrent();
 
         _admitted =
         [
             new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null),
             new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
-            agent.User!,
+            agent,
         ];
 
         _admittedToProgramFolder = [.. _admitted, TrustedInstaller];

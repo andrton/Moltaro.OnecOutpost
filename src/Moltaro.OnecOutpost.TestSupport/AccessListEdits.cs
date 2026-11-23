@@ -6,11 +6,14 @@ namespace Moltaro.OnecOutpost.TestSupport;
 
 // Changes of the access lists of a test's own temporary folder, for the tests that read them on Windows: those of the
 // agent's tests with Requires=Windows and the lab's. The account that runs the tests stands for the agent's account,
-// as WindowsIdentity.GetCurrent() is the agent's own.
+// as WindowsIdentity.GetCurrent() is the agent's own, and the agent's access lists of these tests are made for it.
 [SupportedOSPlatform("windows")]
 internal static class AccessListEdits
 {
     public static SecurityIdentifier Everyone { get; } = new(WellKnownSidType.WorldSid, null);
+
+    // The account that runs the tests.
+    public static SecurityIdentifier TestAccount { get; } = WindowsIdentity.GetCurrent().User!;
 
     // Sets the access list of a folder as the console's install sets that of the data folder: inheritance off, and
     // full control, inherited by everything created inside, for Administrators, SYSTEM and the account that runs the

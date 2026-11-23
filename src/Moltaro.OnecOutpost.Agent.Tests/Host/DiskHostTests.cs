@@ -42,7 +42,7 @@ public sealed class DiskHostTests : IDisposable
         FakeServer server = new(serverKey, clock);
         AgentParts parts = new(
             _data.Folders,
-            new WindowsAccessLists(_data.Path),
+            new WindowsAccessLists(_data.Path, AccessListEdits.TestAccount),
             new MachineDpapi(),
             new FakeWorkerLauncher(new MemoryDataFolder()),
             PairedFolder.ProgramFolder,

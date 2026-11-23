@@ -24,8 +24,8 @@ namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 [SupportedOSPlatform("windows")]
 public sealed class WorkerLogOnTests : IDisposable
 {
-    // A ProgID that no class has: no worker starts in these tests.
-    private static readonly string NoConnector = $"Moltaro.OnecOutpost.NoConnector.{Guid.NewGuid():N}";
+    // A connector registered in no view: no worker starts in these tests.
+    private readonly TestConnector _noConnector = TestConnector.Register();
 
     private readonly DiskDataFolder _data = new();
 
@@ -37,13 +37,14 @@ public sealed class WorkerLogOnTests : IDisposable
     public void Dispose()
     {
         _data.Dispose();
+        _noConnector.Dispose();
     }
 
     [Fact]
     public void The_logon_of_an_account_that_does_not_exist_fails_naming_the_base_the_account_and_the_message_of_1326()
     {
         using WorkerJob job = new();
-        using ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, NoConnector, job);
+        using ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, _noConnector.Finder, job);
 
         AgentStopException exception = Assert.Throws<AgentStopException>(() => launcher.LogOn("accounting", _account, _password));
 
@@ -67,7 +68,7 @@ public sealed class WorkerLogOnTests : IDisposable
         using ECDsa serverKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         FakeServer server = new(serverKey, clock);
         using WorkerJob job = new();
-        using ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, NoConnector, job);
+        using ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, _noConnector.Finder, job);
         AgentParts parts = new(
             _data.Folders,
             new FakeAccessLists(),

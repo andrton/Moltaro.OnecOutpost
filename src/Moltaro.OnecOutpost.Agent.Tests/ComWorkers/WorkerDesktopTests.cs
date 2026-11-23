@@ -142,7 +142,7 @@ public sealed class WorkerDesktopTests : IDisposable
 
     private ComWorkerLauncher Launcher()
     {
-        return new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, _connector.ProgId, _job);
+        return new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, _connector.Finder, _job);
     }
 
     // A DACL in the form in which Windows writes it, so that two lists of the same entries read the same.

@@ -1,12 +1,14 @@
 using System.Runtime.Versioning;
 using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Access;
+using Moltaro.OnecOutpost.Agent.Connector;
 using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
+using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Workers;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
@@ -46,12 +48,12 @@ internal sealed class LabRun : IAsyncDisposable
         _workerPath = agent.WorkerPath;
         _workerAccount = agent.WorkerAccount;
         Server = new LabServer(agent.ServerKey, agent.AgentKey, agent.Agent, agent.Clock);
-        _launcher = new ComWorkerLauncher(agent.WorkerPath, agent.WorkerPath, ComWorkerLauncher.ComConnector, agent.Job);
+        _launcher = new ComWorkerLauncher(agent.WorkerPath, agent.WorkerPath, ConnectorFinder.Machine(), agent.Job);
         Workers = new ObservedLauncher(_launcher);
 
         AgentParts parts = new(
             agent.Folders,
-            new WindowsAccessLists(agent.DataPath),
+            new WindowsAccessLists(agent.DataPath, AccessListEdits.TestAccount),
             new MachineDpapi(),
             Workers,
             agent.ProgramsPath,

@@ -78,6 +78,45 @@ internal static class AgentPolicyReader
     // The constant form [d.]hh:mm:ss of a TimeSpan, without a sign and without a fraction of a second.
     private static readonly string[] TimeSpanForms = [@"hh\:mm\:ss", @"d\.hh\:mm\:ss"];
 
+    // policy.json is read as UTF-8; bytes that are not make the file invalid, never U+FFFD.
+    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+    // The byte order mark that an editor may put first in policy.json: U+FEFF in UTF-8.
+    private static ReadOnlySpan<byte> ByteOrderMark => [0xEF, 0xBB, 0xBF];
+
+    // Reads the bytes of the file as UTF-8, a byte order mark skipped and not counted in the columns of an error, and
+    // then as Read does; bytes that are not UTF-8 make the file invalid, with an empty path.
+    public static AgentPolicy ReadFile(byte[] file)
+    {
+        ReadOnlySpan<byte> text = file;
+
+        if (text.StartsWith(ByteOrderMark))
+        {
+            text = text[ByteOrderMark.Length..];
+        }
+
+        string json;
+
+        try
+        {
+            json = StrictUtf8.GetString(text);
+        }
+        catch (DecoderFallbackException)
+        {
+            // The fault is the file as a whole, so the path is empty, and the bytes are not repeated.
+            throw new AgentPolicyException("", "the file holds bytes that are not UTF-8; expected JSON text in UTF-8");
+        }
+
+        return Read(json);
+    }
+
+    // True for a TimeSpan in the constant form [d.]hh:mm:ss of the file, without a sign and without a fraction of a
+    // second, whatever its range.
+    public static bool TryReadTimeSpan(string text, out TimeSpan span)
+    {
+        return TimeSpan.TryParseExact(text, TimeSpanForms, CultureInfo.InvariantCulture, out span);
+    }
+
     public static AgentPolicy Read(string json)
     {
         ArgumentNullException.ThrowIfNull(json);
@@ -545,7 +584,7 @@ internal static class AgentPolicyReader
 
         string text = ReadText(value, path, expected);
 
-        if (!TimeSpan.TryParseExact(text, TimeSpanForms, CultureInfo.InvariantCulture, out TimeSpan span))
+        if (!TryReadTimeSpan(text, out TimeSpan span))
         {
             throw new AgentPolicyException(
                 path,

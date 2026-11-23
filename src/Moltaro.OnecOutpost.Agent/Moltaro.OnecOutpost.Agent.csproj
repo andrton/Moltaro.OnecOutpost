@@ -15,6 +15,9 @@
   <ItemGroup>
     <!-- The agent has no public surface: its tests address its types directly. -->
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Agent.Tests" />
+    <!-- The console installs, pairs and checks the agent with its types (principle 12). -->
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Console" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Console.Tests" />
     <!-- TestSupport wraps the boundary of the COM workers, and the lab's tests run the agent against a real 1C. -->
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.TestSupport" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.OneC.Tests" />

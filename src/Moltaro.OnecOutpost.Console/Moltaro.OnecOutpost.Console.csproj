@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- A program of the agent archive, never a package. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The console installs, pairs and checks the agent with the agent's own types and the protocol's (principle 12). -->
+    <ProjectReference Include="..\Moltaro.OnecOutpost.Agent\Moltaro.OnecOutpost.Agent.csproj" />
+    <ProjectReference Include="..\Moltaro.OnecOutpost.Protocol\Moltaro.OnecOutpost.Protocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="Spectre.Console.Cli" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The console has no public surface: its tests address its types directly. -->
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Console.Tests" />
+  </ItemGroup>
+
+</Project>

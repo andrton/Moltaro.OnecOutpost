@@ -2,9 +2,8 @@ using System.ComponentModel;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using System.Security;
-using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
+using Moltaro.OnecOutpost.Agent.Connector;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 
@@ -17,7 +16,7 @@ namespace Moltaro.OnecOutpost.Agent.Workers;
 // Invariant: every COM worker of a logged-on base runs under the token of its worker account, Reads included; the
 // agent's own token, opened by the constructor, runs only the bases without a workerAccount. LogOn runs on the start's
 // thread before any Start, so the tokens are only read once workers start. Start may run on several slots' tasks at
-// once, without a lock: it reads the registry and the tokens, and a worker inherits the ends of its own two pipes alone,
+// once, without a lock: it asks the finder and reads the tokens, and a worker inherits the ends of its own two pipes alone,
 // never those of another started at the same moment. Nothing else in the agent starts a process, which would inherit
 // every handle that may be inherited, those ends included, while they are open. The tokens and the desktops of the
 // workers live as long as the launcher, which closes them when disposed; the program never disposes it, so Windows
@@ -30,9 +29,6 @@ namespace Moltaro.OnecOutpost.Agent.Workers;
 [SupportedOSPlatform("windows")]
 internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 {
-    // The ProgID of the COM connector that the platform registers.
-    public const string ComConnector = "V83.COMConnector";
-
     // The file of the COM worker in x64\ and x86\ beside the agent's program, each with the files of its build.
     public const string WorkerFile = "Moltaro.OnecOutpost.ComWorker.exe";
 
@@ -67,7 +63,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
     private readonly string _x86Program;
 
-    private readonly string _connectorProgId;
+    private readonly IConnectorFinder _connectors;
 
     private readonly WorkerJob _job;
 
@@ -78,13 +74,13 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     private readonly Dictionary<string, (SafeAccessTokenHandle Token, WorkerDesktop Desktop)> _workers =
         new(StringComparer.Ordinal);
 
-    // The two programs of the worker, the ProgID of the connector whose registration chooses between them, and the job
+    // The two programs of the worker, the finder of the connector whose registration chooses between them, and the job
     // that every started process joins. It opens the agent's own primary token; a failure is a Win32Exception.
-    public ComWorkerLauncher(string x64Program, string x86Program, string connectorProgId, WorkerJob job)
+    public ComWorkerLauncher(string x64Program, string x86Program, IConnectorFinder connectors, WorkerJob job)
     {
         _x64Program = x64Program;
         _x86Program = x86Program;
-        _connectorProgId = connectorProgId;
+        _connectors = connectors;
         _job = job;
 
         if (!OpenProcessToken(GetCurrentProcess(), AgentTokenAccess, out _agentToken))
@@ -209,7 +205,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
         _agentToken.Dispose();
     }
 
-    // Reads the registry at each start (concept §5, O8): the x64 program when the connector is registered for 64 bits,
+    // Asks the connector's finder at each start (concept §5, O8): the x64 program when the connector is registered for 64 bits,
     // otherwise the x86 program when it is for 32 bits, otherwise a NoProcess. Two anonymous pipes, then
     // CreateProcessAsUserW with the token that Use gave for the base, else the agent's own: the program's full path, the
     // command line "{program}" {base key} {read|write}, suspended and without a window, the environment of the token's
@@ -436,46 +432,20 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
         return new NoProcess();
     }
 
-    // The program of the bitness for which the connector is registered, 64 bits first, or null for none. A 32-bit
-    // Windows shows its one view as the view of 64 bits too, so 64 bits are asked of a 64-bit Windows only.
+    // The program of the first bitness whose finding has a registered connector, 64 bits first, or null for none.
     private string? ProgramOfConnector()
     {
-        if (Environment.Is64BitOperatingSystem && IsRegistered(RegistryView.Registry64))
+        foreach (ConnectorFinding finding in _connectors.Find())
         {
-            return _x64Program;
-        }
+            if (finding.Registered is null)
+            {
+                continue;
+            }
 
-        if (IsRegistered(RegistryView.Registry32))
-        {
-            return _x86Program;
+            return finding.Bitness == ConnectorBitnessEnum.X64 ? _x64Program : _x86Program;
         }
 
         return null;
-    }
-
-    // Registered for the bitness of the view: HKEY_CLASSES_ROOT gives a class identifier as the default value of
-    // {connectorProgId}\CLSID, and CLSID\{that}\InprocServer32 has a default value that is not empty. A key that cannot
-    // be read is not registered; no file or version is checked, the console's check does (S10).
-    private bool IsRegistered(RegistryView view)
-    {
-        try
-        {
-            using RegistryKey classes = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, view);
-            using RegistryKey? progId = classes.OpenSubKey($@"{_connectorProgId}\CLSID");
-
-            if (progId?.GetValue("") is not string classId || !Guid.TryParse(classId, out _))
-            {
-                return false;
-            }
-
-            using RegistryKey? server = classes.OpenSubKey($@"CLSID\{classId}\InprocServer32");
-
-            return server?.GetValue("") is string path && path.Length > 0;
-        }
-        catch (Exception exception) when (exception is SecurityException or UnauthorizedAccessException or IOException)
-        {
-            return false;
-        }
     }
 
     [LibraryImport("kernel32.dll")]

@@ -3,6 +3,8 @@
   <Project Path="Moltaro.OnecOutpost.Agent.Tests/Moltaro.OnecOutpost.Agent.Tests.csproj" />
   <Project Path="Moltaro.OnecOutpost.ComWorker/Moltaro.OnecOutpost.ComWorker.csproj" />
   <Project Path="Moltaro.OnecOutpost.ComWorker.Tests/Moltaro.OnecOutpost.ComWorker.Tests.csproj" />
+  <Project Path="Moltaro.OnecOutpost.Console/Moltaro.OnecOutpost.Console.csproj" />
+  <Project Path="Moltaro.OnecOutpost.Console.Tests/Moltaro.OnecOutpost.Console.Tests.csproj" />
   <Project Path="Moltaro.OnecOutpost.Measurements/Moltaro.OnecOutpost.Measurements.csproj" />
   <Project Path="Moltaro.OnecOutpost.Protocol/Moltaro.OnecOutpost.Protocol.csproj" />
   <Project Path="Moltaro.OnecOutpost.Protocol.Tests/Moltaro.OnecOutpost.Protocol.Tests.csproj" />

@@ -35,7 +35,7 @@ public sealed class WorkerBitnessTests : IDisposable
             : [RegistryView.Registry32];
         using TestConnector connector = TestConnector.Register(views);
         using WorkerJob job = new();
-        using ComWorkerLauncher launcher = new(x64, x86, connector.ProgId, job);
+        using ComWorkerLauncher launcher = new(x64, x86, connector.Finder, job);
 
         string path = await PathOfAStartedWorkerAsync(launcher);
 
@@ -55,7 +55,7 @@ public sealed class WorkerBitnessTests : IDisposable
             ? TestConnector.Register(RegistryView.Registry64, RegistryView.Registry32)
             : TestConnector.Register();
         using WorkerJob job = new();
-        using ComWorkerLauncher launcher = new(x64, x86, connector.ProgId, job);
+        using ComWorkerLauncher launcher = new(x64, x86, connector.Finder, job);
 
         using IWorkerProcess worker = launcher.Start("accounting", OutpostModeEnum.Read);
 
@@ -72,7 +72,7 @@ public sealed class WorkerBitnessTests : IDisposable
         string x86 = TestProgram.CopyInto(_folder.PathOf("x86"));
         using TestConnector connector = TestConnector.Register();
         using WorkerJob job = new();
-        using ComWorkerLauncher launcher = new(x64, x86, connector.ProgId, job);
+        using ComWorkerLauncher launcher = new(x64, x86, connector.Finder, job);
 
         using (IWorkerProcess none = launcher.Start("accounting", OutpostModeEnum.Read))
         {

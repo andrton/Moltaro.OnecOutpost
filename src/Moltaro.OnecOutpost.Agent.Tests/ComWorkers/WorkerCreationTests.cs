@@ -108,7 +108,7 @@ public sealed class WorkerCreationTests : IDisposable
 
     private ComWorkerLauncher Launcher()
     {
-        return new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, _connector.ProgId, _job);
+        return new ComWorkerLauncher(TestProgram.Path, TestProgram.Path, _connector.Finder, _job);
     }
 
     // A worker of accounting for Read, started by the launcher, whose open gave true.
