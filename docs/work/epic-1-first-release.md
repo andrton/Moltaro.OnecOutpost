@@ -5047,7 +5047,11 @@ implementer work on `xhigh`.
     - with the output redirected, every command writes plain text, tested.
   - In `Moltaro.OnecOutpost.OneC.Tests`, on the lab machine: `check` against the test base
     and each copy of a typical base, the rights of the read account included, with the
-    server's part against a stub; `metadata` writes a report of each.
+    server's part against a stub; `metadata` writes a report of each; the lines of the
+    worker account, on the lab's `outpost-worker`, each failure case named by a test that
+    breaks it on purpose where that needs no change of the machine (the owner, 23 November
+    2026). How `check` makes the probe start from the console is settled in S10's internal
+    contract.
   - Manual, on the lab machine: the owner runs every command in a terminal and accepts
     how it looks.
   - Manual, on the lab machine, S9c's line (the coordinator, 23 November 2026): `install`
@@ -5178,6 +5182,23 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     - the rights to change data that each read account has;
     - the server;
     - the clock skew;
+    - for each base whose Writes run without safe mode, its worker account: that it logs on
+      with the password of `secrets.dat`, naming a wrong password, a missing "Log on as a
+      batch job" and a locked, disabled or expired account, and that its token passes the
+      rule of the worker account;
+    - that the agent's account holds "Replace a process level token" and "Adjust memory
+      quotas for a process";
+    - a start of the COM worker under each worker account on the desktop the agent makes
+      for it, as the service starts it, which opens no base and reports the exit code or
+      the error of Windows, 0xC0000142 named as a failure to initialise on its desktop;
+    - the access lists of the data folder, its files and the program folder, naming who
+      else may write to them;
+    - that `policy.json` reads and that `secrets.dat` decrypts and holds every password
+      the policy needs.
+
+    `check` only reads: it writes nothing to a base and runs no script that changes data.
+    Every cause of a failure that a lab run finds becomes a line of `check` with its test
+    (the owner, 23 November 2026).
   - `connector register`, after L1, which registers the COM connector of the installed
     platform for its bitness, and says so when it lacks the rights of an administrator;
   - `metadata <base key> <file>`.
