@@ -1218,7 +1218,7 @@ The agent with 1C
 Several nodes, and the refactoring
   S7a nodes, losses ── S7b measurements, explanations ── S8 refactoring ── lab
 The tools
-  S10 console ── S11 shell
+  S10a console setup ── S10b console check ── lab ── S11 shell
 The release
   S12 documents, packages, archive
 ```
@@ -1287,6 +1287,12 @@ The release
   without it.
 - **S10 and S11.** The console works on the agent machine, the shell next to a server.
   They share nothing.
+- **S10a, the console's setup, apart from S10b, its check** (the coordinator, 23 November
+  2026, under the planner's standing instruction to cut a sprint too large for one
+  exhaustive review). `install` with the service, the rights and the access lists,
+  `pair` and `secret` are strict zones of their own; `check`, with a probe of every base
+  and every account, the server and the worker accounts, and `metadata` are a second
+  one, which needs the lab. Each review can then be exhaustive.
 
 ### Status
 
@@ -1308,7 +1314,8 @@ The release
 | S9 | The executor and the COM worker, run after L1 and before S3 | Full | Done, 21 November 2026: the executor's sources and its `.epf`, which the owner built on the lab machine (X1), the COM worker with its tests against a fake of the COM connection, and the tests that need 1C. The code review took three rounds, and its last finding, confirmed on the lab, was fixed by a query of the executor before the commit of a Write, reviewed once more. On the lab, 1C:Enterprise 8.3.17.1851, the first run gave 43 of 44 tests that need 1C passed; the failed one, `A_write_whose_commit_raises_gives_unknown_transaction_ended`, was removed, since 8.3.17 gave no way to provoke the case. The second run, with the `.epf` rebuilt after the fix, gave 45 of 45 passed, on the test base and one copy of a typical base, which ran with one account for both modes. No manual scenario, since every line of the Acceptance has a test. What it changed in the public contract is listed in its brief for the owner |
 | S9b | The agent runs the COM workers | Full | Done, 23 November 2026: the agent runs the COM workers of each base and mode with the bitness of the registered connector, inside a job object, ends a worker at its run limit and starts it again with a growing delay, and serves a base whose Writes run without safe mode for Read only until S9c; guide G2 with a lab test of every script. The internal contract was reviewed in two rounds and approved under PQ2; the code review took three rounds (six P3s of round 1, two of round 2, all fixed). 2430 tests passed here. On the lab, 23 November 2026, 1C:Enterprise 8.3.17.1851, the test base built again: 73 of 73 tests of `Moltaro.OnecOutpost.OneC.Tests` passed (S9's 45, G2's 25, the agent's 3), in 7 min 05 s. The agent, the COM worker and 1C were real, the server the test's; the real server against the agent is proven in CI over loopback (S6c) |
 | S9c | The account of the workers without safe mode | Full | Done, 23 November 2026: `write.workerAccount` in `policy.json` and its password in `secrets.dat`; the agent logs each such account on once at the start and runs every COM worker of its base, Reads included, under it (`LogonUserW`, `CreateProcessAsUserW` suspended, in the job, only its two pipe ends inherited); the program folder and the folders above it checked at the start. The internal contract was reviewed in two rounds and approved under PQ2; the code review took two rounds (a P2 of the job test, fixed). The lab run of 106e58f gave 71 of 76 (the lab agent removed its program folder while workers ran, and gave no reason when a worker did not open), that of bc53229 gave 73 of 76 (the worker under its account ended 0xC0000142: it could not connect to the window station or desktop that `""` names); after a study the worker gets a desktop of the agent's own on its non-interactive station, never WinSta0, reviewed in two rounds (a P2 of the tests, fixed). The third lab run, of 849574f, gave 76 of 76 |
-| S10 | The console | Full | Not started |
+| S10a | The console's setup: `install`, `uninstall`, `pair`, `secret`, `connector register` | Full | Not started |
+| S10b | The console's check, the metadata report and guide G1 | Full | Not started |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
 
@@ -5023,7 +5030,31 @@ implementer work on `xhigh`.
 
 ### S10 · The console
 
-**Track:** full · **Branch:** `epic-1/sprint-10-console` · **Needs:** S9c, S8.
+**Track:** full · **Branch:** `epic-1/sprint-10a-console-setup`, then
+`epic-1/sprint-10b-console-check` · **Needs:** S9c, S8.
+
+- **The cut** (the coordinator, 23 November 2026, under the planner's standing instruction
+  to cut a sprint too large for one exhaustive review). S10 runs as two sprints, each with
+  its own pull request:
+  - **S10a, the setup**: the console project, `install`, `uninstall`, `pair`, `secret` with
+    its form for the worker account, and `connector register`, with the finder of the
+    connector that `check` uses later. Pairing, secrets and the access lists are strict
+    zones, so its test author and implementer work on `xhigh`. Its Acceptance is the
+    automated lines of the commands it builds. It has no lab line: the manual run of its
+    commands and S9c's manual line run on the lab with S10b, which needs a paired agent
+    anyway, so the owner goes to the lab once for S10.
+  - **S10b, the check and the report**: `check`, `metadata`, the tests in
+    `Moltaro.OnecOutpost.OneC.Tests`, the manual lines and guide G1. Its internal contract
+    is written after S10a is merged, with what S10a taught. Its test author and implementer
+    work on `xhigh`, since `check` reads the secrets and signs an `outcome` with the
+    agent's key.
+- **Q14** (the planner, 23 November 2026): the rule stays strict. A file of the data
+  folder whose owner is not Administrators, SYSTEM or the agent's account counts as
+  somebody else, since an owner can always change the file's access list. `install` makes
+  Administrators the owner of the data folder and of every file it writes, and so do `pair`
+  and `secret` (S10a); `check` names a file whose owner is someone else and gives the
+  remedy (S10b); G1 shows how to edit `policy.json` without changing its owner, and the
+  one command that restores it (S10b).
 
 - **Goal.** The administrator does everything for an agent from the console:
   - installs the service under its virtual account, with the data folder and its access
