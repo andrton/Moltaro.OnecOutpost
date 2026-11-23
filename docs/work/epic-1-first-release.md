@@ -139,6 +139,14 @@ not committed. S12 moves the final figures into `README.md`.
 | S7b | One node, `PollTimeout` 5 min, outcome → waiting caller | p50 12.8 ms, p95 21.1 ms, max 29.5 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
 | S7b | Two nodes, `PollTimeout` 5 min, call → waiting poll | p50 15.1 ms, p95 25.0 ms, max 35.1 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
 | S7b | Two nodes, `PollTimeout` 5 min, outcome → waiting caller | p50 12.5 ms, p95 21.0 ms, max 33.8 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S10aR | One node, `PollTimeout` 25 s, call → waiting poll | p50 16.9 ms, p95 22.4 ms, max 29.4 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S10aR | One node, `PollTimeout` 25 s, outcome → waiting caller | p50 14.5 ms, p95 19.9 ms, max 25.9 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S10aR | Two nodes, `PollTimeout` 25 s, call → waiting poll | p50 17.1 ms, p95 22.4 ms, max 31.5 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S10aR | Two nodes, `PollTimeout` 25 s, outcome → waiting caller | p50 14.7 ms, p95 20.1 ms, max 31.1 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S10aR | One node, `PollTimeout` 5 min, call → waiting poll | p50 17.1 ms, p95 23.0 ms, max 33.6 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S10aR | One node, `PollTimeout` 5 min, outcome → waiting caller | p50 14.4 ms, p95 19.6 ms, max 26.5 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S10aR | Two nodes, `PollTimeout` 5 min, call → waiting poll | p50 18.1 ms, p95 25.0 ms, max 108.4 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
+| S10aR | Two nodes, `PollTimeout` 5 min, outcome → waiting caller | p50 15.5 ms, p95 20.3 ms, max 68.5 ms | 100 ms at p95 | i9-13900H, 20 logical processors, Windows 10.0.26300, .NET 10.0.15 | 23 November 2026 |
 
 On loopback without 1C, 500 Reads per case after 50 of warm-up, with a test agent that
 flushes nothing to the disk, the server's nodes on the fake clock of the tests, which never
@@ -146,6 +154,10 @@ moves: every round of every case ended with that clock standing still, which sho
 hop waits for a fixed interval. Two earlier runs the same day, on the machine loaded by
 other builds and tests, gave the same p50 and a p95 of up to 131 ms in one case each time,
 a different case each run; the figures above are of a run on the quiet machine.
+
+S10aR measured the same cases again after its store took one transaction frame (review 1,
+entry 8): every p95 stays within the figure of S7b, the two nodes' poll at 5 minutes level
+with it at 25.0 ms.
 
 ## Open questions
 
