@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace Moltaro.OnecOutpost.Agent.Workers;
 
-internal sealed partial class ComWorkerLauncher
+internal static partial class WorkerToken
 {
     // LUID_AND_ATTRIBUTES of winnt.h, an entry of the TOKEN_PRIVILEGES that GetTokenInformation gives: the privilege and
     // whether it is enabled.
