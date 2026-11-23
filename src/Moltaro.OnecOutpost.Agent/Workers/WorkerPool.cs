@@ -65,8 +65,7 @@ internal sealed partial class WorkerPool : IAsyncDisposable
     // every slot's first start happens before it returns, in the policy's order. Each open races
     // Task.Delay(runLimit, clock): the mode's run limit is its deadline (principle 10, concept §5), and a late worker is
     // killed and, like one that gives false, never free. So the loop starts at once, and a slow base holds up no other.
-    // The slots do not take the token given: DisposeAsync ends them, after the loop.
-    public void Open(CancellationToken cancellationToken)
+    public void Open()
     {
         _stop = new CancellationTokenSource();
 

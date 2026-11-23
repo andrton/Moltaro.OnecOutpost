@@ -98,7 +98,7 @@ internal sealed class TestPool : IAsyncDisposable
     // so that the only timer a run waits on is its own.
     public void OpenAll()
     {
-        Pool.Open(TestContext.Current.CancellationToken);
+        Pool.Open();
 
         IEnumerable<AgentModePolicy> modes = Policy.Bases
             .SelectMany(served => served.Write is null ? [served.Read] : new[] { served.Read, served.Write });

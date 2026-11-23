@@ -73,7 +73,7 @@ internal static class AgentHost
         try
         {
             // The opens run beside the loop, each bounded by the run limit of its mode, so the first poll goes at once.
-            workers.Open(cancellationToken);
+            workers.Open();
 
             connection = new AgentConnection(
                 run.Pairing.Server,

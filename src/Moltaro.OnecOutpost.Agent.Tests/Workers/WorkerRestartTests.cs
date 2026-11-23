@@ -21,7 +21,7 @@ public sealed class WorkerRestartTests
         await using TestPool test = TestPool.Create(readWorkers: 2, writeWorkers: 2);
         test.Launcher.Opens = (_, _, _) => FakeOpenEnum.Never;
 
-        test.Pool.Open(TestContext.Current.CancellationToken);
+        test.Pool.Open();
 
         Assert.Equal(
             ["accounting read 1", "accounting read 2", "accounting write 1", "accounting write 2", "warehouse read 1"],
@@ -40,7 +40,7 @@ public sealed class WorkerRestartTests
             ? FakeOpenEnum.NotReady
             : FakeOpenEnum.Ready;
         test.Launcher.Runs = _ => FakeRun.Ends();
-        test.Pool.Open(cancellationToken);
+        test.Pool.Open();
         int number = 1;
 
         foreach (int seconds in new[] { 3, 6, 12, 24, 30, 30 })
@@ -78,7 +78,7 @@ public sealed class WorkerRestartTests
         test.Launcher.Opens = (baseKey, mode, _) => (baseKey, mode) == ("accounting", OutpostModeEnum.Read)
             ? FakeOpenEnum.NotReady
             : FakeOpenEnum.Ready;
-        test.Pool.Open(cancellationToken);
+        test.Pool.Open();
         await test.WaitForTimerAsync(test.Clock.GetUtcNow() + TimeSpan.FromSeconds(3));
 
         await test.DisposeAsync().AsTask().WaitAsync(TestTimes.Deadline, cancellationToken);
@@ -115,7 +115,7 @@ public sealed class WorkerRestartTests
                 disposing.SetResult(test.DisposeAsync().AsTask());
             }
         };
-        test.Pool.Open(cancellationToken);
+        test.Pool.Open();
 
         await test.PassExactlyAsync(TimeSpan.FromSeconds(3));
         Task disposed = await disposing.Task.WaitAsync(TestTimes.Deadline, cancellationToken);

@@ -67,7 +67,7 @@ internal sealed class ComWorkerPool : IAsyncDisposable
 
         try
         {
-            test.Pool.Open(cancellationToken);
+            test.Pool.Open();
 
             foreach (OutpostModeEnum mode in new[] { OutpostModeEnum.Read, OutpostModeEnum.Write })
             {
