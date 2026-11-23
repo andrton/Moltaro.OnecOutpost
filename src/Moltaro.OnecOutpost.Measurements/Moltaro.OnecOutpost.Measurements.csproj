@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Measures the latency target of concept §11 on loopback without 1C: the real server on one node and on two, and a
+       test agent that speaks the protocol. Run by hand, never in CI or in the tests; it is not a test project. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The PostgreSQL of the tests, their loopback nodes and their test agent. -->
+    <ProjectReference Include="..\Moltaro.OnecOutpost.TestSupport\Moltaro.OnecOutpost.TestSupport.csproj" />
+  </ItemGroup>
+
+</Project>

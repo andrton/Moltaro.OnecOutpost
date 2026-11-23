@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The path of a command</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf7;
+    --fg: #1d1f23;
+    --muted: #5d646e;
+    --line: #c3c8cf;
+    --box: #ffffff;
+    --box-on: #e6eefc;
+    --panel: #f1efe9;
+    --accent: #2563c9;
+    --ok: #1d7f47;
+    --warn: #a86a12;
+    --bad: #b8322a;
+    --code: #ecebe6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15171b;
+      --fg: #e6e8eb;
+      --muted: #9aa2ac;
+      --line: #4b525c;
+      --box: #1e2127;
+      --box-on: #1b2a45;
+      --panel: #1c1f24;
+      --accent: #6fa3ff;
+      --ok: #4cc38a;
+      --warn: #e2aa4f;
+      --bad: #ff6f63;
+      --code: #262a31;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 780px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.75rem; line-height: 1.2; margin: 0 0 12px; }
+  h2 { font-size: 1.2rem; margin: 32px 0 8px; }
+  p, li { max-width: 70ch; }
+  a { color: var(--accent); }
+  code { background: var(--code); padding: 0 4px; border-radius: 4px; font-size: 0.92em; }
+  .status { background: var(--panel); border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 4px; }
+
+  figure { margin: 20px 0 8px; background: var(--panel); border-radius: 10px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .wire { stroke: var(--line); stroke-width: 1.5; fill: none; }
+  .wire-dash { stroke-dasharray: 5 4; }
+  .head { fill: var(--line); }
+  .box rect { fill: var(--box); stroke: var(--line); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+  .box .t { fill: var(--fg); font-size: 15px; font-weight: 600; text-anchor: middle; }
+  .box .s { fill: var(--muted); font-size: 13px; text-anchor: middle; }
+  .box.on rect { fill: var(--box-on); stroke: var(--accent); stroke-width: 2.5; }
+  .zone { fill: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .note { fill: var(--muted); font-size: 13px; }
+  .boundary { stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 2 5; }
+  .trail { stroke: var(--accent); stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .dot { fill: var(--accent); }
+  .ring { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0; }
+  .ring.pulse { animation: pulse 1.4s ease-out 2; }
+  @keyframes pulse { from { opacity: .9; r: 8; } to { opacity: 0; r: 40; } }
+  .tag { fill: var(--accent); font-size: 12.5px; font-weight: 700; }
+
+  .caption { min-height: 7.5em; margin: 10px 2px 0; }
+  .caption .count { color: var(--muted); font-size: .85rem; margin-bottom: 2px; }
+  .controls { margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .controls button {
+    font: inherit; font-size: .95rem; color: var(--fg); background: var(--box);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; min-width: 44px; min-height: 36px;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .progress { flex: 1 1 120px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .progress span { display: block; height: 100%; width: 0; background: var(--accent); }
+
+  ol.steps > li { padding: 6px 8px; margin: 2px 0; border-radius: 6px; cursor: pointer; }
+  ol.steps > li.current { background: var(--box-on); outline: 1px solid var(--accent); }
+  @media (prefers-reduced-motion: reduce) {
+    .ring.pulse { animation: none; }
+    .box rect { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+<h1>The path of a command</h1>
+
+<p>How one Read or Write travels from the application to 1C and back, and what each part
+checks on the way. It is written for the person responsible for a back office and for a
+developer of an application that embeds the server. The rules themselves are in the
+<a href="../concept.md">concept</a> and the <a href="../protocol.md">protocol</a>; this
+page follows them along the path. The same explanation as text is
+<a href="command-path.md"><code>command-path.md</code></a>.</p>
+
+<p class="status"><strong>Status:</strong> built. The path works end to end. It is tested over
+loopback HTTP with one server node and with two on one PostgreSQL, with the real agent and a
+fake in place of the COM worker. The agent with its COM workers ran Reads and Writes in a
+real 1C:Enterprise 8.3.17.1851 on the lab machine, with the test's own server. Intended, not
+built yet: the console that installs and pairs an agent on its machine, and the shell. A
+Write to a base whose local policy turns safe mode off is refused until the workers of such
+a base run under a Windows account of their own.</p>
+
+<figure aria-label="Animated figure: the path of a command">
+<svg id="stage" viewBox="0 0 480 412" role="img" aria-labelledby="stage-title">
+  <title id="stage-title">The application, two server nodes, the signals and the store on the server side; the agent, its audit log, a COM worker and the 1C base in the back office. A dot follows what moves in the current step, and the top right corner names it.</title>
+  <defs>
+    <marker id="up" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="head" d="M0 0 L10 5 L0 10 z"/>
+    </marker>
+  </defs>
+
+  <text class="zone" x="12" y="20">Server side</text>
+  <line class="boundary" x1="8" y1="222" x2="472" y2="222"/>
+  <text class="zone" x="12" y="244">Back office</text>
+  <text class="note" x="12" y="266">Nothing here listens</text>
+  <text class="note" x="12" y="282">on a port.</text>
+
+  <!-- wires -->
+  <line class="wire" x1="110" y1="57" x2="130" y2="57"/>
+  <line class="wire" x1="230" y1="57" x2="250" y2="57"/>
+  <line class="wire" x1="350" y1="57" x2="370" y2="57"/>
+  <line class="wire" x1="180" y1="84" x2="180" y2="125"/>
+  <line class="wire" x1="396" y1="84" x2="350" y2="134"/>
+  <line class="wire wire-dash" x1="420" y1="255" x2="420" y2="88" marker-end="url(#up)"/>
+  <text class="note" x="412" y="244" text-anchor="end">HTTPS, opened by the agent</text>
+  <line class="wire" x1="370" y1="282" x2="330" y2="282"/>
+  <line class="wire" x1="420" y1="309" x2="420" y2="345"/>
+  <line class="wire" x1="370" y1="372" x2="330" y2="372"/>
+
+  <polyline id="trail" class="trail" points=""/>
+
+  <!-- boxes -->
+  <g class="box" id="b-app"><rect x="10" y="30" width="100" height="54" rx="8"/><text class="t" x="60" y="54">Application</text><text class="s" x="60" y="72">the caller</text></g>
+  <g class="box" id="b-node1"><rect x="130" y="30" width="100" height="54" rx="8"/><text class="t" x="180" y="54">Node 1</text><text class="s" x="180" y="72">server</text></g>
+  <g class="box" id="b-signals"><rect x="250" y="30" width="100" height="54" rx="8"/><text class="t" x="300" y="54">Signals</text><text class="s" x="300" y="72">wake-ups</text></g>
+  <g class="box" id="b-node2"><rect x="370" y="30" width="100" height="54" rx="8"/><text class="t" x="420" y="54">Node 2</text><text class="s" x="420" y="72">server</text></g>
+  <g class="box" id="b-store"><rect x="130" y="125" width="220" height="52" rx="8"/><text class="t" x="240" y="148">Store</text><text class="s" x="240" y="166">PostgreSQL: commands, outcomes</text></g>
+  <g class="box" id="b-audit"><rect x="190" y="255" width="140" height="54" rx="8"/><text class="t" x="260" y="279">Audit log</text><text class="s" x="260" y="297">on the agent's disk</text></g>
+  <g class="box" id="b-agent"><rect x="370" y="255" width="100" height="54" rx="8"/><text class="t" x="420" y="279">Agent</text><text class="s" x="420" y="297">checks, policy</text></g>
+  <g class="box" id="b-onec"><rect x="190" y="345" width="140" height="54" rx="8"/><text class="t" x="260" y="369">1C base</text><text class="s" x="260" y="387">the database</text></g>
+  <g class="box" id="b-worker"><rect x="370" y="345" width="100" height="54" rx="8"/><text class="t" x="420" y="369">COM worker</text><text class="s" x="420" y="387">one session</text></g>
+
+  <circle id="ring" class="ring" cx="0" cy="0" r="8"/>
+  <circle id="dot" class="dot" cx="60" cy="57" r="7"/>
+  <text id="tag" class="tag" x="468" y="20" text-anchor="end"></text>
+</svg>
+
+<div class="controls">
+  <button type="button" id="prev" aria-label="Previous step">&#9664; Back</button>
+  <button type="button" id="play" aria-label="Pause">Pause</button>
+  <button type="button" id="next" aria-label="Next step">Next &#9654;</button>
+  <div class="progress" aria-hidden="true"><span id="bar"></span></div>
+</div>
+<div class="caption" aria-live="polite">
+  <div class="count" id="count"></div>
+  <div id="caption"></div>
+</div>
+</figure>
+
+<h2>The parts</h2>
+<ul>
+  <li><strong>The application</strong> embeds the server library and calls <code>ReadAsync</code> or <code>WriteAsync</code>.</li>
+  <li><strong>A server node</strong> is any process of the application. Nodes share nothing in memory.</li>
+  <li><strong>The store</strong> is the library's tables in PostgreSQL. Every node reads and writes the commands and their outcomes there.</li>
+  <li><strong>The signals</strong> are Moltaro.Signals, which wake a waiter on any node. A signal carries no data: it says "read the store again".</li>
+  <li><strong>The agent</strong> is the Windows service next to 1C. It opens every connection itself, over HTTPS, and keeps one poll open at a time.</li>
+  <li><strong>The audit log</strong> is the agent's record of every command, on the disk of its machine.</li>
+  <li><strong>The COM worker</strong> is a process of the agent that holds a session in one base under one 1C account, and runs scripts there through the executor.</li>
+</ul>
+
+<h2>The path</h2>
+<ol class="steps" id="steps">
+  <li><strong>The call.</strong> The application calls <code>WriteAsync</code> or <code>ReadAsync</code> on any node, with the key of the base, the script, its parameters and, for a Write, a caller key. The node looks up the caller key first: a command that already has it is followed, not created again (<a href="never-twice.html">Why a command never runs twice</a>). Then it checks that an agent holds the base and serves the mode, and that this agent is connected, which means that the lease of its newest poll has not run out. If it is not connected, the call returns Unavailable at once and nothing is created.</li>
+  <li><strong>The store.</strong> The node signs the command with the server's key and writes it to the store, where it waits to be taken. The signed bytes name the agent, the base, the mode and the caller key, and carry the script, the parameters, the time it was issued, its take deadline (30 seconds by default), the allowed clock skew and the size limit of its outcome. The call now waits for the outcome of that command.</li>
+  <li><strong>The signal.</strong> Once the command is in the store, the node sets a signal for the agent. It wakes whatever waits for that agent, on any node, to read the store. When a signal is lost, the command waits for the agent's next poll, at most one poll's hold later. If its take deadline passes meanwhile, it ends as Expired, untaken; a lost signal never makes a command run twice.</li>
+  <li><strong>The poll.</strong> A poll of the agent waits on some node, often not the node of the call. Woken, the poll takes the command in one conditional change of the store, if it is still the newest poll of its agent: oldest commands first, and no more than the free workers it declared. Its answer carries the exact bytes of the command and the server's signature over them. A command that no poll takes before its take deadline ends as Expired.</li>
+  <li><strong>The agent's checks.</strong> The agent verifies the signature with the server key it pinned at pairing, and looks for the command in its audit log: a command already there never runs again. Then it checks the protocol version, that the command names this agent, that its local policy serves the base and the mode, and, by the agent's own clock, that the command was not issued too far ahead and that its take deadline has not passed by more than the allowed skew. The first check that fails refuses the command with its code, such as <code>not-served</code> or <code>expired</code>. A command whose signature does not verify is only recorded, since nothing in it can be trusted.</li>
+  <li><strong>The audit log.</strong> Before the command runs, and before the next poll opens, the agent writes it to its audit log on the disk: the time, the identity, the base, the mode, the caller key, the script and the parameters. A command that cannot be recorded does not run. From then on every poll lists the command as received, until the server confirms its outcome.</li>
+  <li><strong>The worker.</strong> The agent gives the command to a free COM worker of its base and mode, a process of its own that holds a 1C session under the account of that mode. The worker runs the script whole, in 1C's safe mode: a Read outside a transaction, a Write inside one transaction, committed or rolled back as a whole. The executor writes the result as JSON, and checks the result's type and the outcome's size before a Write commits. A script that passes the run limit of its mode ends with its worker.</li>
+  <li><strong>The outcome.</strong> The agent keeps the outcome in a file on its disk, records how the command ended in its audit log, and sends the outcome to any node, signed with its own key. The node keeps the first outcome of the command, and only from the agent it handed the command to. It sets a signal for the command and confirms the outcome to the agent with a signed answer. The agent records the confirmation and removes the file; until then it sends the outcome again.</li>
+  <li><strong>The caller.</strong> The node where the call waits wakes, reads the outcome from the store and returns it: Succeeded with the result and the user messages of 1C, Failed with a code, Refused with the code of the check, Expired, or Unknown when the effect of a Write cannot be known. The caller may stop waiting at any time. That does not stop the command, and a repeat with the caller key returns its outcome.</li>
+</ol>
+
+<h2>What the path does not do</h2>
+<ul>
+  <li>Nothing dials into the back office: the agent opens every connection.</li>
+  <li>The server keeps nothing for later delivery. A call for an agent that is not connected is Unavailable at once, and a command that no poll took in time is Expired.</li>
+  <li>Nothing on the path can change or inject a command, since the agent runs only bytes the server signed. Something that opens TLS on the path can read, delay and drop messages; <a href="never-twice.html">Why a command never runs twice</a> shows what then happens.</li>
+  <li>The library does not decide which scripts are allowed. The local policy decides the bases, the accounts and the modes, and an application that approves scripts does so before it calls.</li>
+</ul>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // One scene per item of the list "The path", in the same order: the boxes it lights, the points the dot follows,
+  // and the word beside the dot.
+  var scenes = [
+    { on: ["app", "node1"], path: [[60, 57], [130, 57]], tag: "the call" },
+    { on: ["node1", "store"], path: [[180, 57], [180, 125]], tag: "the signed command" },
+    { on: ["node1", "signals", "node2"], path: [[230, 57], [370, 57]], tag: "a signal" },
+    { on: ["store", "node2", "agent"], path: [[350, 134], [397, 84], [420, 84], [420, 255]], tag: "the command" },
+    { on: ["agent"], path: [[420, 255]], tag: "the checks", pulse: [420, 282] },
+    { on: ["agent", "audit"], path: [[370, 282], [330, 282]], tag: "received" },
+    { on: ["agent", "worker", "onec"], path: [[420, 309], [420, 372], [330, 372]], tag: "the script" },
+    { on: ["onec", "worker", "agent", "audit", "node2", "store"], path: [[330, 372], [420, 372], [420, 84], [397, 84], [350, 134]], tag: "the outcome" },
+    { on: ["signals", "node1", "store", "app"], path: [[370, 57], [110, 57]], tag: "the outcome" }
+  ];
+
+  var items = Array.prototype.slice.call(document.querySelectorAll("#steps > li"));
+  var boxes = Array.prototype.slice.call(document.querySelectorAll("#stage .box"));
+  var trail = document.getElementById("trail");
+  var dot = document.getElementById("dot");
+  var ring = document.getElementById("ring");
+  var tag = document.getElementById("tag");
+  var caption = document.getElementById("caption");
+  var count = document.getElementById("count");
+  var bar = document.getElementById("bar");
+  var playButton = document.getElementById("play");
+  var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var current = 0;
+  var playing = true;
+  var frame = 0;
+  var timer = 0;
+  var MOVE_MS = 1500;
+
+  function lengthOf(points) {
+    var total = 0;
+    for (var i = 1; i < points.length; i++) {
+      total += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
+    }
+    return total;
+  }
+
+  function pointAt(points, distance) {
+    for (var i = 1; i < points.length; i++) {
+      var a = points[i - 1];
+      var b = points[i];
+      var piece = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (distance <= piece || i === points.length - 1) {
+        var t = piece === 0 ? 1 : Math.min(distance / piece, 1);
+        return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      }
+      distance -= piece;
+    }
+    return points[0];
+  }
+
+  function placeDot(p) {
+    dot.setAttribute("cx", p[0]);
+    dot.setAttribute("cy", p[1]);
+  }
+
+  // How long a step stays: long enough to read its caption.
+  function readingTime(text) {
+    return Math.min(Math.max(text.length * 42, 6000), 20000);
+  }
+
+  function show(index, animate) {
+    cancelAnimationFrame(frame);
+    clearTimeout(timer);
+    current = (index + scenes.length) % scenes.length;
+
+    var scene = scenes[current];
+    boxes.forEach(function (box) {
+      box.classList.toggle("on", scene.on.indexOf(box.id.slice(2)) >= 0);
+    });
+    items.forEach(function (item, i) {
+      item.classList.toggle("current", i === current);
+    });
+    caption.innerHTML = items[current].innerHTML;
+    count.textContent = "Step " + (current + 1) + " of " + scenes.length;
+    tag.textContent = "● " + scene.tag;
+
+    var points = scene.path;
+    var total = lengthOf(points);
+    trail.setAttribute("points", points.map(function (p) { return p.join(","); }).join(" "));
+    trail.style.strokeDasharray = total + " " + (total + 1);
+
+    ring.classList.remove("pulse");
+    if (scene.pulse && !still) {
+      ring.setAttribute("cx", scene.pulse[0]);
+      ring.setAttribute("cy", scene.pulse[1]);
+      void ring.getBoundingClientRect();
+      ring.classList.add("pulse");
+    }
+
+    var started = performance.now();
+    var move = animate && !still && total > 0;
+
+    function tick(now) {
+      var t = move ? Math.min((now - started) / MOVE_MS, 1) : 1;
+      var eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      trail.style.strokeDashoffset = total * (1 - eased);
+      placeDot(pointAt(points, total * eased));
+      if (t < 1) {
+        frame = requestAnimationFrame(tick);
+      }
+    }
+    tick(started);
+    if (move) {
+      frame = requestAnimationFrame(tick);
+    }
+
+    schedule();
+  }
+
+  function schedule() {
+    clearTimeout(timer);
+    bar.style.transition = "none";
+    bar.style.width = "0";
+    if (!playing) {
+      return;
+    }
+    var wait = readingTime(items[current].textContent);
+    void bar.offsetWidth;
+    bar.style.transition = "width " + wait + "ms linear";
+    bar.style.width = "100%";
+    timer = setTimeout(function () { show(current + 1, true); }, wait);
+  }
+
+  function setPlaying(value) {
+    playing = value;
+    playButton.textContent = playing ? "Pause" : "Play";
+    playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
+    schedule();
+  }
+
+  document.getElementById("prev").addEventListener("click", function () { setPlaying(false); show(current - 1, true); });
+  document.getElementById("next").addEventListener("click", function () { setPlaying(false); show(current + 1, true); });
+  playButton.addEventListener("click", function () { setPlaying(!playing); });
+  items.forEach(function (item, i) {
+    item.addEventListener("click", function (event) {
+      if (event.target.closest("a")) {
+        return;
+      }
+      setPlaying(false);
+      show(i, true);
+    });
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.target.closest("button, a")) {
+      return;
+    }
+    if (event.key === "ArrowRight") { setPlaying(false); show(current + 1, true); }
+    if (event.key === "ArrowLeft") { setPlaying(false); show(current - 1, true); }
+    if (event.key === " ") { event.preventDefault(); setPlaying(!playing); }
+  });
+
+  show(0, true);
+})();
+</script>
+</body>
+</html>

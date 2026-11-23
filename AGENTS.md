@@ -54,14 +54,14 @@ in code, tests, samples or documents.
 | `src/OneC.TestConfiguration` | The XML sources of the repository's own 1C test configuration, with a script that builds a base from them on the 1C cluster of the lab machine, through the Designer's command line, and the git-ignored `lab.local.json` of the lab. No built configuration or base is committed |
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | The wire protocol, extended by the sprint that introduces a part of it |
-| `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
+| `docs/explanations` | Explanations of the architecture and of how the library works, each as Markdown and as HTML: the path of a command and why a command never runs twice exist; how the library is built is planned |
 | `docs/guides` | The user guides: how to write scripts (`scripts.md`); planned, how to install and run an agent and how to embed the server. Every command and script they show is run by a test |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
 Each project is created by the sprint that first needs it, under the name the plan of the
 first epic fixes. The protocol, the server, the agent, the COM worker, the executor's
-sources, the samples, the test support, the test worker, the test projects of these four
-and the tests that need 1C exist; the others are planned. Only the server is packed;
+sources, the samples, the test support, the test worker, the measurement program, the test
+projects of these four and the tests that need 1C exist; the others are planned. Only the server is packed;
 every other project is not.
 
 | Project | Contents |
@@ -74,7 +74,7 @@ every other project is not.
 | `Moltaro.OnecOutpost.Shell` | A console that runs a server of its own and sends Read and Write by hand, to try the tunnel without an application |
 | `src/Executor` | The 1C external data processor that runs a script inside 1C: its XML sources and the `.epf` that the owner built from them on the lab machine. Only the 1C Designer builds it |
 | `Moltaro.OnecOutpost.Samples` | The samples of use: an ASP.NET Core application that embeds the server. Each runs to the end with `dotnet run` |
-| `Moltaro.OnecOutpost.Measurements` | Planned: the program that measures the latency target of the concept, run by hand, never in CI or in the tests |
+| `Moltaro.OnecOutpost.Measurements` | The program that measures the latency target of the concept, run by hand, never in CI or in the tests |
 | `src/*.Tests` | Tests, one project per library or program |
 | `Moltaro.OnecOutpost.OneC.Tests` | The tests that need 1C, run only on the lab machine. It is not in the solution, so `dotnet test` from `src` never runs it; CI builds it and checks its format |
 | `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake clock, the PostgreSQL fixture and the fake of the COM worker. Never shipped; no tests |

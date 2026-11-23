@@ -29,10 +29,11 @@
 
   <ItemGroup>
     <!-- The helpers of the loopback server and of the workers are made of the internal types of the server, the agent
-         and the protocol, so they are internal too, for the test projects that use them. -->
+         and the protocol, so they are internal too, for the test projects that use them and the measurement program. -->
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Server.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Agent.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.OneC.Tests" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Measurements" />
   </ItemGroup>
 
 </Project>

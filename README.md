@@ -52,7 +52,12 @@ command made meanwhile; the command of a lost poll answer is handed out again an
 poll and an exact replay take nothing; a lost confirmation sends the outcome again and it is
 counted once; a command delivered after a lost answer stays taken; with the signals host
 stopped, waits end at their deadlines and nothing is lost; and a poll replayed after the
-agent's clock was set back is older. The latency is measured in the next sprint.
+agent's clock was set back is older. On loopback without 1C, the time from a call to its
+command reaching a waiting poll, and from an outcome to the waiting caller, was at most
+31 ms at p95 with one node and with two (concept §11 asks 100 ms); the figures are in the
+[epic document](docs/work/epic-1-first-release.md#measured-results). Two explanations show the
+[path of a command](docs/explanations/command-path.md) and
+[why a command never runs twice](docs/explanations/never-twice.md).
 
 The agent keeps its files. At a start it checks that the access lists of its data folder
 admit nobody else, reads `policy.json`, `agent.json` with its identity and the pinned
