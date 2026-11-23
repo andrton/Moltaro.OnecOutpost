@@ -362,8 +362,9 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         {
             Task<(long Size, byte[] Outcome)?> run;
 
-            // The process is given the caller's token, as its open is. A token already cancelled may end RunAsync before
-            // it returns a task; the worker is then killed all the same.
+            // The process is given the caller's token, as its open is given the pool's: each call passes on the token
+            // it was given, never the race's. A token already cancelled may end RunAsync before it returns a task; the
+            // worker is then killed all the same.
             try
             {
                 run = worker.Process.RunAsync(line, cancellationToken);
