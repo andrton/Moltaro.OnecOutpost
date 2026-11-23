@@ -40,12 +40,7 @@ internal sealed class TestPool : IAsyncDisposable
     // The passwords of the default policy, as the console's secret writes them.
     public static AgentSecrets Secrets => new(
         [],
-        new Dictionary<(string Base, OutpostModeEnum Mode), string>
-        {
-            [("accounting", OutpostModeEnum.Read)] = "read-pw",
-            [("accounting", OutpostModeEnum.Write)] = "write-pw",
-            [("warehouse", OutpostModeEnum.Read)] = "",
-        },
+        PairedFolder.Passwords.ToDictionary(entry => (entry.Base, entry.Mode), entry => entry.Password),
         new Dictionary<string, string>());
 
     // The pool of the default policy, with one worker in each mode of accounting unless a test gives more.

@@ -47,6 +47,14 @@ internal sealed class PairedFolder
         }
         """;
 
+    // The passwords of the policy's modes, as the console's secret writes them.
+    public static readonly (string Base, OutpostModeEnum Mode, string Password)[] Passwords =
+    [
+        ("accounting", OutpostModeEnum.Read, "read-pw"),
+        ("accounting", OutpostModeEnum.Write, "write-pw"),
+        ("warehouse", OutpostModeEnum.Read, ""),
+    ];
+
     private PairedFolder(byte[] serverKey, byte[] serverPrivateKey, byte[] privateKey)
     {
         ServerKey = serverKey;
@@ -74,8 +82,13 @@ internal sealed class PairedFolder
     public byte[] PrivateKey { get; }
 
     // The text of agent.json as the console writes it.
-    public string AgentJson =>
-        $$"""{"server":"https://outpost.example.com/agents","agent":"{{Agent}}","serverKey":"{{Base64Url.EncodeToString(ServerKey)}}","pollTimeoutMs":25000,"leaseGraceMs":10000}""";
+    public string AgentJson => AgentJsonOf(ServerKey);
+
+    // The text of agent.json as the console writes it for the server key.
+    public static string AgentJsonOf(byte[] serverKey)
+    {
+        return $$"""{"server":"https://outpost.example.com/agents","agent":"{{Agent}}","serverKey":"{{Base64Url.EncodeToString(serverKey)}}","pollTimeoutMs":25000,"leaseGraceMs":10000}""";
+    }
 
     // The policy with these members of its own besides the bases, such as "retryDelayMax": "00:00:04".
     public static string PolicyWith(string members)
@@ -95,23 +108,25 @@ internal sealed class PairedFolder
 
         folder.Data.Root.Seed("policy.json", Policy);
         folder.Data.Root.Seed("agent.json", folder.AgentJson);
-        folder.SeedSecrets(("accounting", "read", "read-pw"), ("accounting", "write", "write-pw"), ("warehouse", "read", ""));
+        folder.SeedSecrets(Passwords);
 
         return folder;
     }
 
     // Writes secrets.dat with the agent's key and these passwords, as the console's secret writes them.
-    public void SeedSecrets(params (string Base, string Mode, string Password)[] passwords)
+    public void SeedSecrets(params (string Base, OutpostModeEnum Mode, string Password)[] passwords)
     {
         SeedSecrets(passwords, []);
     }
 
     // The same, with the passwords of the worker accounts of these bases (the S9c brief).
-    public void SeedSecrets((string Base, string Mode, string Password)[] passwords, (string Base, string Password)[] workers)
+    public void SeedSecrets(
+        (string Base, OutpostModeEnum Mode, string Password)[] passwords,
+        (string Base, string Password)[] workers)
     {
         AgentSecrets secrets = new(
             PrivateKey,
-            passwords.ToDictionary(entry => (entry.Base, entry.Mode == "read" ? OutpostModeEnum.Read : OutpostModeEnum.Write), entry => entry.Password),
+            passwords.ToDictionary(entry => (entry.Base, entry.Mode), entry => entry.Password),
             workers.ToDictionary(entry => entry.Base, entry => entry.Password, StringComparer.Ordinal));
 
         Data.Root.Seed("secrets.dat", SecretsFile.Write(secrets, Protection));

@@ -43,9 +43,7 @@ public sealed class WorkerAccountTests
     public WorkerAccountTests()
     {
         _folder.Data.Root.Seed("policy.json", Policy);
-        _folder.SeedSecrets(
-            [("accounting", "read", "read-pw"), ("accounting", "write", "write-pw"), ("warehouse", "read", "")],
-            [("accounting", "worker-pw")]);
+        _folder.SeedSecrets(PairedFolder.Passwords, [("accounting", "worker-pw")]);
     }
 
     [Fact]
