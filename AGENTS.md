@@ -54,7 +54,7 @@ in code, tests, samples or documents.
 | `src/OneC.TestConfiguration` | The XML sources of the repository's own 1C test configuration, with a script that builds a base from them on the 1C cluster of the lab machine, through the Designer's command line, and the git-ignored `lab.local.json` of the lab. No built configuration or base is committed |
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | The wire protocol, extended by the sprint that introduces a part of it |
-| `docs/explanations` | Planned: explanations of the architecture and of how the library works, each as Markdown and as HTML |
+| `docs/explanations` | Explanations of the architecture and of how the library works, each as Markdown and as HTML: the path of a command and why a command never runs twice exist; how the library is built is planned |
 | `docs/guides` | The user guides: how to write scripts (`scripts.md`); planned, how to install and run an agent and how to embed the server. Every command and script they show is run by a test |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 

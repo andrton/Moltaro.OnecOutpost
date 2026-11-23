@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why a command never runs twice</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf7;
+    --fg: #1d1f23;
+    --muted: #5d646e;
+    --line: #c3c8cf;
+    --box: #ffffff;
+    --box-on: #e6eefc;
+    --panel: #f1efe9;
+    --accent: #2563c9;
+    --ok: #1d7f47;
+    --warn: #a86a12;
+    --bad: #b8322a;
+    --code: #ecebe6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15171b;
+      --fg: #e6e8eb;
+      --muted: #9aa2ac;
+      --line: #4b525c;
+      --box: #1e2127;
+      --box-on: #1b2a45;
+      --panel: #1c1f24;
+      --accent: #6fa3ff;
+      --ok: #4cc38a;
+      --warn: #e2aa4f;
+      --bad: #ff6f63;
+      --code: #262a31;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 780px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.75rem; line-height: 1.2; margin: 0 0 12px; }
+  h2 { font-size: 1.2rem; margin: 32px 0 8px; }
+  p, li { max-width: 70ch; }
+  a { color: var(--accent); }
+  code { background: var(--code); padding: 0 4px; border-radius: 4px; font-size: 0.92em; }
+  .status { background: var(--panel); border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 4px; }
+
+  figure { margin: 20px 0 8px; background: var(--panel); border-radius: 10px; padding: 12px; }
+  .cases { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .cases button {
+    font: inherit; font-size: .85rem; color: var(--fg); background: var(--box);
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; min-height: 32px;
+  }
+  .cases button[aria-pressed="true"] { background: var(--box-on); border-color: var(--accent); font-weight: 600; }
+  svg { display: block; width: 100%; height: auto; }
+  .lane-box { fill: var(--box); stroke: var(--line); stroke-width: 1.5; }
+  .lane-t { fill: var(--fg); font-size: 14px; font-weight: 600; text-anchor: middle; }
+  .lane-s { fill: var(--muted); font-size: 11px; text-anchor: middle; }
+  .life { stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 3 5; }
+  .life-path { stroke: var(--warn); stroke-opacity: .35; stroke-width: 4; stroke-dasharray: none; }
+  .msg { stroke: var(--fg); stroke-width: 1.8; fill: none; }
+  .msg.dashed { stroke-dasharray: 6 4; }
+  .tip { fill: var(--fg); }
+  .lbl { fill: var(--fg); font-size: 14px; text-anchor: middle; paint-order: stroke; stroke: var(--panel); stroke-width: 4px; stroke-linejoin: round; }
+  .cross { stroke: var(--bad); stroke-width: 3; stroke-linecap: round; }
+  .hold { fill: var(--warn); }
+  .ask { fill: var(--warn); font-size: 15px; font-weight: 800; text-anchor: middle; }
+  .note rect { fill: var(--box); stroke: var(--line); stroke-width: 1.2; }
+  .note text { fill: var(--fg); font-size: 13.5px; text-anchor: middle; }
+  .note.ok rect { stroke: var(--ok); stroke-width: 2; }
+  .note.ok text { fill: var(--ok); font-weight: 600; }
+  .note.bad rect { stroke: var(--bad); stroke-width: 2; }
+  .note.bad text { fill: var(--bad); font-weight: 600; }
+  .note.warn rect { stroke: var(--warn); stroke-width: 2; }
+  .row { transition: opacity .3s; }
+  .row.past { opacity: .5; }
+  .row.fresh { animation: appear .7s ease-out both; }
+  .row.fresh .msg { stroke-dasharray: 1; animation: draw .8s ease-out both; }
+  .row.fresh .msg.dashed { stroke-dasharray: 6 4; animation: none; }
+  @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+  .caption { min-height: 6em; margin: 10px 2px 0; }
+  .caption .count { color: var(--muted); font-size: .85rem; margin-bottom: 2px; }
+  .controls { margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .controls button {
+    font: inherit; font-size: .95rem; color: var(--fg); background: var(--box);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; min-width: 44px; min-height: 36px;
+  }
+  .controls button:hover, .cases button:hover { border-color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .progress { flex: 1 1 120px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .progress span { display: block; height: 100%; width: 0; background: var(--accent); }
+
+  ol.case-steps > li { padding: 6px 8px; margin: 2px 0; border-radius: 6px; cursor: pointer; }
+  ol.case-steps > li.current { background: var(--box-on); outline: 1px solid var(--accent); }
+  @media (prefers-reduced-motion: reduce) {
+    .row, .row.fresh, .row.fresh .msg { animation: none; transition: none; stroke-dasharray: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+<h1>Why a command never runs twice</h1>
+
+<p>A message between the agent and the server can be lost, held back, repeated or replayed,
+by the network or by something on the path that opens TLS, and a caller can call again.
+None of this makes a command run twice. This page shows why, one short scenario per case.
+It is written for the person responsible for a back office and for a developer of an
+application that embeds the server. The rules are rules 3, 4, 7, 10 and 11 of the
+<a href="../concept.md">concept</a> and §6 and §13 of the <a href="../protocol.md">protocol</a>.
+The same explanation as text is <a href="never-twice.md"><code>never-twice.md</code></a>; the
+path of a command without losses is <a href="command-path.html">The path of a command</a>.</p>
+
+<p class="status"><strong>Status:</strong> built. Each case below is a test that passes today
+over loopback HTTP. The repeated call runs against the server with a test agent. The other
+four run with two server nodes on one PostgreSQL, the real agent with a fake in place of the
+COM worker, and a proxy between them that drops and holds chosen requests and answers. The
+cases run without 1C: what they show happens before a script starts and after it ends.</p>
+
+<p>Three things carry the rule:</p>
+<ul>
+  <li><strong>the caller key</strong>: the server keeps one command per base and caller key;</li>
+  <li><strong>the audit log</strong>: the agent records every command before it runs it, and a command whose identity is in its log never runs again;</li>
+  <li><strong>the list of every poll</strong>: each poll lists the commands the agent received whose outcome the server has not confirmed, and only the newest poll counts.</li>
+</ul>
+
+<p>Once is not the same as known. When the agent cannot tell whether a Write committed, for
+example because the connection to 1C ended during the commit, its outcome is Unknown, never
+a success or a failure.</p>
+
+<p>In the scenarios, poll numbers are shortened. The agent takes real ones from its clock,
+always growing.</p>
+
+<figure aria-label="Animated figure: five cases in which a command still runs once">
+<div class="cases" id="cases" role="group" aria-label="Cases"></div>
+<svg id="stage" viewBox="0 0 480 350" role="img" aria-labelledby="stage-title">
+  <title id="stage-title">A sequence of messages between the caller, the server, the path and the agent, for the chosen case. A cross marks a message lost on the path, two bars one held there.</title>
+  <g id="lanes"></g>
+  <g id="rows"></g>
+</svg>
+<div class="controls">
+  <button type="button" id="prev" aria-label="Previous step">&#9664; Back</button>
+  <button type="button" id="play" aria-label="Pause">Pause</button>
+  <button type="button" id="next" aria-label="Next step">Next &#9654;</button>
+  <div class="progress" aria-hidden="true"><span id="bar"></span></div>
+</div>
+<div class="caption" aria-live="polite">
+  <div class="count" id="count"></div>
+  <div id="caption"></div>
+</div>
+</figure>
+
+<h2 id="case-1">1. A repeated call with its key</h2>
+<ol class="case-steps">
+  <li>The application calls <code>WriteAsync</code> with the caller key <code>invoice-17</code>. The server creates the command, and the agent runs it.</li>
+  <li>The application's wait ends, by a timeout of its own or a restart, and it calls again with the same key, script and parameters.</li>
+  <li>The server finds the command of that key before anything else, creates nothing, waits for its outcome and returns it. A repeat with another script or other parameters is Refused with <code>caller-key-conflict</code>.</li>
+</ol>
+<p>The key is free for a new command only when the first ended as Expired or Refused, so that
+nothing ran, or when its outcome was removed after its retention, 7 days by default.</p>
+
+<h2 id="case-2">2. A lost poll answer</h2>
+<ol class="case-steps">
+  <li>Poll 41 takes the command, and its answer is lost on the path. The agent never saw the command.</li>
+  <li>The agent's next poll, 42, does not list the command as received.</li>
+  <li>The server hands the command out again in the answer to poll 42, since the take deadline has not passed. The agent records it and runs it once.</li>
+</ol>
+<p>A command that the list of a newer poll does not hold had not reached the agent. Should the
+same command ever come twice, the audit log holds its identity, and it does not run again.</p>
+
+<h2 id="case-3">3. An older poll</h2>
+<ol class="case-steps">
+  <li>Poll 41 is held back on the path. The agent's wait ends, and it sends poll 42, which becomes the newest.</li>
+  <li>Later the held poll 41 arrives, and someone replays poll 42 byte for byte.</li>
+  <li>Both are older: their numbers are not greater than the newest the server recorded. They end without commands and change nothing: not the lease, not the bases, not the list of received commands.</li>
+</ol>
+<p>Only the newest list is believed, so an old list cannot make the server hand out again a
+command that the agent has received. The numbers grow across restarts, even when the clock
+is set back, because the agent reserves them in its audit log.</p>
+
+<h2 id="case-4">4. A lost outcome</h2>
+<ol class="case-steps">
+  <li>The command ran. The agent records its outcome, keeps it in a file on its disk, and sends it.</li>
+  <li>The server keeps the outcome and the caller gets it, but the confirmation is lost on the path.</li>
+  <li>The agent sends the same outcome again, even after a restart. The server confirms it and changes nothing: only the first outcome of a command counts, and only from the agent it was handed to.</li>
+</ol>
+<p>The outcome travels again; the script does not run again.</p>
+
+<h2 id="case-5">5. The expiry decided by the agent's time</h2>
+<ol class="case-steps">
+  <li>Poll 41 takes a Write, and its answer is lost. The server cannot tell whether it is gone or only held back on the path, to reach the agent later.</li>
+  <li>The take deadline passes by the server's clock. Were the command Expired now, its caller key would be free, a repeat would create a new command, and the old one, delivered late, could run as well.</li>
+  <li>So the command stays taken. The agent accepts a command only until its own clock passes the take deadline plus the allowed skew, 2 minutes by default, and every poll carries the agent's time inside its signature.</li>
+  <li>The command ends as Expired only when a poll whose time is past the take deadline plus the skew does not list it. By then the agent would refuse it as <code>expired</code>, so nothing can run it, and the key is free.</li>
+</ol>
+<p>The clock of the agent decides, because the agent is the one that would run the command.</p>
+
+<h2>What this rests on</h2>
+<ul>
+  <li><strong>The audit log of the agent.</strong> It is the agent's journal of received commands and its reserved poll numbers. A log that was cleared is found, with the one gap that §13 of the protocol names, and the agent stops until it is paired anew. A log restored from an older copy is not found, and can make a Write run twice; such an agent is paired anew.</li>
+  <li><strong>One running copy of each agent.</strong> A clone of the agent machine carries its identity and voids these rules until it is paired anew with a token of its own.</li>
+  <li><strong>A clock that does not jump back.</strong> An agent whose clock jumps back voids the expiry of case 5.</li>
+</ul>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var SVG = "http://www.w3.org/2000/svg";
+  var X = { caller: 58, server: 178, path: 300, agent: 422 };
+  var TOP = 72;
+  var GAP = 30;
+
+  // The rows each step adds to the figure, one list per item of the case's numbered list, in the same order.
+  // msg: an arrow; "lost" ends on the path with a cross, "held" with two bars, "unsure" with a question mark,
+  // and "dashed" is a message the path sends on later. note: a box on a lane.
+  var cases = [
+    {
+      title: "Repeated call",
+      steps: [
+        [
+          { msg: ["caller", "server"], label: "Write · invoice-17" },
+          { note: "server", text: "creates c1" },
+          { msg: ["server", "agent"], label: "poll answer: c1" },
+          { note: "agent", text: "records c1, runs it", tone: "ok" }
+        ],
+        [
+          { note: "caller", text: "wait ends", tone: "warn" },
+          { msg: ["caller", "server"], label: "same call again" }
+        ],
+        [
+          { note: "server", text: "key names c1: nothing new", tone: "ok" },
+          { msg: ["agent", "server"], label: "outcome of c1" },
+          { msg: ["server", "caller"], label: "outcome of c1" }
+        ]
+      ]
+    },
+    {
+      title: "Lost poll answer",
+      steps: [
+        [
+          { msg: ["agent", "server"], label: "poll 41" },
+          { note: "server", text: "takes c1" },
+          { msg: ["server", "agent"], label: "answer: c1", end: "lost" }
+        ],
+        [
+          { msg: ["agent", "server"], label: "poll 42 · received: none" }
+        ],
+        [
+          { note: "server", text: "c1 not listed: hand out again" },
+          { msg: ["server", "agent"], label: "answer: c1" },
+          { note: "agent", text: "records c1, runs it once", tone: "ok" }
+        ]
+      ]
+    },
+    {
+      title: "Older poll",
+      steps: [
+        [
+          { msg: ["agent", "server"], label: "poll 41", end: "held" },
+          { msg: ["agent", "server"], label: "poll 42" },
+          { note: "server", text: "42 is the newest" }
+        ],
+        [
+          { msg: ["path", "server"], label: "poll 41, released", dashed: true },
+          { msg: ["path", "server"], label: "poll 42, replayed", dashed: true }
+        ],
+        [
+          { note: "server", text: "older: nothing taken or changed", tone: "ok" }
+        ]
+      ]
+    },
+    {
+      title: "Lost outcome",
+      steps: [
+        [
+          { note: "agent", text: "outcome on disk" },
+          { msg: ["agent", "server"], label: "outcome of c1" }
+        ],
+        [
+          { note: "server", text: "keeps it" },
+          { msg: ["server", "caller"], label: "outcome" },
+          { msg: ["server", "agent"], label: "confirmed", end: "lost" }
+        ],
+        [
+          { msg: ["agent", "server"], label: "outcome of c1, again" },
+          { note: "server", text: "first counts: no change", tone: "ok" },
+          { msg: ["server", "agent"], label: "confirmed" }
+        ]
+      ]
+    },
+    {
+      title: "Expiry by the agent's time",
+      steps: [
+        [
+          { msg: ["agent", "server"], label: "poll 41" },
+          { note: "server", text: "takes Write c1" },
+          { msg: ["server", "agent"], label: "answer: c1", end: "unsure" }
+        ],
+        [
+          { note: "server", text: "take deadline passed", tone: "warn" }
+        ],
+        [
+          { msg: ["agent", "server"], label: "poll 42 · time < deadline + skew" },
+          { note: "server", text: "c1 stays taken", tone: "warn" }
+        ],
+        [
+          { msg: ["agent", "server"], label: "poll 43 · time > deadline + skew" },
+          { note: "server", text: "c1 not listed: Expired", tone: "bad" },
+          { note: "agent", text: "would refuse c1: expired" }
+        ]
+      ]
+    }
+  ];
+
+  var sections = Array.prototype.slice.call(document.querySelectorAll("ol.case-steps"));
+  var flat = [];
+  cases.forEach(function (c, ci) {
+    var items = sections[ci].querySelectorAll("li");
+    c.steps.forEach(function (rows, si) {
+      flat.push({ caseIndex: ci, stepIndex: si, item: items[si] });
+    });
+  });
+
+  var lanesLayer = document.getElementById("lanes");
+  var rowsLayer = document.getElementById("rows");
+  var caseBar = document.getElementById("cases");
+  var caption = document.getElementById("caption");
+  var count = document.getElementById("count");
+  var bar = document.getElementById("bar");
+  var playButton = document.getElementById("play");
+  var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var current = 0;
+  var playing = true;
+  var timer = 0;
+
+  function el(name, attributes, parent) {
+    var node = document.createElementNS(SVG, name);
+    Object.keys(attributes).forEach(function (key) { node.setAttribute(key, attributes[key]); });
+    if (parent) {
+      parent.appendChild(node);
+    }
+    return node;
+  }
+
+  function drawLanes() {
+    var lanes = [
+      ["caller", "Caller", "the application"],
+      ["server", "Server", "nodes and store"],
+      ["path", "The path", "network, proxies"],
+      ["agent", "Agent", "and its audit log"]
+    ];
+    lanes.forEach(function (lane) {
+      var x = X[lane[0]];
+      el("line", { "class": lane[0] === "path" ? "life life-path" : "life", x1: x, y1: 46, x2: x, y2: 346 }, lanesLayer);
+      el("rect", { "class": "lane-box", x: x - 52, y: 6, width: 104, height: 40, rx: 7 }, lanesLayer);
+      el("text", { "class": "lane-t", x: x, y: 23 }, lanesLayer).textContent = lane[1];
+      el("text", { "class": "lane-s", x: x, y: 38 }, lanesLayer).textContent = lane[2];
+    });
+  }
+
+  function drawTip(group, x, y, direction) {
+    var points = [x, y, x - 9 * direction, y - 5, x - 9 * direction, y + 5].join(" ");
+    el("polygon", { "class": "tip", points: points }, group);
+  }
+
+  function drawMessage(group, row, y) {
+    var from = X[row.msg[0]];
+    var to = X[row.msg[1]];
+    var end = row.end ? X.path : to;
+    var direction = end > from ? 1 : -1;
+    var tipX = row.end ? end - 8 * direction : end - 2 * direction;
+
+    el("line", { "class": row.dashed ? "msg dashed" : "msg", x1: from, y1: y, x2: tipX, y2: y, pathLength: 1 }, group);
+    var label = el("text", { "class": "lbl", x: (from + end) / 2, y: y - 7 }, group);
+    label.textContent = row.label;
+
+    if (row.end === "lost") {
+      el("line", { "class": "cross", x1: end - 6, y1: y - 6, x2: end + 6, y2: y + 6 }, group);
+      el("line", { "class": "cross", x1: end - 6, y1: y + 6, x2: end + 6, y2: y - 6 }, group);
+    } else if (row.end === "held") {
+      drawTip(group, tipX, y, direction);
+      el("rect", { "class": "hold", x: end - 6, y: y - 8, width: 4, height: 16 }, group);
+      el("rect", { "class": "hold", x: end + 2, y: y - 8, width: 4, height: 16 }, group);
+    } else if (row.end === "unsure") {
+      drawTip(group, tipX, y, direction);
+      el("text", { "class": "ask", x: end + 1, y: y + 5 }, group).textContent = "?";
+    } else {
+      drawTip(group, tipX, y, direction);
+    }
+  }
+
+  function drawNote(group, row, y) {
+    var note = el("g", { "class": "note" + (row.tone ? " " + row.tone : "") }, group);
+    var text = el("text", { x: X[row.note], y: y + 4 }, note);
+    text.textContent = row.text;
+
+    // The box fits the text and stays inside the figure.
+    var width = text.getComputedTextLength() + 16;
+    var left = Math.min(Math.max(X[row.note] - width / 2, 4), 476 - width);
+    text.setAttribute("x", left + width / 2);
+    var box = el("rect", { x: left, y: y - 11, width: width, height: 22, rx: 6 });
+    note.insertBefore(box, text);
+  }
+
+  function show(index, animate) {
+    clearTimeout(timer);
+    current = (index + flat.length) % flat.length;
+    var at = flat[current];
+    var steps = cases[at.caseIndex].steps;
+
+    while (rowsLayer.firstChild) {
+      rowsLayer.removeChild(rowsLayer.firstChild);
+    }
+
+    var y = TOP;
+    for (var s = 0; s <= at.stepIndex; s++) {
+      steps[s].forEach(function (row) {
+        var group = el("g", { "class": "row" }, rowsLayer);
+        if (s < at.stepIndex) {
+          group.classList.add("past");
+        } else if (animate && !still) {
+          group.classList.add("fresh");
+        }
+        if (row.msg) {
+          drawMessage(group, row, y + 6);
+        } else {
+          drawNote(group, row, y);
+        }
+        y += GAP;
+      });
+    }
+
+    Array.prototype.forEach.call(caseBar.children, function (button, i) {
+      button.setAttribute("aria-pressed", i === at.caseIndex ? "true" : "false");
+    });
+    flat.forEach(function (f, i) {
+      f.item.classList.toggle("current", i === current);
+    });
+    caption.innerHTML = at.item.innerHTML;
+    count.textContent = "Case " + (at.caseIndex + 1) + " of " + cases.length + ", " +
+      cases[at.caseIndex].title.toLowerCase() + " · step " + (at.stepIndex + 1) + " of " + steps.length;
+
+    schedule();
+  }
+
+  // How long a step stays: long enough to read its caption.
+  function readingTime(text) {
+    return Math.min(Math.max(text.length * 45, 5000), 16000);
+  }
+
+  function schedule() {
+    clearTimeout(timer);
+    bar.style.transition = "none";
+    bar.style.width = "0";
+    if (!playing) {
+      return;
+    }
+    var wait = readingTime(flat[current].item.textContent);
+    void bar.offsetWidth;
+    bar.style.transition = "width " + wait + "ms linear";
+    bar.style.width = "100%";
+    timer = setTimeout(function () { show(current + 1, true); }, wait);
+  }
+
+  function setPlaying(value) {
+    playing = value;
+    playButton.textContent = playing ? "Pause" : "Play";
+    playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
+    schedule();
+  }
+
+  function firstStepOf(caseIndex) {
+    for (var i = 0; i < flat.length; i++) {
+      if (flat[i].caseIndex === caseIndex) {
+        return i;
+      }
+    }
+    return 0;
+  }
+
+  cases.forEach(function (c, i) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.textContent = (i + 1) + ". " + c.title;
+    button.addEventListener("click", function () { setPlaying(false); show(firstStepOf(i), true); });
+    caseBar.appendChild(button);
+  });
+
+  document.getElementById("prev").addEventListener("click", function () { setPlaying(false); show(current - 1, true); });
+  document.getElementById("next").addEventListener("click", function () { setPlaying(false); show(current + 1, true); });
+  playButton.addEventListener("click", function () { setPlaying(!playing); });
+  flat.forEach(function (f, i) {
+    f.item.addEventListener("click", function () { setPlaying(false); show(i, true); });
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.target.closest("button, a")) {
+      return;
+    }
+    if (event.key === "ArrowRight") { setPlaying(false); show(current + 1, true); }
+    if (event.key === "ArrowLeft") { setPlaying(false); show(current - 1, true); }
+    if (event.key === " ") { event.preventDefault(); setPlaying(!playing); }
+  });
+
+  drawLanes();
+  show(0, true);
+})();
+</script>
+</body>
+</html>
