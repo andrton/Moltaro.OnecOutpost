@@ -3,8 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
-    <!-- The marshalling that LibraryImport generates for the anonymous logon of the tests of the program folder is
-         unsafe code. -->
+    <!-- LibraryImport generates unsafe code for AnonymousLogon, TestTokens and TestDesktop, and the last two read
+         native structures through pointers. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
