@@ -43,7 +43,8 @@ One agent holds one role in a sprint. The separation is the point: nobody checks
 spent its weekly limit in the middle of a sprint). Every agent of a sprint runs on Opus
 5.5. Whoever starts an agent or a session sets its model and its effort explicitly and
 checks them afterwards: a value that is left out is inherited from whoever starts it,
-which is rarely the one wanted.
+which is rarely the one wanted. `xhigh` is the highest effort of any agent; `max` is not
+used (the owner, 23 November 2026).
 
 | Role | Effort |
 | --- | --- |
