@@ -70,7 +70,7 @@ internal static class LabWorkers
                 safeMode,
                 Repository.ExecutorPath);
 
-            Assert.True(ready, $"No session opened in {database} as {account.User}. {worker.Diagnostics}");
+            Assert.True(ready, $"No session opened in the base {baseKey} under the account of its {mode} mode. {worker.Diagnostics}");
 
             return worker;
         }

@@ -49,10 +49,9 @@ public sealed class CheckWorkerAccountTests
 
         CheckRow row = check.Row(CheckLineEnum.WorkerAccount, LabTestBase.Key, guest);
         Assert.False(row.Passed, row.ToString());
-        Assert.True(
-            row.Reason.EndsWith(WorkerAccountReasons.CannotLogOn(LabTestBase.Key, 1331), StringComparison.Ordinal)
-            || row.Reason.EndsWith(WorkerAccountReasons.CannotLogOn(LabTestBase.Key, 1327), StringComparison.Ordinal),
-            $"The logon of {guest} failed with another reason: {row.Reason}");
+        int[] codes = [.. new[] { 1331, 1327 }.Where(code => row.Reason.EndsWith(WorkerAccountReasons.CannotLogOn(LabTestBase.Key, code), StringComparison.Ordinal))];
+        Assert.True(codes.Length == 1, $"The logon of {guest} failed with another reason: {row.Reason}");
+        TestContext.Current.TestOutputHelper?.WriteLine($"The logon of the disabled Guest with a blank password failed with {codes[0]}.");
         Assert.True(check.Row(CheckLineEnum.WorkerStart, LabTestBase.Key, guest).NotChecked);
     }
 
@@ -74,10 +73,12 @@ public sealed class CheckWorkerAccountTests
         check.AssertPassed("the worker account", CheckLineEnum.WorkerAccount, LabTestBase.Key, workerAccount.User);
         CheckRow probe = check.Row(CheckLineEnum.WorkerStart, LabTestBase.Key, workerAccount.User);
         Assert.False(probe.Passed, probe.ToString());
+        bool program = probe.Reason == $"{workerAccount.User} may not read or run {agent.WorkerPath}";
         Assert.True(
-            probe.Reason == $"{workerAccount.User} may not read or run {agent.WorkerPath}"
-            || probe.Reason == $"{workerAccount.User} may not read the folder of {agent.WorkerPath}, or it does not exist",
+            program || probe.Reason == $"{workerAccount.User} may not read the folder of {agent.WorkerPath}, or it does not exist",
             $"The probe failed with another reason: {probe.Reason}");
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            $"The probe of a program folder without the entry of Users failed with {(program ? "5, the program" : "267, its folder")}.");
         Assert.True(check.Row(CheckLineEnum.Connection, LabTestBase.Key, lab.TestBase.Read.User).NotChecked);
         Assert.True(check.Row(CheckLineEnum.Connection, LabTestBase.Key, lab.TestBase.Write.User).NotChecked);
     }

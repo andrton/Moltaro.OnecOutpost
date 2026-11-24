@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 using Moltaro.OnecOutpost.TestSupport;
@@ -93,6 +95,32 @@ public sealed class MetadataCensusTests : IDisposable
 
         run.AssertEnded(ConsoleExitCodes.ReportFailed, "ReportFailed (20): the probe of Catalog.Products failed: Field access denied");
         Assert.Equal(["census", "page Catalogs 0 1 storage"], Accounting.Answers.Select(answer => answer.Read));
+    }
+
+    // The S10 brief, "After the lab run of deeb370", 1: a value of the census without an XML form, which XMLString
+    // raises on, as the lab found on a typical copy, is {"error": text} in its place, the walk goes on, and the caption
+    // of the table names it. The caption may wrap within the width of the table, so its words are read across the
+    // lines.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task Census_values_that_1C_cannot_give_are_errors_in_their_place_named_in_the_caption_and_the_report_is_written()
+    {
+        const string PlatformError = "SystemInfo is not available";
+        const string ModeError = "XMLString cannot convert the value";
+        Accounting.CensusValueFails("platform", PlatformError);
+        Accounting.CensusValueFails("compatibilityMode", ModeError);
+
+        MetadataRun run = await _metadata.RunAsync();
+
+        run.AssertSucceeded(read: 6, found: 6, failed: 0);
+        JsonElement root = run.Report.Root;
+        MetadataRun.AssertJson(new JsonObject { ["error"] = PlatformError }, root.GetProperty("platform"));
+        MetadataRun.AssertJson(
+            new JsonObject { ["name"] = "OutpostTest", ["version"] = "1.0.0.1", ["compatibilityMode"] = new JsonObject { ["error"] = ModeError } },
+            root.GetProperty("configuration"));
+        Assert.Contains(
+            $"Not read: platform ({PlatformError}), compatibilityMode ({ModeError})",
+            string.Join(" ", run.Output.Split((char[])[' ', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)),
+            StringComparison.Ordinal);
     }
 
     // A configuration whose catalogs are empty: the probe reads the first document.

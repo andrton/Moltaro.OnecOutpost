@@ -6,17 +6,20 @@ namespace Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 // One COM worker that check or metadata started on a test's machine, of a base, under a worker account or under the
 // console's own token, which FakeWorkerStarts made. The user of its connection line chooses the FakeSession that the
 // test scripted for the base and that user. Its open, each run and the kill that ends it are lines of the operation
-// list, never with a password: "open {base} {user}", "run {base} {user} {script}" and "kill {base} {user}", the user "-"
-// before the open, the script by its kind: user for the script that gives UserName(), subscriptions for the one that
-// reads Metadata.EventSubscriptions, rights for the one that calls AccessRight, other for any other; and for
+// list, never with a password: "open {base} {user}", "run {base} {user} {script}" and "kill {base} {user}", the user
+// "-" before the open, the script by its kind: user for the script that gives UserName(), subscriptions for the one
+// that reads Metadata.EventSubscriptions, rights for the one that calls AccessRight, other for any other; and for
 // MetadataScripts.Walk, the walk of metadata, the Read that its parameters ask for, as FakeConfiguration.Describe names
-// it, such as "run accounting outpost-read page Catalogs 0 2 storage". As the boundary says, it
-// reports failures as results, by no exception but OperationCanceledException: an open gives what its session gives, or waits until Kill and then gives false; a run
-// gives the executor's outcome with its size, or waits until Kill and then gives null; an open or a run of a worker that
-// ended gives false or null at once. Its standard error, Diagnostics, ends when the worker ends: after an open that gave
-// false, at Kill, or at its dispose, which closes its input. Kill completes a pending open or run, may run beside
-// either from any thread, and is idempotent. Its waits are completed asynchronously, so that no code of the caller runs
-// inside its lock.
+// it, such as "run accounting outpost-read page Catalogs 0 2 storage". As the boundary says, it reports failures as
+// results, by no exception but OperationCanceledException: an open gives what its session gives, or waits until Kill
+// and then gives false; a run gives the executor's outcome with its size, or waits until Kill and then gives null; an
+// open or a run of a worker that ended gives false or null at once. Its standard error, Diagnostics, ends when the
+// worker ends: after an open that gave false, at Kill, or at its dispose, which closes its input. Its end as a session
+// ends it, EndAsync (the S10 brief, "After the lab run of deeb370", 2), is a line "end {base} {user} within
+// {deadline}": a worker that ended, or that ends at the end of its input, has exited then; one whose session lingers
+// waits the deadline on the clock given, is terminated, a line "terminate {base} {user}", and has exited. Kill makes it
+// exit at once; a dispose alone does not. Kill completes a pending open or run, may run beside either from any thread,
+// and is idempotent. Its waits are completed asynchronously, so that no code of the caller runs inside its lock.
 internal sealed class FakeCheckProcess : IWorkerProcess
 {
     public const string UserScript = "user";
@@ -45,6 +48,12 @@ internal sealed class FakeCheckProcess : IWorkerProcess
     private bool _killed;
 
     private bool _disposed;
+
+    private bool _exited;
+
+    private bool _terminated;
+
+    private TimeSpan? _endDeadline;
 
     private TaskCompletionSource<bool>? _waitingOpen;
 
@@ -96,6 +105,42 @@ internal sealed class FakeCheckProcess : IWorkerProcess
             lock (_lock)
             {
                 return _disposed;
+            }
+        }
+    }
+
+    // The process has exited: after EndAsync or Kill.
+    public bool Exited
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _exited;
+            }
+        }
+    }
+
+    // EndAsync terminated it at its deadline.
+    public bool Terminated
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _terminated;
+            }
+        }
+    }
+
+    // The deadline that EndAsync was given, null before it.
+    public TimeSpan? EndDeadline
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _endDeadline;
             }
         }
     }
@@ -216,6 +261,42 @@ internal sealed class FakeCheckProcess : IWorkerProcess
         return Task.FromResult<(long Size, byte[] Outcome)?>((outcome.Length, outcome));
     }
 
+    // Closes the input and waits for the exit within the deadline on the clock, then terminates the worker and waits.
+    public async Task EndAsync(TimeSpan deadline, TimeProvider clock)
+    {
+        FakeSession? session;
+        string user;
+        bool ended;
+
+        lock (_lock)
+        {
+            _endDeadline = deadline;
+            session = _session;
+            user = UserOf(_connection);
+            ended = _ended || _killed;
+        }
+
+        _starts.Note($"end {Base} {user} within {deadline:c}");
+
+        if (!ended && session is { Lingers: true })
+        {
+            await Task.Delay(deadline, clock);
+            _starts.Note($"terminate {Base} {user}");
+
+            lock (_lock)
+            {
+                _terminated = true;
+            }
+        }
+
+        lock (_lock)
+        {
+            _exited = true;
+        }
+
+        End(session?.Diagnostics ?? "");
+    }
+
     public void Kill()
     {
         TaskCompletionSource<bool>? open;
@@ -231,6 +312,7 @@ internal sealed class FakeCheckProcess : IWorkerProcess
             }
 
             _killed = true;
+            _exited = true;
             open = _waitingOpen;
             run = _waitingRun;
             session = _session;

@@ -11,15 +11,19 @@ namespace Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 // session, each Read answered by the member read of its parameters as the script would answer it (the S10 brief, "The
 // script" and "The report"). These answers are the form that the script gives and the console reads:
 // - census: {"platform", "configuration": {"name", "version", "compatibilityMode"}, "categories": [{"category",
-//   "count"}]}, the fifteen categories in the report's order, each with the Count() of its collection;
+//   "count"}]}, the fifteen categories in the report's order, each with the Count() of its collection; each of the
+//   four values a string, or {"error": "{1C's text}"} in its place for one that 1C cannot give, read in a Try of its
+//   own (the S10 brief, "After the lab run of deeb370", 1);
 // - page, with category, from, count and storage: {"objects": [...], "storageError"}, the objects of the category from
 //   the index from, count of them at most, each as the report holds it but for its category: name, fullName, synonym,
 //   comment, properties, fields, values, storage and error, storage its tables when storage is true and null otherwise;
 //   storageError null, or the text of a raise of GetDBStorageStructureInfo, which leaves every storage null and every
-//   error as it was;
+//   error as it was; a property of an object that 1C cannot give, read in a Try of its own, is left out, and the
+//   object's error names it, {property}: {text}, several joined by "; ", the rest of the object read;
 // - common: the array of the storage tables of no object of the fifteen categories, such as a sequence's.
 // An answer is the executor's outcome. The test adds the objects and their tables, and says which Read fails and how:
-// a census that fails or overruns; a page that holds an object too large, one that overruns, one that fails in 1C or
+// a census that fails or overruns, or one of its values that 1C cannot give; a property of an object that 1C cannot
+// give; a page that holds an object too large, one that overruns, one that fails in 1C or
 // one that loses the connection, after which the worker ends; a page with storage that holds an object whose storage
 // raises; a common that fails. A Read that overruns gives nothing until the worker is killed. Each Read is first given
 // to Reading, with its description: census, page {category} {from} {count}, storage at its end when it asks for the
@@ -66,6 +70,13 @@ internal sealed class FakeConfiguration
     private readonly Dictionary<string, string> _pageErrors = new(StringComparer.Ordinal);
 
     private readonly Dictionary<string, string> _storageErrors = new(StringComparer.Ordinal);
+
+    // The text of each value of the census that 1C cannot give, by its member: platform, name, version or
+    // compatibilityMode.
+    private readonly Dictionary<string, string> _censusErrors = new(StringComparer.Ordinal);
+
+    // The properties of each object that 1C cannot give, by its full name, with their texts, in their order.
+    private readonly Dictionary<string, List<(string Property, string Text)>> _propertyErrors = new(StringComparer.Ordinal);
 
     private readonly List<(string Read, byte[]? Outcome)> _answers = [];
 
@@ -248,6 +259,18 @@ internal sealed class FakeConfiguration
         JsonObject item = (JsonObject)_objects.Values.SelectMany(objects => objects).Single(item => FullNameOf(item) == fullName).DeepClone();
         item["storage"] = storage ? _storage[fullName].DeepClone() : null;
 
+        if (_propertyErrors.TryGetValue(fullName, out List<(string Property, string Text)>? failed))
+        {
+            JsonObject properties = (JsonObject)item["properties"]!;
+
+            foreach ((string property, _) in failed)
+            {
+                properties.Remove(property);
+            }
+
+            item["error"] = string.Join("; ", failed.Select(error => $"{error.Property}: {error.Text}"));
+        }
+
         return item;
     }
 
@@ -255,6 +278,26 @@ internal sealed class FakeConfiguration
     public void CensusFails(string errorText)
     {
         _censusError = errorText;
+    }
+
+    // The value of the census, platform, name, version or compatibilityMode, cannot be given by 1C, which raises the
+    // text, such as XMLString for a value without an XML form.
+    public void CensusValueFails(string member, string text)
+    {
+        _censusErrors[member] = text;
+    }
+
+    // The property of the object, a member of its properties such as hierarchyType, cannot be given by 1C, which raises
+    // the text.
+    public void PropertyFails(string fullName, string property, string text)
+    {
+        if (!_propertyErrors.TryGetValue(fullName, out List<(string Property, string Text)>? failed))
+        {
+            failed = [];
+            _propertyErrors[fullName] = failed;
+        }
+
+        failed.Add((property, text));
     }
 
     // The census runs past any run limit.
@@ -396,11 +439,22 @@ internal sealed class FakeConfiguration
 
         return Succeeded(new JsonObject
         {
-            ["platform"] = Platform,
-            ["configuration"] = new JsonObject { ["name"] = Name, ["version"] = Version, ["compatibilityMode"] = CompatibilityMode },
+            ["platform"] = CensusValue("platform", Platform),
+            ["configuration"] = new JsonObject
+            {
+                ["name"] = CensusValue("name", Name),
+                ["version"] = CensusValue("version", Version),
+                ["compatibilityMode"] = CensusValue("compatibilityMode", CompatibilityMode),
+            },
             ["categories"] = new JsonArray(
                 [.. Categories.Select(category => new JsonObject { ["category"] = category, ["count"] = _objects[category].Count })]),
         });
+    }
+
+    // A value of the census as the script writes it: the value, or {"error": text} for one that 1C cannot give.
+    private JsonNode CensusValue(string member, string value)
+    {
+        return _censusErrors.TryGetValue(member, out string? text) ? new JsonObject { ["error"] = text } : JsonValue.Create(value);
     }
 
     // The objects from the index, count of them at most: the last index of the collection is the last read.

@@ -1,7 +1,9 @@
 using System.ComponentModel;
+using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.Check;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
@@ -12,7 +14,8 @@ namespace Moltaro.OnecOutpost.Console.Tests.Check;
 // the reason of each end: a worker that Windows does not start, a session that 1C does not open with what the worker
 // wrote to its standard error, a script that does not end well, another user, and a base without users, in which every
 // connection has every right. The Subscriptions and ReadRights of a base run in the connection of its read account, so
-// they are not checked when it fails.
+// they are not checked when it fails. Each row names its mode, Connection {base} read|write {account}, so that a base
+// whose two modes share one account has a row of each (the S10 brief, "After the lab run of deeb370", 3).
 public sealed class ConnectionLineTests : IDisposable
 {
     private static readonly TimeSpan RunLimit = TimeSpan.FromMinutes(10);
@@ -148,6 +151,23 @@ public sealed class ConnectionLineTests : IDisposable
         CheckRun run = await _checked.RunAsync();
 
         Assert.Equal("opened as Outpost-Read (Outpost read)", run.Passed(CheckLineEnum.Connection, "warehouse", "outpost-read"));
+    }
+
+    // A typical copy of the lab reads and writes under one 1C account; check opens a connection of each mode with it.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task A_base_whose_two_modes_share_one_account_has_a_row_of_each_mode_named_by_it()
+    {
+        Machine.Data.Root.Seed(
+            AgentFolders.PolicyName,
+            TestMachine.Policy.Replace("\"account\": \"outpost-write\"", "\"account\": \"outpost-read\"", StringComparison.Ordinal));
+
+        CheckRun run = await _checked.RunAsync();
+
+        run.AssertSucceeded();
+        Assert.Equal(
+            ["Connection accounting read outpost-read", "Connection accounting write outpost-read", "Connection warehouse read outpost-read"],
+            run.RowsOf(CheckLineEnum.Connection).Select(row => row.Check));
+        Assert.Equal("opened as outpost-read (Outpost read)", CheckTable.Row(run.Rows, "Connection", "accounting write outpost-read").Reason);
     }
 
     // 1C opens a base without users to anybody, with every right, whatever the account.

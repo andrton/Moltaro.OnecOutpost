@@ -179,6 +179,27 @@ public sealed class MetadataPageTests : IDisposable
         Assert.Equal(new MetadataCategory("Enums", 1, 0, 1), run.Report.Category("Enums"));
     }
 
+    // The S10 brief, "After the lab run of deeb370", 1: the script reads each property of an object in a Try of its
+    // own, so one that 1C cannot give names it in the object's error, and the rest of the object is read. The object is
+    // a document, not the probe's catalog, whose error would end metadata.
+    [Fact]
+    public async Task Properties_of_an_object_that_1C_cannot_give_fail_the_object_naming_them_and_the_rest_of_it_is_read()
+    {
+        Accounting.PropertyFails("Document.GoodsReceipt", "numberPeriodicity", "The value has no XML form");
+        Accounting.PropertyFails("Document.GoodsReceipt", "registerRecords", "The collection cannot be read");
+
+        MetadataRun run = await _metadata.RunAsync();
+
+        run.AssertSucceeded(read: 5, found: 6, failed: 1);
+        JsonElement receipt = run.Report.Object("Document.GoodsReceipt");
+        Assert.Equal(
+            "numberPeriodicity: The value has no XML form; registerRecords: The collection cannot be read",
+            MetadataReport.TextOf(receipt, "error"));
+        Assert.Equal("Allow", receipt.GetProperty("properties").GetProperty("posting").GetString());
+        Assert.Equal(3, receipt.GetProperty("fields").GetArrayLength());
+        Assert.Equal(new MetadataCategory("Documents", 1, 0, 1), run.Report.Category("Documents"));
+    }
+
     [Fact]
     public async Task An_object_with_an_error_of_its_own_is_recorded_with_it_and_counted_as_failed()
     {

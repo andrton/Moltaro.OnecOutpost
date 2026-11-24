@@ -33,7 +33,8 @@ internal static class LabStorage
     {
         OutcomeLine outcome = await worker.RunAsync(Script);
 
-        outcome.AssertIs("succeeded", null);
+        // By its kind and code alone: the outcome of a copy of a typical base would name its tables.
+        Assert.True(outcome.Kind == "succeeded" && outcome.Code is null, $"The read of the storage structure ended {outcome.Kind} {outcome.Code}.");
 
         IReadOnlySet<string> names = outcome.Result
             .GetProperty("names")

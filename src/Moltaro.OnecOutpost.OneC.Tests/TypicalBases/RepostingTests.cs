@@ -9,7 +9,9 @@ namespace Moltaro.OnecOutpost.OneC.Tests.TypicalBases;
 // person's posting made (concept §12, O1). The document and its movements come from the base while the test runs; the
 // scripts name no object of a typical configuration and read the movements through the register records of the
 // document, whatever its registers are. The lab's test of the worker account (the S9c brief) posts again with the same
-// scripts through the agent, and compares the movements as this test does.
+// scripts through the agent, and compares the movements as this test does. A message names the copy by its index and
+// the document type of lab.local.json, an outcome by its kind and code, and counts the registers that changed, so that
+// nothing of the copy's configuration or data is in it.
 public sealed class RepostingTests
 {
     [Fact]
@@ -27,7 +29,7 @@ public sealed class RepostingTests
 
     private static async Task PostTheLatestDocumentAgainAsync(LabTypicalBase typicalBase, string name)
     {
-        string about = $"{name}, {typicalBase.Configuration} {typicalBase.Version}, {typicalBase.DocumentType}";
+        string about = $"{name}, {typicalBase.DocumentType}";
 
         await using WorkerProcess reader = await LabWorkers.TypicalBaseReadAsync(typicalBase);
         await using WorkerProcess writer = await LabWorkers.TypicalBaseWriteAsync(typicalBase);
@@ -36,7 +38,7 @@ public sealed class RepostingTests
             TypicalBaseScripts.LatestPostedDocument,
             new JsonObject { ["documentType"] = typicalBase.DocumentType }.ToJsonString());
 
-        latest.AssertIs("succeeded", null);
+        AssertSucceeded(latest, $"{about}: the latest posted document");
 
         string document = new JsonObject
         {
@@ -48,15 +50,21 @@ public sealed class RepostingTests
         OutcomeLine posted = await writer.RunAsync(TypicalBaseScripts.PostTheDocumentAgain, document);
         OutcomeLine after = await reader.RunAsync(TypicalBaseScripts.MovementsOfTheDocument, document);
 
-        before.AssertIs("succeeded", null);
-        posted.AssertIs("succeeded", null);
-        after.AssertIs("succeeded", null);
+        AssertSucceeded(before, $"{about}: the movements before");
+        AssertSucceeded(posted, $"{about}: the posting");
+        AssertSucceeded(after, $"{about}: the movements after");
 
         Assert.True(
             before.Result.EnumerateObject().Any(register => register.Value.GetArrayLength() > 0),
             $"{about}: the latest posted document has no movements to compare.");
 
         string[] changed = [.. TypicalBaseScripts.Changed(before.Result, after.Result)];
-        Assert.True(changed.Length == 0, $"{about}: the movements changed in {string.Join(", ", changed)}.");
+        Assert.True(changed.Length == 0, $"{about}: the movements changed in {changed.Length} registers.");
+    }
+
+    // The outcome succeeded; otherwise the assertion names its kind and code alone.
+    private static void AssertSucceeded(OutcomeLine outcome, string about)
+    {
+        Assert.True(outcome.Kind == "succeeded" && outcome.Code is null, $"{about}: {outcome.Kind} {outcome.Code}");
     }
 }

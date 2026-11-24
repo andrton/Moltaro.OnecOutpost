@@ -36,6 +36,9 @@ internal sealed class FakeSession
     // The open gives nothing until the worker is killed.
     public bool Hangs { get; private set; }
 
+    // The worker does not end at the end of its input, so that only its termination ends it.
+    public bool Lingers { get; private set; }
+
     // What the worker writes to its standard error before it ends.
     public string Diagnostics { get; private set; } = "";
 
@@ -70,6 +73,12 @@ internal sealed class FakeSession
     public void HangOpen()
     {
         Hangs = true;
+    }
+
+    // The worker goes on after its input closed, as one whose session 1C does not release, until it is terminated.
+    public void LingerAtEnd()
+    {
+        Lingers = true;
     }
 
     // The script of the kind succeeds with the result.

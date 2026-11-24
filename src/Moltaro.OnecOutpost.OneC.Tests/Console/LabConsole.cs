@@ -2,6 +2,7 @@ using System.Runtime.Versioning;
 using Moltaro.OnecOutpost.Console;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.OneC.Tests.Agent;
+using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 using Spectre.Console.Testing;
@@ -78,6 +79,6 @@ internal static class LabConsole
 
         Assert.Equal(0, server.Polls);
 
-        return new LabMetadata(result, file);
+        return new LabMetadata(result, file, named: agent.Key == LabTestBase.Key);
     }
 }

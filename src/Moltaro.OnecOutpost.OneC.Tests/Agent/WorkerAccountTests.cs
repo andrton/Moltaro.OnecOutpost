@@ -96,7 +96,7 @@ public sealed class WorkerAccountTests
 
     private static async Task PostTheLatestDocumentAgainAsync(LabTypicalBase typicalBase, string name, LabAccount workerAccount)
     {
-        string about = $"{name}, {typicalBase.Configuration} {typicalBase.Version}, {typicalBase.DocumentType}";
+        string about = $"{name}, {typicalBase.DocumentType}";
         using LabAgent agent = LabAgent.WithoutSafeMode(typicalBase, workerAccount);
         await using LabRun run = agent.Start();
         Assert.True(
@@ -111,7 +111,7 @@ public sealed class WorkerAccountTests
             TypicalBaseScripts.LatestPostedDocument,
             new JsonObject { ["documentType"] = typicalBase.DocumentType }.ToJsonString()));
 
-        AssertSucceeded(latest, $"{about}: the latest posted document");
+        AssertSucceededQuietly(latest, $"{about}: the latest posted document");
 
         string document = new JsonObject
         {
@@ -123,22 +123,29 @@ public sealed class WorkerAccountTests
         OutpostOutcomeMessage posted = await run.OutcomeAsync(run.Send(OutpostModeEnum.Write, TypicalBaseScripts.PostTheDocumentAgain, document));
         OutpostOutcomeMessage after = await run.OutcomeAsync(run.Send(OutpostModeEnum.Read, TypicalBaseScripts.MovementsOfTheDocument, document));
 
-        AssertSucceeded(before, $"{about}: the movements before");
-        AssertSucceeded(posted, $"{about}: the posting under the worker account");
-        AssertSucceeded(after, $"{about}: the movements after");
+        AssertSucceededQuietly(before, $"{about}: the movements before");
+        AssertSucceededQuietly(posted, $"{about}: the posting under the worker account");
+        AssertSucceededQuietly(after, $"{about}: the movements after");
 
         Assert.True(
             before.Result!.Value.EnumerateObject().Any(register => register.Value.GetArrayLength() > 0),
             $"{about}: the latest posted document has no movements to compare.");
 
         string[] changed = [.. TypicalBaseScripts.Changed(before.Result.Value, after.Result!.Value)];
-        Assert.True(changed.Length == 0, $"{about}: the movements changed in {string.Join(", ", changed)}.");
+        Assert.True(changed.Length == 0, $"{about}: the movements changed in {changed.Length} registers.");
         Assert.Equal(AgentExitCodes.Stopped, await run.StopAsync());
     }
 
     private static string PathParameters(string path)
     {
         return new JsonObject { ["path"] = path }.ToJsonString();
+    }
+
+    // The outcome of a script on a copy of a typical base succeeded; otherwise the assertion names its kind and code
+    // alone, since 1C's text may name objects of the copy's configuration.
+    private static void AssertSucceededQuietly(OutpostOutcomeMessage outcome, string about)
+    {
+        Assert.True(outcome.Kind == OutpostAgentOutcomeKindEnum.Succeeded, $"{about}: {outcome.Kind} {outcome.Code}");
     }
 
     // The outcome succeeded; otherwise the assertion says what 1C said.

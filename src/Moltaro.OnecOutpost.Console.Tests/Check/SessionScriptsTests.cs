@@ -25,7 +25,8 @@ public sealed class SessionScriptsTests : IDisposable
     }
 
     // A session of another user fails the line Connection, whose user is the input of the rights and the subscriptions.
-    [Fact]
+    // The row names its mode (the S10 brief, "After the lab run of deeb370", 3).
+    [Fact(Skip = SkipReason.NotImplemented)]
     public async Task A_first_line_that_fails_leaves_every_later_script_of_its_session_not_checked_naming_that_line()
     {
         Machine.Workers.Sessions[("accounting", "outpost-read")] = new FakeSession("Administrator", "The administrator");
@@ -34,15 +35,15 @@ public sealed class SessionScriptsTests : IDisposable
 
         run.AssertCheckFailed();
         Assert.Equal(
-            "not checked: Connection accounting outpost-read failed",
+            "not checked: Connection accounting read outpost-read failed",
             run.Failed(CheckLineEnum.Subscriptions, "accounting"));
         Assert.Equal(
-            "not checked: Connection accounting outpost-read failed",
+            "not checked: Connection accounting read outpost-read failed",
             run.Failed(CheckLineEnum.ReadRights, "accounting"));
         Assert.Equal([FakeCheckProcess.UserScript], ScriptsOf("accounting", "outpost-read"));
     }
 
-    [Fact]
+    [Fact(Skip = SkipReason.NotImplemented)]
     public async Task A_session_that_does_not_open_fails_its_first_line_and_leaves_every_later_one_not_checked_naming_it()
     {
         Machine.Workers.Sessions[("accounting", "outpost-read")].RefuseOpen("No session opened");
@@ -52,10 +53,10 @@ public sealed class SessionScriptsTests : IDisposable
         run.AssertCheckFailed();
         Assert.Equal("1C opened no session: No session opened", run.Failed(CheckLineEnum.Connection, "accounting", "outpost-read"));
         Assert.Equal(
-            "not checked: Connection accounting outpost-read failed",
+            "not checked: Connection accounting read outpost-read failed",
             run.Failed(CheckLineEnum.Subscriptions, "accounting"));
         Assert.Equal(
-            "not checked: Connection accounting outpost-read failed",
+            "not checked: Connection accounting read outpost-read failed",
             run.Failed(CheckLineEnum.ReadRights, "accounting"));
         Assert.Empty(ScriptsOf("accounting", "outpost-read"));
     }
