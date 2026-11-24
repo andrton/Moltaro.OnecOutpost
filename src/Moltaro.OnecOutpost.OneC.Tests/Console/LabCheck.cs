@@ -46,7 +46,8 @@ internal sealed class LabCheck
     // names only the line as the test calls it and the counts of the table.
     public void AssertPassedQuietly(string about, string line, CheckLineEnum kind, string subject)
     {
-        List<CheckRow> found = [.. Rows.Where(row => CheckTable.Names(row, kind.ToString(), subject))];
+        string label = $"{kind} {subject}";
+        List<CheckRow> found = [.. Rows.Where(row => row.Check == label)];
 
         Assert.True(found.Count == 1, $"{about}: the table has {found.Count} rows of {line}, not one; {Summary}");
         Assert.True(found[0].Passed, $"{about}: {line} did not pass; {Summary}");

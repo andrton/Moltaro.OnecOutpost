@@ -3,15 +3,17 @@ using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.Metadata;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
 // The census and the probe of metadata (the S10 brief, "metadata <BASE> <FILE>", step 6): the census, then a page of
-// one object with the storage, the first object of the first category that has one. A census or a probe that does not
-// succeed within the run limit ends metadata with ReportFailed, saying how it ended; so does a probe object with an
-// error of its own, judged before a storageError, and a configuration without an object. No page runs after them and
-// nothing is written.
+// one object with the storage, the first object of the first category that has one. A census or a probe Read that does
+// not succeed within the run limit ends metadata with ReportFailed, saying how it ended, and so does a configuration
+// without an object; no page runs after them and nothing is written. A probe object with an error of its own is a
+// failed object like any other, recorded and counted by its page, and the walk goes on (the coordinator, after the lab
+// run of deeb370: one unreadable property must not stop a report).
 public sealed class MetadataCensusTests : IDisposable
 {
     private const string ErrorText = "The fake configuration refused the call";
@@ -83,18 +85,34 @@ public sealed class MetadataCensusTests : IDisposable
         Assert.Equal(["census", "page Catalogs 0 1 storage"], Accounting.Answers.Select(answer => answer.Read));
     }
 
-    // The error of the object is judged before the storageError of its page, which alone would leave the walk without
-    // the storage.
-    [Fact]
-    public async Task A_probe_object_with_an_error_ends_metadata_with_ReportFailed_and_its_error_before_a_storage_error()
+    // The probe's object fails with an error of its own, and the probe's page raises on the storage: the object is
+    // recorded and counted as failed by its page, the storage structure is unavailable with its reason, and every page
+    // is read without it.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task A_probe_object_with_an_error_is_a_failed_object_like_any_other_and_the_walk_goes_on_to_write_the_report()
     {
+        const string StorageError = "Insufficient rights to read the storage structure";
         Accounting.ObjectsOf("Catalogs")[0]["error"] = "Field access denied";
-        Accounting.StorageFails("Catalog.Products", "Insufficient rights to read the storage structure");
+        Accounting.StorageFails("Catalog.Products", StorageError);
 
         MetadataRun run = await _metadata.RunAsync();
 
-        run.AssertEnded(ConsoleExitCodes.ReportFailed, "ReportFailed (20): the probe of Catalog.Products failed: Field access denied");
-        Assert.Equal(["census", "page Catalogs 0 1 storage"], Accounting.Answers.Select(answer => answer.Read));
+        run.AssertSucceeded(read: 5, found: 6, failed: 1);
+        Assert.Equal("Field access denied", MetadataReport.TextOf(run.Report.Object("Catalog.Products"), "error"));
+        Assert.Equal(new MetadataCategory("Catalogs", 2, 1, 1), run.Report.Category("Catalogs"));
+        Assert.False(run.Report.StorageAvailable);
+        Assert.Equal(StorageError, run.Report.StorageReason);
+        Assert.Equal(
+            [
+                "census",
+                "page Catalogs 0 1 storage",
+                "page Catalogs 0 2",
+                "page Documents 0 1",
+                "page Enums 0 1",
+                "page Constants 0 1",
+                "page AccumulationRegisters 0 1",
+            ],
+            Accounting.Answers.Select(answer => answer.Read));
     }
 
     // The S10 brief, "After the lab run of deeb370", 1: a value of the census without an XML form, which XMLString

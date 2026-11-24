@@ -59,7 +59,7 @@ internal static class LabWorkers
     {
         Repository.AssertExecutorBuilt();
 
-        WorkerProcess worker = WorkerProcess.Start(baseKey, mode);
+        WorkerProcess worker = WorkerProcess.Start([baseKey, mode], includeDiagnostics: baseKey == LabTestBase.Key);
 
         try
         {

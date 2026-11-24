@@ -180,8 +180,7 @@ public sealed class MetadataPageTests : IDisposable
     }
 
     // The S10 brief, "After the lab run of deeb370", 1: the script reads each property of an object in a Try of its
-    // own, so one that 1C cannot give names it in the object's error, and the rest of the object is read. The object is
-    // a document, not the probe's catalog, whose error would end metadata.
+    // own, so one that 1C cannot give names it in the object's error, and the rest of the object is read.
     [Fact]
     public async Task Properties_of_an_object_that_1C_cannot_give_fail_the_object_naming_them_and_the_rest_of_it_is_read()
     {

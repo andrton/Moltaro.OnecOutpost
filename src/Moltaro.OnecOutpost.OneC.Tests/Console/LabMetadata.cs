@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Moltaro.OnecOutpost.Console.Commands;
+using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport.Metadata;
 using Spectre.Console.Cli.Testing;
 
@@ -9,10 +10,9 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 // One run of the console's metadata on the lab, as its output and its report show it: its exit code, the report that it
 // wrote, and what the lab run records of it for the brief of S10c, in the output of the test, which a passing test
 // shows too: the coverage of each category, the reads, the largest outcome, the halvings, and whether the storage
-// structure was available to the read account, or why not. The report of a copy of a typical base names objects of its
-// configuration, which no message of a test and nothing it records names: for a copy, Named is false, and the messages
-// and the records give counts and the codes of the protocol alone; for the test base, whose configuration is the
-// repository's, they name the objects.
+// structure was available to the read account. For a copy of a typical base, Named is false, and the messages give
+// counts and outcome codes. For the test base, whose configuration is the repository's, they name failed objects and
+// give the details of failed Reads and unavailable storage.
 internal sealed class LabMetadata
 {
     public LabMetadata(CommandAppResult result, string file, bool named)
@@ -46,25 +46,40 @@ internal sealed class LabMetadata
         }
     }
 
-    // Every object of every category was read: none failed, and read equals found in each category; otherwise the
-    // assertion names each error, of an object and of a Read, or, for a copy, counts them with the codes of the Reads.
+    // Every object of every category was read and recorded once, and no terminal Read or object failed. A page the
+    // walk halves is an intermediate Read. For a copy, report only counts and codes when an assertion fails.
     public void AssertEveryObjectRead(string about)
     {
         MetadataReport report = Report;
-        List<JsonElement> failedObjects = [.. report.Objects.Where(item => MetadataReport.TextOf(item, "error") is not null)];
-        List<MetadataRead> failedReads = [.. report.Reads.Where(read => read.Kind != "succeeded")];
+        IReadOnlyList<MetadataCategory> categories = report.Categories;
+        IReadOnlyList<JsonElement> objects = report.Objects;
+        List<JsonElement> failedObjects = [.. objects.Where(item => MetadataReport.TextOf(item, "error") is not null)];
+        List<MetadataRead> failedReads = [.. report.Reads.Where(read => read.Kind != "succeeded" && !IsHalvedPage(read))];
         string errors = Named
             ? string.Join(
                 "\n",
                 failedObjects.Select(item => $"{MetadataReport.TextOf(item, "fullName")}: {MetadataReport.TextOf(item, "error")}")
                     .Concat(failedReads.Select(read => $"{read.Read} {read.Category} {read.From} {read.Count}: {read.Kind} {read.Code} {read.ErrorText}")))
-            : $"{failedObjects.Count} objects with an error; {failedReads.Count} Reads that did not succeed, by code: "
+            : $"{failedObjects.Count} objects with an error; {failedReads.Count} terminal Reads that did not succeed, by code: "
                 + string.Join(", ", failedReads.GroupBy(read => read.Code ?? "none").Select(code => $"{code.Key} {code.Count()}"));
 
         Assert.True(
-            report.Categories.All(category => category.Failed == 0 && category.Read == category.Found),
-            $"{about}: not every object was read: {string.Join("; ", report.Categories)}\n{errors}");
-        Assert.True(failedObjects.Count == 0 && failedReads.Count == 0, $"{about}: the walk had errors:\n{errors}");
+            categories.All(category => category.Failed == 0 && category.Read == category.Found),
+            $"{about}: not every object was read: {string.Join("; ", categories)}\n{errors}");
+        Assert.True(failedObjects.Count == 0 && failedReads.Count == 0, $"{about}: the walk had terminal errors:\n{errors}");
+
+        ILookup<string?, string?> namesByCategory = objects.ToLookup(
+            item => MetadataReport.TextOf(item, "category"),
+            item => MetadataReport.TextOf(item, "fullName"));
+
+        int expected = categories.Sum(category => category.Found);
+        Assert.True(objects.Count == expected, $"{about}: the report holds {objects.Count} objects, expected {expected}.");
+
+        foreach (MetadataCategory category in categories)
+        {
+            int names = namesByCategory[category.Category].Where(name => !string.IsNullOrWhiteSpace(name)).Distinct(StringComparer.Ordinal).Count();
+            Assert.True(names == category.Found, $"{about}: {category.Category} holds {names} distinct named objects, expected {category.Found}.");
+        }
     }
 
     // Writes what the lab run records into the output of the test: counts, sizes and the storage's availability, and
@@ -73,10 +88,14 @@ internal sealed class LabMetadata
     {
         MetadataReport report = Report;
         IReadOnlyList<MetadataRead> reads = report.Reads;
-        int halvings = reads.Count(read => read.Code is "result-too-large" or "run-limit");
-        string storage = report.StorageAvailable
-            ? $"available, {report.StorageNames().Count} storage names"
-            : $"unavailable: {report.StorageReason}";
+        int halvings = reads.Count(IsHalvedPage);
+        string storage = report.StorageAvailable ? $"available, {report.StorageNames().Count} storage names" : "unavailable";
+
+        if (Named && !report.StorageAvailable)
+        {
+            storage += $": {report.StorageReason}";
+        }
+
         string coverage = string.Join(
             ", ",
             report.Categories.Where(category => category.Found > 0).Select(category => $"{category.Category} {category.Read} of {category.Found}"));
@@ -93,5 +112,12 @@ internal sealed class LabMetadata
     public static IReadOnlyList<string> TypesOf(JsonElement field)
     {
         return [.. field.GetProperty("types").EnumerateArray().Select(type => type.GetString()!)];
+    }
+
+    // These failures split into two Reads. The same codes on a single object or another Read are terminal.
+    private static bool IsHalvedPage(MetadataRead read)
+    {
+        return read.Read == "page" && read.Kind == "failed" && read.Count is > 1
+            && read.Code is OutpostOutcomeCodes.ResultTooLarge or OutpostOutcomeCodes.RunLimit;
     }
 }

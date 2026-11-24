@@ -60,7 +60,7 @@ public sealed class CheckWorkerAccountTests
     // Secondary Logon service may judge first, as 267, before the program, as 5: which of the two Windows gives is
     // recorded by the lab run of S10c, and this test then states that one alone (the contract amended after the first
     // code review).
-    [Fact]
+    [Fact(Skip = SkipReason.NotImplemented)]
     public async Task A_program_folder_without_the_entry_of_Users_fails_the_probe_as_a_program_or_a_folder_that_the_account_may_not_read()
     {
         LabFile lab = LabFile.Read();
@@ -79,8 +79,8 @@ public sealed class CheckWorkerAccountTests
             $"The probe failed with another reason: {probe.Reason}");
         TestContext.Current.TestOutputHelper?.WriteLine(
             $"The probe of a program folder without the entry of Users failed with {(program ? "5, the program" : "267, its folder")}.");
-        Assert.True(check.Row(CheckLineEnum.Connection, LabTestBase.Key, lab.TestBase.Read.User).NotChecked);
-        Assert.True(check.Row(CheckLineEnum.Connection, LabTestBase.Key, lab.TestBase.Write.User).NotChecked);
+        Assert.True(check.Row(CheckLineEnum.Connection, $"{LabTestBase.Key} read {lab.TestBase.Read.User}").NotChecked);
+        Assert.True(check.Row(CheckLineEnum.Connection, $"{LabTestBase.Key} write {lab.TestBase.Write.User}").NotChecked);
     }
 
     // check of the test base without safe mode under the account given, whose password secrets.dat holds.

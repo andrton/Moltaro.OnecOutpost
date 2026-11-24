@@ -21,9 +21,8 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 // by the lab's own worker; without it, the report says why, which the lab run records, and this test then states the
 // one that the lab found. Each run records its coverage, its reads, its largest outcome, its halvings, its storage
 // and the language of the columns of the storage, for the brief, in the output that a passing test shows. A copy's
-// census reads values without an XML form too (the S10 brief, "After the lab run of deeb370", 1). Nothing that a test
-// writes or asserts names an object of a copy's configuration but its documentType, nor its 1C account: a copy's
-// messages count.
+// census reads values without an XML form too (the S10 brief, "After the lab run of deeb370", 1). The assertions
+// locate the copy's document type by name. Messages identify the copy by its index and give counts and outcome codes.
 [SupportedOSPlatform("windows")]
 public sealed class MetadataTests
 {
@@ -76,8 +75,12 @@ public sealed class MetadataTests
 
             metadata.AssertEveryObjectRead(about);
             MetadataReport report = metadata.Report;
-            JsonElement document = report.Object($"Document.{typicalBase.DocumentType}");
-            Assert.True(document.GetProperty("fields").GetArrayLength() > 0, $"{about}: Document.{typicalBase.DocumentType} has no field.");
+            string fullName = $"Document.{typicalBase.DocumentType}";
+            List<JsonElement> matching = [.. report.Objects.Where(item => MetadataReport.TextOf(item, "fullName") == fullName)];
+            Assert.True(matching.Count == 1, $"{about}: the report holds {matching.Count} objects of the configured document type, expected one.");
+
+            JsonElement document = matching[0];
+            Assert.True(document.GetProperty("fields").GetArrayLength() > 0, $"{about}: the configured document type has no field.");
 
             await AssertStorageAsync(about, report, document, metadata.Named, () => LabWorkers.TypicalBaseReadAsync(typicalBase));
             metadata.Record(about);
@@ -98,19 +101,18 @@ public sealed class MetadataTests
         if (!report.StorageAvailable)
         {
             Assert.False(string.IsNullOrWhiteSpace(report.StorageReason), $"{about}: the storage is unavailable without a reason.");
-            TestContext.Current.TestOutputHelper?.WriteLine($"{about}: the storage structure is unavailable to the read account: {report.StorageReason}");
 
             return;
         }
 
-        string fullName = MetadataReport.TextOf(item, "fullName")!;
+        string subject = named ? MetadataReport.TextOf(item, "fullName")! : "the configured document type";
         JsonElement tables = item.GetProperty("storage");
-        Assert.True(tables.GetArrayLength() > 0, $"{about}: {fullName} has no table.");
+        Assert.True(tables.GetArrayLength() > 0, $"{about}: {subject} has no table.");
 
         foreach (JsonElement table in tables.EnumerateArray())
         {
-            Assert.False(string.IsNullOrEmpty(table.GetProperty("storageName").GetString()), $"{about}: a table of {fullName} has no storage name.");
-            Assert.True(table.GetProperty("fields").GetArrayLength() > 0, $"{about}: a table of {fullName} has no field.");
+            Assert.False(string.IsNullOrEmpty(table.GetProperty("storageName").GetString()), $"{about}: a table of {subject} has no storage name.");
+            Assert.True(table.GetProperty("fields").GetArrayLength() > 0, $"{about}: a table of {subject} has no field.");
         }
 
         await using WorkerProcess worker = await start();
