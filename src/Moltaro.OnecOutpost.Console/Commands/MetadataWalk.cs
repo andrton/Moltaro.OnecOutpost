@@ -54,8 +54,8 @@ internal sealed class MetadataWalk
     // The reason of the session that did not open, after which no Read runs.
     private string? _unopened;
 
-    // The error from the probe of the first object of this category, applied when its page returns that slot.
-    private (WalkCategory Category, string Error)? _probeFailure;
+    // The failed probe object, for the first slot of its category.
+    private WalkObject? _failedProbe;
 
     // The first page that was not read, and whether any was.
     private WalkRead? _firstFailedPage;
@@ -167,8 +167,8 @@ internal sealed class MetadataWalk
     // The probe: a page of the first object of the first category that has one, with the storage, which runs before the
     // walk so that a base whose objects cannot be read gives no report in which each object carries the same failure.
     // A probe Read that does not succeed ends metadata with ReportFailed, as does a configuration without an object.
-    // The storage error makes the storage unavailable to the walk. The regular page supplies the object's data and
-    // keeps any object error seen in the probe.
+    // The storage error makes the storage unavailable to the walk. A failed probe object keeps its error and supplies
+    // its readable data when its regular page has none.
     public async Task ProbeAsync(CancellationToken cancellationToken)
     {
         if (_categories.FirstOrDefault(category => category.Found > 0) is not WalkCategory first)
@@ -190,9 +190,11 @@ internal sealed class MetadataWalk
             throw ReportFailed("the configuration has no object to read");
         }
 
-        if (TextOf(objects[0], "error") is string error)
+        JsonElement item = objects[0];
+
+        if (TextOf(item, "error") is string error)
         {
-            _probeFailure = (first, error);
+            _failedProbe = new WalkObject(first.Name, item, error);
         }
 
         StorageReason = TextOf(page, "storageError");
@@ -263,10 +265,11 @@ internal sealed class MetadataWalk
     private async Task PageAsync(WalkCategory category, int from, int count, Action<int> advance, CancellationToken cancellationToken)
     {
         (WalkRead read, JsonElement? result) = await ReadPageAsync(category.Name, from, count, StorageReason is null, cancellationToken);
+        WalkObject? failedProbe = from == 0 && _failedProbe?.Category == category.Name ? _failedProbe : null;
 
         if (result is JsonElement page)
         {
-            Add(category, from, page);
+            Add(category, page, failedProbe);
             _pageRead = true;
             advance(count);
 
@@ -283,28 +286,33 @@ internal sealed class MetadataWalk
             return;
         }
 
+        if (failedProbe is not null)
+        {
+            _objects.Add(failedProbe);
+        }
+
         category.Failed += count;
         _firstFailedPage ??= read;
         advance(count);
     }
 
     // The objects of a page read, with the probe's error on its original slot and any error given by this page.
-    // The storage error of the page applies to objects with no error of their own.
-    private void Add(WalkCategory category, int from, JsonElement page)
+    // An empty page can still record its failed probe. The page's storage error applies to objects with no error of
+    // their own.
+    private void Add(WalkCategory category, JsonElement page, WalkObject? failedProbe)
     {
         string? storageError = TextOf(page, "storageError");
-        string? probeError = from == 0 && _probeFailure is { } probe && probe.Category == category ? probe.Error : null;
 
         foreach (JsonElement item in page.GetProperty("objects").EnumerateArray())
         {
             string? error = TextOf(item, "error");
 
-            if (probeError is not null && probeError != error)
+            if (failedProbe?.Error is string probeError && probeError != error)
             {
                 error = error is null ? probeError : $"{probeError}; {error}";
             }
 
-            probeError = null;
+            failedProbe = null;
 
             if (error is null && storageError is not null)
             {
@@ -321,6 +329,12 @@ internal sealed class MetadataWalk
             {
                 category.Failed++;
             }
+        }
+
+        if (failedProbe is not null)
+        {
+            _objects.Add(failedProbe);
+            category.Failed++;
         }
     }
 

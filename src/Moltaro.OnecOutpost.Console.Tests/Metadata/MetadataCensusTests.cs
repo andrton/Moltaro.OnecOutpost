@@ -139,7 +139,7 @@ public sealed class MetadataCensusTests : IDisposable
         Assert.Single(report.Objects, item => MetadataReport.TextOf(item, "error") is not null);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_report_keeps_the_partial_probe_object_once_when_its_page_fails_and_the_walk_goes_on()
     {
         const string ProbeError = "The hierarchy type could not be read";
