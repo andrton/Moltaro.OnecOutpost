@@ -38,7 +38,8 @@ public sealed class WindowsWorkerStartsTests
     {
         WindowsWorkerStarts starts = new(TimeProvider.System);
         using IWorkerAccount account = OwnAccount(starts);
-        string missing = Path.Combine(AppContext.BaseDirectory, $"missing-{Guid.NewGuid():N}", "Moltaro.OnecOutpost.TestWorker.exe");
+        // The program's folder is its working folder, so it exists: a missing working folder gives 267, not 2.
+        string missing = Path.Combine(AppContext.BaseDirectory, $"missing-{Guid.NewGuid():N}.exe");
 
         Win32Exception exception = await Assert.ThrowsAsync<Win32Exception>(() =>
             TestTimes.EndOf(starts.ProbeAsync(account, missing, "accounting", Deadline, TestContext.Current.CancellationToken)));
