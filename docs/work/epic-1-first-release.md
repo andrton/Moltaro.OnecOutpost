@@ -1278,7 +1278,7 @@ The agent with 1C
 Several nodes, and the refactoring
   S7a nodes, losses ── S7b measurements, explanations ── S8 refactoring ── lab
 The tools
-  S10a console setup ── architect ── S10aR refactoring ── S10b console check ── architect ── S10c metadata, G1 ── lab ── architect ── S11 shell ── architect
+  S10a console setup ── architect ── S10aR refactoring ── S10b console check ── architect ── S10c metadata, G1, the architect's review 3 ── lab ── architect ── S11 shell ── architect
 The release
   S12 documents, packages, archive ── architect
 ```
@@ -5170,6 +5170,27 @@ S8.
     write the secrets with the console, which `secret` refuses then, and the launcher's
     reason for an administrator as the worker account names `install`, which touches no
     worker account. The change of the audit log's text is a draft for the owner.
+- **From the architect's review 3** (after S10b; the planner, 24 November 2026), for S10c,
+  which changes the same code; there is no S10bR:
+  - the start of a worker's process is written twice, in the agent's launcher and the
+    console's `WindowsWorkerStarts`, and the copies differ: after a failed
+    `CreateSuspended` the launcher leaves its two inheritable client ends open until the
+    finalizer. One internal start beside `WorkerCreation` serves both, a fix as well as a
+    refactoring, with a test that the ends are closed after that failure; its implementer
+    and reviewer work on `xhigh`;
+  - the rule of when a worker may start, the lines of the connector, the data folder, the
+    program folder and the connector's folder, and one logon per worker account, lives only
+    in `CheckCommand`: it moves into one place that `check` and `metadata` both run, with
+    the worker-session runner already joined to S10c (`SessionAsync`, `ConnectAsync`,
+    `ScriptLineAsync`, `WithinAsync`) and the read session's scripts as one ordered list;
+    `metadata` holds the same rule before it starts a worker;
+  - small cleanups in the same files: a nested ternary and a dense chain of `CheckCommand`;
+    the sentences of an invalid `policy.json` and of the data folder named once in
+    `StartChecks`; `TerminateProcess` imported once; one judgment of the unsupported
+    version's body; the first registered finding chosen once; the agent's program file in
+    `ProgramFolderLayout`;
+  - the comments S10b made untrue (`WorkerExitCodes`, `WorkerCreation.WithToken`,
+    `WorkerCallEnum.AsUser`) and the row of the test worker in `AGENTS.md`.
 - **Q14** (the planner, 23 November 2026): the rule stays strict. A file of the data
   folder whose owner is not Administrators, SYSTEM or the agent's account counts as
   somebody else, since an owner can always change the file's access list. `install` makes
@@ -5958,7 +5979,13 @@ merged.
     itself or name a section of the concept or of `docs/protocol.md`;
   - the formats of `agent.json`, `secrets.dat`, the entries of the audit log and the
     worker's lines, which today only this plan holds, move into product documentation,
-    `docs/agent-files.md`, and the status line of `docs/protocol.md` points there.
+    `docs/agent-files.md`, and the status line of `docs/protocol.md` points there; after
+    S10b these include the exit codes of the COM worker that the console's probe reads and
+    the order of its diagnostics before `{"ready":false}`;
+  - (the architect's review 3; the planner, 24 November 2026) the test files whose comments
+    cite a brief, about 130, as one mechanical commit of its own after the product code:
+    each citation becomes the rule it stands for, or the section of the concept or of
+    `docs/protocol.md` that holds it; no name of a test and no assertion changes.
 - **Out of scope.** The tag itself, which is the owner's.
 
 ## The contracts of stages 2 and 3
