@@ -5453,9 +5453,9 @@ S8.
       Documents: `README.md` names the setup commands; "The files of the agent" and the
       contract of stage 3 take the drafts below.
   - *Internal of S10b* (the contract author, 24 November 2026, from S10b's study, with the
-    coordinator's decisions under PQ2; with round 1's fixes). `check` alone; `metadata` is S10c's.
-    Every type is `internal`. The console gains one boundary folder, `Workers`, which uses the
-    agent and nothing else of the console; `Commands` uses it as it uses the other four.
+    coordinator's decisions under PQ2; reviewed in two rounds; approved by the coordinator under
+    PQ2, 24 November 2026, with round 2's fixes, which no further round reviews). Every type is
+    `internal`. The console gains a boundary folder, `Workers`, which uses the agent alone.
 
     ```csharp
     // Moltaro.OnecOutpost.Agent.Start: the layouts named once (review 2), the start's steps free of the log (review 1, 2)
@@ -5565,17 +5565,18 @@ S8.
         Unchanged: the password only in the first line; an outcome accepted only when its size is
         its length, `ReadOutcome` reads it for the mode and `IsComWorkerOutcome` allows it, else
         `result-type`, Failed for a Read and Unknown for a Write; the drops of today.
-      - *Names.* `SharedSteps.AgentPrivileges`, the launcher's constants and `LabLogon` go; `Name`,
-        `OnDisk` and `OnMachine` replace their spellings. Unchanged: the rights and lines of `install`,
+      - *Names.* `SharedSteps.AgentPrivileges`, the launcher's constants and `LabLogon` go; `Name`
+        replaces the three spellings, `OnDisk` and `OnMachine` the programs' paths, `LabAgent.Folders`
+        and `DiskDataFolder`. Unchanged: the rights granted and revoked, the lines of `install`,
         `uninstall` and `secret`.
       - *One wording, with a remedy that exists* (review 2 and its note to the planner), for the
         reasons that `started` and `check` share; its change of the audit log's text is a draft:
         - `AccessReason`, both when both apply, the owner's first: `{entry} is owned by {owner},
           who can change its access list; make Administrators its owner with icacls "{FullPath}"
           /setowner *S-1-5-32-544, run as administrator` (Q14); for entries, today's sentence
-          ending `: {remedy}`, for the folder `inspect it, remove it and run install again`, for
-          `audit` and `outcomes` `inspect and correct its access list as install sets it; never
-          remove it, which holds the audit log | the outcomes not yet sent`, for a file `inspect it,
+          ending `: {remedy}`, for the folder, `audit` and `outcomes` `inspect and correct its access
+          list as install sets it; never remove it, which holds {the audit log and the outcomes not
+          yet sent | the audit log | the outcomes not yet sent}`, for a file `inspect it,
           then reset it to its folder's with icacls "{FullPath}" /reset, run as administrator`,
           and for `secrets.dat` also `; whoever it admitted could decrypt it: pair the agent anew
           and change the passwords it held`;
@@ -5620,14 +5621,14 @@ S8.
       | --- | --- | --- |
       | `Connector` | `{bits}-bit: {path}, {version}, is registered; the workers start with it`, the first `Registered`, 64 bits first, every other copy named | `none is registered`, each unregistered `{bits}-bit: {path}, {version}` named, `; register it with connector register` |
       | `Connection`, per base, read then write account | `opened as {user} ({fullName})` | `{program} did not start: {message} (Windows error {code})`; `1C opened no session: {diagnostics}`, or `the worker gave no reason`; `… within {runLimit}, the mode's runLimit`; `the script of the check ended {kind} {code}: {errorText}`, or `did not end within {runLimit}`; `the session's user is {user}, not {account} of the policy`; `the base has no users, so every connection has every right` |
-      | `Subscriptions`, per base with `write` | `every subscription to an event that a write reaches has its common module available to an external connection` | `a Write that reaches these fails: {subscription} ({event}) in {module}, …; set "External connection" of each module`, or `{module}, which is not a common module` |
+      | `Subscriptions`, per base with `write` | `every event subscription that an external connection can raise has its common module available to it` | `a Write that reaches these fails: {subscription} ({event}) in {module}, …; set "External connection" of each module`, or `{module}, which is not a common module` |
       | `ReadRights`, per base | `{account} holds no right to change data` | `{account} holds rights to change data: {global rights}; {right} on {count} {category}, …: {first ten full names} and {n} more` |
       | `Server` | `{server} confirmed an outcome of a made-up command from {agent}: it is reachable and accepts the agent's key` | `ServerAnswerSentences.Of(Outcome, …)` |
       | `ClockSkew` | `the server's clock is ahead of this machine's by {skew} ms ± {uncertainty} ms, within {allowed}`, or behind | `… beyond {allowed}; with the server ahead, the agent refuses every command with clock-skew, and with it behind, with expired once the gap also passes the take timeout: set the clocks`; `cannot be judged within {allowed}: the round trip took {rtt} ms` |
       | `WorkerAccount`, per base with a `workerAccount` | `{account} logs on for a batch job, and its token is an ordinary user's` | `CannotLogOn`, for a token that cannot be read too; `{account} {NotOrdinary}` |
       | `AgentRights` | `{the account of AgentSid, as Windows names it} holds "Replace a process level token" and "Adjust memory quotas for a process"` | `… {AgentLacksPrivileges}`; `… cannot be read: {message} (Windows error {code})` |
       | `WorkerStart`, per `workerAccount` | `the worker started under {account} on {desktop} and ended at the end of its input` | the probe's sentences below |
-      | `AccessLists`: the data folder, the program folder, each registered connector's folder | `admits nobody else, nor do its {n} files`; `nobody else may change it` | every `AccessReason` or `WritersReason`, one per line; `{folder} is a reparse point; inspect it, remove it and run install again` |
+      | `AccessLists`: the data folder, the program folder, each registered connector's folder | `admits nobody else, nor do its {n} files`; `nobody else may change it` | every `AccessReason` or `WritersReason`, one per line; `{folder} is a reparse point; inspect it and correct it, never remove what it holds` |
       | `Files`: `policy.json`, `agent.json`, `secrets.dat` | `{n} bases`; `paired with {server} as {agent}`; `decrypts and holds every password the policy needs` | the reason of `ReadPolicy`, `ReadPairing` or `ReadSecrets`, and every `MissingPasswords` |
 
       The audit files are `Audit.Names()` by `IsAuditFile`, the outbox files `Outcomes.Names()`; a
@@ -5665,25 +5666,23 @@ S8.
       error read to its end as UTF-8, awaited after the job is closed, shown when the open gives
       false. The worker opens with `For(served, mode with { SafeMode = true }, password,
       executor)`, runs `WorkerCommandLine(script, "{}", null, OutpostProtocol.MaxOutcomeSizeLimit)`,
-      the open and each run raced with the mode's `runLimit`, each output by `Judge(Read, …)` and
-      `ReadOutcome`. The read account runs three scripts, the second only for a base with `write`,
-      the write account the first, in the English variant within compatibility mode 8.2.13 [1C
-      docs; the lab proves each]: `Result = New Structure("user, fullName", UserName(),
-      UserFullName())`, the user compared with the
-      policy's account ignoring case; each of `Metadata.EventSubscriptions` to an event that a
-      write reaches, `BeforeWrite`, `OnWrite`, `BeforeDelete`, `Posting`, `UndoPosting`,
-      `OnSetNewNumber`, `OnSetNewCode` or `FillCheckProcessing`, in either script variant, whose
-      module, the second part of `Handler`, `Metadata.CommonModules.Find` misses or finds without
-      `ExternalConnection`, as `subscription`, `event`, `module`, `found`; `AccessRight(right,
-      object)`, no third argument, each in a `Try`, a raise not held: `Administration`,
-      `DataAdministration`, `UpdateDataBaseConfiguration` over `Metadata`; `Insert`, `Update`,
-      `Delete` over catalogs, the three charts, exchange plans, business processes with `Start`,
-      tasks with `Execute`, documents with `Posting` and `UndoPosting`; `Update` over constants,
-      the four register kinds and sequences; as `global`, `categories` of `category`, `right` and
-      `count`, and `objects` by full name. *Limitations:* the write account runs in Read and safe
-      mode, so its executor without safe mode first opens at the service's first Write; each
-      worker takes a client licence while open (O3); the console's token may reach a file base's
-      folder that the agent's account may not.
+      the open and each run raced with the mode's `runLimit`, killed at it, each output by
+      `Judge(Read, …)` and `ReadOutcome`. The read account runs three scripts, the second only for
+      a base with `write`, the write account the first, in the English variant within
+      compatibility mode 8.2.13 [1C docs; the lab proves each]: `Result = New Structure("user,
+      fullName", UserName(), UserFullName())`, the user compared with the policy's account
+      ignoring case; each of `Metadata.EventSubscriptions` but those to `FormGetProcessing`, which
+      no external connection raises, whose module, the second part of `Handler`,
+      `Metadata.CommonModules.Find` misses or finds without `ExternalConnection`, as
+      `subscription`, `event`, `module`, `found`; `AccessRight(right, object)`, no third argument,
+      each in a `Try`, a raise not held: `Administration`, `DataAdministration`,
+      `UpdateDataBaseConfiguration` over `Metadata`; `Insert`, `Update`, `Delete` over catalogs, the
+      three charts, exchange plans, business processes with `Start`, tasks with `Execute`, documents
+      with `Posting` and `UndoPosting`; `Update` over constants, the four register kinds and
+      sequences; as `global`, `categories` of `category`, `right`, `count`, and `objects` by full
+      name. *Limitations:* the write account runs in Read and safe mode, so its executor without
+      safe mode first opens at the service's first Write; each worker takes a client licence while
+      open (O3); the console's token may reach a file base's folder that the agent's account may not.
     - **The server and the skew**: `ReadPairing`, `ReadSecrets`' key, an `AgentConnection` on
       `Handlers(server, policy.Proxy)`, `SendOutcomeAsync(Guid.NewGuid(), OwnOutcome.Write(Refused,
       not-addressed), policy.RequestTimeout)`, `t0` and `t1` by `Clock.GetUtcNow()` around it.
@@ -5711,19 +5710,18 @@ S8.
       bounds, `00:00:00`, `01:00:01`, `2:00`, its default `new OutpostServerOptions().ClockSkew`;
       no password in any output. `check` joins the theories of `ElevationTests`, `RunEndTests`
       (help, a cancelled run), `DataFolderStepTests` (an absent data folder) and
-      `RedirectedOutputTests` (`check --help`, `check --clock-skew 00:00:00`). Agent's:
+      `RedirectedOutputTests` (`check --help`, `check --clock-skew 00:00:00`); `Pair/*` unchanged. Agent's:
       `OutcomeAnswerTests` per row; `WorkerAccountReasons` as a table; `Name`; the reworded
       reasons; `OnDisk` with `Requires=Windows`. `ComWorker.Tests`: the diagnostics come before
       `{"ready":false}` and the worker's `base-unreachable` line.
     - **Tests with `Requires=Windows`**: `AsUser` with three ends, the error end carrying the test
-      program's diagnostics; with `Requires=Administrator`, the probe of the process's own token by
-      `Account` on `Make`'s desktop giving 0, a missing program 2.
+      program's diagnostics; with `Requires=Administrator`, the probe of the own token by `Account`, 0, a missing program 2.
     - **Lab tests**, `Moltaro.OnecOutpost.OneC.Tests`, folder `Console`, built in S10b and run with
       S10c, by `CommandAppTester` with `LabConsole.Parts(agent)`: `Program.MachineParts` for the
       agent's folders, its program folder now in the `x64\` layout, `with` the test's account as
-      `AgentSid`, the agent's clock and a `LabServer` of its keys; the server sees no poll. The test
-      base in safe mode: every line passed but `Subscriptions`, which names `NoteBeforeWrite` in
-      `NoteChecks` and not `NoteFormGet`; under `outpost-worker`: its account, rights, probe 0 and
+      `AgentSid`, the agent's clock and a `LabServer` of its keys; each asserts it saw no poll. The
+      test base in safe mode: every line passed but `Subscriptions`, which names `NoteBeforeWrite`
+      in `NoteChecks` and not `NoteFormGet`, the users those of the session; under `outpost-worker`: its account, rights, probe 0 and
       connections; each typical copy, as its `writeSafeMode` says: its connections pass, the other
       lines run, nothing of it a literal; the write account as the read account: `ReadRights`
       names `Catalog.Products`. Broken without changing the machine: a changed worker password and
@@ -5736,7 +5734,9 @@ S8.
       `FormGetProcessing` of `CatalogManager.Notes`; both roles read `Notes` alone; its `README.md`
       names them.
     - **The steps.** Contract: the members above; what replaces a working member works at once
-      with today's texts, `OutcomeAnswer` with `Result` alone; the two tables, the settings, the
+      with today's texts (the layouts, `StartChecks`, `OtherAccounts`, `Held`, `Name`,
+      `AccountRightNames`, `WorkerLogon`, `AsUser`, `For`, `Judge`, the cause in pairing),
+      `OutcomeAnswer` with `Result` alone; the two tables, the settings, the
       converters, `CheckFailed` and `check` in `ConsoleApp` work; `ExecuteAsync`,
       `WindowsWorkerStarts` and `WithToken` throw `NotSupportedException`. Edits that state nothing
       new, made there: the callers of every moved name; `ConsoleParts`' new members in
@@ -5768,20 +5768,20 @@ S8.
   author, 24 November 2026). Each holds until the owner overturns it:
   - `check [--clock-skew <TIME>]`, its lines in the stage contract's order, their messages, exit
     code 19 `CheckFailed`, and the allowed skew two minutes, the server's default, when absent;
-  - `check` reads only: no Write, no script that changes data, no file written, no poll; while
-    the service runs it signs one `outcome` of a made-up command with the agent's key, and each
-    worker it starts takes a client licence while open;
-  - `check` judges the event subscriptions of a base with `write` alone, and only those to an
-    event that a write reaches;
+  - `check` reads only: no Write, no script that changes data, no file of the data folder
+    written, no poll; while the service runs it signs one `outcome` of a made-up command with the
+    agent's key, and each worker it starts takes a client licence while open;
+  - `check` judges the event subscriptions of a base with `write` alone, all but those to
+    `FormGetProcessing`, which no external connection raises;
   - `check` judges each registered connector's folder by the program folder's rule, starts no
     worker from a folder that somebody else may change, and names a data file owned by somebody
     else with the `icacls "{path}" /setowner *S-1-5-32-544` that restores it (Q14);
-  - the agent's `started` reasons take one wording with a remedy that exists, shared with `pair`
-    and `secret` for `policy.json` and `secrets.dat`;
+  - the agent's `started` reasons take one wording with a remedy that exists (data folder entries
+    and owners, program-folder writers, `agent.json` and `secrets.dat`, missing passwords, the
+    worker account's logon and rule, the agent's privileges), shared with `pair` and `secret`;
   - the COM worker writes its diagnostics before `{"ready":false}` and its `base-unreachable` line;
-  - `check`'s limitations above: the write account checked in Read and safe mode; the probe in
-    the console's session; a privilege seen only when granted to the account itself; a
-    connector's siblings not judged; a file base reached with the console's token.
+  - `check`'s limitations above: the write account in Read and safe mode; the probe in the
+    console's session; direct grants alone seen; a connector's siblings; a file base's folder.
 - **To read.** The [concept](../concept.md), §3 "Pairing" and §5 (20 November 2026);
   `docs/protocol.md`; `AGENTS.md`, principles 9 and 12; this plan, "The files of the agent",
   the contract of stage 2 and S9c's brief.
