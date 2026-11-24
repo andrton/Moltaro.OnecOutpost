@@ -170,7 +170,7 @@ public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<Pos
         clock.Advance(StoreAgent.Hold + StoreAgent.LeaseGrace + (write ? WriteRunLimit : ReadRunLimit));
         Assert.Equal(
             write ? OutpostOutcomeKindEnum.Unknown : OutpostOutcomeKindEnum.Failed,
-            (await store.PassCommandAsync(command.Id, cancellationToken)).Outcome?.Kind);
+            (await store.PassCommandAsync(command.Id, cancellationToken))!.Outcome?.Kind);
         clock.Advance(TimeSpan.FromSeconds(5));
         OutpostOutcomeMessage outcome = AgentOutcomes.Succeeded("""{"rows":3}""");
 
@@ -184,7 +184,7 @@ public sealed class OutcomeTests(PostgreSqlFixture postgres) : IClassFixture<Pos
         Assert.Equal(clock.GetUtcNow(), row.EndedAt);
         Assert.Equal(
             OutpostOutcomeKindEnum.Succeeded,
-            (await store.PassCommandAsync(command.Id, cancellationToken)).Outcome?.Kind);
+            (await store.PassCommandAsync(command.Id, cancellationToken))!.Outcome?.Kind);
     }
 
     // Concept rules 4 and 11: Expired, which a poll set when it proved that the command never reached the agent, freed

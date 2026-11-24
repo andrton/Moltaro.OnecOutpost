@@ -22,11 +22,12 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
     private const string Read = "read accounting\nResult = 1;\n.\n";
     private const string Write = "write accounting an-order\nResult = 1;\n.\n";
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_write_passes_lf_joined_lines_and_a_literal_caller_key_to_the_worker_and_repeats_the_retained_outcome()
     {
         using TemporaryFolder keys = new();
         await using ShellSession shell = await StartAsync(keys);
+        await shell.SendAsync("\uFEFF\r\n");
         LoopbackAgent agent = await PairLoopbackAgentAsync(shell);
         await using HostRun run = agent.Start(TimeProvider.System);
         await agent.WaitForConnectionAsync();
@@ -46,7 +47,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
             .
             """;
 
-        await shell.SendAsync("\uFEFF\r\n" + Frame.ReplaceLineEndings("\r\n") + "\r\n" + Frame);
+        await shell.SendAsync(Frame.ReplaceLineEndings("\r\n") + "\r\n" + Frame);
         ProgramEnd end = await shell.EndAsync();
 
         Assert.Equal(0, end.ExitCode);
@@ -65,7 +66,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Empty(agent.Commands(OutpostModeEnum.Read));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_invalid_frame_is_consumed_through_its_terminator_and_a_later_command_still_runs()
     {
         using TemporaryFolder keys = new();
@@ -105,7 +106,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Empty(agent.Commands(OutpostModeEnum.Write));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Eof_inside_a_read_frame_is_a_usage_error_and_dispatches_nothing()
     {
         using TemporaryFolder keys = new();
@@ -120,7 +121,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.DoesNotContain("unknown-base", end.Output + end.Error, StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Eof_returns_the_first_nonzero_status_after_later_errors_and_successes()
     {
         using TemporaryFolder keys = new();
@@ -137,7 +138,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Contains("outpost1.", end.Output, StringComparison.Ordinal);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("c328")]
     [InlineData("fffe")]
     public async Task Malformed_utf8_ends_the_session_with_usage_even_after_an_earlier_refusal(string hexadecimal)
@@ -155,7 +156,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Contains("UTF-8", end.Output + end.Error, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_utf16_bom_at_the_start_of_input_is_an_encoding_error()
     {
         using TemporaryFolder keys = new();
@@ -170,7 +171,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.DoesNotContain("outpost1.", end.Output, StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Session_help_names_the_commands_and_accepts_a_command_at_the_start_of_a_line()
     {
         using TemporaryFolder keys = new();
@@ -186,7 +187,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Contains("caller", end.Output, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Interrupting_a_shell_waiting_for_input_returns_the_cancellation_status()
     {
         Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "This test sends the terminal's interrupt signal on Unix.");
@@ -207,7 +208,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Equal(5, end.ExitCode);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_read_shows_the_json_null_result_and_its_messages_literally_in_order()
     {
         using TemporaryFolder keys = new();
@@ -245,7 +246,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Null(callerKey);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("Failed", "script-error", 10)]
     [InlineData("Unknown", "transaction-ended", 14)]
     public async Task A_worker_error_keeps_its_kind_code_and_command_id_and_sets_the_exit_status(
@@ -276,7 +277,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Single(CommandIds(end.Output, agent.Id));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_read_to_the_base_of_a_disconnected_agent_is_unavailable()
     {
         using TemporaryFolder keys = new();
@@ -298,7 +299,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Empty(CommandIds(end.Output, agent.Id));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_command_that_the_next_signed_poll_shows_could_not_have_run_is_reported_as_expired()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -329,7 +330,7 @@ public sealed class ShellSessionTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Equal(command.Id, Assert.Single(CommandIds(end.Output, agent.Id)));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Administration_lists_pending_and_paired_agents_and_shows_both_revocation_and_all_release_results()
     {
         using TemporaryFolder keys = new();

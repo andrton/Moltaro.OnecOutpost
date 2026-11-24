@@ -10,13 +10,11 @@ namespace Moltaro.OnecOutpost.Server.Tests.Calls;
 [Trait("Requires", "PostgreSQL")]
 public sealed class CallerKeyPurgeTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    internal const string PendingImplementation = "S11 implementation is pending.";
-
     private const string CallerKey = "invoice-17";
 
     private static readonly TimeSpan Retention = TimeSpan.FromHours(1);
 
-    [Theory(Skip = PendingImplementation)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task A_repeat_that_loses_its_command_to_the_purge_can_create_a_fresh_command(string mode)
@@ -55,7 +53,7 @@ public sealed class CallerKeyPurgeTests(PostgreSqlFixture postgres) : IClassFixt
         Assert.Equal(replacement.Id, Assert.Single(await server.Schema.ListCommandsAsync(cancellationToken)).Id);
     }
 
-    [Theory(Skip = PendingImplementation)]
+    [Theory]
     [InlineData("read")]
     [InlineData("write")]
     public async Task A_repeat_that_loses_its_command_to_the_purge_is_unavailable_if_its_agent_stayed_away(string mode)
@@ -78,7 +76,7 @@ public sealed class CallerKeyPurgeTests(PostgreSqlFixture postgres) : IClassFixt
         Assert.Empty(await server.Schema.ListCommandsAsync(cancellationToken));
     }
 
-    [Fact(Skip = PendingImplementation)]
+    [Fact]
     public async Task A_repeat_that_loses_its_command_to_the_purge_obeys_the_current_mode()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -101,7 +99,7 @@ public sealed class CallerKeyPurgeTests(PostgreSqlFixture postgres) : IClassFixt
         Assert.Empty(await server.Schema.ListCommandsAsync(cancellationToken));
     }
 
-    [Theory(Skip = PendingImplementation)]
+    [Theory]
     [InlineData("identical", TestCalls.Script)]
     [InlineData("different", "Result = 2;")]
     public async Task A_repeat_checks_the_replacement_holding_its_key_before_the_base_and_agent(string match, string script)
@@ -136,7 +134,7 @@ public sealed class CallerKeyPurgeTests(PostgreSqlFixture postgres) : IClassFixt
         Assert.Equal(replacement.Id, Assert.Single(await server.Schema.ListCommandsAsync(cancellationToken)).Id);
     }
 
-    [Fact(Skip = PendingImplementation)]
+    [Fact]
     public async Task A_call_faults_if_the_command_it_created_vanishes()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -156,7 +154,7 @@ public sealed class CallerKeyPurgeTests(PostgreSqlFixture postgres) : IClassFixt
         Assert.Empty(await server.Schema.ListCommandsAsync(cancellationToken));
     }
 
-    [Fact(Skip = PendingImplementation)]
+    [Fact]
     public async Task A_repeat_whose_replacement_also_vanishes_faults_after_one_readmission()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

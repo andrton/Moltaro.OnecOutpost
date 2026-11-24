@@ -153,7 +153,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
                 clock.Advance(TakeTimeout);
                 Assert.Equal(
                     OutpostOutcomeKindEnum.Expired,
-                    (await store.PassCommandAsync(first.Id, cancellationToken)).Outcome?.Kind);
+                    (await store.PassCommandAsync(first.Id, cancellationToken))!.Outcome?.Kind);
                 break;
 
             case "refused_by_its_agent":
@@ -214,7 +214,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
             clock.Advance(StoreAgent.Hold + StoreAgent.LeaseGrace + WriteRunLimit);
             Assert.Equal(
                 OutpostOutcomeKindEnum.Unknown,
-                (await store.PassCommandAsync(first.Id, cancellationToken)).Outcome?.Kind);
+                (await store.PassCommandAsync(first.Id, cancellationToken))!.Outcome?.Kind);
             await agent.RecordAsync(agent.NextPoll([Serving("accounting", 1, 1)], [first.Id]), cancellationToken);
         }
 
@@ -428,7 +428,7 @@ public sealed class CommandCreationTests(PostgreSqlFixture postgres) : IClassFix
             clock.Advance(TakeTimeout);
             Assert.Equal(
                 OutpostOutcomeKindEnum.Expired,
-                (await store.PassCommandAsync(ended.Id, cancellationToken)).Outcome?.Kind);
+                (await store.PassCommandAsync(ended.Id, cancellationToken))!.Outcome?.Kind);
         }
         else
         {

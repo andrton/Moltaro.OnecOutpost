@@ -162,9 +162,8 @@ internal sealed class OutpostServer : IOutpostServer
         return await _store.ReleaseBaseAsync(baseKey, cancellationToken);
     }
 
-    // A Read or a Write after the checks of its arguments, in the order of IOutpostServer: the caller key, the base,
-    // the agent, and then the wait for the outcome. A refusal of the server creates no command and names none. The
-    // parameters, as the call wrote them, are kept only until the command holds them: the wait can be long.
+    // A Read or a Write keeps its parameter snapshot until admission is final. If the purge removes a command the
+    // call found, it admits the original request once more (concept rule 4).
     private async Task<OutpostOutcome> CallAsync(
         OutpostModeEnum mode,
         string baseKey,
@@ -177,13 +176,106 @@ internal sealed class OutpostServer : IOutpostServer
 
         using (parameters)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            (CommandMatch? command, OutpostOutcome? rejection) = await AdmitCommandAsync(
+                mode,
+                baseKey,
+                callerKey,
+                script,
+                parameters.RootElement,
+                cancellationToken);
 
-            string parametersText = parameters.RootElement.GetRawText();
-            CommandMatch? command = null;
+            if (command is { Created: false })
+            {
+                OutpostOutcome? outcome = await WaitForOutcomeAsync(command.Id, cancellationToken);
 
-            // Rule 4: a key that names a command makes the call follow it, before any check of its base or agent.
-            if (callerKey is not null)
+                if (outcome is not null)
+                {
+                    return outcome;
+                }
+
+                (command, rejection) = await AdmitCommandAsync(
+                    mode,
+                    baseKey,
+                    callerKey,
+                    script,
+                    parameters.RootElement,
+                    cancellationToken);
+            }
+
+            if (rejection is not null)
+            {
+                return rejection;
+            }
+
+            commandId = command!.Id;
+        }
+
+        return await WaitForOutcomeAsync(commandId, cancellationToken)
+            ?? throw new InvalidOperationException($"Command {commandId} disappeared while waiting for its outcome.");
+    }
+
+    // Checks the caller key, base and agent in the order of IOutpostServer. Gives a matching command or the outcome
+    // of the admission checks.
+    private async Task<(CommandMatch? Command, OutpostOutcome? Rejection)> AdmitCommandAsync(
+        OutpostModeEnum mode,
+        string baseKey,
+        string? callerKey,
+        string script,
+        JsonElement parameters,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string parametersText = parameters.GetRawText();
+        CommandMatch? command = null;
+
+        // Rule 4: a key that names a command makes the call follow it, before any check of its base or agent.
+        if (callerKey is not null)
+        {
+            command = await _store.FindCallerKeyAsync(
+                baseKey,
+                callerKey,
+                mode,
+                script,
+                parametersText,
+                cancellationToken);
+        }
+
+        if (command is null)
+        {
+            BaseHolder? holder = await _store.FindBaseAsync(baseKey, cancellationToken);
+
+            if (holder is null)
+            {
+                return (null, OutpostOutcome.Refused(null, OutpostCodes.UnknownBase));
+            }
+
+            // The modes are those of the newest poll of the holder: every key it declares opens Read, and Write
+            // where it opens it (§6.2), so a key it no longer declares opens neither.
+            bool open = mode == OutpostModeEnum.Write ? holder.WriteOpen : holder.Declared;
+
+            if (!open)
+            {
+                return (null, OutpostOutcome.Refused(null, OutpostCodes.ModeClosed));
+            }
+
+            // Rule 6: no command for an agent that is not connected. The store decides it again when it creates
+            // the command, under the lock of the agent row.
+            if (holder.Connected)
+            {
+                command = await CreateCommandAsync(
+                    holder.AgentId,
+                    mode,
+                    baseKey,
+                    callerKey,
+                    script,
+                    parameters,
+                    cancellationToken);
+            }
+
+            // Rule 4: a call whose key names a command never gets Unavailable, so a command that another call
+            // created with the key meanwhile is followed.
+            if (command is null && callerKey is not null)
             {
                 command = await _store.FindCallerKeyAsync(
                     baseKey,
@@ -196,64 +288,16 @@ internal sealed class OutpostServer : IOutpostServer
 
             if (command is null)
             {
-                BaseHolder? holder = await _store.FindBaseAsync(baseKey, cancellationToken);
-
-                if (holder is null)
-                {
-                    return OutpostOutcome.Refused(null, OutpostCodes.UnknownBase);
-                }
-
-                // The modes are those of the newest poll of the holder: every key it declares opens Read, and Write
-                // where it opens it (§6.2), so a key it no longer declares opens neither.
-                bool open = mode == OutpostModeEnum.Write ? holder.WriteOpen : holder.Declared;
-
-                if (!open)
-                {
-                    return OutpostOutcome.Refused(null, OutpostCodes.ModeClosed);
-                }
-
-                // Rule 6: no command for an agent that is not connected. The store decides it again when it creates
-                // the command, under the lock of the agent row.
-                if (holder.Connected)
-                {
-                    command = await CreateCommandAsync(
-                        holder.AgentId,
-                        mode,
-                        baseKey,
-                        callerKey,
-                        script,
-                        parameters.RootElement,
-                        cancellationToken);
-                }
-
-                // Rule 4: a call whose key names a command never gets Unavailable, so a command that another call
-                // created with the key meanwhile is followed.
-                if (command is null && callerKey is not null)
-                {
-                    command = await _store.FindCallerKeyAsync(
-                        baseKey,
-                        callerKey,
-                        mode,
-                        script,
-                        parametersText,
-                        cancellationToken);
-                }
-
-                if (command is null)
-                {
-                    return OutpostOutcome.Unavailable();
-                }
+                return (null, OutpostOutcome.Unavailable());
             }
-
-            if (!command.Same)
-            {
-                return OutpostOutcome.Refused(null, OutpostCodes.CallerKeyConflict);
-            }
-
-            commandId = command.Id;
         }
 
-        return await WaitForOutcomeAsync(commandId, cancellationToken);
+        if (!command.Same)
+        {
+            return (null, OutpostOutcome.Refused(null, OutpostCodes.CallerKeyConflict));
+        }
+
+        return (command, null);
     }
 
     // Writes the command of §7, signs its bytes once and stores them as they are, with the deadline and the skew that
@@ -315,12 +359,12 @@ internal sealed class OutpostServer : IOutpostServer
         return match;
     }
 
-    // Step 4 of a call: subscribe to the key of the command, then pass, wait, pass, until a pass reads its outcome
-    // (rule 12). A pass makes the change that time made due and reads the outcome, or when time can next end the
-    // command. Each wait ends when it is woken, when the command is due, or PollTimeout after it starts, so that a set
-    // that was lost costs at most that; the deadline is on the clock of the options, which the Signals host does not
-    // share. After any wait the caller's token is checked first: a cancelled call leaves its command as it is.
-    private async Task<OutpostOutcome> WaitForOutcomeAsync(Guid commandId, CancellationToken cancellationToken)
+    // Subscribe to the key of the command, then pass and wait until a pass reads its outcome (rule 12) or finds
+    // the row absent. A pass makes the change that time made due and reads the outcome, or when time can next end
+    // the command. Each wait ends when it is woken, when the command is due, or PollTimeout after it starts, so that
+    // a set that was lost costs at most that; the deadline is on the clock of the options, which the Signals host
+    // does not share. After any wait the caller's token is checked first: a cancelled call leaves its command as it is.
+    private async Task<OutpostOutcome?> WaitForOutcomeAsync(Guid commandId, CancellationToken cancellationToken)
     {
         // A group of its own, so that a set of the key wakes every call that waits for the command. A set that came
         // before the subscription was open on the host is covered by the pass that follows its Joined.
@@ -330,11 +374,11 @@ internal sealed class OutpostServer : IOutpostServer
 
         while (true)
         {
-            CommandPass pass = await _store.PassCommandAsync(commandId, cancellationToken);
+            CommandPass? pass = await _store.PassCommandAsync(commandId, cancellationToken);
 
-            if (pass.Outcome is not null)
+            if (pass is null || pass.Outcome is not null)
             {
-                return pass.Outcome;
+                return pass?.Outcome;
             }
 
             // A Due that has passed gives a delay of zero, and the next pass makes the change it made due.

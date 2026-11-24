@@ -226,7 +226,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
             clock.Advance(StoreAgent.Hold + StoreAgent.LeaseGrace + TimeSpan.FromMinutes(1));
             Assert.Equal(
                 OutpostOutcomeKindEnum.Failed,
-                (await store.PassCommandAsync(read.Id, cancellationToken)).Outcome?.Kind);
+                (await store.PassCommandAsync(read.Id, cancellationToken))!.Outcome?.Kind);
         }
 
         PollTake take = await agent.PollAndTakeAsync([shortRun], [], cancellationToken);
@@ -491,7 +491,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         CommandRow read = Create(agent, "accounting", OutpostModeEnum.Read, null, clock.GetUtcNow());
         Assert.NotNull(await store.CreateCommandAsync(read, cancellationToken));
 
-        Task<CommandPass> pass;
+        Task<CommandPass?> pass;
 
         await using (HeldLock take = await HeldLock.TakeAsync(
             schema.ConnectionString,
@@ -508,7 +508,7 @@ public sealed class TakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
             await take.CommitAsync(cancellationToken);
         }
 
-        CommandPass passed = await pass;
+        CommandPass passed = (await pass)!;
         AgentRow? agentRow = await schema.FindAgentAsync(agent.Id, cancellationToken);
 
         Assert.Null(passed.Outcome);

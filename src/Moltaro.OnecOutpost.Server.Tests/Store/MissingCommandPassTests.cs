@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.Server.Store;
-using Moltaro.OnecOutpost.Server.Tests.Calls;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Store;
 
@@ -8,7 +7,7 @@ namespace Moltaro.OnecOutpost.Server.Tests.Store;
 [Trait("Requires", "PostgreSQL")]
 public sealed class MissingCommandPassTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Fact(Skip = CallerKeyPurgeTests.PendingImplementation)]
+    [Fact]
     public async Task A_pass_of_a_missing_command_returns_null()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

@@ -119,7 +119,7 @@ public sealed class RevocationTests(PostgreSqlFixture postgres) : IClassFixture<
         Assert.Equivalent(endedBefore, await schema.FindCommandAsync(endedRead.Id, cancellationToken), strict: true);
         Assert.Equivalent(otherBefore, await schema.FindCommandAsync(otherRead.Id, cancellationToken), strict: true);
 
-        OutpostOutcome? refused = (await store.PassCommandAsync(waitingWrite.Id, cancellationToken)).Outcome;
+        OutpostOutcome? refused = (await store.PassCommandAsync(waitingWrite.Id, cancellationToken))!.Outcome;
         Assert.NotNull(refused);
         Assert.Equal(waitingWrite.Id, refused.CommandId);
         Assert.Equal(OutpostOutcomeKindEnum.Refused, refused.Kind);

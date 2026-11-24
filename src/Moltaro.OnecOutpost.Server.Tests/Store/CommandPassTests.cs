@@ -29,7 +29,7 @@ public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture
         Assert.NotNull(await store.CreateCommandAsync(read, cancellationToken));
         clock.Advance(TakeTimeout - TimeSpan.FromSeconds(1));
 
-        CommandPass pass = await store.PassCommandAsync(read.Id, cancellationToken);
+        CommandPass pass = (await store.PassCommandAsync(read.Id, cancellationToken))!;
 
         Assert.Null(pass.Outcome);
         Assert.Equal(read.Deadline, pass.Due);
@@ -50,7 +50,7 @@ public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture
         Assert.NotNull(await store.CreateCommandAsync(read, cancellationToken));
         clock.Advance(TakeTimeout);
 
-        CommandPass pass = await store.PassCommandAsync(read.Id, cancellationToken);
+        CommandPass pass = (await store.PassCommandAsync(read.Id, cancellationToken))!;
 
         Assert.NotNull(pass.Outcome);
         Assert.Equal(OutpostOutcomeKindEnum.Expired, pass.Outcome.Kind);
@@ -83,7 +83,7 @@ public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture
         await agent.PollAndTakeAsync([Serving("accounting", 1, null)], [], cancellationToken);
         clock.Advance(TimeSpan.FromMinutes(1));
 
-        CommandPass handedOut = await store.PassCommandAsync(read.Id, cancellationToken);
+        CommandPass handedOut = (await store.PassCommandAsync(read.Id, cancellationToken))!;
 
         Assert.Null(handedOut.Outcome);
         Assert.Equal(takenAt + StoreAgent.Hold + StoreAgent.LeaseGrace + ReadRunLimit, handedOut.Due);
@@ -91,7 +91,7 @@ public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture
         DateTimeOffset polledAt = clock.GetUtcNow();
         await agent.RecordAsync(agent.NextPoll([Serving("accounting", 0, null)], [read.Id]), cancellationToken);
 
-        CommandPass received = await store.PassCommandAsync(read.Id, cancellationToken);
+        CommandPass received = (await store.PassCommandAsync(read.Id, cancellationToken))!;
 
         Assert.Null(received.Outcome);
         Assert.Equal(polledAt + StoreAgent.Hold + StoreAgent.LeaseGrace + ReadRunLimit, received.Due);
@@ -129,11 +129,11 @@ public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture
         TimeSpan runLimit = write ? WriteRunLimit : ReadRunLimit;
         clock.Advance(StoreAgent.Hold + StoreAgent.LeaseGrace + runLimit - TimeSpan.FromSeconds(1));
 
-        Assert.Null((await store.PassCommandAsync(command.Id, cancellationToken)).Outcome);
+        Assert.Null((await store.PassCommandAsync(command.Id, cancellationToken))!.Outcome);
 
         clock.Advance(TimeSpan.FromSeconds(1));
 
-        OutpostOutcome? outcome = (await store.PassCommandAsync(command.Id, cancellationToken)).Outcome;
+        OutpostOutcome? outcome = (await store.PassCommandAsync(command.Id, cancellationToken))!.Outcome;
 
         Assert.NotNull(outcome);
         Assert.Equal(command.Id, outcome.CommandId);
@@ -178,7 +178,7 @@ public sealed class CommandPassTests(PostgreSqlFixture postgres) : IClassFixture
             : AgentOutcomes.Succeeded("""{"rows":3}""", messagesTrimmed: true);
         Assert.True(await agent.SendOutcomeAsync(command.Id, sent, cancellationToken));
 
-        OutpostOutcome? outcome = (await store.PassCommandAsync(command.Id, cancellationToken)).Outcome;
+        OutpostOutcome? outcome = (await store.PassCommandAsync(command.Id, cancellationToken))!.Outcome;
 
         Assert.NotNull(outcome);
         Assert.Equal(command.Id, outcome.CommandId);

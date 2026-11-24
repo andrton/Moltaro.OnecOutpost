@@ -162,7 +162,7 @@ public sealed class ReceivedTests(PostgreSqlFixture postgres) : IClassFixture<Po
         await agent.PollAndTakeAsync([Serving("accounting", 1, 1)], [], cancellationToken);
         clock.Advance(StoreAgent.Hold + StoreAgent.LeaseGrace + (write ? WriteRunLimit : ReadRunLimit));
 
-        OutpostOutcome? set = (await store.PassCommandAsync(command.Id, cancellationToken)).Outcome;
+        OutpostOutcome? set = (await store.PassCommandAsync(command.Id, cancellationToken))!.Outcome;
 
         Assert.Equal(write ? OutpostOutcomeKindEnum.Unknown : OutpostOutcomeKindEnum.Failed, set?.Kind);
 

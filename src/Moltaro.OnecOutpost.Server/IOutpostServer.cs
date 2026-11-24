@@ -153,9 +153,9 @@ public interface IOutpostServer
     /// </description></item>
     /// <item><description>
     /// The caller key: a key that names an existing command of the base makes the call follow that command, as
-    /// <see cref="OutpostReadRequest.CallerKey"/> says, from here on; such a call never gives
-    /// <see cref="OutpostOutcomeKindEnum.Unavailable"/>. Two concurrent first calls with one base and one key create one
-    /// command, and the other call follows it.
+    /// <see cref="OutpostReadRequest.CallerKey"/> says. If the purge removes the matching command during the wait,
+    /// the call checks the key once more. If the key is free, the remaining checks apply. Two concurrent first calls
+    /// with one base and one key create one command, and the other call follows it.
     /// </description></item>
     /// <item><description>
     /// The base: a key that no agent holds is <see cref="OutpostOutcomeKindEnum.Refused"/> with
@@ -175,8 +175,8 @@ public interface IOutpostServer
     /// </para>
     /// <para>
     /// A cancelled call ends with <see cref="OperationCanceledException"/> and leaves the command running. An exception
-    /// of the task, a cancellation included, does not mean that the command did not run: repeating the call with the
-    /// same caller key returns its outcome.
+    /// of the task, a cancellation included, does not mean that the command did not run. Repeating the call with the
+    /// same caller key follows the first command while it holds that key.
     /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException">
@@ -196,10 +196,15 @@ public interface IOutpostServer
     /// <exception cref="OperationCanceledException">
     /// Reported by the task: <paramref name="cancellationToken"/> was cancelled.
     /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Reported by the task if the command this call created disappears during the wait, or if a command disappears
+    /// during the wait after the call checks the caller key again.
+    /// </exception>
     Task<OutpostOutcome> ReadAsync(OutpostReadRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Runs a Write in a base, at most once per caller key, and returns when its outcome is final.
+    /// Runs a Write in a base and returns when its outcome is final. The caller key allows at most one run in that
+    /// base while the store retains a command holding the key.
     /// </summary>
     /// <param name="request">The base, the caller key, the script and its parameters.</param>
     /// <param name="cancellationToken">Ends the wait for the outcome; it does not stop the command.</param>
@@ -215,9 +220,9 @@ public interface IOutpostServer
     /// </description></item>
     /// <item><description>
     /// The caller key: a key that names an existing command of the base makes the call follow that command, as
-    /// <see cref="OutpostWriteRequest.CallerKey"/> says, from here on; such a call never gives
-    /// <see cref="OutpostOutcomeKindEnum.Unavailable"/>. Two concurrent first calls with one base and one key create one
-    /// command, and the other call follows it.
+    /// <see cref="OutpostWriteRequest.CallerKey"/> says. If the purge removes the matching command during the wait,
+    /// the call checks the key once more. If the key is free, the remaining checks apply. Two concurrent first calls
+    /// with one base and one key create one command, and the other call follows it.
     /// </description></item>
     /// <item><description>
     /// The base: a key that no agent holds is <see cref="OutpostOutcomeKindEnum.Refused"/> with
@@ -241,8 +246,8 @@ public interface IOutpostServer
     /// </para>
     /// <para>
     /// A cancelled call ends with <see cref="OperationCanceledException"/> and leaves the command running. An exception
-    /// of the task, a cancellation included, does not mean that the command did not run: repeating the call with the
-    /// same caller key returns its outcome, while a new key could run the Write twice.
+    /// of the task, a cancellation included, does not mean that the command did not run. Repeating the call with the
+    /// same caller key follows the first command while it holds that key. A new key could run the Write twice.
     /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException">
@@ -262,6 +267,10 @@ public interface IOutpostServer
     /// </exception>
     /// <exception cref="OperationCanceledException">
     /// Reported by the task: <paramref name="cancellationToken"/> was cancelled.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Reported by the task if the command this call created disappears during the wait, or if a command disappears
+    /// during the wait after the call checks the caller key again.
     /// </exception>
     Task<OutpostOutcome> WriteAsync(OutpostWriteRequest request, CancellationToken cancellationToken = default);
 }

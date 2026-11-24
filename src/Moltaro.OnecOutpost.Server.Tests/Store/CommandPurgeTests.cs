@@ -31,9 +31,9 @@ public sealed class CommandPurgeTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.NotNull(await store.CreateCommandAsync(first, cancellationToken));
         Assert.NotNull(await store.CreateCommandAsync(second, cancellationToken));
         clock.Advance(TakeTimeout);
-        Assert.NotNull((await store.PassCommandAsync(first.Id, cancellationToken)).Outcome);
+        Assert.NotNull((await store.PassCommandAsync(first.Id, cancellationToken))!.Outcome);
         clock.Advance(TimeSpan.FromSeconds(1));
-        Assert.NotNull((await store.PassCommandAsync(second.Id, cancellationToken)).Outcome);
+        Assert.NotNull((await store.PassCommandAsync(second.Id, cancellationToken))!.Outcome);
         clock.Advance(Retention - TimeSpan.FromSeconds(1));
 
         Assert.Equal(1, await store.PurgeCommandsAsync(Retention, cancellationToken));

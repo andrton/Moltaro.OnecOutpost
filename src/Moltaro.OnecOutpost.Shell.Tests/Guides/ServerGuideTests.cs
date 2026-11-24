@@ -13,7 +13,7 @@ namespace Moltaro.OnecOutpost.Shell.Tests.Guides;
 [Trait("Requires", "PostgreSQL")]
 public sealed class ServerGuideTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_first_session_in_the_guide_pairs_lists_reads_and_writes_using_the_commands_in_the_markdown()
     {
         ShellGuide guide = ShellGuide.Read();

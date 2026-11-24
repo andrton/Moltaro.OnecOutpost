@@ -12,7 +12,7 @@ namespace Moltaro.OnecOutpost.Shell.Tests.Startup;
 
 public sealed class StartupTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("GITHUB_ACTIONS", "true")]
     [InlineData("TF_BUILD", "True")]
     public async Task Startup_help_needs_no_resources_and_is_plain_text_under_ci_variables(string variable, string value)
@@ -28,7 +28,7 @@ public sealed class StartupTests(PostgreSqlFixture postgres) : IClassFixture<Pos
         Assert.EndsWith(Environment.NewLine, end.Output, StringComparison.Ordinal);
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("http://localhost:0")]
     [InlineData("http://0.0.0.0:5000")]
     [InlineData("http://[::]:5000")]
@@ -55,7 +55,7 @@ public sealed class StartupTests(PostgreSqlFixture postgres) : IClassFixture<Pos
         Assert.Empty(Directory.EnumerateFileSystemEntries(keys.Path));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     [Trait("Requires", "PostgreSQL")]
     public async Task A_restart_reuses_the_private_signing_key_and_the_agents_in_the_database()
     {
@@ -101,7 +101,35 @@ public sealed class StartupTests(PostgreSqlFixture postgres) : IClassFixture<Pos
         Assert.Single(Directory.EnumerateFileSystemEntries(keys.Path));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
+    [Trait("Requires", "PostgreSQL")]
+    public async Task Two_first_launches_with_one_key_folder_use_the_same_persisted_signing_key()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string firstConnection = await ShellDatabase.CreateAsync(postgres, cancellationToken);
+        string secondConnection = await ShellDatabase.CreateAsync(postgres, cancellationToken);
+        using TemporaryFolder keys = new();
+
+        await using ShellSession first = Start(firstConnection, keys);
+        await using ShellSession second = Start(secondConnection, keys);
+        await Task.WhenAll(first.AddressAsync(), second.AddressAsync());
+        await Task.WhenAll(first.SendAsync("token First shell agent\n"), second.SendAsync("token Second shell agent\n"));
+        string[] credentials = await Task.WhenAll(first.TokenAsync(), second.TokenAsync());
+        Assert.True(OutpostPairingTokenText.TryRead(credentials[0], out OutpostPairingTokenText? firstToken));
+        Assert.True(OutpostPairingTokenText.TryRead(credentials[1], out OutpostPairingTokenText? secondToken));
+
+        ProgramEnd[] ends = await Task.WhenAll(first.EndAsync(), second.EndAsync());
+        Assert.Equal(0, ends[0].ExitCode);
+        Assert.Equal(0, ends[1].ExitCode);
+
+        using ECDsa key = ECDsa.Create();
+        key.ImportFromPem(File.ReadAllText(keys.PathOf("signing-key.pem")));
+        string fingerprint = OutpostKeys.Fingerprint(key.ExportSubjectPublicKeyInfo());
+        Assert.Equal(fingerprint, firstToken.Fingerprint);
+        Assert.Equal(fingerprint, secondToken.Fingerprint);
+    }
+
+    [Fact]
     [Trait("Requires", "PostgreSQL")]
     public async Task An_invalid_existing_signing_key_fails_startup_without_replacing_or_printing_it()
     {
@@ -120,7 +148,7 @@ public sealed class StartupTests(PostgreSqlFixture postgres) : IClassFixture<Pos
         Assert.Equal(Contents, File.ReadAllText(file));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     [Trait("Requires", "PostgreSQL")]
     public async Task A_postgresql_startup_failure_does_not_print_its_connection_string_or_password()
     {
@@ -138,7 +166,7 @@ public sealed class StartupTests(PostgreSqlFixture postgres) : IClassFixture<Pos
         Assert.DoesNotContain(Password, end.Output + end.Error, StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     [Trait("Requires", "PostgreSQL")]
     public async Task An_https_origin_uses_the_pfx_and_prints_its_usable_agent_url()
     {
