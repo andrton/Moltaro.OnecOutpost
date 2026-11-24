@@ -773,7 +773,9 @@ the list "What S9c changes in the public contract, as a draft for the owner" in
 [S9c's brief](#s9c--the-account-of-the-workers-without-safe-mode). Text marked *(S10a)*
 holds the same way: the list "What S10a changes in the public contract, as a draft for the
 owner" in [S10's brief](#s10--the-console). Text marked *(S10b)* holds the same way: the
-list "What S10b changes in the public contract, as a draft for the owner" there.
+list "What S10b changes in the public contract, as a draft for the owner" there. Text marked
+*(S10c)* holds the same way: the list "What S10c changes in the public contract, as a draft
+for the owner" there.
 
 - **The data folder admits nobody else.** The console's `install` creates it with
   inheritance off:
@@ -813,7 +815,8 @@ list "What S10b changes in the public contract, as a draft for the owner" there.
   may change. *(S10b)* The folder of each registered COM connector is judged by the same
   rule by the console's `check`, not by the agent, and `check` starts no worker while the
   data folder admits somebody else, nor from a program folder or with a connector whose folder
-  someone else may change.
+  someone else may change. *(S10c)* The console's `metadata` holds the same rule before it
+  starts its worker.
 - *(S10b)* **The start and `check` give one reason** where they share a step, each with a
   remedy that exists: the entries and owners of the data folder, the writers of the
   program folder, `agent.json` and `secrets.dat`, a missing password, the logon and the
@@ -849,11 +852,11 @@ list "What S10b changes in the public contract, as a draft for the owner" there.
   what the other workers of its base do.
 - *(S6)* **The agent program** takes one argument, `service`, and runs only as the
   Windows service. It exits with 0 when stopped; 1 when it stops on its own, recorded in
-  the audit log when the log can be written; 2 when the log was not opened, as for a
-  second copy, with nothing recorded; 3 when started outside the service controller, with
-  nothing in the data folder changed; 4 for any other arguments; 5 when not on Windows.
-  As a service it reports a code other than 0 as `ERROR_SERVICE_SPECIFIC_ERROR` with
-  that code.
+  the audit log when the log can be written, *(S10c)* as `started` with an error or as
+  `stopped`; 2 when the log was not opened, as for a second copy, with nothing recorded; 3
+  when started outside the service controller, with nothing in the data folder changed; 4
+  for any other arguments; 5 when not on Windows. As a service it reports a code other
+  than 0 as `ERROR_SERVICE_SPECIFIC_ERROR` with that code.
 
 | File | Written by | Public | Content |
 | --- | --- | --- | --- |
@@ -945,6 +948,7 @@ Each line is one JSON object in UTF-8, written and flushed before the agent goes
 | `ended` | `command`, `outcome` (`succeeded`, `failed` or `unknown`), `code` (or `null`), `durationMs` | A command ended (rules 3, 5, 9). *(S6)* A later `ended` of the same command replaces an earlier one; it is written only after the outcome was refused for its size, as below, and at a start, when the outbox file no longer matches the last one. `durationMs` is `null` in an `ended` that a start writes; a second `ended` for the size carries the duration of the first |
 | `confirmed` | `command` | The server confirmed the outcome (rule 11) |
 | `reservation` | *(S6)* `agent`, `below` | Before the agent sends a poll number at or above the `below` of its last reservation, or any number while it knows none of its identity: the bound below which it sends its numbers (§6.2 of `docs/protocol.md`) |
+| `stopped` | *(S10c)* `error` | *(S10c)* The agent stops for a fault after its `started` while the log can still be written, such as an outbox file it cannot write, a cleared log answered as older or no poll number left (Q16). `error` is the reason in plain words in the form of `started`'s, never a value of a command or a secret. It is never written after a failed write of the log, whose exit code is then the reason, nor for a normal stop of the service; the exit codes are unchanged |
 
 - *(S6)* **Writing.** The agent alone writes the log, and holds `audit\lock` open without
   sharing for its whole run. It writes one entry at a time, with the writer of §2 of
@@ -965,7 +969,8 @@ Each line is one JSON object in UTF-8, written and flushed before the agent goes
     of a command that the audit log does not name, and a command with an `ended` but
     neither its file nor its `confirmed`, make it record `started` with an error and stop,
     as a line of the log it cannot read does. A failed read, write or removal of a file of
-    the outbox stops the agent as a failed write of the log does.
+    the outbox stops the agent as a failed write of the log does, *(S10c)* but, met after
+    `started`, is recorded as `stopped`.
 - **At a restart.** A file without its `ended` is recorded as `ended` and sent. A
   `received` without a file or an `ended` becomes Unknown or `lost` (rule 3). The audit log
   stays the one record of what happened (D7); the outbox only holds what must still be
@@ -6332,7 +6337,9 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   contract", and each needs a console run as administrator. *(S10b)* So is `check`: its
   steps, lines, messages and exit codes are those of "Internal of S10b" there, with the list
   "What S10b changes in the public contract"; its tests against a real 1C run on the lab
-  with S10c, which builds `metadata`:
+  with S10c, which builds `metadata`. *(S10c)* So is `metadata`: its steps, messages, exit
+  codes and the form of its report are those of "Internal of S10c" there, with the list
+  "What S10c changes in the public contract, as a draft for the owner":
   - `install [--stop-timeout <TIME>]` and `uninstall [--stop-timeout <TIME>]`;
   - `pair <server address> <token>`;
   - `secret <base key> <read|write|worker>`, which asks for the password without echoing
@@ -6369,7 +6376,10 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     (the owner, 23 November 2026).
   - `connector register`, after L1, which registers the COM connector of the installed
     platform for each bitness that has none registered and exactly one version installed;
-  - `metadata <base key> <file>`.
+  - `metadata <base key> <file>`, *(S10c)* which reads the objects of a base, their fields
+    and their storage in pages through the executor, in safe mode under the base's read
+    account, and writes them to a new local file. It starts no worker while a line of
+    `check`'s rule fails.
 - **The shell**, a program that references the server, Spectre.Console and
   Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says:
   - its options:

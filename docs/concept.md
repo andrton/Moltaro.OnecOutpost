@@ -441,7 +441,9 @@ an administrator, writes them. The server can neither read nor change the policy
 secrets.
 
 **The audit log** is a set of local files, one JSON line per entry, one file per day. It
-is kept for 90 days by default and never for less than a day.
+is kept for 90 days by default and never for less than a day. When the agent stops for a
+fault after its start, such as an outbox file it cannot write, it records the reason,
+unless the fault is a failed write of the log itself.
 
 **The executor** is built with the Designer of 1C:Enterprise 8.3.17.1851, the oldest
 supported platform. It is committed as the built `.epf` and its XML sources.
@@ -463,8 +465,8 @@ supported platform. It is committed as the built `.epf` and its XML sources.
   - the server and the clock skew, without polling, so that the console never takes the
     place of the service's poll;
 - write a local metadata report of a base: its objects, their fields and how they are
-  stored. The report is a local archive for a developer and does not go through the
-  server.
+  stored, read in pages through the executor, in safe mode under the base's read account.
+  The report is a local file for a developer and does not go through the server.
 
 **The shell** depends on the server library. It needs a PostgreSQL connection, runs an
 in-process `SignalHost`, keeps its signing key in a local file, and creates pairing tokens

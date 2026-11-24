@@ -9,7 +9,9 @@ across nodes.
 
 Contract stage. The [concept](docs/concept.md) is agreed, and the first epic, up to the
 first release, is under way in [current work](docs/work/README.md). How to write the
-scripts that Read and Write run is in the guide [Writing scripts](docs/guides/scripts.md).
+scripts that Read and Write run is in the guide [Writing scripts](docs/guides/scripts.md),
+and how to install, pair and check an agent in the guide
+[Installing and running an agent](docs/guides/agent.md).
 The public contract of
 its first stage exists in code: the types and members of the server library, with their
 documentation. The checks work: the options of the server, the arguments of every call,
@@ -65,7 +67,9 @@ server key, and the secrets, encrypted with DPAPI for the machine. It writes its
 and its outbox of outcomes in order, each entry and file on the disk before the next, and
 reserves its poll numbers in the log, so that they grow across restarts. After a restart
 it cuts a torn entry and ends a command that was received without an outcome as Unknown
-for a Write and Failed `lost` for a Read. These parts are tested with a data folder in memory, and on Windows
+for a Write and Failed `lost` for a Read. When it stops on its own after it started, for a
+fault such as an outbox file it cannot write, it records `stopped` with the reason, unless
+the fault is a failed write of the log. These parts are tested with a data folder in memory, and on Windows
 against the disk, DPAPI and the access lists. The agent also checks each command of a poll
 answer as §7 of `docs/protocol.md` says, and the answer as a whole against the workers it
 declared, and runs a command on a pool of workers bounded by the run limit of its mode;
@@ -156,11 +160,23 @@ needs a console run as administrator, and ends with an exit code that says why:
   data folder admits somebody else, nor from a folder that someone else may change, and
   logs each worker account on once. Where the
   agent's start and `check` judge the same thing, they give the same reason, with its
-  remedy.
+  remedy;
+- `metadata <BASE> <FILE>` writes a local report of a base for a developer: its objects,
+  their properties and fields with their types, and how they are stored. It reads them in
+  pages through the executor, in safe mode under the base's read account, halving a page
+  that is too large or reaches the run limit, and writes one JSON file, whole or not at
+  all, that must be new and lie outside the data folder. A storage structure that the read
+  account may not read is recorded as unavailable with its reason, and an object that
+  fails is recorded and counted. Like `check`, it starts no worker while a line of
+  `check`'s rule for a worker fails, writes nothing to a base or to the data folder, never
+  reaches the server, and works while the service runs.
 
-These are tested against fakes of Windows, and in CI's elevated Windows job against the
-service controller, LSA and the access lists. The tests of `check` against a real 1C are
-written; they run on the lab machine with the next sprint. Limitations of `check`: the
+An agent is set up with `install`, then the administrator's `policy.json`, `pair`,
+`secret` for each password the policy needs, and `check`, before its service is started;
+the guide [Installing and running an agent](docs/guides/agent.md) walks through it. These commands are tested against fakes of Windows, and in CI's elevated
+Windows job against the service controller, LSA and the access lists. The tests of `check`
+and `metadata` against a real 1C are written; their run on the lab machine is the next
+step. Limitations of `check`: the
 write account is checked in Read and safe mode; the start of the worker runs in the
 console's session, not in the service's; it sees a right of the agent's account only when
 it was granted to the account itself; it judges a connector's folder and its parents, not
@@ -169,8 +185,9 @@ code of a base without a worker account runs as the administrator's own account,
 its rights but with its HKCU and its DPAPI user secrets, which UAC does not guard, and
 while `check` runs an unelevated program of the administrator may open that worker and read
 the 1C password it holds; so run `check` only on a machine whose bases you trust as the local
-policy does. Planned next: `metadata`, the run of the console on the lab machine and the guide
-on installing and running an agent.
+policy does. The licence of its worker and the administrator's account for a base without
+a worker account hold for `metadata` too, for its whole walk; and a configuration changed
+during the walk gives a report of both.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from
@@ -211,6 +228,8 @@ Windows; the server runs wherever .NET runs.
   principles, decisions and quality bar.
 - [Writing scripts](docs/guides/scripts.md): the guide for the developer who writes the
   scripts of Read and Write.
+- [Installing and running an agent](docs/guides/agent.md): the guide for the administrator
+  of the agent machine.
 - [Documentation index](docs/README.md) and [current work](docs/work/README.md).
 - [How the project is built](AGENTS.md): architectural principles, code style and working
   rules, for people and coding agents.
