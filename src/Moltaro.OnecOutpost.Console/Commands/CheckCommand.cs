@@ -37,11 +37,13 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // read account, in whose session the scripts of Subscriptions, for a base with write, and of ReadRights run before its
 // worker closes, and then the connection of the write account, so that check runs one worker, and holds one client
 // licence of 1C, at a time; then Server and ClockSkew. A line that needs another that failed is not checked and says
-// which: the workers start only from a program folder and with a connector whose folders nobody else may change, since
-// check never starts code that somebody else may have changed; a base with a worker account only after its logon and
-// its probe passed; a connection only with its password. Each worker account is logged on once, never retried, since
-// each failure counts toward a lockout, and closed with its base. Spectre makes a command for each run, so its fields
-// are the state of one run, written by one task at a time.
+// which: the workers start only with a data folder that admits nobody else, from a program folder and with a connector
+// whose folders nobody else may change, since check never starts code that somebody else may have changed or a base
+// that somebody else may have named; a base with a worker account only after its logon and its probe passed; a
+// connection only with its password. Each worker account is logged on once, never retried, since each failure counts
+// toward a lockout, and closed with its base. A worker of a base without a worker account runs under a restricted
+// version of the console's own token, so that the code of a base does not run as an administrator. Spectre makes a
+// command for each run, so its fields are the state of one run, written by one task at a time.
 internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
 {
     private const string Command = "check";
@@ -68,8 +70,8 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
     private CheckLine _secretsLine = null!;
 
     // The findings of the connector, the worker program of the first registered bitness, null without one, and the
-    // lines that a worker needs: the connector's, the program folder's and that of the folder of the connector it starts
-    // with, null without a registered one.
+    // lines that a worker needs: the connector's, the data folder's, the program folder's and that of the folder of the
+    // connector it starts with, null without a registered one.
     private IReadOnlyList<ConnectorFinding> _findings = [];
 
     private ConnectorBitnessEnum? _bitness;
@@ -77,6 +79,8 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
     private string? _program;
 
     private CheckLine _connectorLine = null!;
+
+    private CheckLine _dataFolderLine = null!;
 
     private CheckLine _programFolderLine = null!;
 
@@ -94,7 +98,7 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
         SharedSteps.Elevation(_parts, Command);
 
         cancellationToken.ThrowIfCancellationRequested();
-        FolderKindEnum dataFolder = DataFolderKind();
+        FolderKindEnum dataFolder = SharedSteps.DataFolderKind(_parts);
 
         cancellationToken.ThrowIfCancellationRequested();
         _console.Status().Start("Reading policy.json, agent.json and secrets.dat…", _ => CheckFiles());
@@ -187,7 +191,8 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
         return text.Length == 0 ? "the worker gave no reason" : text;
     }
 
-    // The sentence of an error of the call that starts the probe.
+    // The sentence of an error of the call that starts the probe. The program's folder is the worker's working folder,
+    // which the creation of the process judges before the program, with 267, ERROR_DIRECTORY.
     private static string ProbeFailure(Win32Exception exception, string account, string program)
     {
         return exception.NativeErrorCode switch
@@ -196,6 +201,7 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
             1058 => "the Secondary Logon service is disabled; check does not start it",
             2 or 3 => $"{program} is missing",
             5 => $"{account} may not read or run {program}",
+            267 => $"{account} may not read the folder of {program}, or it does not exist",
             _ => $"{exception.Message} (Windows error {exception.NativeErrorCode})",
         };
     }
@@ -218,30 +224,6 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
             uint code => Failed(CheckLineEnum.WorkerStart, subject, $"the worker ended with exit code 0x{code:X8}"),
             null => Failed(CheckLineEnum.WorkerStart, subject, $"the worker did not end within {deadline:c} and was ended"),
         };
-    }
-
-    // The data folder, Absent ending check with NotInstalled.
-    private FolderKindEnum DataFolderKind()
-    {
-        FolderKindEnum kind;
-
-        try
-        {
-            kind = _parts.Folders.Kind(_parts.DataFolder);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            throw CommandEndException.StepFailed("data folder", exception);
-        }
-
-        if (kind == FolderKindEnum.Absent)
-        {
-            throw new CommandEndException(
-                ConsoleExitCodes.NotInstalled,
-                $"the data folder {_parts.DataFolder} does not exist; run install first");
-        }
-
-        return kind;
     }
 
     // policy.json, agent.json and secrets.dat, read by StartChecks as the agent's start reads them, with its reasons;
@@ -361,7 +343,8 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
     {
         IAccessLists access = _parts.AccessLists(_parts.AgentSid);
 
-        _lines.Add(DataFolderLine(access, dataFolder));
+        _dataFolderLine = DataFolderLine(access, dataFolder);
+        _lines.Add(_dataFolderLine);
 
         _programFolderLine = WritersLine(access, _parts.ProgramFolder);
         _lines.Add(_programFolderLine);
@@ -643,11 +626,12 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
         return ProbeEnd(subject, workerAccount, desktop, exitCode, deadline);
     }
 
-    // The first line that every worker needs and that failed: the connector, the program folder and the folder of the
-    // connector it starts with, whose code it runs.
+    // The first line that every worker needs and that failed: the connector; the data folder, in which somebody else
+    // could have planted the policy whose base it opens and the secrets it opens it with; the program folder and the
+    // folder of the connector it starts with, whose code it runs.
     private CheckLine? WorkerInputFailed()
     {
-        return FirstFailed(_connectorLine, _programFolderLine, _connectorFolderLine);
+        return FirstFailed(_connectorLine, _dataFolderLine, _programFolderLine, _connectorFolderLine);
     }
 
     // The line Connection of the mode's account, and for the read account the lines Subscriptions, for a base with
@@ -730,25 +714,35 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
             if (served.Write is not null)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                _lines.Add(await ScriptLineAsync(
+                (CheckLine subscriptions, bool ended) = await ScriptLineAsync(
                     worker,
                     CheckLineEnum.Subscriptions,
                     served.Key,
                     CheckScripts.Subscriptions,
                     policy.RunLimit,
                     CheckScripts.SubscriptionsOf,
-                    cancellationToken));
+                    cancellationToken);
+                _lines.Add(subscriptions);
+
+                // A script after one that ended the worker would only report its end.
+                if (ended)
+                {
+                    _lines.Add(NotChecked(CheckLineEnum.ReadRights, served.Key, subscriptions));
+
+                    return;
+                }
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            _lines.Add(await ScriptLineAsync(
+            (CheckLine rights, _) = await ScriptLineAsync(
                 worker,
                 CheckLineEnum.ReadRights,
                 served.Key,
                 CheckScripts.Rights,
                 policy.RunLimit,
                 result => CheckScripts.RightsOf(result, policy.Account),
-                cancellationToken));
+                cancellationToken);
+            _lines.Add(rights);
         }
         finally
         {
@@ -802,12 +796,15 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
         {
             worker.Process.Dispose();
 
-            return Failed(CheckLineEnum.Connection, subject, $"1C opened no session: {DiagnosticsOf(await worker.Diagnostics)}");
+            string diagnostics = await worker.Diagnostics.WaitAsync(cancellationToken);
+
+            return Failed(CheckLineEnum.Connection, subject, $"1C opened no session: {DiagnosticsOf(diagnostics)}");
         }
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        return await ScriptLineAsync(
+        // A script that succeeded never ends its worker, and a line that failed is the input of the session's others.
+        (CheckLine line, _) = await ScriptLineAsync(
             worker,
             CheckLineEnum.Connection,
             subject,
@@ -815,11 +812,14 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
             policy.RunLimit,
             result => CheckScripts.Session(result, policy.Account),
             cancellationToken);
+
+        return line;
     }
 
     // The line of a script of check: its run within the run limit, its outcome judged as the pool judges one, and the
-    // reason that the reader gives of its result.
-    private async Task<CheckLine> ScriptLineAsync(
+    // reason that the reader gives of its result; and whether the worker ended, at the run limit or as the judgment
+    // says, so that no further script runs in it.
+    private async Task<(CheckLine Line, bool EndedWorker)> ScriptLineAsync(
         CheckWorker worker,
         CheckLineEnum kind,
         string subject,
@@ -837,28 +837,33 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
 
         if (overran)
         {
-            return Failed(kind, subject, $"the script of the check did not end within {runLimit:c}");
+            return (Failed(kind, subject, $"the script of the check did not end within {runLimit:c}"), true);
         }
 
-        byte[] judged = WorkerOutcome.Judge(OutpostModeEnum.Read, given).Outcome;
-        OutpostOutcomeMessage outcome = OutpostCodec.ReadOutcome(OutpostModeEnum.Read, judged);
+        JudgedOutcome judged = WorkerOutcome.Judge(OutpostModeEnum.Read, given);
+        OutpostOutcomeMessage outcome = OutpostCodec.ReadOutcome(OutpostModeEnum.Read, judged.Outcome);
 
         if (outcome.Kind != OutpostAgentOutcomeKindEnum.Succeeded || outcome.Result is not JsonElement result)
         {
-            string ended = $"the script of the check ended {OutpostForms.WriteOutcomeKind(outcome.Kind)} {outcome.Code}";
+            string ended = $"the script of the check ended {OutpostForms.WriteOutcomeKind(outcome.Kind)}";
 
-            return Failed(kind, subject, outcome.ErrorText is string text ? $"{ended}: {text}" : ended);
+            if (outcome.Code is string code)
+            {
+                ended = $"{ended} {code}";
+            }
+
+            return (Failed(kind, subject, outcome.ErrorText is string text ? $"{ended}: {text}" : ended), judged.EndsWorker);
         }
 
         try
         {
             (bool passed, string reason) = read(result);
 
-            return new CheckLine(kind, subject, passed, reason);
+            return (new CheckLine(kind, subject, passed, reason), judged.EndsWorker);
         }
         catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException)
         {
-            return Failed(kind, subject, "the script of the check gave a result of another form");
+            return (Failed(kind, subject, "the script of the check gave a result of another form"), judged.EndsWorker);
         }
     }
 

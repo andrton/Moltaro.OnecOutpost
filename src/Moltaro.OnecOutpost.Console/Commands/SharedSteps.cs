@@ -89,20 +89,15 @@ internal static class SharedSteps
         parts.Folders.OwnByAdministrators(Path.Combine(parts.DataFolder, name));
     }
 
-    private static void JudgeDataFolder(ConsoleParts parts)
+    // The kind of the data folder, which pair, secret and check need: Absent ends the command with NotInstalled, and an
+    // error of Windows or of the disk with Failure.
+    public static FolderKindEnum DataFolderKind(ConsoleParts parts)
     {
-        string folder = parts.DataFolder;
         FolderKindEnum kind;
-        IReadOnlyList<string> others = [];
 
         try
         {
-            kind = parts.Folders.Kind(folder);
-
-            if (kind == FolderKindEnum.Folder)
-            {
-                others = parts.AccessLists(parts.AgentSid).Others("").All;
-            }
+            kind = parts.Folders.Kind(parts.DataFolder);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -113,7 +108,28 @@ internal static class SharedSteps
         {
             throw new CommandEndException(
                 ConsoleExitCodes.NotInstalled,
-                $"the data folder {folder} does not exist; run install first");
+                $"the data folder {parts.DataFolder} does not exist; run install first");
+        }
+
+        return kind;
+    }
+
+    private static void JudgeDataFolder(ConsoleParts parts)
+    {
+        string folder = parts.DataFolder;
+        FolderKindEnum kind = DataFolderKind(parts);
+        IReadOnlyList<string> others = [];
+
+        try
+        {
+            if (kind == FolderKindEnum.Folder)
+            {
+                others = parts.AccessLists(parts.AgentSid).Others("").All;
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw CommandEndException.StepFailed("data folder", exception);
         }
 
         if (kind == FolderKindEnum.ReparsePoint)

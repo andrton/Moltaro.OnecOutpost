@@ -65,7 +65,7 @@ public sealed partial class OwnTokenWorkerTests
     // CreateRestrictedToken with DISABLE_MAX_PRIVILEGE and Administrators deny-only: an elevated console holds
     // Administrators and the privileges of an administrator, a console that is not elevated holds Administrators for
     // deny only already, or not at all, and privileges of its own beside SeChangeNotifyPrivilege.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_under_the_console_own_token_holds_Administrators_for_deny_only_and_no_privilege_but_change_notify()
     {
         CheckWorker worker = new WindowsWorkerStarts(TimeProvider.System).Start(null, TestProgram, "accounting");

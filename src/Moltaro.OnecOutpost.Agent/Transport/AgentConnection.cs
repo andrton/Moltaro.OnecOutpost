@@ -232,9 +232,10 @@ internal sealed class AgentConnection : IDisposable
         return new OutcomeAnswer(bare, null, status, ServerAnswerCauseEnum.Bare, null);
     }
 
-    // A 200: Confirmed with the server's time when it verifies and confirms the command. Its signature is judged before
-    // its form, so that an answer signed with another key, such as that of a hop that opens TLS, is a Signature; any
-    // other 200 that is not a confirmation of this command, one without its whole body included, is an Answer.
+    // A 200: Confirmed with the server's time when it verifies, confirms the command and is exactly application/json.
+    // ReadOutcomeAnswer verifies the signature before the form, throwing signature first, so that an answer signed with
+    // another key, such as that of a hop that opens TLS, is a Signature whatever its media type; any other 200 that is
+    // not a confirmation of this command, one without its whole body included, is an Answer.
     private OutcomeAnswer JudgeConfirmation(Guid command, byte[] requestBody, ServerAnswer answer)
     {
         int status = answer.Status;
@@ -245,9 +246,19 @@ internal sealed class AgentConnection : IDisposable
             return Lost(status, ServerAnswerCauseEnum.Answer);
         }
 
-        if (!Verifies(status, requestBody, answer))
+        OutpostOutcomeAnswer confirmed;
+
+        try
         {
-            return Lost(status, ServerAnswerCauseEnum.Signature);
+            confirmed = OutpostCodec.ReadOutcomeAnswer(_serverKey, _agent, command, requestBody, body, answer.Signature);
+        }
+        catch (OutpostProtocolException refusal)
+        {
+            ServerAnswerCauseEnum cause = refusal.Code == OutpostProtocolCodes.Signature
+                ? ServerAnswerCauseEnum.Signature
+                : ServerAnswerCauseEnum.Answer;
+
+            return Lost(status, cause);
         }
 
         if (!answer.IsJson)
@@ -255,16 +266,7 @@ internal sealed class AgentConnection : IDisposable
             return Lost(status, ServerAnswerCauseEnum.Answer);
         }
 
-        try
-        {
-            OutpostOutcomeAnswer confirmed = OutpostCodec.ReadOutcomeAnswer(_serverKey, _agent, command, requestBody, body, answer.Signature);
-
-            return new OutcomeAnswer(OutcomeResultEnum.Confirmed, confirmed.Time, status, null, null);
-        }
-        catch (OutpostProtocolException)
-        {
-            return Lost(status, ServerAnswerCauseEnum.Answer);
-        }
+        return new OutcomeAnswer(OutcomeResultEnum.Confirmed, confirmed.Time, status, null, null);
     }
 
     // Whether the answer carries an Outpost-Signature of the server key over this request, its status and its whole body.

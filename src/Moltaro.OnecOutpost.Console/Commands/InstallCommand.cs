@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Moltaro.OnecOutpost.Agent.Access;
+using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Service;
@@ -226,8 +227,8 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
                 IAccessLists lists = _parts.AccessLists(sid);
 
                 Judge(lists, "", kind);
-                Judge(lists, "audit", _parts.Folders.Kind(Path.Combine(folder, "audit")));
-                Judge(lists, "outcomes", _parts.Folders.Kind(Path.Combine(folder, "outcomes")));
+                Judge(lists, AgentFolders.AuditName, _parts.Folders.Kind(Path.Combine(folder, AgentFolders.AuditName)));
+                Judge(lists, AgentFolders.OutcomesName, _parts.Folders.Kind(Path.Combine(folder, AgentFolders.OutcomesName)));
             }
 
             _parts.Folders.ApplyDataFolder(folder, sid, create);

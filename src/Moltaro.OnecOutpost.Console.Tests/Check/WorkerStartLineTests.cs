@@ -2,7 +2,6 @@ using System.ComponentModel;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
@@ -91,7 +90,7 @@ public sealed class WorkerStartLineTests : IDisposable
     [InlineData(2, "{program} is missing")]
     [InlineData(3, "{program} is missing")]
     [InlineData(5, "outpost-worker may not read or run {program}")]
-    [InlineData(267, "outpost-worker may not read the folder of {program}, or it does not exist", Skip = SkipReason.NotImplemented)]
+    [InlineData(267, "outpost-worker may not read the folder of {program}, or it does not exist")]
     [InlineData(87, "the fake parameter is wrong (Windows error 87)")]
     public async Task A_probe_that_Windows_does_not_start_fails_the_line_with_the_reason_of_its_error(int error, string reason)
     {

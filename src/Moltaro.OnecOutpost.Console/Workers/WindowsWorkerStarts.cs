@@ -12,10 +12,11 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 namespace Moltaro.OnecOutpost.Console.Workers;
 
 // The COM workers of check on Windows: the logon by WorkerLogon, the desktop by WorkerDesktop.Make, the process by
-// WorkerCreation, AsUser with the console's own token and WithToken with a worker account's, each in a WorkerJob of its
-// own, since a process already in a job, the Secondary Logon service's or a terminal's, joins only an empty job or one
-// of its hierarchy. The clock gives the probe's deadline. Every call to Windows goes through LibraryImport, no package
-// (principle 12). check calls it from one task at a time, so no two desktops are made at once.
+// WorkerCreation, AsUser with a restricted version of the console's own token and WithToken with a worker account's,
+// each in a WorkerJob of its own, since a process already in a job, the Secondary Logon service's or a terminal's,
+// joins only an empty job or one of its hierarchy. The clock gives the probe's deadline. Every call to Windows goes
+// through LibraryImport, no package (principle 12). check calls it from one task at a time, so no two desktops are
+// made at once.
 [SupportedOSPlatform("windows")]
 internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerStarts
 {
@@ -27,9 +28,13 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
     // The exit code of a probe ended at its deadline, as Process.Kill gives it.
     private const uint KilledExitCode = uint.MaxValue;
 
-    // What CreateProcessAsUserW and CreateEnvironmentBlock need of the console's own primary token.
+    // What CreateRestrictedToken needs of the console's own primary token, and CreateProcessAsUserW and
+    // CreateEnvironmentBlock of the restricted one, which has the same access.
     private const TokenAccessLevels OwnTokenAccess =
         TokenAccessLevels.AssignPrimary | TokenAccessLevels.Duplicate | TokenAccessLevels.Query;
+
+    // DISABLE_MAX_PRIVILEGE of CreateRestrictedToken: every privilege but SeChangeNotifyPrivilege deleted.
+    private const uint DisableMaxPrivilege = 0x1;
 
     // The clock of the probe's deadline.
     private TimeProvider Clock { get; } = clock;
@@ -102,13 +107,13 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         }
         finally
         {
-            await drained;
+            await drained.WaitAsync(cancellationToken);
         }
     }
 
     // A worker of the read mode with three pipes, in a job of its own, which its ComWorkerProcess owns and closes when
-    // disposed: under the console's own token by CreateProcessAsUserW, with lpDesktop "", or under the account through
-    // the Secondary Logon service, on its desktop. Diagnostics is its standard error read to its end as UTF-8 on a pool
+    // disposed: under a restricted version of the console's own token by CreateProcessAsUserW, with lpDesktop "", or
+    // under the account through the Secondary Logon service, on its desktop. Diagnostics is its standard error read to its end as UTF-8 on a pool
     // thread, which ends when the worker ends, its job closed at the latest.
     public CheckWorker Start(IWorkerAccount? account, string program, string baseKey)
     {
@@ -168,8 +173,9 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         return $"\"{program}\" {baseKey} {OutpostForms.WriteMode(mode)}";
     }
 
-    // The worker's process, suspended: WithToken under the account, or AsUser under the console's own token, which
-    // CreateProcessAsUserW may assign without a privilege.
+    // The worker's process, suspended: WithToken under the account, or AsUser under the restricted version of the
+    // console's own token, which CreateProcessAsUserW assigns without "Replace a process level token", since it is a
+    // restricted version of the caller's primary token.
     private static (SafeProcessHandle Process, nint Thread) Create(
         IWorkerAccount? account,
         string program,
@@ -193,17 +199,44 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
                 error.ClientSafePipeHandle);
         }
 
-        using WindowsIdentity own = WindowsIdentity.GetCurrent(OwnTokenAccess);
+        using SafeAccessTokenHandle restricted = RestrictedOwnToken();
 
         return WorkerCreation.CreateSuspended(
             WorkerCallEnum.AsUser,
-            own.AccessToken,
+            restricted,
             program,
             commandLine,
             "",
             input.ClientSafePipeHandle,
             output.ClientSafePipeHandle,
             error.ClientSafePipeHandle);
+    }
+
+    // The console's own primary token restricted, so that the code that 1C runs when it opens a base, which somebody
+    // else may have written, does not run as an administrator: DISABLE_MAX_PRIVILEGE, and Administrators for deny only,
+    // when the token holds it. A failure is a Win32Exception.
+    private static unsafe SafeAccessTokenHandle RestrictedOwnToken()
+    {
+        using WindowsIdentity own = WindowsIdentity.GetCurrent(OwnTokenAccess);
+        SecurityIdentifier administrators = new(WellKnownSidType.BuiltinAdministratorsSid, null);
+        byte[] sid = new byte[administrators.BinaryLength];
+        administrators.GetBinaryForm(sid, 0);
+
+        fixed (byte* sidStart = sid)
+        {
+            SidAndAttributes denyOnly = new() { Sid = (nint)sidStart };
+
+            if (!CreateRestrictedToken(own.AccessToken, DisableMaxPrivilege, 1, &denyOnly, 0, 0, 0, 0, out SafeAccessTokenHandle restricted))
+            {
+                int error = Marshal.GetLastPInvokeError();
+
+                restricted.Dispose();
+
+                throw new Win32Exception(error);
+            }
+
+            return restricted;
+        }
     }
 
     // A pipe and the console's copy of its client end, which the pipe's dispose leaves open once it was handed out.
@@ -260,6 +293,20 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
 
         return null;
     }
+
+    // The SIDs to disable become deny-only groups of the new token; neither a privilege nor a restricting SID is given.
+    [LibraryImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static unsafe partial bool CreateRestrictedToken(
+        SafeAccessTokenHandle existingToken,
+        uint flags,
+        uint disableSidCount,
+        SidAndAttributes* sidsToDisable,
+        uint deletePrivilegeCount,
+        nint privilegesToDelete,
+        uint restrictedSidCount,
+        nint sidsToRestrict,
+        out SafeAccessTokenHandle newToken);
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     private static partial uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);

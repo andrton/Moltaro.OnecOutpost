@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Check;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
@@ -67,7 +66,7 @@ public sealed class AccessListsLineTests : IDisposable
 
     // Each entry named with the reason of the start, Q14's owner included, with its remedy; whoever an entry admits could
     // have planted the policy or the secrets with which a worker starts, so none starts.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Each_entry_of_the_data_folder_that_admits_somebody_else_or_that_somebody_else_owns_is_named_with_its_remedy_and_no_worker_starts()
     {
         Machine.Access.Admit($@"audit\{AuditFile}", @"PC-1\intruder", @"BUILTIN\Users");
@@ -91,7 +90,7 @@ public sealed class AccessListsLineTests : IDisposable
 
     // A local user may create the data folder before install, or be admitted to it, and plant there a policy whose base
     // runs code of his own, with secrets that he encrypted for the machine.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_data_folder_that_admits_somebody_else_is_named_and_no_worker_starts()
     {
         Machine.Access.Admit("", @"BUILTIN\Users");
