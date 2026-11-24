@@ -18,6 +18,13 @@
 		</right>
 	</object>
 	<object>
+		<name>Catalog.Notes</name>
+		<right>
+			<name>Read</name>
+			<value>true</value>
+		</right>
+	</object>
+	<object>
 		<name>Document.GoodsReceipt</name>
 		<right>
 			<name>Read</name>

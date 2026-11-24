@@ -5,8 +5,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
-    <!-- The marshalling that LibraryImport generates for the job of the tests and the probe of a worker account is
-         unsafe code. -->
+    <!-- The marshalling that LibraryImport generates for the job of the tests is unsafe code. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 

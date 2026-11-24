@@ -66,9 +66,15 @@ internal sealed class TestConnection : IDisposable
 
     public async Task<OutcomeResultEnum> SendOutcomeAsync(Guid command, byte[] outcome)
     {
-        OutcomeAnswer answer = await Connection.SendOutcomeAsync(command, outcome, RequestTimeout, TestContext.Current.CancellationToken);
+        OutcomeAnswer answer = await AnswerToOutcomeAsync(command, outcome);
 
         return answer.Result;
+    }
+
+    // The whole answer to the outcome, as the console's check reads it.
+    public Task<OutcomeAnswer> AnswerToOutcomeAsync(Guid command, byte[] outcome)
+    {
+        return Connection.SendOutcomeAsync(command, outcome, RequestTimeout, TestContext.Current.CancellationToken);
     }
 
     // Completes once the connection has armed a timer due at or before dueBy.

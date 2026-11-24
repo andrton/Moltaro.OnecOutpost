@@ -28,5 +28,6 @@ public sealed class ExitCodeTests
         Assert.Equal(16, ConsoleExitCodes.NotInteractive);
         Assert.Equal(17, ConsoleExitCodes.ConnectorNotRegistered);
         Assert.Equal(18, ConsoleExitCodes.RegistrationFailed);
+        Assert.Equal(19, ConsoleExitCodes.CheckFailed);
     }
 }

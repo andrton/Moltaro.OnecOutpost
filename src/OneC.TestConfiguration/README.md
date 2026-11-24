@@ -6,7 +6,9 @@ The tests that need 1C run on the lab machine against a base built from this fol
 
 **Status:** the script built the base from these sources on the lab machine on 21 November 2026, on
 1C:Enterprise 8.3.17.1851 with PostgreSQL. The sources changed on 22 November 2026 for guide G2 (S9b): `Products`
-became hierarchical and `GoodsReceipt` got its `Comment`. The lab builds the base again before it runs the tests.
+became hierarchical and `GoodsReceipt` got its `Comment`; and on 24 November 2026 for the console's `check` (S10b):
+the catalog `Notes`, the module `NoteChecks` and its two event subscriptions. The lab builds the base again before it
+runs the tests.
 
 ## What is here
 
@@ -17,8 +19,14 @@ became hierarchical and `GoodsReceipt` got its `Comment`. The lab builds the bas
   - the document `GoodsReceipt`, which posts its `Product` and `Quantity` to the accumulation register `Stock`,
     and has a `Comment` of 200 characters, where an idempotent Write of guide G2 keeps its caller key;
   - the common module `Calculations`, available to an external connection, with the function `Add`;
+  - the catalog `Notes`, which nothing writes, and the common module `NoteChecks`, on the server and not available to
+    an external connection, which handles its two event subscriptions: `NoteBeforeWrite`, on `BeforeWrite` of
+    `CatalogObject.Notes`, which a Write that wrote a note would raise, so that the console's `check` names it, and
+    `NoteFormGet`, on `FormGetProcessing` of `CatalogManager.Notes`, which no external connection raises, so that
+    `check` names it not;
   - the role `OutpostRead`, which reads every object and changes none, and the role `OutpostWrite`, which also
-    writes and posts. Both have the right of external connection and nothing else on the configuration;
+    writes and posts, and reads `Notes` alone. Both have the right of external connection and nothing else on the
+    configuration;
   - the role `Administrator`, with the Administration right and the rights to open the base in the Designer and
     the client. It exists only because 1C refuses to save the first user of a base without the Administration
     right, which neither tunnel role may have.

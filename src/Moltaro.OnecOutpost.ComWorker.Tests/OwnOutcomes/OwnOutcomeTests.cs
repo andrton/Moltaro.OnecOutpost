@@ -41,6 +41,23 @@ public sealed class OwnOutcomeTests
         Assert.Equal(1, session.OpenAttempts);
     }
 
+    // The worker ends after its base-unreachable line, so its diagnostics come before it (the S10b brief).
+    [Fact]
+    public void The_diagnostics_of_an_executor_that_does_not_open_come_before_its_base_unreachable_line()
+    {
+        FakeSession session = new() { OpenFailure = new InvalidOperationException("The fake executor does not open.") };
+
+        WorkerRun run = WorkerRun.Of(
+            WorkerModeEnum.Read,
+            new FakeConnector(session),
+            LineText.Connection().ToLine(),
+            LineText.Command().ToLine());
+
+        Assert.Contains("The fake executor does not open.", run.Diagnostics);
+        Assert.Equal(1, run.OutputLinesBeforeDiagnostics);
+        OwnOutcomeAssert.Written("failed", "base-unreachable", run.Output.Lines[1]);
+    }
+
     [Theory]
     [InlineData("Read", "failed")]
     [InlineData("Write", "unknown")]

@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
+using Moltaro.OnecOutpost.Agent.Connector;
 using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Pairing;
 using Moltaro.OnecOutpost.Agent.Secrets;
@@ -31,7 +32,9 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 // and its parents passes, since the root lets others add a folder only. It is made with inheritance off and the list
 // that the install sets: full control for Administrators, SYSTEM and the account that runs the tests, which stands for
 // the agent's, and read and run for Users, the worker account among them. It holds a copy of the worker beside the
-// tests, with the files of its build, and of the executor of the repository.
+// tests, with the files of its build, in x64\, and of the executor of the repository, as ProgramFolderLayout names them
+// for the archive (S10b): the console's check starts the worker of the registered connector's bitness from there, x64
+// on the lab.
 //
 // Its clock is a fake one, which its runs and their servers share, and its workers are in one job of the test. A test
 // starts a run of the agent on it, and another after the first stopped, as a restart does. Disposing it disposes the
@@ -74,9 +77,9 @@ internal sealed class LabAgent : IDisposable
     // The program folder, which the start judges and from which the workers run.
     public string ProgramsPath { get; }
 
-    public string WorkerPath => Path.Combine(ProgramsPath, WorkerName + ".exe");
+    public string WorkerPath => ProgramFolderLayout.WorkerOf(ProgramsPath, ConnectorBitnessEnum.X64);
 
-    public string ExecutorPath => Path.Combine(ProgramsPath, "OutpostExecutor.epf");
+    public string ExecutorPath => ProgramFolderLayout.ExecutorOf(ProgramsPath);
 
     public Guid Agent { get; } = Guid.NewGuid();
 
@@ -102,6 +105,18 @@ internal sealed class LabAgent : IDisposable
     public static LabAgent WithoutSafeMode(LabTestBase testBase, LabAccount workerAccount)
     {
         return Create(LabTestBase.Key, testBase.Server, testBase.Database, testBase.Read, testBase.Write, workerAccount);
+    }
+
+    // The agent of the test base in safe mode whose read account is the one given, such as the write account.
+    public static LabAgent ReadingAs(LabTestBase testBase, LabAccount read)
+    {
+        return Create(LabTestBase.Key, testBase.Server, testBase.Database, read, testBase.Write, workerAccount: null);
+    }
+
+    // The agent of a copy of a typical base, as the base typical, its Writes in safe mode.
+    public static LabAgent InSafeMode(LabTypicalBase typicalBase)
+    {
+        return Create(LabTypicalBase.Key, typicalBase.Server, typicalBase.Database, typicalBase.Read, typicalBase.Write, workerAccount: null);
     }
 
     // A data folder with the files of the agent of a copy of a typical base, as the base typical, its Writes without
@@ -250,15 +265,18 @@ internal sealed class LabAgent : IDisposable
         File.WriteAllBytes(Path.Combine(DataPath, "secrets.dat"), SecretsFile.Write(secrets, new MachineDpapi()));
     }
 
-    // The worker with the files of its build, and the executor.
+    // The worker with the files of its build in x64\, and the executor.
     private void WritePrograms()
     {
         Directory.CreateDirectory(ProgramsPath);
         AccessListEdits.LetUsersReadAndRun(ProgramsPath);
 
+        string workerFolder = Path.GetDirectoryName(WorkerPath)!;
+        Directory.CreateDirectory(workerFolder);
+
         foreach (string extension in new[] { ".exe", ".dll", ".runtimeconfig.json", ".deps.json" })
         {
-            File.Copy(Path.Combine(AppContext.BaseDirectory, WorkerName + extension), Path.Combine(ProgramsPath, WorkerName + extension));
+            File.Copy(Path.Combine(AppContext.BaseDirectory, WorkerName + extension), Path.Combine(workerFolder, WorkerName + extension));
         }
 
         File.Copy(Repository.ExecutorPath, ExecutorPath);
