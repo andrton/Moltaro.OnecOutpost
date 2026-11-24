@@ -5357,7 +5357,9 @@ S8.
       6. *data folder*: `Kind` of the folder, `audit` and `outcomes`; a `ReparsePoint`, or
          the accounts of `Others` of a `Folder`, give `DataFolderAdmitsOthers`, `{entry} of
          {folder} is a reparse point | admits {accounts}; install does not repair it: inspect
-         it, remove it and run install again`; then `ApplyDataFolder(DataFolder, sid,
+         it, remove it and run install again` *(S10c: `; if the agent ever ran there, copy its
+         audit\ folder elsewhere first`; `pair` and `secret` give the start's sentence)*;
+         then `ApplyDataFolder(DataFolder, sid,
          create)`, `create` when `Absent`: `Created` or `Set the access lists of {folder}.`
 
       Then `Installed; the service is not started. Start it once policy.json, the pairing
