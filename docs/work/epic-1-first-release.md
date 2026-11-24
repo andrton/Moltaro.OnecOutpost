@@ -5912,8 +5912,10 @@ S8.
          the first category that has one, with storage, behind `Reading the census and the probe
          of {key}…`. A census or probe Read that does not succeed gives `ReportFailed`, `the census
          | the probe, the first object of {category}, ended {kind} {code}: {errorText}` or `… did
-         not end within {runLimit:c}`; a probe object with an `error`, judged before a
-         `storageError`, `the probe of {fullName} failed: {error}`; no object, `the configuration
+         not end within {runLimit:c}`; a probe object with an `error` is a failed object like
+         any other, recorded and counted, and the run goes on (the coordinator, after the lab run
+         of deeb370, 24 November 2026: one unreadable property must not stop a report); no
+         object, `the configuration
          has no object to read` (not handled). The probe's `storageError` alone makes the storage
          unavailable with that reason: the pages then run without it, and `common` is not read;
       7. *the pages*, `{"read":"page","category":…,"from":…,"count":…,"storage":true|false}`, each
