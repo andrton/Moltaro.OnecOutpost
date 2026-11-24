@@ -10,14 +10,10 @@ using Spectre.Console.Testing;
 namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 
 // The console's check and metadata on a LabAgent (the S10b brief, "Lab tests", and "Internal of S10c"), through
-// CommandAppTester with ConsoleApp.Configure, as Program runs it: the parts that Program.MachineParts makes for the
-// agent's program folder, in the x64\ layout, and its data folder, with the account that runs the tests as the agent's
-// account, AgentSid, as the agent's tests make their access lists for it, the agent's fake clock, and a LabServer of the
-// agent's keys, so that the server's line reaches a stub in the process. check needs a console run as administrator,
-// and its probe needs "Impersonate a client after authentication", which only an elevated token holds, so the lab's
-// tests run elevated. Each run checks that the program folder can be removed at once and that the server saw no poll.
-// metadata runs on the clock of the machine so the policy's run limit applies as in use, and the lab records the
-// halvings it causes.
+// CommandAppTester with ConsoleApp.Configure, as Program runs it. The account that runs the tests stands for the
+// agent's account. The console and its in-process server share the machine's clock so the real workers' run and
+// shutdown limits can elapse. check's probe needs "Impersonate a client after authentication", so the tests run
+// elevated. Each run checks that the program folder can be removed at once and that the server saw no poll.
 [SupportedOSPlatform("windows")]
 internal static class LabConsole
 {
@@ -31,36 +27,10 @@ internal static class LabConsole
 
     private const string ServiceName = "MoltaroOnecOutpost";
 
-    // The parts of the machine for the agent, its server the one given.
-    public static ConsoleParts Parts(LabAgent agent, LabServer server)
-    {
-        ConsoleParts machine = Program.MachineParts(ServiceName, AppContext.BaseDirectory, agent.ProgramsPath, agent.DataPath);
-
-        Assert.True(machine.Elevated, "check needs a console run as administrator: run the tests of the lab in an elevated terminal.");
-
-        return machine with
-        {
-            AgentSid = AccessListEdits.TestAccount.Value,
-            Clock = agent.Clock,
-            Handlers = (_, _) => server,
-        };
-    }
-
     // Runs check on the agent to its end.
     public static async Task<LabCheck> CheckAsync(LabAgent agent)
     {
-        LabServer server = new(agent.ServerKey, agent.AgentKey, agent.Agent, agent.Clock);
-
-        // The connection of check owns its handler, the server, and disposes it.
-        CommandAppTester tester = new(console: new TestConsole().Width(int.MaxValue));
-        tester.Configure(config => ConsoleApp.Configure(config, Parts(agent, server)));
-
-        CommandAppResult result = await tester
-            .RunAsync(["check"], TestContext.Current.CancellationToken)
-            .WaitAsync(Deadline, TestContext.Current.CancellationToken);
-
-        agent.RemoveProgramsAfterCommand();
-        Assert.Equal(0, server.Polls);
+        CommandAppResult result = await RunAsync(agent, ["check"], Deadline, TestContext.Current.CancellationToken);
 
         return new LabCheck(result);
     }
@@ -68,19 +38,56 @@ internal static class LabConsole
     // Runs metadata of the agent's base to its end, its report the file given.
     public static async Task<LabMetadata> MetadataAsync(LabAgent agent, string file)
     {
-        using LabServer server = new(agent.ServerKey, agent.AgentKey, agent.Agent, agent.Clock);
-        ConsoleParts parts = Parts(agent, server) with { Clock = TimeProvider.System };
+        CommandAppResult result = await RunAsync(agent, ["metadata", agent.Key, file], MetadataDeadline, TestContext.Current.CancellationToken);
 
+        return new LabMetadata(result, file, named: agent.Key == LabTestBase.Key);
+    }
+
+    private static async Task<CommandAppResult> RunAsync(
+        LabAgent agent,
+        string[] arguments,
+        TimeSpan deadline,
+        CancellationToken cancellationToken)
+    {
+        ConsoleParts machine = Program.MachineParts(ServiceName, AppContext.BaseDirectory, agent.ProgramsPath, agent.DataPath);
+
+        Assert.True(machine.Elevated, "The lab console needs administrator rights: run the tests in an elevated terminal.");
+
+        using LabServer server = new(agent.ServerKey, agent.AgentKey, agent.Agent, machine.Clock);
+        ConsoleParts parts = machine with
+        {
+            AgentSid = AccessListEdits.TestAccount.Value,
+            Handlers = (_, _) => server,
+        };
         CommandAppTester tester = new(console: new TestConsole().Width(int.MaxValue));
         tester.Configure(config => ConsoleApp.Configure(config, parts));
 
-        CommandAppResult result = await tester
-            .RunAsync(["metadata", agent.Key, file], TestContext.Current.CancellationToken)
-            .WaitAsync(MetadataDeadline, TestContext.Current.CancellationToken);
+        string command = arguments[0];
+        string target = agent.Key == LabTestBase.Key ? "the test base" : "a typical copy";
+        TestContext.Current.TestOutputHelper?.WriteLine($"Starting lab {command} on {target} with a deadline of {deadline:c}.");
 
-        agent.RemoveProgramsAfterCommand();
-        Assert.Equal(0, server.Polls);
+        using CancellationTokenSource limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        limit.CancelAfter(deadline);
+        CommandAppResult result;
 
-        return new LabMetadata(result, file, named: agent.Key == LabTestBase.Key);
+        try
+        {
+            result = await tester.RunAsync(arguments, limit.Token);
+
+            // Spectre can return the console's Cancelled exit code after it has awaited the command's cleanup.
+            limit.Token.ThrowIfCancellationRequested();
+        }
+        catch (OperationCanceledException exception) when (limit.IsCancellationRequested)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new TimeoutException($"The lab {command} command exceeded its deadline of {deadline:c}.", exception);
+        }
+        finally
+        {
+            agent.RemoveProgramsAfterCommand();
+            Assert.Equal(0, server.Polls);
+        }
+
+        return result;
     }
 }
