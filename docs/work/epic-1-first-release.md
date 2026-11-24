@@ -5121,10 +5121,14 @@ S8.
   - **S10c, the metadata report and the guide** (the coordinator, 24 November 2026, from
     S10b's study, under the planner's standing instruction to cut a sprint too large for
     one exhaustive review): `metadata`, read in pages through the executor; guide G1; and
-    the one lab run of S10, which runs the tests of `check` and of `metadata` in
-    `Moltaro.OnecOutpost.OneC.Tests` and the manual lines of the Acceptance, the run of
-    every command, S9c's line and the installation by G1 alone. Its branch is
-    `epic-1/sprint-10c-console-metadata`.
+    the lab run of the tests of `check` and of `metadata` in
+    `Moltaro.OnecOutpost.OneC.Tests`. Its branch is `epic-1/sprint-10c-console-metadata`.
+  - **The manual lines of S10 run with S11's** (the coordinator, 24 November 2026): `pair`, and
+    so `secret`, the service and every line of `check` but the lab tests' stub, need a real
+    server, which only S11's shell runs. So the run of every command, S9c's line and the
+    installation by G1 alone are done in S11's lab run, on the two machines, which then holds
+    all the manual lines of S10 and S11; the owner goes to the lab once for S10c's tests and
+    once for S11.
 - **A draft pull request before the close** (the owner, 23 November 2026, for S10a only):
   S10a's tests with `Requires=Administrator` run only in CI's elevated `windows` job, so
   after the implementation step its branch is pushed and its pull request opened as a
@@ -6236,6 +6240,10 @@ merged.
     rest.
   - **Guide G3**, its first part: a first session with the shell, as
     [The user guides](#the-user-guides) lists it.
+  - S10's manual lines, moved here (the coordinator, 24 November 2026), since they need the
+    shell's server: on the lab machine, the owner installs, pairs and checks an agent from the
+    archive by guide G1 alone, against the shell; runs every command of the console in a
+    terminal and accepts how it looks; and runs S9c's line as S10's Acceptance states it.
   - The documents step: `README.md` shows a session, and leads to G3.
 - **From the architect's review 1** (the planner, 23 November 2026): the harness of the
   real agent with the fake worker, `LoopbackAgent` and its fakes, moves from
