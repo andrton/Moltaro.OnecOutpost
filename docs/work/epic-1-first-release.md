@@ -5125,6 +5125,9 @@ S8.
   after the implementation step its branch is pushed and its pull request opened as a
   draft; every later fix is pushed to it, never force-pushed, and it is marked ready and
   merged only after the close, under PQ1. A later sprint that needs the same asks again.
+  The owner gave the same for S10c, S11 and S12 (24 November 2026): after the
+  implementation step the branch is pushed and its pull request opened as a draft, and it is
+  marked ready and merged only after the close and after its lab run where it has one.
 - **From the architect's review 1** (the whole code base after S8; the planner, 23
   November 2026):
   - *S10a's documents step:* explanation E1, both forms in one change, still says that a
