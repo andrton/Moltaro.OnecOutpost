@@ -21,7 +21,7 @@ public sealed class WindowsWorkerStartsTests
 
     private static string TestProgram => Path.Combine(AppContext.BaseDirectory, "Moltaro.OnecOutpost.TestWorker.exe");
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_probe_under_the_account_of_the_own_token_ends_at_the_end_of_its_input_with_exit_code_0()
     {
         WindowsWorkerStarts starts = new(TimeProvider.System);
@@ -33,7 +33,7 @@ public sealed class WindowsWorkerStartsTests
         Assert.Equal(0u, exitCode);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_probe_of_a_program_that_is_missing_fails_with_the_Windows_error_2()
     {
         WindowsWorkerStarts starts = new(TimeProvider.System);

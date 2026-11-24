@@ -2,7 +2,6 @@ using Moltaro.OnecOutpost.Agent.Connector;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
@@ -25,7 +24,7 @@ public sealed class ConnectorLineTests : IDisposable
         _checked.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task With_connectors_of_both_bitnesses_the_line_names_the_registered_one_of_64_bits_and_every_other_copy()
     {
         ConnectorFile registered32 = Machine.Connectors.Registered(ConnectorBitnessEnum.X86, Version32);
@@ -45,7 +44,7 @@ public sealed class ConnectorLineTests : IDisposable
     }
 
     // The service starts the worker of the first registered bitness, so check starts that one, and judges its folder.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task With_the_connector_registered_for_32_bits_alone_the_workers_start_from_the_x86_folder()
     {
         Machine.Connectors.Uninstall(ConnectorBitnessEnum.X64);
@@ -64,7 +63,7 @@ public sealed class ConnectorLineTests : IDisposable
         run.Passed(CheckLineEnum.AccessLists, Path.GetDirectoryName(registered32.Path)!);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Without_a_registered_connector_the_line_fails_naming_each_copy_installed_and_no_worker_starts()
     {
         Machine.Connectors.Uninstall(ConnectorBitnessEnum.X64);

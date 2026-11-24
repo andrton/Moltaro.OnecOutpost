@@ -41,7 +41,7 @@ public sealed class WorkerLogOnTests : IDisposable
         _noConnector.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_logon_of_an_account_that_does_not_exist_fails_naming_the_base_the_account_and_the_reason_of_1326()
     {
         using WorkerJob job = new();
@@ -59,7 +59,7 @@ public sealed class WorkerLogOnTests : IDisposable
     // lists, which admit the folder and let nobody else change the program folder: the agent stops before any worker
     // starts, records the reason of the logon in started, polls nothing, and no file of its data folder holds the
     // password in plaintext.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_start_whose_worker_account_cannot_log_on_stops_the_agent_recorded_and_no_data_file_holds_the_password()
     {
         string policy = PairedFolder.PolicyWithWorkerAccount(_account);

@@ -71,7 +71,7 @@ public sealed class StartWorkerAccountTests
 
     // The console's secret writes the password of the worker account; a start without one would fail every worker of
     // the base. The reason names the command (the S10b brief, "One wording, with a remedy that exists").
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_base_whose_worker_account_has_no_password_in_the_secrets_stops_the_start_naming_the_base()
     {
         _folder.Data.Root.Seed("policy.json", Policy);
@@ -110,7 +110,7 @@ public sealed class StartWorkerAccountTests
     }
 
     // Somebody who could replace the code that the agent's account runs would get its secrets.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_program_folder_that_somebody_else_may_change_stops_the_start_naming_the_first_entry_and_its_accounts()
     {
         const string Worker = @"C:\Program Files\Moltaro Outpost\x64\Moltaro.OnecOutpost.ComWorker.exe";

@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Secret;
@@ -23,7 +22,7 @@ public sealed class SecretRefusalTests
 
     // secret reads secrets.dat through the agent's StartChecks, with the start's reason and its own code (the S10b brief,
     // "One wording, with a remedy that exists").
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_secrets_dat_that_is_absent_ends_secret_with_NotPaired()
     {
         _machine.Data.Root.Unseed("secrets.dat");

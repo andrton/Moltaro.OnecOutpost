@@ -106,7 +106,7 @@ public sealed class RunEndTests
     [InlineData("uninstall")]
     [InlineData("pair")]
     [InlineData("secret")]
-    [InlineData("check", Skip = SkipReason.NotImplemented)]
+    [InlineData("check")]
     [InlineData("connector register")]
     public async Task A_cancelled_run_ends_with_Cancelled_before_its_first_step(string command)
     {

@@ -9,16 +9,16 @@ using Moltaro.OnecOutpost.Protocol.Codec;
 
 namespace Moltaro.OnecOutpost.Agent.Workers;
 
-// One COM worker process of the program's launcher, speaking the worker's lines over its raw standard streams, as the
-// lab's WorkerProcess does: one JSON object per line in UTF-8, ended with LF, each line read as bytes up to its LF. A
-// failed write gives false or null; cancellation kills and throws OperationCanceledException. Every open or run that
-// does not give true or an outcome has killed the process. Limitation: the agent keeps no diagnostics of a worker; the
-// console's check shows why one does not open (S10).
+// One COM worker process of the program's launcher, or of the console's check, speaking the worker's lines over its raw
+// standard streams, as the lab's WorkerProcess does: one JSON object per line in UTF-8, ended with LF, each line read as
+// bytes up to its LF. A failed write gives false or null; cancellation kills and throws OperationCanceledException.
+// Every open or run that does not give true or an outcome has killed the process. Limitation: the agent keeps no
+// diagnostics of a worker; the console's check shows why one does not open.
 //
 // The pool calls OpenAsync and then RunAsync one at a time; Kill may run beside either, from any thread. A read from
 // the pipe of a process does not end on cancellation, so cancellation kills the process, which ends its output.
 // Limitation: Windows gives anonymous pipes no asynchronous I/O, so each open or run holds a pool thread while it waits.
-// It owns its streams and the handle of its process.
+// It owns its streams, the handle of its process, and the job of its own when it is given one.
 [SupportedOSPlatform("windows")]
 internal sealed partial class ComWorkerProcess : IWorkerProcess
 {
@@ -45,16 +45,22 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
 
     private readonly Stream _output;
 
+    // The job of its own that a worker of the console's check is in, which Dispose closes last; null for a worker of the
+    // agent, which is in the launcher's job.
+    private readonly WorkerJob? _job;
+
     // 1 once the first Kill ended the process: Kill is idempotent, and only the first one calls TerminateProcess.
     private int _killed;
 
     // The process that the launcher created, which it puts into the job before the process runs, with the agent's ends
-    // of its standard input and output.
-    public ComWorkerProcess(SafeProcessHandle process, Stream input, Stream output)
+    // of its standard input and output; or one that the console's check created, with the job of its own, which it then
+    // owns.
+    public ComWorkerProcess(SafeProcessHandle process, Stream input, Stream output, WorkerJob? job = null)
     {
         _process = process;
         _input = input;
         _output = output;
+        _job = job;
     }
 
     // Writes the connection line and reads one line of at most 1 KiB: true only for an object whose one member is
@@ -116,7 +122,8 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
     }
 
     // Closes the worker's input, which ends a worker that still runs at the end of its input, and its output, then
-    // releases the process. The pool disposes a worker only after it killed it and its open and run ended.
+    // releases the process, and closes its own job, which ends whatever of it still runs. The pool disposes a worker
+    // only after it killed it and its open and run ended.
     public void Dispose()
     {
         try
@@ -131,6 +138,7 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
 
         _output.Dispose();
         _process.Dispose();
+        _job?.Dispose();
     }
 
     [LibraryImport("kernel32.dll", SetLastError = true)]

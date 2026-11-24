@@ -4,7 +4,6 @@ using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
@@ -21,7 +20,7 @@ public sealed class FilesLineTests : IDisposable
         _checked.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_policy_that_is_invalid_fails_its_line_with_the_reason_of_the_agent_and_no_base_is_checked()
     {
         const string Policy = """{ "bases": [] }""";
@@ -41,7 +40,7 @@ public sealed class FilesLineTests : IDisposable
     }
 
     // The reworded reason of the start (the S10b brief, "One wording, with a remedy that exists").
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_agent_json_that_is_absent_fails_its_line_and_the_server_is_not_checked()
     {
         _checked.Machine.Data.Root.Unseed(AgentFolders.PairingName);
@@ -57,7 +56,7 @@ public sealed class FilesLineTests : IDisposable
     }
 
     // pair refuses while agent.json exists, so the remedy says to remove it first.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("absent", "secrets.dat is absent; to pair the agent anew, remove agent.json, if any, and run the console's pair")]
     [InlineData("not decrypted", "secrets.dat cannot be decrypted on this machine; to pair the agent anew, remove agent.json, if any, and run the console's pair")]
     public async Task A_secrets_dat_that_cannot_be_used_fails_its_line_and_nothing_that_needs_a_password_or_the_key_is_checked(
@@ -86,7 +85,7 @@ public sealed class FilesLineTests : IDisposable
 
     // Every password missing is named, in the policy's order, read, write and worker for each base; the lines that need
     // one are not checked, and those that do not are.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_secrets_dat_that_lacks_passwords_of_the_policy_fails_its_line_naming_every_one_in_the_order_of_the_policy()
     {
         AgentSecrets secrets = new(

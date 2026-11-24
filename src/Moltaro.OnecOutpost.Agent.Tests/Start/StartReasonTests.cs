@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
-using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.FakeWindows;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
@@ -27,7 +26,7 @@ public sealed class StartReasonTests
         Assert.Null(StartChecks.AccessReason("policy.json", new OtherAccounts(FullPathOf("policy.json"), null, [])));
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("", "the data folder", "inspect and correct its access list as install sets it; never remove it, which holds the audit log and the outcomes not yet sent")]
     [InlineData("audit", "audit", "inspect and correct its access list as install sets it; never remove it, which holds the audit log")]
     [InlineData("outcomes", "outcomes", "inspect and correct its access list as install sets it; never remove it, which holds the outcomes not yet sent")]
@@ -44,7 +43,7 @@ public sealed class StartReasonTests
     }
 
     // Q14: an owner can always change the access list, so Administrators, and nobody else, own every entry.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("", "the data folder")]
     [InlineData("agent.json", "agent.json")]
     public void An_entry_that_somebody_else_owns_is_named_with_the_command_that_makes_Administrators_its_owner(string path, string entry)
@@ -56,7 +55,7 @@ public sealed class StartReasonTests
             StartChecks.AccessReason(path, others));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_entry_that_somebody_else_owns_and_that_admits_others_is_named_for_both_its_owner_first()
     {
         OtherAccounts others = new(FullPathOf("policy.json"), @"PC-1\clerk", [@"BUILTIN\Users"]);
@@ -73,7 +72,7 @@ public sealed class StartReasonTests
             StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_entry_through_which_somebody_else_may_change_the_program_is_named_with_what_to_do()
     {
         const string Worker = @"C:\Program Files\Moltaro.OnecOutpost\x64\Moltaro.OnecOutpost.ComWorker.exe";
@@ -83,7 +82,7 @@ public sealed class StartReasonTests
             StartChecks.WritersReason(Worker, [@"PC-1\intruder", @"BUILTIN\Users"]));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void An_agent_json_that_is_absent_says_that_the_agent_is_not_paired_and_to_pair_it()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -96,7 +95,7 @@ public sealed class StartReasonTests
     }
 
     // pair refuses while agent.json exists, so the remedy removes it first.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("absent", "secrets.dat is absent; to pair the agent anew, remove agent.json, if any, and run the console's pair")]
     [InlineData("not decrypted", "secrets.dat cannot be decrypted on this machine; to pair the agent anew, remove agent.json, if any, and run the console's pair")]
     public void A_secrets_dat_that_cannot_be_used_says_to_remove_agent_json_and_pair_anew(string fault, string reason)
@@ -119,7 +118,7 @@ public sealed class StartReasonTests
         Assert.Equal(reason, exception.Message);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void Each_password_missing_is_named_with_the_secret_command_that_writes_it_in_the_order_of_the_policy()
     {
         AgentPolicy policy = AgentPolicyReader.ReadFile("""

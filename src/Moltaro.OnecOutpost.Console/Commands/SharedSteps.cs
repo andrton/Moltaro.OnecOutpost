@@ -131,37 +131,27 @@ internal static class SharedSteps
         }
     }
 
-    // As the agent's start reads it, with the same reasons.
+    // As the agent's start reads it, by StartChecks, with the same reasons.
     private static AgentPolicy ReadPolicy(IAgentFolder data)
     {
-        const string Invalid = $"{AgentFolders.PolicyName} is not valid";
-
-        byte[] bytes;
+        IReadOnlyList<string> names;
 
         try
         {
-            bytes = data.ReadAll(AgentFolders.PolicyName);
-        }
-        catch (FileNotFoundException)
-        {
-            throw new CommandEndException(
-                ConsoleExitCodes.PolicyInvalid,
-                $"{Invalid}: the file is absent; expected the local policy of this machine");
+            names = data.Names();
         }
         catch (IOException exception)
         {
-            throw new CommandEndException(
-                ConsoleExitCodes.PolicyInvalid,
-                $"{Invalid}: the file cannot be read: {CommandEndException.ReasonOf(exception)}");
+            throw CommandEndException.StepFailed("data folder", exception);
         }
 
         try
         {
-            return AgentPolicyReader.ReadFile(bytes);
+            return StartChecks.ReadPolicy(data, names);
         }
         catch (AgentPolicyException exception)
         {
-            throw new CommandEndException(ConsoleExitCodes.PolicyInvalid, $"{Invalid}: {exception.Message}");
+            throw new CommandEndException(ConsoleExitCodes.PolicyInvalid, $"{AgentFolders.PolicyName} is not valid: {exception.Message}");
         }
     }
 }

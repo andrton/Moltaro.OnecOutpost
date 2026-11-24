@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Check;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
@@ -40,7 +39,7 @@ public sealed class AccessListsLineTests : IDisposable
 
     // The access lists for the agent's account, of each entry that the start judges: the folder, its two folders, the
     // three files, the files of the log and the outbox, and nothing else.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Check_judges_the_data_folder_its_two_folders_and_each_file_that_the_start_judges_for_the_agent_account()
     {
         CheckRun run = await _checked.RunAsync();
@@ -53,7 +52,7 @@ public sealed class AccessListsLineTests : IDisposable
     }
 
     // The service may cut, rotate or send a file while check lists the folder: one gone before its list is not judged.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_file_gone_between_the_listing_of_its_folder_and_its_list_counts_as_gone()
     {
         Machine.Access.Remove($@"audit\{AuditFile}");
@@ -65,7 +64,7 @@ public sealed class AccessListsLineTests : IDisposable
 
     // Each entry named with the reason of the start, Q14's owner included, with its remedy; the data folder is no input
     // of a worker, so every worker still starts.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Each_entry_of_the_data_folder_that_admits_somebody_else_or_that_somebody_else_owns_is_named_with_its_remedy()
     {
         Machine.Access.Admit($@"audit\{AuditFile}", @"PC-1\intruder", @"BUILTIN\Users");
@@ -88,7 +87,7 @@ public sealed class AccessListsLineTests : IDisposable
         run.Passed(CheckLineEnum.WorkerStart, "accounting");
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_data_folder_that_is_a_reparse_point_fails_the_line_and_says_never_to_remove_what_it_holds()
     {
         Machine.Folders.Kinds[TestMachine.DataFolder] = FolderKindEnum.ReparsePoint;
@@ -102,7 +101,7 @@ public sealed class AccessListsLineTests : IDisposable
             StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Check_judges_who_may_change_the_program_folder_and_the_folder_of_the_registered_connector()
     {
         await _checked.RunAsync();
@@ -111,7 +110,7 @@ public sealed class AccessListsLineTests : IDisposable
     }
 
     // Somebody who may change the worker could run code under a worker account, or under the console's administrator.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_program_folder_that_somebody_else_may_change_is_named_and_no_worker_starts()
     {
         string worker = CheckedMachine.Program;
@@ -128,7 +127,7 @@ public sealed class AccessListsLineTests : IDisposable
         AssertNoWorkerStarted(run, TestMachine.ProgramFolder);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_folder_of_the_connector_of_the_workers_that_somebody_else_may_change_is_named_and_no_worker_starts()
     {
         string connector = Path.Combine(CheckedMachine.ConnectorFolder, "comcntr.dll");
@@ -146,7 +145,7 @@ public sealed class AccessListsLineTests : IDisposable
     }
 
     // The workers start with the connector of 64 bits, so that of 32 bits is judged and named, and blocks none of them.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_folder_of_a_connector_of_the_other_bitness_that_somebody_else_may_change_is_named_and_blocks_no_worker()
     {
         ConnectorFile other = Machine.Connectors.Registered(ConnectorBitnessEnum.X86, CheckedMachine.ConnectorVersion);

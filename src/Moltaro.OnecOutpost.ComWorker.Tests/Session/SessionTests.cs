@@ -1,5 +1,4 @@
 using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Session;
 
@@ -59,7 +58,7 @@ public sealed class SessionTests
 
     // The console's check reads the diagnostics of a worker whose open gave false (the S10b brief, "The connections"),
     // so they are written before {"ready":false}.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void The_diagnostics_of_a_session_that_does_not_open_come_before_ready_false()
     {
         FakeConnector connector = new(new FakeSession())

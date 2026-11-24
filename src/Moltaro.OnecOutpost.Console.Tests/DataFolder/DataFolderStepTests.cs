@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.DataFolder;
@@ -26,7 +25,7 @@ public sealed class DataFolderStepTests
     [Theory]
     [InlineData("pair")]
     [InlineData("secret")]
-    [InlineData("check", Skip = SkipReason.NotImplemented)]
+    [InlineData("check")]
     public async Task A_data_folder_that_is_absent_ends_the_command_with_NotInstalled(string command)
     {
         CommandAppResult result = await _machine.RunAsync(TestMachine.CommandLine(command));

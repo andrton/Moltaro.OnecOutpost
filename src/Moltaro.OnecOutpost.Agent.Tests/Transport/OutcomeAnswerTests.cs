@@ -74,7 +74,7 @@ public sealed class OutcomeAnswerTests
     // its time; a 200 whose signature does not verify Signature, any other unverified 200 Answer; a verified refusal
     // Refusal with its time and code; the unsigned protocol-version body ProtocolVersion; a 401, 403 or 413 without a
     // signature that verifies Bare; anything else Answer. The result is the one of the tests above.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("connection-error", "Lost", false, null, "Unreachable", null)]
     [InlineData("tunnel-refused", "Lost", false, 407, "Answer", null)]
     [InlineData("confirmed", "Confirmed", true, 200, null, null)]
@@ -116,7 +116,7 @@ public sealed class OutcomeAnswerTests
         Assert.Equal(expected, await TestTimes.EndOf(judged));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_answer_that_does_not_begin_within_the_request_timeout_is_Unreachable_without_a_status()
     {
         using TestConnection test = new();

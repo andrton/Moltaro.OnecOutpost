@@ -92,8 +92,10 @@ internal sealed class AgentConnection : IDisposable
 
     // Sends the outcome bytes of the command and waits requestTimeout over the answer and its body, read within 64 KiB.
     // Confirmed for a verified 200; TooLarge for a verified result-too-large and for a 413 without an Outpost-Signature
-    // that verifies, whatever its body; Lost otherwise. The answer's time, status, cause and code are null until S10b's
-    // implementation computes them in Judge.
+    // that verifies, whatever its body; Lost otherwise. The answer is judged once, in the order of §9: no status is
+    // Unreachable, the status of a proxy that refused the tunnel an Answer, and an answer as Judge gives it, with the
+    // time of a verified confirmation or refusal, its status, and for any answer but a confirmation its cause, with the
+    // code of a verified refusal.
     public async Task<OutcomeAnswer> SendOutcomeAsync(
         Guid command,
         ReadOnlyMemory<byte> outcome,
@@ -107,18 +109,20 @@ internal sealed class AgentConnection : IDisposable
         using CancellationTokenSource timeout = new(requestTimeout, _clock);
         using CancellationTokenSource wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
 
-        (HttpResponseMessage? response, _) = await ServerRequests.SendAsync(_invoker, request, wait.Token, cancellationToken);
+        (HttpResponseMessage? response, int? status) = await ServerRequests.SendAsync(_invoker, request, wait.Token, cancellationToken);
 
         if (response is null)
         {
-            return Answered(OutcomeResultEnum.Lost);
+            ServerAnswerCauseEnum cause = status is null ? ServerAnswerCauseEnum.Unreachable : ServerAnswerCauseEnum.Answer;
+
+            return new OutcomeAnswer(OutcomeResultEnum.Lost, null, status, cause, null);
         }
 
         using (response)
         {
             ServerAnswer answer = await ServerRequests.ReadAsync(response, OutpostProtocol.AnswerLimit, wait.Token, cancellationToken);
 
-            return Answered(Judge(command, body, answer));
+            return Judge(command, body, answer);
         }
     }
 
@@ -128,9 +132,9 @@ internal sealed class AgentConnection : IDisposable
         _invoker.Dispose();
     }
 
-    private static OutcomeAnswer Answered(OutcomeResultEnum result)
+    private static OutcomeAnswer Lost(int status, ServerAnswerCauseEnum cause)
     {
-        return new OutcomeAnswer(result, null, null, null, null);
+        return new OutcomeAnswer(OutcomeResultEnum.Lost, null, status, cause, null);
     }
 
     private static string StatusReason(int status)
@@ -167,9 +171,9 @@ internal sealed class AgentConnection : IDisposable
             }
         }
 
-        if (VerifiedRefusal(OutpostRequestKindEnum.Poll, requestBody, answer) is string code)
+        if (VerifiedRefusal(OutpostRequestKindEnum.Poll, requestBody, answer) is OutpostRefusal refusal)
         {
-            return new PollResult(null, code);
+            return new PollResult(null, refusal.Code);
         }
 
         if (answer.Status == (int)HttpStatusCode.BadRequest
@@ -182,53 +186,103 @@ internal sealed class AgentConnection : IDisposable
         return new PollResult(null, StatusReason(answer.Status));
     }
 
-    // The table of §9 for an outcome: a verified 200 that confirms the command is Confirmed; a verified result-too-large,
-    // the one code of a signed 413, and a bare 413, one without an Outpost-Signature that verifies whatever its body,
-    // are TooLarge; a 413 whose signature verifies with any other body is lost like every other answer.
-    private OutcomeResultEnum Judge(Guid command, byte[] requestBody, ServerAnswer answer)
+    // The table of §9 for an outcome, judged once in its order. A 200 is judged by JudgeConfirmation. A verified refusal
+    // is a Refusal with its time and its code, TooLarge for result-too-large, the one code of a signed 413; the unsigned
+    // body of §9 is a ProtocolVersion; a 401, 403 or 413 without an Outpost-Signature that verifies, whatever its body, is
+    // Bare, the 413 TooLarge, as anything on the path sends one; anything else, a 413 whose signature verifies with
+    // another body included, is an Answer and lost.
+    private OutcomeAnswer Judge(Guid command, byte[] requestBody, ServerAnswer answer)
     {
-        if (answer.Status == (int)HttpStatusCode.OK)
+        int status = answer.Status;
+
+        if (status == (int)HttpStatusCode.OK)
         {
-            if (!answer.IsJson || answer.Body is not byte[] body)
-            {
-                return OutcomeResultEnum.Lost;
-            }
-
-            try
-            {
-                OutpostCodec.ReadOutcomeAnswer(_serverKey, _agent, command, requestBody, body, answer.Signature);
-
-                return OutcomeResultEnum.Confirmed;
-            }
-            catch (OutpostProtocolException)
-            {
-                return OutcomeResultEnum.Lost;
-            }
+            return JudgeConfirmation(command, requestBody, answer);
         }
 
-        if (answer.Status != (int)HttpStatusCode.RequestEntityTooLarge)
+        if (VerifiedRefusal(OutpostRequestKindEnum.Outcome, requestBody, answer) is OutpostRefusal refusal)
         {
-            return OutcomeResultEnum.Lost;
+            OutcomeResultEnum result = refusal.Code == OutpostProtocolCodes.ResultTooLarge
+                ? OutcomeResultEnum.TooLarge
+                : OutcomeResultEnum.Lost;
+
+            return new OutcomeAnswer(result, refusal.Time, status, ServerAnswerCauseEnum.Refusal, refusal.Code);
         }
 
-        bool bare = answer.Body is not byte[] signed
-            || !OutpostSignatures.VerifyAnswer(
+        if (status == (int)HttpStatusCode.BadRequest
+            && answer.Body is byte[] unsigned
+            && OutpostCodec.IsUnsupportedVersion(unsigned))
+        {
+            return Lost(status, ServerAnswerCauseEnum.ProtocolVersion);
+        }
+
+        bool mayBeBare = status is (int)HttpStatusCode.Unauthorized
+            or (int)HttpStatusCode.Forbidden
+            or (int)HttpStatusCode.RequestEntityTooLarge;
+
+        if (!mayBeBare || Verifies(status, requestBody, answer))
+        {
+            return Lost(status, ServerAnswerCauseEnum.Answer);
+        }
+
+        OutcomeResultEnum bare = status == (int)HttpStatusCode.RequestEntityTooLarge
+            ? OutcomeResultEnum.TooLarge
+            : OutcomeResultEnum.Lost;
+
+        return new OutcomeAnswer(bare, null, status, ServerAnswerCauseEnum.Bare, null);
+    }
+
+    // A 200: Confirmed with the server's time when it verifies and confirms the command. Its signature is judged before
+    // its form, so that an answer signed with another key, such as that of a hop that opens TLS, is a Signature; any
+    // other 200 that is not a confirmation of this command, one without its whole body included, is an Answer.
+    private OutcomeAnswer JudgeConfirmation(Guid command, byte[] requestBody, ServerAnswer answer)
+    {
+        int status = answer.Status;
+
+        if (answer.Body is not byte[] body)
+        {
+            // The status came, and no complete body within the limit and the wait: an answer all the same (§9).
+            return Lost(status, ServerAnswerCauseEnum.Answer);
+        }
+
+        if (!Verifies(status, requestBody, answer))
+        {
+            return Lost(status, ServerAnswerCauseEnum.Signature);
+        }
+
+        if (!answer.IsJson)
+        {
+            return Lost(status, ServerAnswerCauseEnum.Answer);
+        }
+
+        try
+        {
+            OutpostOutcomeAnswer confirmed = OutpostCodec.ReadOutcomeAnswer(_serverKey, _agent, command, requestBody, body, answer.Signature);
+
+            return new OutcomeAnswer(OutcomeResultEnum.Confirmed, confirmed.Time, status, null, null);
+        }
+        catch (OutpostProtocolException)
+        {
+            return Lost(status, ServerAnswerCauseEnum.Answer);
+        }
+    }
+
+    // Whether the answer carries an Outpost-Signature of the server key over this request, its status and its whole body.
+    private bool Verifies(int status, byte[] requestBody, ServerAnswer answer)
+    {
+        return answer.Body is byte[] body
+            && OutpostSignatures.VerifyAnswer(
                 _serverKey,
                 OutpostRequestKindEnum.Outcome,
                 _agent,
-                answer.Status,
+                status,
                 requestBody,
-                signed,
+                body,
                 answer.Signature);
-
-        return bare || VerifiedRefusal(OutpostRequestKindEnum.Outcome, requestBody, answer) is not null
-            ? OutcomeResultEnum.TooLarge
-            : OutcomeResultEnum.Lost;
     }
 
-    // The code of a verified signed refusal of §9, under the status that the table gives it, or null for any other
-    // answer.
-    private string? VerifiedRefusal(OutpostRequestKindEnum kind, byte[] requestBody, ServerAnswer answer)
+    // A verified signed refusal of §9, under the status that the table gives its code, or null for any other answer.
+    private OutpostRefusal? VerifiedRefusal(OutpostRequestKindEnum kind, byte[] requestBody, ServerAnswer answer)
     {
         if (!answer.IsJson || answer.Body is not byte[] body)
         {
@@ -237,7 +291,7 @@ internal sealed class AgentConnection : IDisposable
 
         try
         {
-            return OutpostCodec.ReadRefusal(_serverKey, kind, _agent, answer.Status, requestBody, body, answer.Signature).Code;
+            return OutpostCodec.ReadRefusal(_serverKey, kind, _agent, answer.Status, requestBody, body, answer.Signature);
         }
         catch (OutpostProtocolException)
         {

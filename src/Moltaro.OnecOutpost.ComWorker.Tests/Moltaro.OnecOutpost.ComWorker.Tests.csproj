@@ -17,9 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Moltaro.OnecOutpost.ComWorker\Moltaro.OnecOutpost.ComWorker.csproj" />
-    <!-- The one reason of the tests skipped until S10b's implementation, which removes this reference with the skips, as
-         S9's did. -->
-    <ProjectReference Include="..\Moltaro.OnecOutpost.TestSupport\Moltaro.OnecOutpost.TestSupport.csproj" />
   </ItemGroup>
 
   <ItemGroup>

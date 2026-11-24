@@ -1,7 +1,6 @@
 using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
@@ -21,7 +20,7 @@ public sealed class SubscriptionsLineTests : IDisposable
         _checked.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_subscription_whose_common_module_an_external_connection_lacks_fails_the_line_naming_it_its_event_and_its_module()
     {
         Machine.Workers.Sessions[("accounting", "outpost-read")].Gives(
@@ -37,7 +36,7 @@ public sealed class SubscriptionsLineTests : IDisposable
         Assert.Single(run.Rows, row => !row.Passed);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_subscription_whose_handler_names_no_common_module_is_named_as_such_beside_the_others()
     {
         Machine.Workers.Sessions[("accounting", "outpost-read")].Gives(
@@ -55,7 +54,7 @@ public sealed class SubscriptionsLineTests : IDisposable
     }
 
     // A base that the policy lets be read alone takes no Write, so its subscriptions are not judged.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_base_without_write_has_no_line_of_its_subscriptions()
     {
         CheckRun run = await _checked.RunAsync();

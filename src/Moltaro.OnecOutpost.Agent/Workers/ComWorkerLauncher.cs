@@ -68,17 +68,15 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     }
 
     // Logs on the worker account of the base, before any Start. Each failure closes the token and throws
-    // AgentStopException, never with the password:
+    // AgentStopException, never with the password, with the reasons that the console's check shares
+    // (WorkerAccountReasons):
     // 1. WorkerLogon.LogOn, a batch logon whose password is zeroed after the call. Failure: the worker account {account}
-    //    of the base {key} cannot log on: {the Win32 message}, which is also the reason when the token's groups or
-    //    privileges cannot be read;
-    // 2. WorkerLogon.IsOrdinary: the worker account {account} of the base {key} is an administrator or holds a privilege
-    //    beyond an ordinary user's; expected a local user that is not in Administrators, as the console's install
-    //    prepares it;
-    // 3. the agent's token holds AccountRightNames.AgentPrivileges, enabled or not, since
-    //    CreateProcessAsUserW enables them: the agent's account lacks the right "Replace a process level token" or
-    //    "Adjust memory quotas for a process"; install the agent with the console. When the agent's privileges cannot
-    //    be read: the privileges of the agent's account cannot be read: {the Win32 message};
+    //    of the base {key} cannot log on: {WorkerAccountReasons.CannotLogOn}, which is also the reason when the token's
+    //    groups or privileges cannot be read;
+    // 2. WorkerLogon.IsOrdinary: the worker account {account} of the base {key} {WorkerAccountReasons.NotOrdinary};
+    // 3. the agent's token holds AccountRightNames.AgentPrivileges, enabled or not, since CreateProcessAsUserW enables
+    //    them: the agent's account {WorkerAccountReasons.AgentLacksPrivileges}. When the agent's privileges cannot be
+    //    read: the privileges of the agent's account cannot be read: {the Win32 message};
     // 4. WorkerDesktop.Make for the token, then Use with both (the S9c brief, "The desktop of a worker"): the worker
     //    account {account} of the base {key} cannot get a desktop: {the Win32 message}.
     // The logon comes first, so that a missing account gives 1326 whatever the agent holds. The token and the desktop
@@ -103,8 +101,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
             if (!ordinary)
             {
-                throw new AgentStopException(
-                    $"the worker account {account} of the base {baseKey} is an administrator or holds a privilege beyond an ordinary user's; expected a local user that is not in Administrators, as the console's install prepares it");
+                throw new AgentStopException($"the worker account {account} of the base {baseKey} {WorkerAccountReasons.NotOrdinary}");
             }
 
             bool agentMayStart;
@@ -122,8 +119,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
             if (!agentMayStart)
             {
-                throw new AgentStopException(
-                    "the agent's account lacks the right \"Replace a process level token\" or \"Adjust memory quotas for a process\"; install the agent with the console");
+                throw new AgentStopException($"the agent's account {WorkerAccountReasons.AgentLacksPrivileges}");
             }
 
             WorkerDesktop desktop;
@@ -247,11 +243,11 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
         return new NoProcess();
     }
 
-    // The message of Windows for its error code holds the code's meaning alone, never a value given to the call.
+    // The sentence of the code, which holds no value given to the call.
     private static AgentStopException CannotLogOn(string baseKey, string account, int error)
     {
         return new AgentStopException(
-            $"the worker account {account} of the base {baseKey} cannot log on: {new Win32Exception(error).Message}");
+            $"the worker account {account} of the base {baseKey} cannot log on: {WorkerAccountReasons.CannotLogOn(baseKey, error)}");
     }
 
     // Puts the suspended worker into the job and resumes its thread by WorkerCreation.JoinAndResume, which terminates a

@@ -13,6 +13,9 @@ namespace Moltaro.OnecOutpost.Agent.Start;
 // judges many entries gives the reason of each; one that reads a file throws its reason.
 internal static class StartChecks
 {
+    // The remedy of a secrets.dat that cannot be used.
+    private const string PairAnew = $"to pair the agent anew, remove {AgentFolders.PairingName}, if any, and run the console's pair";
+
     // The paths, relative to the data folder, whose access lists a start judges: the folder itself, audit and outcomes,
     // those of the three files that rootNames holds, each audit file and each file of the outbox.
     public static IReadOnlyList<string> DataPaths(
@@ -29,7 +32,9 @@ internal static class StartChecks
         return paths;
     }
 
-    // The reason why the entry at the path admits somebody else, or null when others IsEmpty.
+    // The reason why the entry at the path admits somebody else, or null when others IsEmpty, each with a remedy that
+    // exists: an owner who is somebody else first, who can always change the access list (Q14), with the icacls command
+    // that makes Administrators the owner, then the accounts of the entries, with what to do for the entry's kind.
     public static string? AccessReason(string path, OtherAccounts others)
     {
         if (others.IsEmpty)
@@ -37,13 +42,28 @@ internal static class StartChecks
             return null;
         }
 
-        return $"the access list of {EntryOf(path)} admits {string.Join(", ", others.All)}; expected nobody but Administrators, SYSTEM and the agent's account, as the console's install sets it";
+        string entry = EntryOf(path);
+        List<string> reasons = [];
+
+        if (others.Owner is string owner)
+        {
+            reasons.Add(
+                $"{entry} is owned by {owner}, who can change its access list; make Administrators its owner with icacls \"{others.FullPath}\" /setowner *S-1-5-32-544, run as administrator");
+        }
+
+        if (others.Entries.Count > 0)
+        {
+            reasons.Add(
+                $"the access list of {entry} admits {string.Join(", ", others.Entries)}; expected nobody but Administrators, SYSTEM and the agent's account: {RemedyOf(path, others.FullPath)}");
+        }
+
+        return string.Join("; ", reasons);
     }
 
     // The reason why the entry at the full path lets the accounts change the code that the agent's account runs.
     public static string WritersReason(string path, IReadOnlyList<string> accounts)
     {
-        return $"the access list of {path} lets {string.Join(", ", accounts)} change it; expected nobody but Administrators, SYSTEM, TrustedInstaller and the agent's account, as the console's install sets it";
+        return $"the access list of {path} lets {string.Join(", ", accounts)} change it; expected nobody but Administrators, SYSTEM, TrustedInstaller and the agent's account: remove their entries, and make Administrators the owner of what they own";
     }
 
     // agent.json, absent or unreadable an AgentStopException.
@@ -51,7 +71,7 @@ internal static class StartChecks
     {
         if (!rootNames.Contains(AgentFolders.PairingName))
         {
-            throw new AgentStopException($"{AgentFolders.PairingName} is absent: the agent is not paired; pair it with the console");
+            throw new AgentStopException($"{AgentFolders.PairingName} is absent: the agent is not paired; pair it with the console's pair");
         }
 
         try
@@ -64,12 +84,13 @@ internal static class StartChecks
         }
     }
 
-    // secrets.dat, absent, unreadable or not decrypted an AgentStopException.
+    // secrets.dat, absent, unreadable or not decrypted an AgentStopException. The console's pair writes it, and refuses
+    // while agent.json exists, so the remedy of an absent file and of one that does not decrypt removes agent.json first.
     public static AgentSecrets ReadSecrets(IAgentFolder root, IReadOnlyList<string> rootNames, IMachineProtection protection)
     {
         if (!rootNames.Contains(AgentFolders.SecretsName))
         {
-            throw new AgentStopException($"{AgentFolders.SecretsName} is absent; write the secrets with the console");
+            throw new AgentStopException($"{AgentFolders.SecretsName} is absent; {PairAnew}");
         }
 
         try
@@ -83,7 +104,7 @@ internal static class StartChecks
         catch (CryptographicException)
         {
             // Such as a file copied from another machine.
-            throw new AgentStopException($"{AgentFolders.SecretsName} cannot be decrypted on this machine; write the secrets with the console");
+            throw new AgentStopException($"{AgentFolders.SecretsName} cannot be decrypted on this machine; {PairAnew}");
         }
     }
 
@@ -111,7 +132,7 @@ internal static class StartChecks
     }
 
     // A mode that the policy serves needs the password of its account, and a base with a worker account the password of
-    // that account: every one missing, in the policy's order.
+    // that account: every one missing, in the policy's order, each with the console's secret that writes it.
     public static IReadOnlyList<string> MissingPasswords(AgentPolicy policy, AgentSecrets secrets)
     {
         List<string> missing = [];
@@ -120,17 +141,17 @@ internal static class StartChecks
         {
             if (!secrets.Passwords.ContainsKey((basePolicy.Key, OutpostModeEnum.Read)))
             {
-                missing.Add($"{AgentFolders.SecretsName} holds no password for the read mode of the base {basePolicy.Key}; write it with the console");
+                missing.Add($"{AgentFolders.SecretsName} holds no password for the read mode of the base {basePolicy.Key}; write it with secret {basePolicy.Key} read");
             }
 
             if (basePolicy.Write is not null && !secrets.Passwords.ContainsKey((basePolicy.Key, OutpostModeEnum.Write)))
             {
-                missing.Add($"{AgentFolders.SecretsName} holds no password for the write mode of the base {basePolicy.Key}; write it with the console");
+                missing.Add($"{AgentFolders.SecretsName} holds no password for the write mode of the base {basePolicy.Key}; write it with secret {basePolicy.Key} write");
             }
 
             if (basePolicy.Write?.WorkerAccount is not null && !secrets.WorkerPasswords.ContainsKey(basePolicy.Key))
             {
-                missing.Add($"{AgentFolders.SecretsName} holds no password for the worker account of the base {basePolicy.Key}; write it with the console");
+                missing.Add($"{AgentFolders.SecretsName} holds no password for the worker account of the base {basePolicy.Key}; write it with secret {basePolicy.Key} worker");
             }
         }
 
@@ -141,6 +162,28 @@ internal static class StartChecks
     private static string EntryOf(string path)
     {
         return path.Length == 0 ? "the data folder" : path;
+    }
+
+    // What to do about an entry that admits somebody else: the data folder and its two folders hold what may not be lost,
+    // so their lists are corrected; a file gets its folder's list again, and whoever secrets.dat admitted could have
+    // decrypted it, since DPAPI for the machine lets every local process decrypt.
+    private static string RemedyOf(string path, string fullPath)
+    {
+        const string Correct = "inspect and correct its access list as install sets it; never remove it, which holds";
+
+        return path switch
+        {
+            "" => $"{Correct} the audit log and the outcomes not yet sent",
+            AgentFolders.AuditName => $"{Correct} the audit log",
+            AgentFolders.OutcomesName => $"{Correct} the outcomes not yet sent",
+            AgentFolders.SecretsName => $"{ResetFile(fullPath)}; whoever it admitted could decrypt it: pair the agent anew and change the passwords it held",
+            _ => ResetFile(fullPath),
+        };
+    }
+
+    private static string ResetFile(string fullPath)
+    {
+        return $"inspect it, then reset it to its folder's with icacls \"{fullPath}\" /reset, run as administrator";
     }
 
     // A file of the data folder itself, read whole; an IOException is an AgentStopException naming the file.

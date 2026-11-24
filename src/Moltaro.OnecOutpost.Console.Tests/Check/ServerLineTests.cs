@@ -34,7 +34,7 @@ public sealed class ServerLineTests : IDisposable
         _checked.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Check_sends_the_server_one_outcome_of_a_made_up_command_refused_as_not_addressed_and_signed_by_the_agent()
     {
         OutpostOutcomeRequest? sent = null;
@@ -58,7 +58,7 @@ public sealed class ServerLineTests : IDisposable
     }
 
     // The policy's requestTimeout, 20 seconds, on the fake clock.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_server_that_does_not_answer_within_the_request_timeout_of_the_policy_fails_the_line_as_unreachable()
     {
         Task<CommandAppResult> started = _checked.Start();
@@ -75,7 +75,7 @@ public sealed class ServerLineTests : IDisposable
 
     // Each row of the table of an outcome, as the agent's connection judges the answer (§9), its status when one came;
     // ServerAnswerSentencesTests states the words of each.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("a failed connection", null, "Unreachable", null)]
     [InlineData("the unsigned answer of a version not spoken", 400, "ProtocolVersion", null)]
     [InlineData("a 200 signed by another key", 200, "Signature", null)]

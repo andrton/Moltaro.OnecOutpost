@@ -4,7 +4,6 @@ using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 using Moltaro.OnecOutpost.Protocol;
-using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Check;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
@@ -27,7 +26,7 @@ public sealed class CheckRunTests : IDisposable
         _checked.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task On_a_machine_where_everything_holds_every_line_passes_in_the_order_of_the_stage_contract_and_check_ends_with_Success()
     {
         CheckRun run = await _checked.RunAsync();
@@ -69,7 +68,7 @@ public sealed class CheckRunTests : IDisposable
     }
 
     // The passed reasons of the brief's table, word for word where the brief gives them whole.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Each_line_that_passes_gives_its_reason()
     {
         CheckRun run = await _checked.RunAsync();
@@ -116,7 +115,7 @@ public sealed class CheckRunTests : IDisposable
         Assert.EndsWith(" by 0 ms ± 1 ms, within 00:02:00", skew, StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Check_takes_its_steps_in_their_order()
     {
         await _checked.RunAsync();
@@ -137,7 +136,7 @@ public sealed class CheckRunTests : IDisposable
 
     // The protocol (§6.2): a poll of check would replace the poll that the running service holds, so check sends none,
     // and reaches the server by one outcome alone.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Check_sends_no_poll_so_the_newest_poll_of_the_running_service_is_not_replaced()
     {
         await _checked.RunAsync();
@@ -149,7 +148,7 @@ public sealed class CheckRunTests : IDisposable
 
     // check works while the service runs, which holds the audit log and writes the outbox: it changes no file of the data
     // folder, takes no lock there, and changes nothing else of the machine, neither a right, a folder nor the service.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Check_only_reads_the_data_folder_and_changes_nothing_of_the_machine()
     {
         string outcome = $"{Guid.NewGuid()}.json";
@@ -172,7 +171,7 @@ public sealed class CheckRunTests : IDisposable
 
     // check runs Reads of its own scripts alone (the S10b brief, "The connections"), every worker in safe mode whatever
     // the policy says of the Writes of its base, such as accounting's without safe mode.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Every_worker_runs_its_scripts_in_read_mode_and_in_safe_mode_with_the_account_of_the_policy_and_its_password()
     {
         await _checked.RunAsync();
@@ -204,7 +203,7 @@ public sealed class CheckRunTests : IDisposable
 
     // The read account runs the scripts of its user, of the subscriptions for a base with write, and of its rights; the
     // write account the first alone.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_read_account_runs_the_scripts_of_its_user_its_subscriptions_and_its_rights_and_the_write_account_that_of_its_user()
     {
         await _checked.RunAsync();
@@ -223,7 +222,7 @@ public sealed class CheckRunTests : IDisposable
 
     // The service runs every worker of a base with a worker account under it (D12), so check does as well, through the
     // Secondary Logon service; a base without one under the console's own token.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_workers_of_a_base_with_a_worker_account_run_under_it_and_those_of_a_base_without_one_under_the_console()
     {
         await _checked.RunAsync();
@@ -235,7 +234,7 @@ public sealed class CheckRunTests : IDisposable
 
     // Each failed logon counts toward a lockout of the account, so check logs each worker account on once per run, for
     // its line, its probe and the workers of its base, with the password of secrets.dat.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Each_worker_account_logs_on_once_per_run_with_the_password_of_secrets_dat()
     {
         await _checked.RunAsync();
@@ -244,7 +243,7 @@ public sealed class CheckRunTests : IDisposable
         Assert.Single(Machine.Operations, line => line.StartsWith("logon ", StringComparison.Ordinal));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Every_worker_and_every_worker_account_of_check_is_closed_by_its_end()
     {
         await _checked.RunAsync();

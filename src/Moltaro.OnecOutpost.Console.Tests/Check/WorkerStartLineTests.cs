@@ -2,7 +2,6 @@ using System.ComponentModel;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
@@ -44,7 +43,7 @@ public sealed class WorkerStartLineTests : IDisposable
     }
 
     // The workers of the account run the base's Writes, so the probe has the write mode's run limit.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_probe_starts_the_worker_of_the_program_folder_for_the_base_within_the_run_limit_of_its_write_mode()
     {
         Machine.Data.Root.Seed(AgentFolders.PolicyName, Policy);
@@ -55,7 +54,7 @@ public sealed class WorkerStartLineTests : IDisposable
         Assert.Single(Machine.Operations, $"probe accounting {CheckedMachine.WorkerAccount} {CheckedMachine.Program} within 00:03:00");
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(0xC0000142u, "the worker failed to initialise on its desktop (STATUS_DLL_INIT_FAILED): the account or the desktop lacks access")]
     [InlineData(1u, "the worker refused its command line (exit code 1): the program folder holds another build")]
     [InlineData(0xE0434352u, "the worker ended with exit code 0xE0434352")]
@@ -70,7 +69,7 @@ public sealed class WorkerStartLineTests : IDisposable
         AssertNoConnectionOfAccounting(run);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_probe_that_did_not_end_within_its_deadline_fails_the_line_naming_the_run_limit()
     {
         Machine.Workers.ProbeExits[CheckedMachine.WorkerAccount] = null;
@@ -85,7 +84,7 @@ public sealed class WorkerStartLineTests : IDisposable
     }
 
     // The errors of the call that the brief names, and one that it does not, with the message of Windows.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(1314, "the console lacks \"Impersonate a client after authentication\"")]
     [InlineData(1058, "the Secondary Logon service is disabled; check does not start it")]
     [InlineData(2, "{program} is missing")]
@@ -105,7 +104,7 @@ public sealed class WorkerStartLineTests : IDisposable
         AssertNoConnectionOfAccounting(run);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_account_that_gets_no_desktop_fails_the_line_with_the_message_of_Windows_and_starts_nothing()
     {
         Machine.Workers.DesktopFailures[CheckedMachine.WorkerAccount] = new Win32Exception(1307, "the fake station refused the desktop");

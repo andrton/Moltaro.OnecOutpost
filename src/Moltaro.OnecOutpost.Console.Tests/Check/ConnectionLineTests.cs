@@ -27,7 +27,7 @@ public sealed class ConnectionLineTests : IDisposable
     }
 
     // 193, ERROR_BAD_EXE_FORMAT.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_that_Windows_does_not_start_fails_the_line_with_the_error_of_Windows()
     {
         Machine.Workers.StartFailures["warehouse"] = new Win32Exception(193, "the fake program is not a valid application");
@@ -42,7 +42,7 @@ public sealed class ConnectionLineTests : IDisposable
     }
 
     // The COM worker writes why 1C opened no session to its standard error, withholding a text that holds the password.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_session_that_1C_does_not_open_fails_the_line_with_the_diagnostics_of_the_worker()
     {
         const string Diagnostics = "No session opened: the user name or the password is wrong";
@@ -57,7 +57,7 @@ public sealed class ConnectionLineTests : IDisposable
         Assert.Single(run.Rows, row => !row.Passed);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_session_that_1C_does_not_open_without_diagnostics_fails_the_line_saying_that_the_worker_gave_no_reason()
     {
         Machine.Workers.Sessions[("accounting", "outpost-write")].RefuseOpen("");
@@ -70,7 +70,7 @@ public sealed class ConnectionLineTests : IDisposable
     }
 
     // The first worker that check starts, so that no other wait of check is on the clock.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_session_that_does_not_open_within_the_run_limit_of_the_mode_fails_the_line_and_its_worker_is_killed()
     {
         Machine.Workers.Sessions[("accounting", "outpost-read")].HangOpen();
@@ -92,7 +92,7 @@ public sealed class ConnectionLineTests : IDisposable
         run.Passed(CheckLineEnum.Connection, "accounting", "outpost-write");
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_script_of_the_check_that_fails_in_1C_fails_the_line_with_its_kind_its_code_and_the_text_of_1C()
     {
         Machine.Workers.Sessions[("warehouse", "outpost-read")].Fails(FakeCheckProcess.UserScript, "The fake session refused the call");
@@ -106,7 +106,7 @@ public sealed class ConnectionLineTests : IDisposable
         Assert.StartsWith("not checked: ", run.Failed(CheckLineEnum.ReadRights, "warehouse"), StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_script_of_the_check_that_does_not_end_within_the_run_limit_of_the_mode_fails_the_line_and_its_worker_is_killed()
     {
         Machine.Workers.Sessions[("accounting", "outpost-read")].Overruns(FakeCheckProcess.UserScript);
@@ -126,7 +126,7 @@ public sealed class ConnectionLineTests : IDisposable
 
     // A session of another user, such as an operating system authentication that 1C preferred, would judge the rights
     // of that user.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_session_of_another_user_than_the_account_of_the_policy_fails_the_line_naming_both()
     {
         Machine.Workers.Sessions[("warehouse", "outpost-read")] = new FakeSession("Administrator", "The administrator");
@@ -140,7 +140,7 @@ public sealed class ConnectionLineTests : IDisposable
         Assert.StartsWith("not checked: ", run.Failed(CheckLineEnum.ReadRights, "warehouse"), StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_session_whose_user_differs_from_the_account_of_the_policy_in_case_alone_passes()
     {
         Machine.Workers.Sessions[("warehouse", "outpost-read")] = new FakeSession("Outpost-Read", "Outpost read");
@@ -151,7 +151,7 @@ public sealed class ConnectionLineTests : IDisposable
     }
 
     // 1C opens a base without users to anybody, with every right, whatever the account.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_base_without_users_fails_the_line_since_every_connection_has_every_right()
     {
         Machine.Workers.Sessions[("warehouse", "outpost-read")] = new FakeSession("", "");

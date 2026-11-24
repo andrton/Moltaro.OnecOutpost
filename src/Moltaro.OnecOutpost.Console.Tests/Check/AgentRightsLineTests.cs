@@ -2,7 +2,6 @@ using System.ComponentModel;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
@@ -21,7 +20,7 @@ public sealed class AgentRightsLineTests : IDisposable
         _checked.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Check_reads_the_rights_that_the_agent_account_holds_itself()
     {
         await _checked.RunAsync();
@@ -29,7 +28,7 @@ public sealed class AgentRightsLineTests : IDisposable
         Assert.Single(Machine.Operations, $"held {TestMachine.AgentSid}");
     }
 
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData(AccountRightNames.AssignPrimaryToken)]
     [InlineData(AccountRightNames.IncreaseQuota)]
     public async Task An_agent_account_that_lacks_one_of_its_two_privileges_fails_the_line_with_the_remedy_and_no_other_line(string held)
@@ -43,7 +42,7 @@ public sealed class AgentRightsLineTests : IDisposable
         Assert.Single(run.Rows, row => !row.Passed);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Rights_that_cannot_be_read_fail_the_line_with_the_error_of_Windows()
     {
         Machine.Rights.HeldFailure = new Win32Exception(5, "the fake LSA refused");

@@ -13,6 +13,15 @@ internal static partial class WorkerCreation
     // CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, EXTENDED_STARTUPINFO_PRESENT and CREATE_NO_WINDOW.
     private const uint CreationFlags = 0x00000004 | 0x00000400 | 0x00080000 | 0x08000000;
 
+    // The same but EXTENDED_STARTUPINFO_PRESENT, which CreateProcessWithTokenW does not take. The Secondary Logon service
+    // creates the process as with CREATE_NEW_CONSOLE, so CREATE_NO_WINDOW is ignored and a console window opens on the
+    // worker's desktop.
+    private const uint WithTokenFlags = 0x00000004 | 0x00000400 | 0x08000000;
+
+    // dwLogonFlags of CreateProcessWithTokenW: neither LOGON_WITH_PROFILE nor LOGON_NETCREDENTIALS_ONLY, so no profile is
+    // loaded, as under the agent.
+    private const int NoLogonFlags = 0;
+
     // STARTF_USESTDHANDLES.
     private const int UseStandardHandles = 0x00000100;
 
@@ -45,7 +54,7 @@ internal static partial class WorkerCreation
     {
         if (call == WorkerCallEnum.WithToken)
         {
-            throw new NotSupportedException("CreateProcessWithTokenW through the Secondary Logon service is S10b's implementation.");
+            return WithToken(token, program, commandLine, desktop, input, output, error);
         }
 
         return AsUser(token, program, commandLine, desktop, input, output, error);
@@ -173,6 +182,65 @@ internal static partial class WorkerCreation
         }
     }
 
+    // CreateProcessWithTokenW: the Secondary Logon service creates the process with the token, which needs no privilege
+    // but "Impersonate a client after authentication" of the caller, and gives it duplicates of the standard handles
+    // alone, so it takes no list of handles and inherits nothing else of the caller; its STARTUPINFOW is the extended
+    // form's without the list of attributes.
+    private static unsafe (SafeProcessHandle Process, nint Thread) WithToken(
+        SafeAccessTokenHandle token,
+        string program,
+        string commandLine,
+        string desktop,
+        SafePipeHandle input,
+        SafePipeHandle output,
+        SafePipeHandle? error)
+    {
+        if (!CreateEnvironmentBlock(out nint environment, token, inherit: false))
+        {
+            throw new Win32Exception(Marshal.GetLastPInvokeError());
+        }
+
+        try
+        {
+            // CreateProcessWithTokenW may write into the command line, so it gets a copy of its own, ended by a null.
+            char[] line = [.. commandLine, '\0'];
+
+            fixed (char* desktopName = desktop)
+            fixed (char* lineStart = line)
+            {
+                StartupInfo startup = new()
+                {
+                    Size = (int)Marshal.OffsetOf<StartupInfo>(nameof(StartupInfo.AttributeList)),
+                    Desktop = (nint)desktopName,
+                    Flags = UseStandardHandles,
+                    StandardInput = input.DangerousGetHandle(),
+                    StandardOutput = output.DangerousGetHandle(),
+                    StandardError = error?.DangerousGetHandle() ?? 0,
+                };
+
+                if (!CreateProcessWithTokenW(
+                    token,
+                    NoLogonFlags,
+                    program,
+                    lineStart,
+                    WithTokenFlags,
+                    environment,
+                    Path.GetDirectoryName(program)!,
+                    in startup,
+                    out ProcessInformation created))
+                {
+                    throw new Win32Exception(Marshal.GetLastPInvokeError());
+                }
+
+                return (new SafeProcessHandle(created.Process, ownsHandle: true), created.Thread);
+            }
+        }
+        finally
+        {
+            DestroyEnvironmentBlock(environment);
+        }
+    }
+
     [LibraryImport("userenv.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool CreateEnvironmentBlock(
@@ -211,6 +279,19 @@ internal static partial class WorkerCreation
         nint processAttributes,
         nint threadAttributes,
         [MarshalAs(UnmanagedType.Bool)] bool inheritHandles,
+        uint creationFlags,
+        nint environment,
+        string currentDirectory,
+        in StartupInfo startupInfo,
+        out ProcessInformation processInformation);
+
+    [LibraryImport("advapi32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static unsafe partial bool CreateProcessWithTokenW(
+        SafeAccessTokenHandle token,
+        int logonFlags,
+        string applicationName,
+        char* commandLine,
         uint creationFlags,
         nint environment,
         string currentDirectory,
