@@ -31,8 +31,13 @@ public sealed class CheckTests
 
         CheckRow subscriptions = check.Row(CheckLineEnum.Subscriptions, LabTestBase.Key);
         Assert.False(subscriptions.Passed, subscriptions.ToString());
-        Assert.Contains("NoteBeforeWrite (BeforeWrite) in NoteChecks", subscriptions.Reason, StringComparison.Ordinal);
-        Assert.DoesNotContain("NoteFormGet", subscriptions.Reason, StringComparison.Ordinal);
+
+        const string EnglishReason = """a Write that reaches these fails: NoteBeforeWrite (BeforeWrite) in NoteChecks; set "External connection" of each module""";
+        const string RussianReason = """a Write that reaches these fails: NoteBeforeWrite (ПередЗаписью) in NoteChecks; set "External connection" of each module""";
+        Assert.True(
+            subscriptions.Reason is EnglishReason or RussianReason,
+            $"Expected NoteBeforeWrite with its platform event name in the NoteChecks common module. The lab reported {subscriptions}");
+
         Assert.All(
             check.Rows.Where(row => row != subscriptions),
             row => Assert.True(row.Passed, $"The line {row} did not pass; the table:\n{string.Join("\n", check.Rows)}"));
