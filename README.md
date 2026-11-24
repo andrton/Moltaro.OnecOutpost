@@ -151,12 +151,12 @@ needs a console run as administrator, and ends with an exit code that says why:
   each passed or failed with its reason: the COM connector; `policy.json`, `agent.json`
   and `secrets.dat`, read as the agent's start reads them; the access lists of the data
   folder, the program folder and the connector's folder; the agent's two rights; for each
-  base its worker account, a start of the worker under it, the connection under each
-  account, the event subscriptions that a Write would reach and that an external
-  connection cannot run, and the rights to change data that its read account holds; the
-  server, by one outcome of a made-up command signed with the agent's key, and the clock
-  skew. It writes nothing to a base or to the data folder, runs only Reads of its own in
-  safe mode, never polls, and works while the service runs. It starts no worker while the
+  base its worker account, a start of the worker under it, the connection in each
+  configured mode, the event subscriptions that a Write would reach and that an external
+  connection cannot run, and the read account's rights to change data, grouped by kind
+  of object. It checks the server and clock skew with one outcome of a made-up command
+  signed with the agent's key. It writes nothing to a base or to the data folder, runs only
+  Reads of its own in safe mode, never polls, and works while the service runs. It starts no worker while the
   data folder admits somebody else, nor from a folder that someone else may change, and
   logs each worker account on once. Where the
   agent's start and `check` judge the same thing, they give the same reason, with its
@@ -166,17 +166,19 @@ needs a console run as administrator, and ends with an exit code that says why:
   pages through the executor, in safe mode under the base's read account, halving a page
   that is too large or reaches the run limit, and writes one JSON file, whole or not at
   all, that must be new and lie outside the data folder. A storage structure that the read
-  account may not read is recorded as unavailable with its reason, and an object that
-  fails is recorded and counted. Like `check`, it starts no worker while a line of
-  `check`'s rule for a worker fails, writes nothing to a base or to the data folder, never
-  reaches the server, and works while the service runs.
+  account may not read is recorded as unavailable with its reason. An unreadable
+  configuration property is recorded with its error, and an object with a property
+  error is kept with the properties that could be read and counted as failed. Like
+  `check`, it waits for its workers to exit before returning. It starts no worker while
+  a line of `check`'s rule for a worker fails, writes nothing to a base or to the data
+  folder, never reaches the server, and works while the service runs.
 
 An agent is set up with `install`, then the administrator's `policy.json`, `pair`,
 `secret` for each password the policy needs, and `check`, before its service is started;
 the guide [Installing and running an agent](docs/guides/agent.md) walks through it. These commands are tested against fakes of Windows, and in CI's elevated
-Windows job against the service controller, LSA and the access lists. The tests of `check`
-and `metadata` against a real 1C are written; their run on the lab machine is the next
-step. Limitations of `check`: the
+Windows job against the service controller, LSA and the access lists. The first run of
+`check` and `metadata` on the lab with a real 1C found defects. A repeat lab run checks the
+fixes. Limitations of `check`: the
 write account is checked in Read and safe mode; the start of the worker runs in the
 console's session, not in the service's; it sees a right of the agent's account only when
 it was granted to the account itself; it judges a connector's folder and its parents, not

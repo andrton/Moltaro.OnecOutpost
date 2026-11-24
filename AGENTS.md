@@ -40,9 +40,9 @@ against a real 1C passed on the lab, with a server of the test, those of the wor
 account included. The console installs, pairs and uninstalls an agent, writes its secrets
 and registers the COM connector (`install`, `uninstall`, `pair`, `secret` and `connector
 register`), checks the agent machine (`check`) and writes a metadata report of a base
-(`metadata`), tested against fakes; their run against a real 1C on the lab is the next
-step. When the agent stops for a fault after its start, its audit log records why
-(`stopped`). The server is the one
+(`metadata`). See the README for the status of the lab tests that run `check` and
+`metadata` against a real 1C. When the agent stops for a fault after its start, its audit
+log records why (`stopped`). The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions

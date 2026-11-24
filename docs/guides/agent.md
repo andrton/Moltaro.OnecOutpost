@@ -512,8 +512,8 @@ read and written in safe mode, on a machine where everything is right:
 | Check | Result | Reason |
 | --- | --- | --- |
 | `Connector` | passed | `64-bit: C:\Program Files\1cv8\<version>\bin\comcntr.dll, <version>, is registered; the workers start with it` |
-| `Connection test outpost-read` | passed | `opened as outpost-read (<full name>)` |
-| `Connection test outpost-write` | passed | `opened as outpost-write (<full name>)` |
+| `Connection test read outpost-read` | passed | `opened as outpost-read (<full name>)` |
+| `Connection test write outpost-write` | passed | `opened as outpost-write (<full name>)` |
 | `Subscriptions test` | failed | `a Write that reaches these fails: NoteBeforeWrite (BeforeWrite) in NoteChecks; set "External connection" of each module` |
 | `ReadRights test` | passed | `outpost-read holds no right to change data` |
 | `Server` | passed | `<server address> confirmed an outcome of a made-up command from <agent id>: it is reachable and accepts the agent's key` |
@@ -532,7 +532,8 @@ also has the lines `WorkerAccount` and `WorkerStart`.
 
 What `check` costs and does not cover:
 
-- each COM worker it starts holds a client licence of 1C while it is open, one at a time;
+- each COM worker it starts holds a client licence of 1C while it is open, one at a time. `check` waits for each
+  worker to exit before it returns;
 - the write account is checked in a Read, in safe mode, so its first Write without safe mode opens at the service's
   first Write;
 - the start under a worker account runs in the console's session, not in the service's;
@@ -556,8 +557,9 @@ not checked.
 
 ### Connection
 
-One line for each base and account, read then write: a COM worker opens the base under the account, in safe mode, and
-asks 1C who it is. Passed: `opened as {user} ({full name})`.
+`check` gives one line for each configured mode of a base, read then write. Each line names its mode, including when
+both modes use the same 1C account. A COM worker opens the base in safe mode and checks the session's user. A passing
+line says `opened as {user} ({full name})`.
 
 | Reason | Cause | Remedy |
 | --- | --- | --- |
@@ -581,10 +583,11 @@ One line for each base: the rights to change data that its read account holds. P
 change data`. Failed, for example:
 
 ```text
-outpost-read holds rights to change data: DataAdministration; Insert on 12 catalogs: Catalog.…, … and 2 more
+outpost-read holds rights to change data: DataAdministration; Insert, Update on 5 catalogs: Catalog.Products, Catalog.Notes, Catalog.… and 2 more
 ```
 
-Take from the read account the roles that give those rights. The first ten objects of each right are named.
+Remove the roles that grant those rights from the read account. For each kind of object, `check` lists the rights,
+counts the objects with at least one of those rights and names up to three of them.
 
 ### Server
 
@@ -849,8 +852,11 @@ table with the columns `Category`, `Found`, `Read` and `Failed`, and ends with:
 Wrote the metadata report of the base test to <folder>\test-metadata.json: <read> of <found> objects read, <failed> failed.
 ```
 
-The report is one JSON file, written whole or not at all; an object that could not be read is recorded with its error
-and counted as failed. When the read account may not read how the base is stored, it says
+The report is written atomically as one JSON file. If 1C cannot read the platform, configuration name, version or
+compatibility mode, `metadata` puts an `error` object in place of that value and names the property in the coverage
+table's caption. If reading an object's property fails, the report keeps the properties it could read, records the
+error and counts the object as failed. `metadata` waits for each worker to exit before it returns. When the read
+account may not read how the base is stored, it says
 `The storage structure could not be read: {reason}; the report holds the objects and their fields without it.`, and
 the report holds the rest. The file gets the access list of its folder, so put it where only those who should read the
 structure of the base can. A large configuration takes many Reads, each in the `runLimit` of the read mode; a
