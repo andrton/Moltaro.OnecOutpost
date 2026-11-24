@@ -19,7 +19,8 @@ internal interface IWorkerStarts
     // A worker of the program in read mode, "{program}" {base key} read, in a job of its own: with lpDesktop "" when
     // account is null, under a restricted version of the console's own token, without a privilege, with Administrators
     // for deny only and at medium integrity, so without the rights of an administrator and out of reach of the elevated
-    // terminal, yet still the administrator's own account, unelevated; else under the account on its desktop.
+    // terminal, yet still the administrator's own account, unelevated, whose default owner and list are the user's, so
+    // that the worker reopens what it creates; else under the account on its desktop.
     // Diagnostics is its standard error read to its end as UTF-8. A failed call is a Win32Exception with its code, a pipe
     // Windows cannot make an IOException.
     CheckWorker Start(IWorkerAccount? account, string program, string baseKey);

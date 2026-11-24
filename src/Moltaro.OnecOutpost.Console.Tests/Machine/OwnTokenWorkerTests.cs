@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
@@ -18,7 +19,8 @@ namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 // read to its end once the worker was disposed. Its token is a restricted version of the console's own (the contract
 // amended after the first code review), so that the code of a base does not run as an administrator: Administrators,
 // when the console's token holds it, for deny only, no privilege but SeChangeNotifyPrivilege, and an integrity level no
-// higher than medium, so that the base's code cannot send input to the elevated programs of the desktop.
+// higher than medium, so that the base's code cannot send input to the elevated programs of the desktop; and the user as
+// its default owner, with a default list that grants the user, so that the worker reopens what it creates.
 [Trait("Requires", "Windows")]
 [SupportedOSPlatform("windows")]
 public sealed partial class OwnTokenWorkerTests
@@ -42,6 +44,13 @@ public sealed partial class OwnTokenWorkerTests
     private const int InsufficientBuffer = 122;
 
     private const uint MediumIntegrity = 0x2000;
+
+    // TokenOwner and TokenDefaultDacl of TOKEN_INFORMATION_CLASS, and GENERIC_ALL.
+    private const int TokenOwnerClass = 4;
+
+    private const int TokenDefaultDaclClass = 6;
+
+    private const int GenericAll = 0x10000000;
 
     private static string TestProgram => Path.Combine(AppContext.BaseDirectory, "Moltaro.OnecOutpost.TestWorker.exe");
 
@@ -100,6 +109,36 @@ public sealed partial class OwnTokenWorkerTests
             group => Assert.Equal(DenyOnly, group.Attributes & (DenyOnly | Enabled)));
         Assert.Equal(["SeChangeNotifyPrivilege"], privileges);
         Assert.True(integrity <= MediumIntegrity, $"The worker runs at the integrity level 0x{integrity:X4}, above medium.");
+    }
+
+    // The default owner and list of the restricted token are the user's, as a token that is not elevated has them (the
+    // coordinator's decision after the second code review): an elevated console's are Administrators and a list for
+    // Administrators and SYSTEM, through which a worker that holds Administrators for deny only reopens nothing it creates.
+    [Fact]
+    public async Task A_worker_under_the_console_own_token_has_the_user_as_its_default_owner_and_a_default_list_that_grants_the_user_all_access()
+    {
+        CheckWorker worker = new WindowsWorkerStarts(TimeProvider.System).Start(null, TestProgram, "accounting");
+        SecurityIdentifier owner;
+        RawAcl? list;
+
+        using (worker.Process)
+        {
+            Assert.True(await TestTimes.EndOf(worker.Process.OpenAsync(Connection(), TestContext.Current.CancellationToken)));
+
+            using SafeAccessTokenHandle token = TokenOf((await ResultOfAsync(worker, "pid")).GetInt32());
+            owner = OwnerOf(token);
+            list = DefaultListOf(token);
+        }
+
+        using WindowsIdentity test = WindowsIdentity.GetCurrent();
+        SecurityIdentifier user = test.User!;
+        Assert.Equal(user, owner);
+        Assert.NotNull(list);
+        Assert.Contains(
+            list.Cast<GenericAce>(),
+            ace => ace is CommonAce { AceQualifier: AceQualifier.AccessAllowed } allowed
+                && allowed.SecurityIdentifier == user
+                && (allowed.AccessMask & GenericAll) == GenericAll);
     }
 
     // A connection line of a base on its cluster, which the test program answers with {"ready":true}.
@@ -173,6 +212,57 @@ public sealed partial class OwnTokenWorkerTests
             string sid = new SecurityIdentifier(*(nint*)start).Value;
 
             return uint.Parse(sid[(sid.LastIndexOf('-') + 1)..], CultureInfo.InvariantCulture);
+        }
+    }
+
+    // The token's default owner, TOKEN_OWNER, a pointer to its SID.
+    private static SecurityIdentifier OwnerOf(SafeAccessTokenHandle token)
+    {
+        nint sid = PointerOf(token, TokenOwnerClass, out byte[] buffer);
+        SecurityIdentifier owner = new(sid);
+
+        GC.KeepAlive(buffer);
+
+        return owner;
+    }
+
+    // The token's default list, TOKEN_DEFAULT_DACL, a pointer to an ACL whose second word is its length; null for none.
+    private static unsafe RawAcl? DefaultListOf(SafeAccessTokenHandle token)
+    {
+        nint acl = PointerOf(token, TokenDefaultDaclClass, out byte[] buffer);
+
+        if (acl == 0)
+        {
+            return null;
+        }
+
+        byte[] binary = new byte[*(ushort*)(acl + 2)];
+        Marshal.Copy(acl, binary, 0, binary.Length);
+        GC.KeepAlive(buffer);
+
+        return new RawAcl(binary, 0);
+    }
+
+    // The pointer with which the token's information of the class begins, such as TOKEN_OWNER's, into the buffer that
+    // holds what it points at, pinned, which the caller keeps alive while it reads there.
+    private static unsafe nint PointerOf(SafeAccessTokenHandle token, int informationClass, out byte[] buffer)
+    {
+        if (!GetTokenInformation(token, informationClass, null, 0, out int length)
+            && Marshal.GetLastPInvokeError() != InsufficientBuffer)
+        {
+            throw new Win32Exception(Marshal.GetLastPInvokeError());
+        }
+
+        buffer = GC.AllocateArray<byte>(length, pinned: true);
+
+        fixed (byte* start = buffer)
+        {
+            if (!GetTokenInformation(token, informationClass, start, length, out _))
+            {
+                throw new Win32Exception(Marshal.GetLastPInvokeError());
+            }
+
+            return *(nint*)start;
         }
     }
 

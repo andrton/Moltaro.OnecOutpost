@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
@@ -29,8 +30,8 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
     private const uint KilledExitCode = uint.MaxValue;
 
     // What CreateRestrictedToken needs of the console's own primary token, and SetTokenInformation, CreateProcessAsUserW
-    // and CreateEnvironmentBlock of the restricted one, which has the same access: TOKEN_ADJUST_DEFAULT sets its
-    // integrity level.
+    // and CreateEnvironmentBlock of the restricted one, which has the same access: TOKEN_ADJUST_DEFAULT sets its default
+    // owner, its default list and its integrity level.
     private const TokenAccessLevels OwnTokenAccess =
         TokenAccessLevels.AssignPrimary
         | TokenAccessLevels.Duplicate
@@ -47,6 +48,13 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
     private const string MediumIntegrity = "S-1-16-8192";
 
     private const uint GroupIntegrity = 0x20;
+
+    // TokenOwner and TokenDefaultDacl of TOKEN_INFORMATION_CLASS, and GENERIC_ALL, which the default list gives.
+    private const int TokenOwnerClass = 4;
+
+    private const int TokenDefaultDaclClass = 6;
+
+    private const int GenericAll = 0x10000000;
 
     // The clock of the probe's deadline.
     private TimeProvider Clock { get; } = clock;
@@ -234,15 +242,16 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
     // The console's own primary token restricted, so that the code that 1C runs when it opens a base, which somebody
     // else may have written, runs without the rights of an administrator and cannot reach the elevated terminal of
     // check: DISABLE_MAX_PRIVILEGE, Administrators for deny only, when the token holds it, and medium integrity, so that
-    // User Interface Privilege Isolation keeps it from the elevated programs of the desktop. It is still the
-    // administrator's own account, unelevated, with its profile and the secrets DPAPI keeps for it. Lowering the level
-    // needs no privilege. A failure is a Win32Exception.
+    // User Interface Privilege Isolation keeps it from the elevated programs of the desktop. Its default owner and list
+    // are the user's, as a token that is not elevated has them: an elevated token's, Administrators and a list for
+    // Administrators and SYSTEM, would keep the worker, which holds Administrators for deny only, from reopening what it
+    // and 1C create without a descriptor of their own. It is still the administrator's own account, unelevated, with its
+    // profile and the secrets DPAPI keeps for it. These changes need no privilege. A failure is a Win32Exception.
     private static unsafe SafeAccessTokenHandle RestrictedOwnToken()
     {
         using WindowsIdentity own = WindowsIdentity.GetCurrent(OwnTokenAccess);
-        SecurityIdentifier administrators = new(WellKnownSidType.BuiltinAdministratorsSid, null);
-        byte[] sid = new byte[administrators.BinaryLength];
-        administrators.GetBinaryForm(sid, 0);
+        SecurityIdentifier user = own.User!;
+        byte[] sid = BinaryOf(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null));
 
         fixed (byte* sidStart = sid)
         {
@@ -259,6 +268,7 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
 
             try
             {
+                SetUserDefaults(restricted, user);
                 SetMediumIntegrity(restricted);
             }
             catch
@@ -271,13 +281,39 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         }
     }
 
+    // TOKEN_OWNER with the user, who may always own what the token creates, and TOKEN_DEFAULT_DACL with a list that
+    // gives the user and SYSTEM all access; each is a pointer, and each length counts what it points at.
+    private static unsafe void SetUserDefaults(SafeAccessTokenHandle token, SecurityIdentifier user)
+    {
+        RawAcl list = new(GenericAcl.AclRevision, 2);
+        list.InsertAce(0, new CommonAce(AceFlags.None, AceQualifier.AccessAllowed, GenericAll, user, false, null));
+        list.InsertAce(
+            1,
+            new CommonAce(AceFlags.None, AceQualifier.AccessAllowed, GenericAll, new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), false, null));
+
+        byte[] sid = BinaryOf(user);
+        byte[] acl = new byte[list.BinaryLength];
+        list.GetBinaryForm(acl, 0);
+
+        fixed (byte* sidStart = sid)
+        fixed (byte* aclStart = acl)
+        {
+            nint owner = (nint)sidStart;
+            nint defaultDacl = (nint)aclStart;
+
+            if (!SetTokenInformation(token, TokenOwnerClass, &owner, sizeof(nint) + sid.Length)
+                || !SetTokenInformation(token, TokenDefaultDaclClass, &defaultDacl, sizeof(nint) + acl.Length))
+            {
+                throw new Win32Exception(Marshal.GetLastPInvokeError());
+            }
+        }
+    }
+
     // TOKEN_MANDATORY_LABEL, which is one SID_AND_ATTRIBUTES, with the label of the medium level; its length counts the
     // SID it points at, as the call expects.
     private static unsafe void SetMediumIntegrity(SafeAccessTokenHandle token)
     {
-        SecurityIdentifier medium = new(MediumIntegrity);
-        byte[] sid = new byte[medium.BinaryLength];
-        medium.GetBinaryForm(sid, 0);
+        byte[] sid = BinaryOf(new SecurityIdentifier(MediumIntegrity));
 
         fixed (byte* sidStart = sid)
         {
@@ -289,6 +325,14 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
                 throw new Win32Exception(Marshal.GetLastPInvokeError());
             }
         }
+    }
+
+    private static byte[] BinaryOf(SecurityIdentifier sid)
+    {
+        byte[] binary = new byte[sid.BinaryLength];
+        sid.GetBinaryForm(binary, 0);
+
+        return binary;
     }
 
     // Reads the probe's output to its end on a pool thread, since an anonymous pipe has no asynchronous I/O, and then
@@ -378,7 +422,7 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
     private static unsafe partial bool SetTokenInformation(
         SafeAccessTokenHandle token,
         int informationClass,
-        SidAndAttributes* information,
+        void* information,
         int length);
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
