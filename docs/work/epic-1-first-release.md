@@ -5780,8 +5780,8 @@ S8.
     - **The steps**, as process.md's full track; documents: `README.md` names `check`, and "The
       files of the agent" and the stage-3 contract take the drafts.
   - *Internal of S10c* (the contract author, 24 November 2026, from S10b's study, §5 and §6, and
-    the planner's rules for the owner's collector, with the coordinator's decisions under PQ2;
-    with round 1's fixes). Every type is `internal`; `Workers` still uses the agent alone.
+    the planner's rules for the collector, with the coordinator's decisions under PQ2; reviewed in
+    two rounds; approved by the coordinator under PQ2, 24 November 2026). Every type is `internal`.
 
     ```csharp
     // Moltaro.OnecOutpost.Agent.Workers (review 3, 1): one start of a worker's process; ComWorkerLauncher's JoinAndResume goes
@@ -5797,7 +5797,7 @@ S8.
     // the const AgentFile, Moltaro.OnecOutpost.Agent.exe, and AgentOf(programFolder). Agent.Connector: ConnectorFinding gains
     // static FirstRegistered(IReadOnlyList<ConnectorFinding>), null for none. Agent.Transport: ServerAnswer gains IsUnsupportedVersion.
 
-    // Moltaro.OnecOutpost.Console.Workers (review 3, the runner joined to S10c); CheckWorker becomes ConsoleWorker, as metadata starts it too
+    // Moltaro.OnecOutpost.Console.Workers, still on the agent alone (review 3, the runner joined to S10c); CheckWorker becomes ConsoleWorker
     internal sealed class WorkerSession : IDisposable
     {
         // Start(account, program, baseKey), then the open, raced with runLimit; Reason null once open; Start's exception passes
@@ -5887,9 +5887,9 @@ S8.
          the first category that has one, with storage, behind `Reading the census and the probe
          of {key}…`. A census or probe Read that does not succeed gives `ReportFailed`, `the census
          | the probe, the first object of {category}, ended {kind} {code}: {errorText}` or `… did
-         not end within {runLimit:c}`; a probe object with an `error`, `the probe of {fullName}
-         failed: {error}`; no object, `the configuration has no object to read` (an empty
-         configuration is not handled). The probe's `storageError` alone makes the storage
+         not end within {runLimit:c}`; a probe object with an `error`, judged before a
+         `storageError`, `the probe of {fullName} failed: {error}`; no object, `the configuration
+         has no object to read` (not handled). The probe's `storageError` alone makes the storage
          unavailable with that reason: the pages then run without it, and `common` is not read;
       7. *the pages*, `{"read":"page","category":…,"from":…,"count":…,"storage":true|false}`, each
          category from 0 in pages of 50, a constant: a granularity nobody observes, since every
@@ -5907,9 +5907,9 @@ S8.
           file made meanwhile; a failure deletes it, `Failure`, `the step "report" failed: {message}`.
 
       Steps 7 and 8 show one progress bar, `Reading the objects of {key}`, of the objects found
-      plus one when `common` is read, each page advancing it by its objects; a session reopened
-      inside it shows no spinner, as Spectre runs one live display at a time; its fallback writes
-      plain lines when the output is not interactive. Then one table, `Category`, `Found`, `Read`,
+      plus one when `common` is read, advanced by each page's objects; a session reopened in it
+      shows no spinner, Spectre running one live display at a time, and its fallback writes plain
+      lines when the output is not interactive. Then one table, `Category`, `Found`, `Read`,
       `Failed`, in the census's order; `The storage structure could not be read: {reason}; the
       report holds the objects and their fields without it.` when so; and `Wrote the metadata
       report of the base {key} to {file}: {read} of {found} objects read, {failed} failed.`,
@@ -5956,22 +5956,23 @@ S8.
         the three reads share; `census` gives `New SystemInfo().AppVersion`, `Metadata.Name`,
         `Version`, `XMLString(CompatibilityMode)` and each `Count()`;
       - `page` takes `Get(i)` from `from` to `from + count − 1`, the last index at most; per
-        object, in its own `Try`, `ErrorDescription()` as its `error`: `name`, `fullName`,
-        `synonym`, `comment`; `properties`: a catalog's `hierarchical`, `hierarchyType`,
-        `codeLength`, `descriptionLength`, `owners`; a document's `numberLength`, `numberType`,
-        `numberPeriodicity`, `posting`, `registerRecords`; an information register's `periodicity`,
-        `writeMode`; an accumulation register's `registerType`; `codeLength` or `numberLength` and
-        `descriptionLength` of the charts, business processes, tasks and exchange plans; a system
-        enumeration by `XMLString`, an object by its full name; `fields`, each collection of
-        `StandardAttributes`, `Attributes`, `Dimensions`, `Resources`, `AccountingFlags`,
-        `ExtDimensionAccountingFlags` and `AddressingAttributes` its kind has, then each tabular
-        section's `Attributes`, `tabularSection` named, and a constant's or common attribute's
-        own `Type` as one field `Value`; `values` of an enum, `name` and `synonym`;
+        object, in its own `Try`, `ErrorDescription()` as its `error`: `name`, `fullName` by
+        `FullName()`, `synonym`, `comment`; `properties`: a catalog's `hierarchical`,
+        `hierarchyType`, `codeLength`, `descriptionLength`, `owners`; a document's `numberLength`,
+        `numberType`, `numberPeriodicity`, `posting`, `registerRecords`; an information register's
+        `periodicity`, `writeMode`; an accumulation register's `registerType`; the charts',
+        business processes', tasks' and exchange plans' `codeLength` or `numberLength` and
+        `descriptionLength`; an enumeration by `XMLString`, an object by its full name; `fields`,
+        each of `StandardAttributes`, `Attributes`, `Dimensions`, `Resources`, `AccountingFlags`,
+        `ExtDimensionAccountingFlags`, `AddressingAttributes` its kind has, each tabular section's
+        `Attributes` with `tabularSection` named, a constant's or common attribute's `Type` as one
+        field `Value`; `values` of an enum, `name`, `synonym`;
       - a field: `indexing` by `XMLString` in a `Try`, null for a field without it; each type of
         `Type.Types()` compared with `Type("String")`, `Number`, `Date`, `Boolean`, `ValueStorage`
         and `UUID` and written by that name, else `Metadata.FindByType(T).FullName()`, else
         `String(T)`; `string` `{length, allowedLength}`, `number` `{digits, fractionDigits,
-        allowedSign}` and `date` `{dateFractions}` when that type is among them, by `XMLString`;
+        allowedSign}` and `date` `{dateFractions}` when that type is among them, its enumerations
+        by `XMLString`;
       - with `storage`, in one `Try`, `GetDBStorageStructureInfo(objects, True)` for a page,
         `(Undefined, True)` for `common`; the columns by `Columns.Find("StorageTableName")`, else
         the Russian names: `StorageTableName`/`ИмяТаблицыХранения`, `TableName`/`ИмяТаблицы`,
@@ -6003,25 +6004,24 @@ S8.
       `RunEndTests`, `DataFolderStepTests`, `RedirectedOutputTests` (`metadata --help`, `metadata
       Bad! report.json`). `Check/*` unchanged. Agent's: `PolicyReason`, `FirstRegistered`,
       `AgentOf`, `IsUnsupportedVersion`.
-    - **Tests with `Requires=Windows`**: a `Start` whose program is missing gives its
-      `Win32Exception` 2 and the error end given reads to its end at once; the tests review 3
-      names for entries 1 and 3, unchanged.
+    - **Tests with `Requires=Windows`**: a `Start` of a missing program gives `Win32Exception` 2,
+      and the error end given reads to its end at once; review 3's tests of entries 1 and 3 unchanged.
     - **Lab tests**, `OneC.Tests`, folder `Console`, `MetadataTests` by
       `LabConsole.MetadataAsync(agent, file)`, with a deadline of its own, two hours, since a
       typical copy's walk outlasts `check`'s ten minutes; the file in a temporary folder; no poll.
-      The test base in safe mode: `Success`, `failed` 0 in every category; `Document.GoodsReceipt`
-      with `Product` of `Catalog.Products`, `Quantity` of digits 15 and fraction 3, `Comment` of
-      length 200; `AccumulationRegister.Stock` with the dimension `Product` and the resource
-      `Quantity`; `Catalog.Products` hierarchical; with the storage available, a table of
-      `Document.GoodsReceipt` with a storage name and fields, else the reason, which the run
-      records and the test then states, as S10b's 1331. Each typical copy, as its `writeSafeMode`
-      says: `Success`, `failed` 0 in every category, each error found in its output, its
-      `documentType`'s object with fields and storage. With the storage available, each asserts
-      that the storage names of its pages and `commonStorage` are, as a set, those of one
-      `GetDBStorageStructureInfo(Undefined, True)` read by the lab's own worker. Each records the
-      reads, the largest outcome, the halvings, whether the read account got the storage with the
-      DBMS's names, and its columns' language, which the lab run writes into this brief; the test
-      base's sessions are English and a typical copy's likely Russian.
+      The test base in safe mode: `Success`, `failed` 0 and `read` equal to `found` in every
+      category; `Document.GoodsReceipt` with `Product` of `Catalog.Products`, `Quantity` of digits
+      15 and fraction 3, `Comment` of length 200; `AccumulationRegister.Stock` with the dimension
+      `Product` and the resource `Quantity`; `Catalog.Products` hierarchical; with the storage
+      available, a table of `Document.GoodsReceipt` with a storage name and fields, else the
+      reason, which the run records and the test then states, as S10b's 1331. Each typical copy,
+      as its `writeSafeMode` says: `Success`, `failed` 0 and `read` equal to `found` in every
+      category, each error in its output, its `documentType`'s object with fields and storage.
+      With the storage available, each asserts that its pages' and `commonStorage`'s storage
+      names are, as a set, those of one `GetDBStorageStructureInfo(Undefined, True)` by the lab's
+      own worker. Each records the reads, the largest outcome, the halvings, whether the read
+      account got the DBMS's names, and its columns' language (test base English, a typical copy
+      likely Russian), which the lab run writes into this brief.
     - **The steps**, as process.md's full track: the contract adds the types above, `metadata`
       registered with its settings working, `ExecuteAsync`, `Start`, `OpenAsync`, `ReadAsync` and
       the gate's members throwing `NotSupportedException`, unused; the tests step, skipped where
@@ -6068,20 +6068,20 @@ S8.
     administrator's unelevated account, so only trusted bases, and its worker open to the
     administrator's unelevated programs; a file base's folder.
 - **What S10c changes in the public contract, as a draft for the owner** (the contract
-  author, 24 November 2026; with round 1's fixes). Each holds until the owner overturns it:
+  author, 24 November 2026; reviewed in two rounds). Each holds until the owner overturns it:
   - `metadata <base key> <file>`, its steps and messages, exit code 20 `ReportFailed`, and
     `Usage`, `NotInstalled`, `NotInPolicy` and `CheckFailed` given by it too;
-  - it starts no worker while a line of `check`'s rule fails, then refuses with `CheckFailed`
-    and that line, and runs no probe; it reads only, in safe mode under the base's read account,
-    nothing written to the base or the data folder, no poll, nothing sent; each worker a licence;
-  - the report's JSON `format` 1, written whole or not at all, never replacing a file, never in
-    the data folder as judged when it starts, holding metadata alone;
+  - it starts no worker while a line of `check`'s rule fails, the files, the connector, the data,
+    program and connector's folders and the worker account's logon, then refuses with
+    `CheckFailed` and that line, and runs no probe; it reads only, in safe mode under the read
+    account, writing nothing to the base or the data folder, no poll; each worker a licence;
+  - the report's JSON `format` 1, written whole or not at all, replacing no file, never in the
+    data folder as judged when it starts, holding metadata alone;
   - a storage structure the read account may not read is recorded as unavailable with its reason,
     the objects and fields kept; a failed object is recorded and counted, and the run `Success`;
-  - its limitations above: a configuration changed during the walk; halving at the run limit;
-    for a base without a worker account, the administrator's unelevated account and, the whole
-    walk, its worker's 1C password open to the administrator's unelevated programs; the file's
-    access list its folder's.
+  - its limitations above: a configuration changed during the walk; halving at the run limit; a
+    base without a worker account run as the administrator's unelevated account, its worker's 1C
+    password open to their unelevated programs the whole walk; the file's access list its folder's.
 - **To read.** The [concept](../concept.md), §3 "Pairing" and §5 (20 November 2026);
   `docs/protocol.md`; `AGENTS.md`, principles 9 and 12; this plan, "The files of the agent",
   the contract of stage 2 and S9c's brief.
