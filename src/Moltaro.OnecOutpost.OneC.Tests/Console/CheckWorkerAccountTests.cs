@@ -13,9 +13,9 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 // each failure case broken on purpose where that needs no change of the machine: a changed password of the lab's worker
 // account and an account that does not exist fail the logon with 1326; the local Guest, disabled, with a blank password,
 // fails it with 1331, or with 1327 when Windows judges the blank password first; and the program folder of the test,
-// without the entry of Users, fails the probe with 5, since the account may not read the program. A failed logon is
-// tried once, so each run counts once toward a lockout of the worker account. The probe and the connections of the
-// base are not checked after a failed logon, nor the connections after a failed probe.
+// without the entry of Users, fails the probe with 5 or 267, since the account may not read the program or its folder.
+// A failed logon is tried once, so each run counts once toward a lockout of the worker account. The probe and the
+// connections of the base are not checked after a failed logon, nor the connections after a failed probe.
 [SupportedOSPlatform("windows")]
 public sealed class CheckWorkerAccountTests
 {
@@ -57,9 +57,12 @@ public sealed class CheckWorkerAccountTests
     }
 
     // The test's own program folder, made as the console's install makes it, loses the entry that lets Users read and
-    // run the worker; nothing of the machine changes.
+    // run the worker; nothing of the machine changes. The program's folder is the worker's working folder, which the
+    // Secondary Logon service may judge first, as 267, before the program, as 5: which of the two Windows gives is
+    // recorded by the lab run of S10c, and this test then states that one alone (the contract amended after the first
+    // code review).
     [Fact]
-    public async Task A_program_folder_without_the_entry_of_Users_fails_the_probe_with_5()
+    public async Task A_program_folder_without_the_entry_of_Users_fails_the_probe_as_a_program_or_a_folder_that_the_account_may_not_read()
     {
         LabFile lab = LabFile.Read();
         LabAccount workerAccount = LabAgent.WorkerAccountOf(lab);
@@ -71,7 +74,10 @@ public sealed class CheckWorkerAccountTests
         check.AssertPassed("the worker account", CheckLineEnum.WorkerAccount, LabTestBase.Key, workerAccount.User);
         CheckRow probe = check.Row(CheckLineEnum.WorkerStart, LabTestBase.Key, workerAccount.User);
         Assert.False(probe.Passed, probe.ToString());
-        Assert.Equal($"{workerAccount.User} may not read or run {agent.WorkerPath}", probe.Reason);
+        Assert.True(
+            probe.Reason == $"{workerAccount.User} may not read or run {agent.WorkerPath}"
+            || probe.Reason == $"{workerAccount.User} may not read the folder of {agent.WorkerPath}, or it does not exist",
+            $"The probe failed with another reason: {probe.Reason}");
         Assert.True(check.Row(CheckLineEnum.Connection, LabTestBase.Key, lab.TestBase.Read.User).NotChecked);
         Assert.True(check.Row(CheckLineEnum.Connection, LabTestBase.Key, lab.TestBase.Write.User).NotChecked);
     }

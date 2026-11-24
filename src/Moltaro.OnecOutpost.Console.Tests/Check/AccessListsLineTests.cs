@@ -3,6 +3,7 @@ using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
+using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Check;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
@@ -11,9 +12,11 @@ namespace Moltaro.OnecOutpost.Console.Tests.Check;
 // start judges, StartChecks.DataPaths of the files listed, each named with StartChecks.AccessReason when it admits
 // somebody else or somebody else owns it, a file gone before its list counting as gone; the program folder and the folder
 // of each registered connector, each entry through which somebody else may change them named with
-// StartChecks.WritersReason. check never starts code that somebody else may have changed: a program folder or a folder
-// of the connector with which the workers start that somebody else may change leaves the probe and the connections not
-// checked, and no worker starts. The folder of a connector of the other bitness blocks nothing.
+// StartChecks.WritersReason. check never starts code that somebody else may have changed: a data folder that admits
+// somebody else, who could have planted a policy.json or a secrets.dat there (the contract amended after the first code
+// review), a program folder or a folder of the connector with which the workers start that somebody else may change
+// leaves the probe and the connections not checked, and no worker starts. The folder of a connector of the other
+// bitness blocks nothing.
 public sealed class AccessListsLineTests : IDisposable
 {
     private const string AuditFile = "2026-11-21.jsonl";
@@ -62,10 +65,10 @@ public sealed class AccessListsLineTests : IDisposable
         Assert.Equal("admits nobody else, nor do its 4 files", run.Passed(CheckLineEnum.AccessLists, TestMachine.DataFolder));
     }
 
-    // Each entry named with the reason of the start, Q14's owner included, with its remedy; the data folder is no input
-    // of a worker, so every worker still starts.
-    [Fact]
-    public async Task Each_entry_of_the_data_folder_that_admits_somebody_else_or_that_somebody_else_owns_is_named_with_its_remedy()
+    // Each entry named with the reason of the start, Q14's owner included, with its remedy; whoever an entry admits could
+    // have planted the policy or the secrets with which a worker starts, so none starts.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task Each_entry_of_the_data_folder_that_admits_somebody_else_or_that_somebody_else_owns_is_named_with_its_remedy_and_no_worker_starts()
     {
         Machine.Access.Admit($@"audit\{AuditFile}", @"PC-1\intruder", @"BUILTIN\Users");
         Machine.Access.Own(AgentFolders.SecretsName, @"PC-1\clerk");
@@ -83,8 +86,24 @@ public sealed class AccessListsLineTests : IDisposable
             reasons,
             StringComparison.Ordinal);
         Assert.Contains("icacls", reasons, StringComparison.Ordinal);
-        run.Passed(CheckLineEnum.Connection, "accounting", "outpost-read");
-        run.Passed(CheckLineEnum.WorkerStart, "accounting");
+        AssertNoWorkerStarted(run, TestMachine.DataFolder);
+    }
+
+    // A local user may create the data folder before install, or be admitted to it, and plant there a policy whose base
+    // runs code of his own, with secrets that he encrypted for the machine.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task A_data_folder_that_admits_somebody_else_is_named_and_no_worker_starts()
+    {
+        Machine.Access.Admit("", @"BUILTIN\Users");
+
+        CheckRun run = await _checked.RunAsync();
+
+        run.AssertCheckFailed();
+        Assert.Contains(
+            StartChecks.AccessReason("", Machine.Access.Others(""))!,
+            Reasons(run, TestMachine.DataFolder),
+            StringComparison.Ordinal);
+        AssertNoWorkerStarted(run, TestMachine.DataFolder);
     }
 
     [Fact]
