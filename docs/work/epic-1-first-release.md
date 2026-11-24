@@ -5941,7 +5941,7 @@ S8.
       report holds the objects and their fields without it.` when so; and `Wrote the metadata
       report of the base {key} to {file}: {read} of {found} objects read, {failed} failed.`,
       `Success`. Ctrl+C between two Reads gives `Cancelled`, before any file exists. Rows: `| 20 |
-      ReportFailed | metadata | The base did not open, the census or the probe failed, the
+      ReportFailed | metadata | The base did not open, the census or the probe Read failed, the
       configuration has no object, or no page was read; no file was written |`; `CheckFailed`
       gains `metadata`, a line of check's rule failed and no worker started; `Usage`,
       `NotInstalled` and `NotInPolicy` gain `metadata`. *Limitations:* a configuration changed
@@ -6059,8 +6059,9 @@ S8.
       somebody else may change among them: `CheckFailed`, no worker started; `NotInPolicy`; a
       missing write password, or another base's, neither refusing nor quoted; one logon; no probe;
       `AsUser` in safe mode, the account without; every command line `read`, `SafeMode` true; the
-      data folder only read; no poll, no handler; the open, census and probe failures, a probe
-      object's error, no object, no page read: `ReportFailed`, no file; the probe's
+      data folder only read; no poll, no handler; the open, census and probe Read failures, no
+      object, no page read: `ReportFailed`, no file; a probe object's error, a failed object and
+      the report written; the probe's
       `storageError`: storage unavailable, pages without it, no `common`, no `error` set by it; a
       page's `storageError` in its objects' errors; `result-too-large` halved to one object
       failed; the run limit on the fake clock halved with a new session; a page's `script-error`;
