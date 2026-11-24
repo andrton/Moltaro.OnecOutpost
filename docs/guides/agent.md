@@ -854,7 +854,8 @@ table with the columns `Category`, `Found`, `Read` and `Failed`, and ends with:
 Wrote the metadata report of the base test to <folder>\test-metadata.json: <read> of <found> objects read, <failed> failed.
 ```
 
-The report is written atomically as one JSON file. If 1C cannot read the platform, configuration name, version or
+The report is written atomically as one JSON file. The compatibility mode, enumerated object settings such as posting,
+and field indexing use the text 1C displays for the session. If 1C cannot read the platform, configuration name, version or
 compatibility mode, `metadata` puts an `error` object in place of that value and names the property in the coverage
 table's caption. If reading an object's property fails, the report keeps the properties it could read, records the
 error and counts the object as failed. `metadata` waits for each worker to exit before it returns. When the read

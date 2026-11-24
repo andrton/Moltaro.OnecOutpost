@@ -19,8 +19,8 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // else by its Russian one. A page attaches each table to the object of its key, and a table of no object of the page
 // raises. A field names each of its types: String, Number, Date, Boolean, ValueStorage and UUID by those names, which
 // do not depend on the session's language, a reference by the full name of its object, any other by its presentation;
-// its qualifiers, and every enumeration of a property, by XMLString. Not checked here: whether 1C allows each call to
-// the read account in safe mode, which the lab proves.
+// its type qualifiers by XMLString. Metadata setting enumerations, including indexing and compatibility mode, use
+// 1C's string presentation. The lab proves which calls the read account can make in safe mode.
 internal static class MetadataScripts
 {
     public const string Walk = """
@@ -207,7 +207,7 @@ internal static class MetadataScripts
                         ElsIf TypeOf(PropertyValue) = Type("Number") Or TypeOf(PropertyValue) = Type("Boolean") Then
                             Item.properties.Insert(Property.Key, PropertyValue);
                         Else
-                            Item.properties.Insert(Property.Key, XMLString(PropertyValue));
+                            Item.properties.Insert(Property.Key, String(PropertyValue));
                         EndIf;
                     Except
                         Errors.Add(Property.Key + ": " + ErrorDescription());
@@ -292,7 +292,7 @@ internal static class MetadataScripts
 
                     If Indexing <> Undefined Then
                         Try
-                            Field.indexing = XMLString(Indexing);
+                            Field.indexing = String(Indexing);
                         Except
                             Errors.Add(FieldPath + ".indexing: " + ErrorDescription());
                         EndTry;
@@ -536,7 +536,7 @@ internal static class MetadataScripts
             EndTry;
 
             Try
-                Configuration.compatibilityMode = XMLString(Metadata.CompatibilityMode);
+                Configuration.compatibilityMode = String(Metadata.CompatibilityMode);
             Except
                 Configuration.compatibilityMode = New Structure("error", ErrorDescription());
             EndTry;

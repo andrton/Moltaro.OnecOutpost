@@ -1382,7 +1382,7 @@ The release
 | S10a | The console's setup: `install`, `uninstall`, `pair`, `secret`, `connector register` | Full | Done, 23 November 2026: the console on Spectre.Console.Cli with `install`, `uninstall`, `pair`, `secret` and `connector register`, and one finder of the COM connector in the agent, which its launcher and the console use. The study read actions/runner and Octopus Tentacle; the internal contract was reviewed in two rounds and approved under PQ2, round 2's fixes (a P2 of the contract step and six P3) taken without a third round. The code review took three rounds: three P1 of round 1 (the lists of `audit` and `outcomes`, tests that expected an order of entries, colour forced on in CI), five P3 of round 2, none in round 3. 2697 tests passed here; CI passed with the tests of `Requires=Administrator` on its elevated `windows` job. The manual run of its commands is on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
 | S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 and entry 1 of review 2 | Refactoring | Done, 23 November 2026: one transaction frame in the store, measured again with every p95 within S7b's; one growing delay of a retry; the forms of §2 in the protocol alone; four small cleanups; the console's install test running the program's own parts. One commit per entry, every test green after each, no public member, assertion or test changed; the review took one round (five P4, two fixed in this plan) |
 | S10b | The console's check | Full | Done, 24 November 2026: `check` with every line of the stage contract, a table of passed and failed lines, `--clock-skew` and the exit code `CheckFailed`; the probe of each worker account on a desktop of the console's own, each base under each account through the COM worker and the executor in Read and safe mode, the server by an `outcome` that takes no poll's place; the architect's entries joined to it (the launcher's steps, the start's checks free of the audit log, the outcome answer as a record, the worker's connection line and judgment outside the pool, the privileges, the layout and one wording of reasons). The internal contract was reviewed in two rounds and approved under PQ2 (round 2's P2, the events judged, taken without a third round); the code review took three rounds: a P1 and two P2 of round 1 (no worker while the data folder admits others; a restricted token, then medium integrity and the user's default list, its limitation stated), one P2 back in round 2, settled by the coordinator, none open in round 3. 2861 tests passed here; the tests with `Requires=Administrator` first run on its pull request, and those of `Moltaro.OnecOutpost.OneC.Tests` on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
-| S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | In progress. The lab run of `deeb370` on 24 November 2026 passed 81 of 86 tests. Round 4, approved by the owner, closed the remaining probe and pipe findings. The owner stopped the lab run of `b1e8ec5` after 20 min 23 s with no results displayed. The lab console now uses the machine clock for worker limits and cancels each command at its deadline, awaiting cleanup. Both CI jobs passed at `d21fe09`. Its focused lab run of `CheckTests` finished in 1 min 59 s with three of four tests passing. The safe-mode case exposed an empty module name in the `Subscriptions` row. The parser fix awaits lab confirmation. Draft PR #23 awaits lab acceptance. |
+| S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | In progress. The lab run of `deeb370` on 24 November 2026 passed 81 of 86 tests. Round 4, approved by the owner, closed the remaining probe and pipe findings. The owner stopped the lab run of `b1e8ec5` after 20 min 23 s with no results displayed. The lab console now uses the machine clock for worker limits and cancels each command at its deadline, awaiting cleanup. `d21fe09` exposed a missing module name, fixed at `4add4b1`, whose two CI jobs and four lab `CheckTests` passed. The full lab run at `4add4b1` passed 84 of 86 tests in 42 min 16 s. Both failures were in metadata, whose conversion of metadata settings awaits lab confirmation in draft PR #23. |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
 
@@ -5957,11 +5957,11 @@ S8.
       it is (`UnsafeRelaxedJsonEscaping`); nothing of it is data of the base, a password or an account:
       ```json
       { "format": 1, "base": "test", "written": "2026-11-24T10:15:07.123Z", "platform": "8.3.17.1851",
-        "configuration": { "name": "…", "version": "…", "compatibilityMode": "Version8_2_13" }, "storage": { "available": true, "reason": null },
+        "configuration": { "name": "…", "version": "…", "compatibilityMode": "…" }, "storage": { "available": true, "reason": null },
         "categories": [ { "category": "Catalogs", "found": 3, "read": 3, "failed": 0 } ],
         "objects": [ { "category": "Documents", "name": "GoodsReceipt", "fullName": "Document.GoodsReceipt", "synonym": "…", "comment": "…",
-          "properties": { "posting": "Allow" }, "fields": [ { "collection": "Attributes", "tabularSection": null, "name": "Quantity",
-            "synonym": "…", "indexing": "DontIndex", "types": [ "Number" ], "string": null,
+          "properties": { "posting": "…" }, "fields": [ { "collection": "Attributes", "tabularSection": null, "name": "Quantity",
+            "synonym": "…", "indexing": "…", "types": [ "Number" ], "string": null,
             "number": { "digits": 15, "fractionDigits": 3, "allowedSign": "Any" }, "date": null } ], "values": [],
           "storage": [ { "storageName": "_document12", "name": "…", "metadata": "Document.GoodsReceipt", "purpose": "…",
             "fields": [ { "storageName": "…", "name": "…", "metadata": "…" } ],
@@ -5984,7 +5984,7 @@ S8.
         `ChartsOfCalculationTypes`, `BusinessProcesses`, `Tasks`, `ExchangePlans` and
         `CommonAttributes`, each collection picked by one `If … ElsIf` in a loop over them, which
         the three reads share; `census` gives `New SystemInfo().AppVersion`, `Metadata.Name`,
-        `Version`, `XMLString(CompatibilityMode)` and each `Count()`;
+        `Version`, `String(CompatibilityMode)` and each `Count()`;
       - `page` takes `Get(i)` from `from` to `from + count − 1`, the last index at most; per
         object, in its own `Try`, `ErrorDescription()` as its `error`: `name`, `fullName` by
         `FullName()`, `synonym`, `comment`; `properties`: a catalog's `hierarchical`,
@@ -5992,12 +5992,12 @@ S8.
         `numberType`, `numberPeriodicity`, `posting`, `registerRecords`; an information register's
         `periodicity`, `writeMode`; an accumulation register's `registerType`; the charts',
         business processes', tasks' and exchange plans' `codeLength` or `numberLength` and
-        `descriptionLength`; an enumeration by `XMLString`, an object by its full name; `fields`,
+        `descriptionLength`; a metadata enumeration by `String()`, an object by its full name; `fields`,
         each of `StandardAttributes`, `Attributes`, `Dimensions`, `Resources`, `AccountingFlags`,
         `ExtDimensionAccountingFlags`, `AddressingAttributes` its kind has, each tabular section's
         `Attributes` with `tabularSection` named, a constant's or common attribute's `Type` as one
         field `Value`; `values` of an enum, `name`, `synonym`;
-      - a field: `indexing` by `XMLString` in a `Try`, null for a field without it; each type of
+      - a field: `indexing` by `String()` in a `Try`, null for a field without it; each type of
         `Type.Types()` compared with `Type("String")`, `Number`, `Date`, `Boolean`, `ValueStorage`
         and `UUID` and written by that name, else `Metadata.FindByType(T).FullName()`, else
         `String(T)`; `string` `{length, allowedLength}`, `number` `{digits, fractionDigits,
@@ -6041,6 +6041,13 @@ S8.
       for `BeforeWrite` and an empty module for `NoteBeforeWrite`. The lab assertion accepts
       both spellings of that event and requires `NoteChecks` as a common module. The script reads the module in both
       `Module.Procedure` and `CommonModule.Module.Procedure` forms of `Handler`.
+    - **After the full lab run of `4add4b1`**. Both metadata tests wrote their reports. The test
+      base had four objects with errors, from `XMLString` on the hierarchy, document numbering,
+      posting and register settings and field indexing. The typical copy had 697 objects with
+      errors and every terminal Read succeeded. The script uses `String()` for the metadata
+      settings, including the compatibility mode that failed the census at `deeb370`. Type
+      qualifiers continue to use `XMLString`. The lab checks that the known settings are present
+      as text and that it read every object without errors.
     - **The amendment for Q16**, the agent's, on `xhigh`. `AuditLog.Stopped(string error)` records
       `{"time":…,"entry":"stopped","error":…}`; it throws nothing and writes nothing once a write of
       the log failed, its own failed write cut back as any entry's; the reader accepts `stopped`
@@ -6150,7 +6157,8 @@ S8.
     `CheckFailed` and that line, and runs no probe; it reads only, in safe mode under the read
     account, writing nothing to the base or the data folder, no poll; each worker a licence;
   - the report's JSON `format` 1, written whole or not at all, replacing no file, never in the
-    data folder as judged when it starts, holding metadata alone;
+    data folder as judged when it starts, holding metadata alone. The compatibility mode,
+    enumerated object settings and field indexing use 1C's display text for the session;
   - a storage structure the read account may not read is recorded as unavailable with its reason,
     the objects and fields kept; a failed object is recorded and counted, and the run `Success`;
   - its limitations above: a configuration changed during the walk; halving at the run limit; a
