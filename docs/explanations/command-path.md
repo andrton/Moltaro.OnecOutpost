@@ -12,7 +12,8 @@ COM worker. The agent with its COM workers ran Reads and Writes in a real
 1C:Enterprise 8.3.17.1851 on the lab machine, with the test's own server, a Write without
 safe mode under the Windows account of its base included. The console installs, pairs and
 checks an agent on its machine and writes a metadata report of a base. The lab confirmed
-the check and the report on the test base and a copy of a typical base. The shell is planned.
+the check and the report on the test base and a copy of a typical base. The shell runs the
+server for manual Reads and Writes. The lab run of that path is pending.
 
 ## The parts
 
@@ -86,8 +87,9 @@ the check and the report on the test base and a copy of a typical base. The shel
 9. **The caller.** The node where the call waits wakes, reads the outcome from the store
    and returns it: Succeeded with the result and the user messages of 1C, Failed with a
    code, Refused with the code of the check, Expired, or Unknown when the effect of a Write
-   cannot be known. The caller may stop waiting at any time. That does not stop the
-   command, and a repeat with the caller key returns its outcome.
+   cannot be known. The caller may stop waiting at any time and leave the command running.
+   An identical repeat with the caller key returns the outcome while the command holds that
+   key.
 
 ## What the path does not do
 

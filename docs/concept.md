@@ -193,10 +193,9 @@ machine, as section 11 says.
    - When the first command ended as Expired or Refused, nothing ran, so the key is free
      again and a repeat creates a new command.
    - An outcome is kept for its retention, 7 days by default. After that the key is free.
-     A repeat that finds its command just as the purge removes it is to be served as if it
-     had come a moment later: it creates a new command with its caller key (Q15, the owner,
-     24 November 2026; built in S11, until when such a repeat throws
-     `InvalidOperationException`).
+     A repeat that finds its command just as the purge removes it is served as if it had
+     arrived after the purge. The server applies the same admission rules again with the
+     original caller key.
 5. **Failed means nothing was written.** A Write fails only when 1C rolled back its
    transaction, or when its script never started.
    - The executor checks the type of the result and the size of the whole outcome before

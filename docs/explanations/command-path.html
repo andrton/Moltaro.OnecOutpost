@@ -109,7 +109,7 @@ real 1C:Enterprise 8.3.17.1851 on the lab machine, with the test's own server, a
 without safe mode under the Windows account of its base included. The console installs,
 pairs and checks an agent on its machine and writes a metadata report of a base. The lab
 confirmed the check and the report on the test base and a copy of a typical base. The shell
-is planned.</p>
+runs the server for manual Reads and Writes. The lab run of that path is pending.</p>
 
 <figure aria-label="Animated figure: the path of a command">
 <svg id="stage" viewBox="0 0 480 412" role="img" aria-labelledby="stage-title">
@@ -189,7 +189,7 @@ is planned.</p>
   <li><strong>The audit log.</strong> Before the command runs, and before the next poll opens, the agent writes it to its audit log on the disk: the time, the identity, the base, the mode, the caller key, the script and the parameters. A command that cannot be recorded does not run. From then on every poll lists the command as received, until the server confirms its outcome.</li>
   <li><strong>The worker.</strong> The agent gives the command to a free COM worker of its base and mode, a process of its own that holds a 1C session under the account of that mode. The worker runs the script whole, in 1C's safe mode unless the local policy turns it off for the Writes of the base: a Read outside a transaction, a Write inside one transaction, committed or rolled back as a whole. Every worker of a base whose Writes run without safe mode runs under a Windows account of its own, which can read neither the agent's secrets nor its audit log. The executor writes the result as JSON, and checks the result's type and the outcome's size before a Write commits. A script that passes the run limit of its mode ends with its worker.</li>
   <li><strong>The outcome.</strong> The agent keeps the outcome in a file on its disk, records how the command ended in its audit log, and sends the outcome to any node, signed with its own key. The node keeps the first outcome of the command, and only from the agent it handed the command to. It sets a signal for the command and confirms the outcome to the agent with a signed answer. The agent records the confirmation and removes the file; until then it sends the outcome again.</li>
-  <li><strong>The caller.</strong> The node where the call waits wakes, reads the outcome from the store and returns it: Succeeded with the result and the user messages of 1C, Failed with a code, Refused with the code of the check, Expired, or Unknown when the effect of a Write cannot be known. The caller may stop waiting at any time. That does not stop the command, and a repeat with the caller key returns its outcome.</li>
+  <li><strong>The caller.</strong> The node where the call waits wakes, reads the outcome from the store and returns it: Succeeded with the result and the user messages of 1C, Failed with a code, Refused with the code of the check, Expired, or Unknown when the effect of a Write cannot be known. The caller may stop waiting at any time and leave the command running. An identical repeat with the caller key returns the outcome while the command holds that key.</li>
 </ol>
 
 <h2>What the path does not do</h2>

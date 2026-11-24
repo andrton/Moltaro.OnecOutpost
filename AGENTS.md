@@ -62,15 +62,14 @@ in code, tests, samples or documents.
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | The wire protocol, extended by the sprint that introduces a part of it |
 | `docs/explanations` | Explanations of the architecture and of how the library works, each as Markdown and as HTML: the path of a command and why a command never runs twice exist; how the library is built is planned |
-| `docs/guides` | The user guides: how to write scripts (`scripts.md`) and how to install and run an agent (`agent.md`); planned, how to embed the server. Every command and script they show is run by a test |
+| `docs/guides` | The user guides: how to write scripts (`scripts.md`) and how to install and run an agent (`agent.md`), and a first shell session (`server.md`). The rest of the server guide is planned. Every command and script they show is run by a test |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
 Each project is created by the sprint that first needs it, under the name the plan of the
 first epic fixes. The protocol, the server, the agent, the COM worker, the console, the
-executor's sources, the samples, the test support, the test worker, the measurement
-program, the test projects of these five and the tests that need 1C exist; the shell and
-its tests are planned. Only the
-server is packed; every other project is not.
+shell, their test projects and the tests that need 1C exist. The executor's sources, the
+samples, the test support, the test worker and the measurement program exist too. The
+server is the repository's package.
 
 | Project | Contents |
 | --- | --- |
@@ -144,9 +143,9 @@ and trust it. A request outside the tunnel is declined, or noted as planned in t
    bases and modes, not operations: a list of allowed scripts is not part of the library.
    Every command is written to the local audit log, script included, before it runs, and
    its outcome after.
-5. **A Write runs at most once per caller key.** Every Write carries a key chosen by its
-   caller. A repeat with the same key waits for the outcome of the first and returns it;
-   it never runs the script again. When the agent cannot know the outcome, for example
+5. **A Write runs at most once per base while its caller key is held.** Every Write carries
+   a key chosen by its caller. While the command holds that key, an identical repeat waits
+   for its outcome and returns it. When the agent cannot know the outcome, for example
    because the connection to 1C ended after the script may have committed, the outcome is
    reported as unknown. It is never reported as a success or a failure.
 6. **Server nodes share nothing in memory.** Every fact another node needs, such as
@@ -205,7 +204,7 @@ row left to right: an earlier quality is not traded for a later one.
 | Shell, samples, tests | Readability → simplicity; speed does not matter |
 
 - **Correctness is first everywhere.** For this library it means:
-  - a command never runs without a valid signature, twice under one key, after its
+  - a command never runs without a valid signature, twice under a held caller key, after its
     deadline, or against a base or mode that the local policy closes;
   - an outcome never reaches the caller of another command;
   - an unknown outcome is never reported as known;

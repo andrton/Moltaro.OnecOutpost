@@ -1383,7 +1383,7 @@ The release
 | S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 and entry 1 of review 2 | Refactoring | Done, 23 November 2026: one transaction frame in the store, measured again with every p95 within S7b's; one growing delay of a retry; the forms of §2 in the protocol alone; four small cleanups; the console's install test running the program's own parts. One commit per entry, every test green after each, no public member, assertion or test changed; the review took one round (five P4, two fixed in this plan) |
 | S10b | The console's check | Full | Done, 24 November 2026: `check` with every line of the stage contract, a table of passed and failed lines, `--clock-skew` and the exit code `CheckFailed`; the probe of each worker account on a desktop of the console's own, each base under each account through the COM worker and the executor in Read and safe mode, the server by an `outcome` that takes no poll's place; the architect's entries joined to it (the launcher's steps, the start's checks free of the audit log, the outcome answer as a record, the worker's connection line and judgment outside the pool, the privileges, the layout and one wording of reasons). The internal contract was reviewed in two rounds and approved under PQ2 (round 2's P2, the events judged, taken without a third round); the code review took three rounds: a P1 and two P2 of round 1 (no worker while the data folder admits others; a restricted token, then medium integrity and the user's default list, its limitation stated), one P2 back in round 2, settled by the coordinator, none open in round 3. 2861 tests passed here; the tests with `Requires=Administrator` first run on its pull request, and those of `Moltaro.OnecOutpost.OneC.Tests` on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
 | S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | Done, 24 November 2026, PR #23. At `523b8a5` both CI jobs and 2,977 local tests passed. Lab acceptance combines 84 unchanged cases from the full run at `6f216ab` with both corrected metadata cases at `523b8a5`. The typical copy matched all 2,286 storage table names, and the test base matched all 14. The independent review and lab fixes closed the findings. The manual run of the S10 commands and G1 is part of S11. |
-| S11 | The shell | Full | Not started |
+| S11 | The shell and Q15 | Full | In progress. The shell and Q15 are implemented. Two review rounds closed the Unix signing-key publication finding. Release builds and format checks passed, with 3,019 local tests passing. The Unix interrupt case was checked in Linux. The cross-machine lab acceptance is pending. |
 | S12 | Documents, packages and the archive | Light | Not started |
 
 ### S1 · The public contract of stage 1, the projects and the test lane
@@ -6410,6 +6410,9 @@ GPT-6.2 Sol at `max`, and the independent reviewer uses GPT-6.2 Sol at `ultra`, 
   model: a UTF-8 writer, Spectre's default enrichers off, so that CI's variables force no
   colour, no wrapping of a line, and the end line. The twenty lines are written twice; the
   two programs share no project (principle 12).
+- **Test correction.** The test author moved the UTF-8 BOM to the start of the shell
+  input, before the token command. The original placement exercised an unexpected BOM
+  in the middle of the session. The Write frame and its assertions are unchanged.
 - **Out of scope.** S12 owns release publishing. S13 is separate.
 
 ### S12 · Documents, packages and the archive

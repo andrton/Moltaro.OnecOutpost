@@ -669,9 +669,9 @@ outpost-worker on {desktop} and ended at the end of its input`.
 
 One line for the data folder with its files, one for the program folder, and one for the folder of each registered
 connector, judged by the rule of the program folder, since the workers run the connector's code. Passed: `admits
-nobody else, nor do its {n} files`, or `nobody else may change it`. While a line of the data folder, the program
-folder or the connector's folder fails, `check` starts no worker at all, so that it never runs code or opens a base
-that somebody else may have changed. Each reason gives its remedy, for example:
+nobody else, nor do its {n} files`, or `nobody else may change it`. A failure in the data folder or program folder
+prevents every worker start. A worker also needs the folder of its selected connector to pass. Each registered
+connector folder contributes to the overall result of `check`. The reason in each failed line gives the remedy.
 
 | Reason | Remedy |
 | --- | --- |
@@ -774,7 +774,7 @@ stopped with a service-specific error, 1066, and the code, which `sc.exe query M
 | --- | --- | --- |
 | 0 | Stopped by Windows or by you | |
 | 1 | It stopped on its own; the reason is in the audit log, as `started` with an `error` or as `stopped`. When the log ends without either, the log itself could not be written, as on a full disk, and nothing more was recorded: the exit code is the reason | Read the last entries, act on the reason, start it again; when there is none, free the disk, then start it again |
-| 2 | It could not open its audit log, so it recorded nothing: another copy of the agent runs, or `audit\` is missing or refuses the agent's account | Look for another copy; run `install` again, which restores the folders' access lists |
+| 2 | It could not open its audit log, so it recorded nothing: another copy of the agent runs, or `audit\` is missing or refuses the agent's account | Look for another copy. If the audit folder is missing, run `install`. If the folder exists, inspect and correct its access list as [AccessLists](#accesslists) describes. Preserve the existing audit log and pending outcomes. |
 | 3 | Its program was started by hand, outside the service controller; nothing in the data folder changed | Start the service instead |
 | 4 | Its program was started with other arguments than `service` | Run `install` again, which sets the service's command line |
 | 5 | Not on Windows | |

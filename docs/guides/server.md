@@ -2,8 +2,9 @@
 
 ## A first session with the shell
 
-**Status.** This section describes the Sprint 11 shell session. The ASP.NET Core
-integration is planned for Sprint 12.
+**Status.** The shell session runs in automated tests with PostgreSQL and an agent with a
+fake COM worker. Its run against real 1C is pending. The ASP.NET Core embedding section is
+planned.
 
 Use the shell to try one Read and one Write against the repository's test configuration.
 You need .NET 10, a PostgreSQL database with UTF-8 encoding, and an agent whose local policy
