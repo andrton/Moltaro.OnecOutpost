@@ -60,7 +60,7 @@ public sealed class CheckWorkerAccountTests
     // Secondary Logon service may judge first, as 267, before the program, as 5: which of the two Windows gives is
     // recorded by the lab run of S10c, and this test then states that one alone (the contract amended after the first
     // code review).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_program_folder_without_the_entry_of_Users_fails_the_probe_as_a_program_or_a_folder_that_the_account_may_not_read()
     {
         LabFile lab = LabFile.Read();

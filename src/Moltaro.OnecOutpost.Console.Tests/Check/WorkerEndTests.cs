@@ -45,7 +45,7 @@ public sealed class WorkerEndTests : IDisposable
         _checked.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Each_worker_of_check_has_exited_within_the_run_limit_of_its_mode_when_check_ends()
     {
         Machine.Data.Root.Seed(AgentFolders.PolicyName, Policy);
@@ -65,7 +65,7 @@ public sealed class WorkerEndTests : IDisposable
 
     // The worker of warehouse, the last that check starts, goes on after its input closed: check waits the runLimit of
     // its mode for it, terminates it, and only then reaches the server.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_that_does_not_exit_at_the_end_of_its_input_is_terminated_at_the_run_limit_before_check_goes_on()
     {
         Machine.Workers.Sessions[("warehouse", "outpost-read")].LingerAtEnd();

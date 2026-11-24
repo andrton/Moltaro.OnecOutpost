@@ -26,7 +26,7 @@ public sealed class SessionScriptsTests : IDisposable
 
     // A session of another user fails the line Connection, whose user is the input of the rights and the subscriptions.
     // The row names its mode (the S10 brief, "After the lab run of deeb370", 3).
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_first_line_that_fails_leaves_every_later_script_of_its_session_not_checked_naming_that_line()
     {
         Machine.Workers.Sessions[("accounting", "outpost-read")] = new FakeSession("Administrator", "The administrator");
@@ -43,7 +43,7 @@ public sealed class SessionScriptsTests : IDisposable
         Assert.Equal([FakeCheckProcess.UserScript], ScriptsOf("accounting", "outpost-read"));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_session_that_does_not_open_fails_its_first_line_and_leaves_every_later_one_not_checked_naming_it()
     {
         Machine.Workers.Sessions[("accounting", "outpost-read")].RefuseOpen("No session opened");

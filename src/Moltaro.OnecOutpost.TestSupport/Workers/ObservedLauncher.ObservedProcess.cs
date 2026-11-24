@@ -57,6 +57,11 @@ internal sealed partial class ObservedLauncher
             _process.Kill();
         }
 
+        public Task EndAsync(TimeSpan deadline, TimeProvider clock)
+        {
+            return _process.EndAsync(deadline, clock);
+        }
+
         public void Dispose()
         {
             _process.Dispose();

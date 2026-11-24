@@ -176,6 +176,13 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
         return null;
     }
 
+    // Ends the console's session by closing the input, then waits until the worker has released the base and exited.
+    public async Task EndAsync(TimeSpan deadline, TimeProvider clock)
+    {
+        CloseInput();
+        await WorkerCreation.ExitCodeWithinAsync(_process, deadline, clock, CancellationToken.None);
+    }
+
     // TerminateProcess. Its failure is ignored: the handle of a started process may terminate it, so the call fails
     // only for a process that has ended, as Process.Kill ignores one.
     public void Kill()
@@ -193,6 +200,14 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
     // only after it killed it and its open and run ended.
     public void Dispose()
     {
+        CloseInput();
+        _output.Dispose();
+        _process.Dispose();
+        _job?.Dispose();
+    }
+
+    private void CloseInput()
+    {
         try
         {
             _input.Dispose();
@@ -202,10 +217,6 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
             // A write that failed left its bytes in the buffer of the stream, which its dispose writes again into a
             // pipe whose worker has ended. The handle is closed all the same.
         }
-
-        _output.Dispose();
-        _process.Dispose();
-        _job?.Dispose();
     }
 
     // The caller's copies of the client ends of the pipes, in one call.

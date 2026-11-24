@@ -154,7 +154,7 @@ public sealed class ConnectionLineTests : IDisposable
     }
 
     // A typical copy of the lab reads and writes under one 1C account; check opens a connection of each mode with it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_base_whose_two_modes_share_one_account_has_a_row_of_each_mode_named_by_it()
     {
         Machine.Data.Root.Seed(

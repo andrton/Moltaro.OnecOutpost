@@ -5,8 +5,8 @@ using Microsoft.Win32.SafeHandles;
 
 namespace Moltaro.OnecOutpost.Agent.Workers;
 
-// The creation of a worker's process, suspended, and its start inside a job, for the agent's launcher and for the
-// console's check. Every call to Windows goes through LibraryImport, no package (principle 12).
+// Creates a worker's process suspended, starts it inside a job, and provides termination and exit waiting on its
+// handle. Every call to Windows goes through LibraryImport, no package (principle 12).
 [SupportedOSPlatform("windows")]
 internal static partial class WorkerCreation
 {
@@ -41,6 +41,11 @@ internal static partial class WorkerCreation
 
     // The exit code of a worker that was ended, as Process.Kill gives it.
     private const uint KilledExitCode = uint.MaxValue;
+
+    // INFINITE and WAIT_FAILED of WaitForSingleObject.
+    private const uint Infinite = uint.MaxValue;
+
+    private const uint WaitFailed = uint.MaxValue;
 
     // Creates the process of the program under the token, suspended and without a window, with the command line
     // "{program}" {base key} {read|write} as given, the environment of the token's account, CreateEnvironmentBlock(token,
@@ -105,6 +110,45 @@ internal static partial class WorkerCreation
     public static void Terminate(SafeProcessHandle process)
     {
         TerminateProcess(process, KilledExitCode);
+    }
+
+    // The exit code, or null after termination at the deadline. Cancellation terminates the process too. The wait
+    // for the actual exit finishes before the caller can close the process handle.
+    public static async Task<uint?> ExitCodeWithinAsync(
+        SafeProcessHandle process,
+        TimeSpan deadline,
+        TimeProvider clock,
+        CancellationToken cancellationToken)
+    {
+        Task<uint> exited = Task.Run(() => ExitCodeOf(process), CancellationToken.None);
+
+        using (CancellationTokenSource race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+        {
+            Task limit = Task.Delay(deadline, clock, race.Token);
+
+            if (await Task.WhenAny(exited, limit) == exited)
+            {
+                race.Cancel();
+
+                return await exited;
+            }
+        }
+
+        Terminate(process);
+        await exited;
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return null;
+    }
+
+    private static uint ExitCodeOf(SafeProcessHandle process)
+    {
+        if (WaitForSingleObject(process, Infinite) == WaitFailed || !GetExitCodeProcess(process, out uint exitCode))
+        {
+            throw new Win32Exception(Marshal.GetLastPInvokeError());
+        }
+
+        return exitCode;
     }
 
     private static unsafe (SafeProcessHandle Process, nint Thread) AsUser(
@@ -360,4 +404,11 @@ internal static partial class WorkerCreation
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool TerminateProcess(SafeProcessHandle process, uint exitCode);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetExitCodeProcess(SafeProcessHandle process, out uint exitCode);
 }

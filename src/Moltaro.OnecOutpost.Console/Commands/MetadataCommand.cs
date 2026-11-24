@@ -59,9 +59,18 @@ internal sealed partial class MetadataCommand : AsyncCommand<MetadataCommand.Set
         {
             account = LogOn(served, cancellationToken);
 
-            using MetadataWalk walk = new(_parts, _gate.Program!, served, password, account);
+            MetadataWalk walk = new(_parts, _gate.Program!, served, password, account);
 
-            await WalkAsync(walk, served, cancellationToken);
+            try
+            {
+                await WalkAsync(walk, served, cancellationToken);
+            }
+            finally
+            {
+                await _console.Status().StartAsync(
+                    Markup.Escape($"Closing the base {key}…"),
+                    _ => walk.CloseSessionAsync().AsTask());
+            }
 
             cancellationToken.ThrowIfCancellationRequested();
             End(walk, key, file);
@@ -265,6 +274,11 @@ internal sealed partial class MetadataCommand : AsyncCommand<MetadataCommand.Set
                 new Text(category.Found.ToString(CultureInfo.InvariantCulture)),
                 new Text(category.Read.ToString(CultureInfo.InvariantCulture)),
                 new Text(category.Failed.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        if (walk.CensusErrors.Count > 0)
+        {
+            table.Caption(Markup.Escape($"Not read: {string.Join(", ", walk.CensusErrors)}"));
         }
 
         _console.Write(table);

@@ -7,10 +7,11 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // storage by GetDBStorageStructureInfo with the DBMS's names; common, the storage tables of no object of those
 // categories. The S10 brief, "Internal of S10c", gives its outline and the form of what it gives:
 // - census: {"platform", "configuration": {"name", "version", "compatibilityMode"}, "categories": [{"category",
-//   "count"}]}, the fifteen categories in the report's order;
+//   "count"}]}, the fifteen categories in the report's order; an unreadable census value is {"error": "..."}.
 // - page, with category, from, count and storage: {"objects": [...], "storageError"}, each object with name, fullName,
-//   synonym, comment, properties, fields, values, storage and error, read in a Try of its own whose ErrorDescription is
-//   its error; storage its tables when storage is true and null otherwise, and storageError the raise of the storage,
+//   synonym, comment, properties, fields, values, storage and error. Each property is read on its own, so the object
+//   keeps the readable values and its error names each failed property. Storage is its tables when storage is true
+//   and null otherwise, and storageError the raise of the storage,
 //   which leaves every storage null and every error as it was;
 // - common: the storage tables whose object, the Metadata of a table up to its second dot, is empty or no object of
 //   the fifteen categories, such as a sequence's; a raise fails the Read.
@@ -124,6 +125,27 @@ internal static class MetadataScripts
                 FieldCollections = "StandardAttributes,Attributes,TabularSections";
             EndIf;
 
+            // The report's keys and the metadata properties of this kind.
+            PropertyNames = New Structure;
+
+            If PageCategory = "Catalogs" Then
+                PropertyNames = New Structure("hierarchical, hierarchyType, codeLength, descriptionLength, owners",
+                    "Hierarchical", "HierarchyType", "CodeLength", "DescriptionLength", "Owners");
+            ElsIf PageCategory = "Documents" Then
+                PropertyNames = New Structure("numberLength, numberType, numberPeriodicity, posting, registerRecords",
+                    "NumberLength", "NumberType", "NumberPeriodicity", "Posting", "RegisterRecords");
+            ElsIf PageCategory = "InformationRegisters" Then
+                PropertyNames = New Structure("periodicity, writeMode", "InformationRegisterPeriodicity", "WriteMode");
+            ElsIf PageCategory = "AccumulationRegisters" Then
+                PropertyNames = New Structure("registerType", "RegisterType");
+            ElsIf PageCategory = "ChartsOfCharacteristicTypes" Or PageCategory = "ChartsOfAccounts" Or PageCategory = "ChartsOfCalculationTypes" Or PageCategory = "ExchangePlans" Then
+                PropertyNames = New Structure("codeLength, descriptionLength", "CodeLength", "DescriptionLength");
+            ElsIf PageCategory = "BusinessProcesses" Then
+                PropertyNames = New Structure("numberLength", "NumberLength");
+            ElsIf PageCategory = "Tasks" Then
+                PropertyNames = New Structure("numberLength, descriptionLength", "NumberLength", "DescriptionLength");
+            EndIf;
+
             Last = Min(Parameters["from"] + Parameters["count"], PageCollection.Count()) - 1;
 
             For Index = Parameters["from"] To Last Do
@@ -132,154 +154,259 @@ internal static class MetadataScripts
                 Item.fields = New Array;
                 Item.values = New Array;
                 Objects.Add(Item);
+                Errors = New Array;
 
                 Try
                     MetadataObject = PageCollection.Get(Index);
-                    MetadataObjects.Add(MetadataObject);
+                Except
+                    Item.error = "object: " + ErrorDescription();
+                    Continue;
+                EndTry;
+
+                Try
                     Item.name = MetadataObject.Name;
+                Except
+                    Errors.Add("name: " + ErrorDescription());
+                EndTry;
+
+                Try
                     Item.fullName = MetadataObject.FullName();
+                    // Storage rows can be attached only to objects identified by their full names.
                     ByFullName.Insert(Item.fullName, Item);
+                    MetadataObjects.Add(MetadataObject);
+                Except
+                    Errors.Add("fullName: " + ErrorDescription());
+                EndTry;
+
+                Try
                     Item.synonym = MetadataObject.Synonym;
+                Except
+                    Errors.Add("synonym: " + ErrorDescription());
+                EndTry;
+
+                Try
                     Item.comment = MetadataObject.Comment;
+                Except
+                    Errors.Add("comment: " + ErrorDescription());
+                EndTry;
 
-                    Properties = New Structure;
+                For Each Property In PropertyNames Do
+                    Try
+                        PropertyValue = MetadataObject[Property.Value];
 
-                    If PageCategory = "Catalogs" Then
-                        Properties.Insert("hierarchical", MetadataObject.Hierarchical);
-                        Properties.Insert("hierarchyType", MetadataObject.HierarchyType);
-                        Properties.Insert("codeLength", MetadataObject.CodeLength);
-                        Properties.Insert("descriptionLength", MetadataObject.DescriptionLength);
-                        Properties.Insert("owners", MetadataObject.Owners);
-                    ElsIf PageCategory = "Documents" Then
-                        Properties.Insert("numberLength", MetadataObject.NumberLength);
-                        Properties.Insert("numberType", MetadataObject.NumberType);
-                        Properties.Insert("numberPeriodicity", MetadataObject.NumberPeriodicity);
-                        Properties.Insert("posting", MetadataObject.Posting);
-                        Properties.Insert("registerRecords", MetadataObject.RegisterRecords);
-                    ElsIf PageCategory = "InformationRegisters" Then
-                        Properties.Insert("periodicity", MetadataObject.InformationRegisterPeriodicity);
-                        Properties.Insert("writeMode", MetadataObject.WriteMode);
-                    ElsIf PageCategory = "AccumulationRegisters" Then
-                        Properties.Insert("registerType", MetadataObject.RegisterType);
-                    ElsIf PageCategory = "ChartsOfCharacteristicTypes" Or PageCategory = "ChartsOfAccounts" Or PageCategory = "ChartsOfCalculationTypes" Or PageCategory = "ExchangePlans" Then
-                        Properties.Insert("codeLength", MetadataObject.CodeLength);
-                        Properties.Insert("descriptionLength", MetadataObject.DescriptionLength);
-                    ElsIf PageCategory = "BusinessProcesses" Then
-                        Properties.Insert("numberLength", MetadataObject.NumberLength);
-                    ElsIf PageCategory = "Tasks" Then
-                        Properties.Insert("numberLength", MetadataObject.NumberLength);
-                        Properties.Insert("descriptionLength", MetadataObject.DescriptionLength);
-                    EndIf;
-
-                    For Each Property In Properties Do
                         If Property.Key = "owners" Or Property.Key = "registerRecords" Then
                             Names = New Array;
-
-                            For Each Listed In Property.Value Do
-                                Names.Add(Listed.FullName());
-                            EndDo;
-
                             Item.properties.Insert(Property.Key, Names);
-                        ElsIf TypeOf(Property.Value) = Type("Number") Or TypeOf(Property.Value) = Type("Boolean") Then
-                            Item.properties.Insert(Property.Key, Property.Value);
+
+                            For Each Listed In PropertyValue Do
+                                Try
+                                    Names.Add(Listed.FullName());
+                                Except
+                                    Errors.Add(Property.Key + ": " + ErrorDescription());
+                                EndTry;
+                            EndDo;
+                        ElsIf TypeOf(PropertyValue) = Type("Number") Or TypeOf(PropertyValue) = Type("Boolean") Then
+                            Item.properties.Insert(Property.Key, PropertyValue);
                         Else
-                            Item.properties.Insert(Property.Key, XMLString(Property.Value));
+                            Item.properties.Insert(Property.Key, XMLString(PropertyValue));
                         EndIf;
-                    EndDo;
+                    Except
+                        Errors.Add(Property.Key + ": " + ErrorDescription());
+                    EndTry;
+                EndDo;
 
-                    Sources = New Array;
-                    Rest = FieldCollections + ",";
+                Sources = New Array;
+                Rest = FieldCollections + ",";
 
-                    While Rest <> "" Do
-                        Comma = Find(Rest, ",");
-                        CollectionName = Left(Rest, Comma - 1);
-                        Rest = Mid(Rest, Comma + 1);
+                While Rest <> "" Do
+                    Comma = Find(Rest, ",");
+                    CollectionName = Left(Rest, Comma - 1);
+                    Rest = Mid(Rest, Comma + 1);
 
+                    Try
                         If CollectionName = "Value" Then
-                            Sources.Add(New Structure("collection, tabularSection, name, member", "Value", Undefined, "Value", MetadataObject));
+                            Sources.Add(New Structure("collection, tabularSection, member", "Value", Undefined, MetadataObject));
                         ElsIf CollectionName = "TabularSections" Then
                             For Each Section In MetadataObject.TabularSections Do
-                                For Each Member In Section.Attributes Do
-                                    Sources.Add(New Structure("collection, tabularSection, name, member", "Attributes", Section.Name, Member.Name, Member));
-                                EndDo;
+                                SectionName = Undefined;
+
+                                Try
+                                    SectionName = Section.Name;
+                                Except
+                                    Errors.Add("TabularSections.name: " + ErrorDescription());
+                                EndTry;
+
+                                Try
+                                    For Each Member In Section.Attributes Do
+                                        Sources.Add(New Structure("collection, tabularSection, member", "Attributes", SectionName, Member));
+                                    EndDo;
+                                Except
+                                    Errors.Add("TabularSections.attributes: " + ErrorDescription());
+                                EndTry;
                             EndDo;
                         ElsIf CollectionName <> "" Then
-                            If CollectionName = "StandardAttributes" Then
-                                Members = MetadataObject.StandardAttributes;
-                            ElsIf CollectionName = "Attributes" Then
-                                Members = MetadataObject.Attributes;
-                            ElsIf CollectionName = "Dimensions" Then
-                                Members = MetadataObject.Dimensions;
-                            ElsIf CollectionName = "Resources" Then
-                                Members = MetadataObject.Resources;
-                            ElsIf CollectionName = "AccountingFlags" Then
-                                Members = MetadataObject.AccountingFlags;
-                            ElsIf CollectionName = "ExtDimensionAccountingFlags" Then
-                                Members = MetadataObject.ExtDimensionAccountingFlags;
-                            Else
-                                Members = MetadataObject.AddressingAttributes;
-                            EndIf;
-
-                            For Each Member In Members Do
-                                Sources.Add(New Structure("collection, tabularSection, name, member", CollectionName, Undefined, Member.Name, Member));
+                            For Each Member In MetadataObject[CollectionName] Do
+                                Sources.Add(New Structure("collection, tabularSection, member", CollectionName, Undefined, Member));
                             EndDo;
                         EndIf;
-                    EndDo;
+                    Except
+                        Errors.Add(CollectionName + ": " + ErrorDescription());
+                    EndTry;
+                EndDo;
 
-                    For Each Source In Sources Do
-                        Member = Source.member;
-                        Field = New Structure("collection, tabularSection, name, synonym, indexing, types, string, number, date",
-                            Source.collection, Source.tabularSection, Source.name, Member.Synonym);
+                For Each Source In Sources Do
+                    Member = Source.member;
+                    Field = New Structure("collection, tabularSection, name, synonym, indexing, types, string, number, date",
+                        Source.collection, Source.tabularSection);
+                    Item.fields.Add(Field);
+                    FieldPath = Source.collection;
 
+                    If Source.tabularSection <> Undefined Then
+                        FieldPath = "TabularSections." + Source.tabularSection + "." + FieldPath;
+                    EndIf;
+
+                    Try
+                        If Source.collection = "Value" Then
+                            Field.name = "Value";
+                        Else
+                            Field.name = Member.Name;
+                        EndIf;
+
+                        FieldPath = FieldPath + "." + Field.name;
+                    Except
+                        Errors.Add(FieldPath + ".name: " + ErrorDescription());
+                    EndTry;
+
+                    Try
+                        Field.synonym = Member.Synonym;
+                    Except
+                        Errors.Add(FieldPath + ".synonym: " + ErrorDescription());
+                    EndTry;
+
+                    Indexing = Undefined;
+
+                    Try
+                        Indexing = Member.Indexing;
+                    Except
+                        // A field without an Indexing property has no indexing to convert.
+                    EndTry;
+
+                    If Indexing <> Undefined Then
                         Try
-                            Field.Insert("indexing", XMLString(Member.Indexing));
+                            Field.indexing = XMLString(Indexing);
                         Except
+                            Errors.Add(FieldPath + ".indexing: " + ErrorDescription());
                         EndTry;
+                    EndIf;
 
-                        TypeNames = New Array;
+                    Try
                         FieldType = Member.Type;
+                        ItemTypes = FieldType.Types();
+                        Field.types = New Array;
+                    Except
+                        Errors.Add(FieldPath + ".types: " + ErrorDescription());
+                        Continue;
+                    EndTry;
 
-                        For Each ItemType In FieldType.Types() Do
-                            If ItemType = Type("String") Then
-                                TypeNames.Add("String");
-                                Field.Insert("string", New Structure("length, allowedLength",
-                                    FieldType.StringQualifiers.Length, XMLString(FieldType.StringQualifiers.AllowedLength)));
-                            ElsIf ItemType = Type("Number") Then
-                                TypeNames.Add("Number");
-                                Field.Insert("number", New Structure("digits, fractionDigits, allowedSign",
-                                    FieldType.NumberQualifiers.Digits, FieldType.NumberQualifiers.FractionDigits, XMLString(FieldType.NumberQualifiers.AllowedSign)));
-                            ElsIf ItemType = Type("Date") Then
-                                TypeNames.Add("Date");
+                    For Each ItemType In ItemTypes Do
+                        If ItemType = Type("String") Then
+                            Field.types.Add("String");
+                            StringInfo = New Structure("length, allowedLength");
+                            Field.Insert("string", StringInfo);
+
+                            Try
+                                StringInfo.length = FieldType.StringQualifiers.Length;
+                            Except
+                                Errors.Add(FieldPath + ".string.length: " + ErrorDescription());
+                            EndTry;
+
+                            Try
+                                StringInfo.allowedLength = XMLString(FieldType.StringQualifiers.AllowedLength);
+                            Except
+                                Errors.Add(FieldPath + ".string.allowedLength: " + ErrorDescription());
+                            EndTry;
+                        ElsIf ItemType = Type("Number") Then
+                            Field.types.Add("Number");
+                            NumberInfo = New Structure("digits, fractionDigits, allowedSign");
+                            Field.Insert("number", NumberInfo);
+
+                            Try
+                                NumberInfo.digits = FieldType.NumberQualifiers.Digits;
+                            Except
+                                Errors.Add(FieldPath + ".number.digits: " + ErrorDescription());
+                            EndTry;
+
+                            Try
+                                NumberInfo.fractionDigits = FieldType.NumberQualifiers.FractionDigits;
+                            Except
+                                Errors.Add(FieldPath + ".number.fractionDigits: " + ErrorDescription());
+                            EndTry;
+
+                            Try
+                                NumberInfo.allowedSign = XMLString(FieldType.NumberQualifiers.AllowedSign);
+                            Except
+                                Errors.Add(FieldPath + ".number.allowedSign: " + ErrorDescription());
+                            EndTry;
+                        ElsIf ItemType = Type("Date") Then
+                            Field.types.Add("Date");
+
+                            Try
                                 Field.Insert("date", New Structure("dateFractions", XMLString(FieldType.DateQualifiers.DateFractions)));
-                            ElsIf ItemType = Type("Boolean") Then
-                                TypeNames.Add("Boolean");
-                            ElsIf ItemType = Type("ValueStorage") Then
-                                TypeNames.Add("ValueStorage");
-                            ElsIf ItemType = Type("UUID") Then
-                                TypeNames.Add("UUID");
-                            Else
+                            Except
+                                Errors.Add(FieldPath + ".date.dateFractions: " + ErrorDescription());
+                            EndTry;
+                        ElsIf ItemType = Type("Boolean") Then
+                            Field.types.Add("Boolean");
+                        ElsIf ItemType = Type("ValueStorage") Then
+                            Field.types.Add("ValueStorage");
+                        ElsIf ItemType = Type("UUID") Then
+                            Field.types.Add("UUID");
+                        Else
+                            Try
                                 TypeObject = Metadata.FindByType(ItemType);
 
                                 If TypeObject = Undefined Then
-                                    TypeNames.Add(String(ItemType));
+                                    Field.types.Add(String(ItemType));
                                 Else
-                                    TypeNames.Add(TypeObject.FullName());
+                                    Field.types.Add(TypeObject.FullName());
                                 EndIf;
-                            EndIf;
-                        EndDo;
-
-                        Field.Insert("types", TypeNames);
-                        Item.fields.Add(Field);
+                            Except
+                                Errors.Add(FieldPath + ".types: " + ErrorDescription());
+                            EndTry;
+                        EndIf;
                     EndDo;
+                EndDo;
 
-                    If PageCategory = "Enums" Then
+                If PageCategory = "Enums" Then
+                    Try
                         For Each EnumValue In MetadataObject.EnumValues Do
-                            Item.values.Add(New Structure("name, synonym", EnumValue.Name, EnumValue.Synonym));
+                            Value = New Structure("name, synonym");
+                            Item.values.Add(Value);
+
+                            Try
+                                Value.name = EnumValue.Name;
+                            Except
+                                Errors.Add("values.name: " + ErrorDescription());
+                            EndTry;
+
+                            Try
+                                Value.synonym = EnumValue.Synonym;
+                            Except
+                                Errors.Add("values.synonym: " + ErrorDescription());
+                            EndTry;
                         EndDo;
+                    Except
+                        Errors.Add("values: " + ErrorDescription());
+                    EndTry;
+                EndIf;
+
+                For Each Failure In Errors Do
+                    If Item.error = Undefined Then
+                        Item.error = Failure;
+                    Else
+                        Item.error = Item.error + "; " + Failure;
                     EndIf;
-                Except
-                    Item.error = ErrorDescription();
-                EndTry;
+                EndDo;
             EndDo;
         EndIf;
 
@@ -378,11 +505,33 @@ internal static class MetadataScripts
         EndIf;
 
         If Asked = "census" Then
-            Info = New SystemInfo;
-            Result = New Structure("platform, configuration, categories",
-                Info.AppVersion,
-                New Structure("name, version, compatibilityMode", Metadata.Name, Metadata.Version, XMLString(Metadata.CompatibilityMode)),
-                Counts);
+            Configuration = New Structure("name, version, compatibilityMode");
+            Result = New Structure("platform, configuration, categories", Undefined, Configuration, Counts);
+
+            Try
+                Info = New SystemInfo;
+                Result.platform = Info.AppVersion;
+            Except
+                Result.platform = New Structure("error", ErrorDescription());
+            EndTry;
+
+            Try
+                Configuration.name = Metadata.Name;
+            Except
+                Configuration.name = New Structure("error", ErrorDescription());
+            EndTry;
+
+            Try
+                Configuration.version = Metadata.Version;
+            Except
+                Configuration.version = New Structure("error", ErrorDescription());
+            EndTry;
+
+            Try
+                Configuration.compatibilityMode = XMLString(Metadata.CompatibilityMode);
+            Except
+                Configuration.compatibilityMode = New Structure("error", ErrorDescription());
+            EndTry;
         ElsIf Asked = "page" Then
             Result = New Structure("objects, storageError", Objects, StorageError);
         Else

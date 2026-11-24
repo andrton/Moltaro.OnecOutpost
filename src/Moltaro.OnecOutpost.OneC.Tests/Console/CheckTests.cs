@@ -2,7 +2,6 @@ using System.Runtime.Versioning;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.OneC.Tests.Agent;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
-using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Check;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Console;
@@ -22,7 +21,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 [SupportedOSPlatform("windows")]
 public sealed class CheckTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task On_the_test_base_in_safe_mode_every_line_passes_but_Subscriptions_which_names_NoteBeforeWrite_and_not_NoteFormGet()
     {
         LabFile lab = LabFile.Read();
@@ -45,7 +44,7 @@ public sealed class CheckTests
         Assert.Empty(check.RowsOf(CheckLineEnum.WorkerStart));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Under_the_worker_account_of_the_lab_its_logon_the_agent_rights_the_probe_and_the_connections_pass()
     {
         LabFile lab = LabFile.Read();
@@ -66,7 +65,7 @@ public sealed class CheckTests
         check.AssertPassed(About, CheckLineEnum.Connection, $"{LabTestBase.Key} write {lab.TestBase.Write.User}");
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task On_each_copy_of_a_typical_base_its_connections_pass_and_every_other_line_is_judged()
     {
         LabFile lab = LabFile.Read();

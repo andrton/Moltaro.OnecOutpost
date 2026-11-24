@@ -23,7 +23,7 @@ public sealed class MetadataWorkerEndTests : IDisposable
 
     // Documents loses the connection, so the walk opens a second session: each ends within the read mode's runLimit and
     // has exited when metadata ends.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Each_worker_of_metadata_has_exited_within_the_run_limit_of_the_read_mode_when_metadata_ends()
     {
         _metadata.Accounting.LosesConnection("Document.GoodsReceipt");
@@ -41,7 +41,7 @@ public sealed class MetadataWorkerEndTests : IDisposable
 
     // The worker goes on after its input closed: metadata waits the read mode's runLimit for it, then terminates it,
     // and only then ends.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_that_does_not_exit_at_the_end_of_its_input_is_terminated_at_the_run_limit_before_metadata_ends()
     {
         _metadata.SessionOf("accounting").LingerAtEnd();
@@ -62,7 +62,7 @@ public sealed class MetadataWorkerEndTests : IDisposable
 
     // Ctrl+C while the census is read: the worker, which would not exit at the end of its input, is terminated at once,
     // and metadata ends without waiting for the run limit, which the clock never reaches.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Ctrl_C_terminates_the_worker_at_once_and_metadata_ends_once_it_has_exited()
     {
         _metadata.SessionOf("accounting").LingerAtEnd();

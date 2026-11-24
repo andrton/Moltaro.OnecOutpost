@@ -9,8 +9,8 @@ namespace Moltaro.OnecOutpost.Console.Workers;
 // One worker of the console opened in a base, in read mode, for check and metadata (review 3, the runner joined to
 // S10c): its open and each of its Reads raced with the run limit on the clock, the worker killed at it, and each
 // outcome judged as the pool judges one. A Read after the worker ended is a mistake of the caller. The session owns its
-// worker, whose job closes with it. Its caller runs it from one task at a time.
-internal sealed class WorkerSession : IDisposable
+// worker and waits for its exit before closing the job. Its caller runs it from one task at a time.
+internal sealed class WorkerSession : IAsyncDisposable
 {
     private readonly ConsoleWorker _worker;
 
@@ -18,11 +18,14 @@ internal sealed class WorkerSession : IDisposable
 
     private readonly TimeProvider _clock;
 
-    private WorkerSession(ConsoleWorker worker, TimeSpan runLimit, TimeProvider clock)
+    private readonly CancellationToken _cancellationToken;
+
+    private WorkerSession(ConsoleWorker worker, TimeSpan runLimit, TimeProvider clock, CancellationToken cancellationToken)
     {
         _worker = worker;
         _runLimit = runLimit;
         _clock = clock;
+        _cancellationToken = cancellationToken;
     }
 
     // The worker ended: at the run limit, or as WorkerOutcome.Judge says, after which it runs nothing more.
@@ -43,39 +46,47 @@ internal sealed class WorkerSession : IDisposable
         TimeProvider clock,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         ConsoleWorker worker = starts.Start(account, program, baseKey);
+        WorkerSession session = new(worker, runLimit, clock, cancellationToken);
+        bool opened = false;
+        bool overran;
 
         try
         {
-            (bool opened, bool overran) = await WithinAsync(
+            (bool ready, overran) = await WithinAsync(
                 worker.Process,
                 runLimit,
                 clock,
                 () => worker.Process.OpenAsync(connection, cancellationToken));
 
-            if (overran)
+            cancellationToken.ThrowIfCancellationRequested();
+            opened = ready && !overran;
+
+            if (opened)
             {
-                worker.Process.Dispose();
-
-                return (null, $"1C opened no session within {runLimit:c}, the mode's runLimit");
+                return (session, null);
             }
-
+        }
+        finally
+        {
             if (!opened)
             {
-                worker.Process.Dispose();
-
-                string diagnostics = await worker.Diagnostics.WaitAsync(cancellationToken);
-
-                return (null, $"1C opened no session: {DiagnosticsOf(diagnostics)}");
+                await session.DisposeAsync();
             }
+        }
 
-            return (new WorkerSession(worker, runLimit, clock), null);
-        }
-        catch
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (overran)
         {
-            worker.Process.Dispose();
-            throw;
+            return (null, $"1C opened no session within {runLimit:c}, the mode's runLimit");
         }
+
+        string diagnostics = await worker.Diagnostics.WaitAsync(cancellationToken);
+
+        return (null, $"1C opened no session: {DiagnosticsOf(diagnostics)}");
     }
 
     // One Read of the script with its parameters as JSON, no caller key and OutpostProtocol.MaxOutcomeSizeLimit, within
@@ -100,6 +111,8 @@ internal sealed class WorkerSession : IDisposable
             _clock,
             () => _worker.Process.RunAsync(command, cancellationToken));
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (overran)
         {
             Ended = true;
@@ -113,10 +126,21 @@ internal sealed class WorkerSession : IDisposable
         return (OutpostCodec.ReadOutcome(OutpostModeEnum.Read, judged.Outcome), judged.Outcome.Length);
     }
 
-    // Closes the worker, its job with it.
-    public void Dispose()
+    // Lets the worker exit at the end of its input, or terminates it immediately on cancellation. The job closes only
+    // after the exit, so the next worker or the end of the command cannot race the release of 1C and the program files.
+    public async ValueTask DisposeAsync()
     {
-        _worker.Process.Dispose();
+        IWorkerProcess process = _worker.Process;
+
+        try
+        {
+            using CancellationTokenRegistration cancel = _cancellationToken.Register(process.Kill);
+            await process.EndAsync(_runLimit, _clock);
+        }
+        finally
+        {
+            process.Dispose();
+        }
     }
 
     // What the worker wrote to its standard error, which holds no password, or that it wrote nothing.

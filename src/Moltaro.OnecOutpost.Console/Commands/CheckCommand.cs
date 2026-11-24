@@ -265,7 +265,7 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
     {
         List<SessionScript> scripts =
         [
-            new(CheckLineEnum.Connection, $"{served.Key} {policy.Account}", CheckScripts.User, result => CheckScripts.Session(result, policy.Account)),
+            new(CheckLineEnum.Connection, $"{served.Key} {OutpostForms.WriteMode(mode)} {policy.Account}", CheckScripts.User, result => CheckScripts.Session(result, policy.Account)),
         ];
 
         if (mode != OutpostModeEnum.Read)
@@ -367,7 +367,7 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
             return;
         }
 
-        using (session)
+        await using (session)
         {
             for (int index = 0; index < scripts.Count; index++)
             {

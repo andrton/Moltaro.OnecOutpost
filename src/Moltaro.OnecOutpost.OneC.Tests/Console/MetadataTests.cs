@@ -54,7 +54,7 @@ public sealed class MetadataTests
         metadata.Record(About);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task On_each_copy_of_a_typical_base_the_report_holds_every_object_and_that_of_its_document_type_with_its_fields_and_its_storage()
     {
         LabFile lab = LabFile.Read();

@@ -1,7 +1,6 @@
 using System.Text.Json.Nodes;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
@@ -22,7 +21,7 @@ public sealed class ReadRightsLineTests : IDisposable
         _checked.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_read_account_that_holds_rights_to_change_data_fails_the_line_naming_them_and_the_first_three_objects()
     {
         string[] catalogs = [.. Enumerable.Range(1, 12).Select(number => $"Catalog.Item{number:D2}")];
@@ -63,7 +62,7 @@ public sealed class ReadRightsLineTests : IDisposable
 
     // The script gives a row of each right of each category; the line gives each kind once, its rights in the script's
     // order, the objects that hold any of them counted once, in the order they first come.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_rights_of_one_kind_of_objects_are_named_together_with_the_objects_that_hold_any_of_them()
     {
         Machine.Workers.Sessions[("warehouse", "outpost-read")].Gives(

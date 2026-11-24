@@ -88,7 +88,7 @@ public sealed class MetadataCensusTests : IDisposable
     // The probe's object fails with an error of its own, and the probe's page raises on the storage: the object is
     // recorded and counted as failed by its page, the storage structure is unavailable with its reason, and every page
     // is read without it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_probe_object_with_an_error_is_a_failed_object_like_any_other_and_the_walk_goes_on_to_write_the_report()
     {
         const string StorageError = "Insufficient rights to read the storage structure";
@@ -119,7 +119,7 @@ public sealed class MetadataCensusTests : IDisposable
     // raises on, as the lab found on a typical copy, is {"error": text} in its place, the walk goes on, and the caption
     // of the table names it. The caption may wrap within the width of the table, so its words are read across the
     // lines.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Census_values_that_1C_cannot_give_are_errors_in_their_place_named_in_the_caption_and_the_report_is_written()
     {
         const string PlatformError = "SystemInfo is not available";

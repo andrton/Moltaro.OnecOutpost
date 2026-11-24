@@ -21,11 +21,6 @@ namespace Moltaro.OnecOutpost.Console.Workers;
 [SupportedOSPlatform("windows")]
 internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerStarts
 {
-    // INFINITE of WaitForSingleObject, and WAIT_FAILED, what it gives when the wait itself fails.
-    private const uint Infinite = uint.MaxValue;
-
-    private const uint WaitFailed = uint.MaxValue;
-
     // What CreateRestrictedToken needs of the console's own primary token, and SetTokenInformation, CreateProcessAsUserW
     // and CreateEnvironmentBlock of the restricted one, which has the same access: TOKEN_ADJUST_DEFAULT sets its default
     // owner, its default list and its integrity level.
@@ -119,7 +114,7 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
 
                 drained = DrainAsync(output);
 
-                return await ExitCodeWithinAsync(process, deadline, cancellationToken);
+                return await WorkerCreation.ExitCodeWithinAsync(process, deadline, Clock, cancellationToken);
             }
         }
         finally
@@ -334,43 +329,6 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         });
     }
 
-    // The exit code once the process ends, waited for on a pool thread; a failed wait is a Win32Exception.
-    private static uint ExitCodeOf(SafeProcessHandle process)
-    {
-        if (WaitForSingleObject(process, Infinite) == WaitFailed || !GetExitCodeProcess(process, out uint exitCode))
-        {
-            throw new Win32Exception(Marshal.GetLastPInvokeError());
-        }
-
-        return exitCode;
-    }
-
-    // The exit code of the process, or null once it was ended at the deadline: its end is raced with the deadline on
-    // the clock, whose timer goes with the race. A cancellation ends the process too, and then passes. The process has
-    // ended whenever this returns, so the wait of the pool thread is over before its handle closes.
-    private async Task<uint?> ExitCodeWithinAsync(SafeProcessHandle process, TimeSpan deadline, CancellationToken cancellationToken)
-    {
-        Task<uint> exited = Task.Run(() => ExitCodeOf(process), CancellationToken.None);
-
-        using (CancellationTokenSource race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
-        {
-            Task limit = Task.Delay(deadline, Clock, race.Token);
-
-            if (await Task.WhenAny(exited, limit) == exited)
-            {
-                race.Cancel();
-
-                return await exited;
-            }
-        }
-
-        WorkerCreation.Terminate(process);
-        await exited;
-        cancellationToken.ThrowIfCancellationRequested();
-
-        return null;
-    }
-
     // The SIDs to disable become deny-only groups of the new token; neither a privilege nor a restricting SID is given.
     [LibraryImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -392,11 +350,4 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         int informationClass,
         void* information,
         int length);
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    private static partial uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool GetExitCodeProcess(SafeProcessHandle process, out uint exitCode);
 }

@@ -22,7 +22,7 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // category, for the report, and checks the token before each Read. A result of another form than the script's is an
 // InvalidOperationException or a KeyNotFoundException, which ends metadata with Failure. The walk owns its session and
 // is run from one task at a time.
-internal sealed class MetadataWalk : IDisposable
+internal sealed class MetadataWalk
 {
     // A granularity nobody observes, since a page that does not fit an outcome or the run limit is halved (principle
     // 10).
@@ -33,6 +33,8 @@ internal sealed class MetadataWalk : IDisposable
     private readonly List<WalkObject> _objects = [];
 
     private readonly List<WalkCategory> _categories = [];
+
+    private readonly List<string> _censusErrors = [];
 
     private readonly ConsoleParts _parts;
 
@@ -72,9 +74,11 @@ internal sealed class MetadataWalk : IDisposable
     }
 
     // What the census gave: the version of the platform and the configuration's name, version and compatibility mode.
-    public string Platform { get; private set; } = "";
+    public JsonElement Platform { get; private set; }
 
     public JsonElement Configuration { get; private set; }
+
+    public IReadOnlyList<string> CensusErrors => _censusErrors;
 
     // The reason the probe gave for a storage structure that the read account may not read, null while it is
     // available.
@@ -144,8 +148,11 @@ internal sealed class MetadataWalk : IDisposable
             throw ReportFailed($"the census {read.Ended(_runLimit)}");
         }
 
-        Platform = TextOf(census, "platform") ?? throw new InvalidOperationException("The census gave no platform.");
+        Platform = ReadCensusValue(census, "platform");
         Configuration = census.GetProperty("configuration");
+        ReadCensusValue(Configuration, "name");
+        ReadCensusValue(Configuration, "version");
+        ReadCensusValue(Configuration, "compatibilityMode");
 
         foreach (JsonElement category in census.GetProperty("categories").EnumerateArray())
         {
@@ -157,9 +164,9 @@ internal sealed class MetadataWalk : IDisposable
 
     // The probe: a page of the first object of the first category that has one, with the storage, which runs before the
     // walk so that a base whose objects cannot be read gives no report in which each object carries the same failure.
-    // A probe that does not succeed, or whose object has an error, judged before the storage error of the page, ends
-    // metadata with ReportFailed, and so does a configuration without an object; the storage error alone makes the
-    // storage unavailable to the walk, with its reason. The probe's object is read again by its page.
+    // A probe Read that does not succeed ends metadata with ReportFailed, as does a configuration without an object.
+    // The storage error makes the storage unavailable to the walk. The probe's object and any error of its own are
+    // recorded by its page.
     public async Task ProbeAsync(CancellationToken cancellationToken)
     {
         if (_categories.FirstOrDefault(category => category.Found > 0) is not WalkCategory first)
@@ -174,18 +181,9 @@ internal sealed class MetadataWalk : IDisposable
             throw ReportFailed($"the probe, the first object of {first.Name}, {read.Ended(_runLimit)}");
         }
 
-        JsonElement item = page.GetProperty("objects").EnumerateArray().FirstOrDefault();
-
-        if (item.ValueKind == JsonValueKind.Undefined)
+        if (page.GetProperty("objects").GetArrayLength() == 0)
         {
             throw ReportFailed("the configuration has no object to read");
-        }
-
-        if (TextOf(item, "error") is string error)
-        {
-            string probe = TextOf(item, "fullName") is string fullName ? $"the probe of {fullName}" : $"the probe, the first object of {first.Name},";
-
-            throw ReportFailed($"{probe} failed: {error}");
         }
 
         StorageReason = TextOf(page, "storageError");
@@ -212,10 +210,13 @@ internal sealed class MetadataWalk : IDisposable
         advance(1);
     }
 
-    // Closes the worker of the session, its job with it.
-    public void Dispose()
+    // Releases the current session before opening another one or writing the report.
+    public ValueTask CloseSessionAsync()
     {
-        _session?.Dispose();
+        WorkerSession? session = _session;
+        _session = null;
+
+        return session?.DisposeAsync() ?? ValueTask.CompletedTask;
     }
 
     private static CommandEndException ReportFailed(string reason)
@@ -230,6 +231,23 @@ internal sealed class MetadataWalk : IDisposable
         JsonElement value = element.GetProperty(member);
 
         return value.ValueKind == JsonValueKind.Null ? null : value.GetString();
+    }
+
+    // A census value retains the string or error object from the script. The caption names each error in report order.
+    private JsonElement ReadCensusValue(JsonElement census, string property)
+    {
+        JsonElement value = census.GetProperty(property);
+
+        if (value.ValueKind == JsonValueKind.Object && TextOf(value, "error") is string error)
+        {
+            _censusErrors.Add($"{property} ({error})");
+        }
+        else if (value.ValueKind != JsonValueKind.String)
+        {
+            throw new InvalidOperationException($"The census did not give a value or an error for {property}.");
+        }
+
+        return value;
     }
 
     // One page of the category, halved depth first while it does not fit, its first half the larger.
@@ -322,8 +340,7 @@ internal sealed class MetadataWalk : IDisposable
 
         if (_unopened is null && _session is not { Ended: false })
         {
-            _session?.Dispose();
-            _session = null;
+            await CloseSessionAsync();
             _unopened = await OpenAsync(cancellationToken);
         }
 

@@ -30,7 +30,8 @@ internal static class MetadataJson
         writer.WriteNumber("format", Format);
         writer.WriteString("base", baseKey);
         writer.WriteString("written", written.UtcDateTime.ToString(OutpostForms.TimeFormat, CultureInfo.InvariantCulture));
-        writer.WriteString("platform", walk.Platform);
+        writer.WritePropertyName("platform");
+        walk.Platform.WriteTo(writer);
         writer.WritePropertyName("configuration");
         walk.Configuration.WriteTo(writer);
 
