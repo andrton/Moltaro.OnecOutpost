@@ -177,9 +177,8 @@ An agent is set up with `install`, then the administrator's `policy.json`, `pair
 `secret` for each password the policy needs, and `check`, before its service is started;
 the guide [Installing and running an agent](docs/guides/agent.md) walks through it. These commands are tested against fakes of Windows, and in CI's elevated
 Windows job against the service controller, LSA and the access lists. The lab confirmed
-`check` on the test base and a copy of a typical base. Lab acceptance of `metadata` is in
-progress. Limitations of `check`: the
-write account is checked in Read and safe mode; the start of the worker runs in the
+`check` and `metadata` on the test base and a copy of a typical base.
+`check` checks the write account in Read and safe mode. Its worker starts in the
 console's session, not in the service's; it sees a right of the agent's account only when
 it was granted to the account itself; it judges a connector's folder and its parents, not
 its siblings; each worker it starts holds a client licence of 1C while it is open; and the

@@ -5,9 +5,9 @@ For the administrator of a back office: how to install the Moltaro.OnecOutpost a
 
 **Status:** every command of the console that this guide shows is built and tested: against fakes of Windows, of 1C
 and of the server on every platform, and in CI's elevated Windows job against the service controller, the local
-security policy and the access lists. Their run on a real agent machine, with this guide alone, is the lab run that
-follows; until it passed, a step here may still be incomplete. The archive is built with the first release, and no
-release is published yet.
+security policy and the access lists. The lab confirmed `check` and `metadata` on the test base and a copy of a
+typical base. The manual run of the full installation with this guide is planned with the shell. The archive is
+built with the first release.
 
 ## How it fits together
 
