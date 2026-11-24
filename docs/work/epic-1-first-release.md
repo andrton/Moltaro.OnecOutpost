@@ -772,7 +772,8 @@ the list "What S9b changes in the public contract, as a draft for the owner" in
 the list "What S9c changes in the public contract, as a draft for the owner" in
 [S9c's brief](#s9c--the-account-of-the-workers-without-safe-mode). Text marked *(S10a)*
 holds the same way: the list "What S10a changes in the public contract, as a draft for the
-owner" in [S10's brief](#s10--the-console).
+owner" in [S10's brief](#s10--the-console). Text marked *(S10b)* holds the same way: the
+list "What S10b changes in the public contract, as a draft for the owner" there.
 
 - **The data folder admits nobody else.** The console's `install` creates it with
   inheritance off:
@@ -789,7 +790,8 @@ owner" in [S10's brief](#s10--the-console).
   other than Administrators, SYSTEM or the agent's account counts as somebody else, since an
   owner can always change the access list (Q14 in [S10's brief](#s10--the-console)), so
   `install`, `pair` and `secret` make Administrators the owner of the folder and of every
-  file they write.
+  file they write. *(S10b)* The agent's start and the console's `check` name an entry owned
+  by somebody else with the `icacls "{path}" /setowner *S-1-5-32-544` that restores it.
 - **The agent refuses a folder that admits anybody else.** When it starts, it checks the
   access lists of the folder and of every file it reads, since a file moved into the
   folder keeps its own. If one of them admits anyone else, it records `started` with an
@@ -808,8 +810,16 @@ owner" in [S10's brief](#s10--the-console).
   that folder itself, sets its lists alone; it refuses a run from inside it or from a
   folder that holds it. Then it judges the folder by the agent's rule before it registers
   or reconfigures the service, and refuses, without repairing, a folder that someone else
-  may change. The folder of the COM connector is judged by the same rule by the console's
-  `check`, not by the agent.
+  may change. *(S10b)* The folder of each registered COM connector is judged by the same
+  rule by the console's `check`, not by the agent, and `check` starts no worker from a
+  program folder or with a connector whose folder someone else may change.
+- *(S10b)* **The start and `check` give one reason** where they share a step, each with a
+  remedy that exists: the entries and owners of the data folder, the writers of the
+  program folder, `agent.json` and `secrets.dat`, a missing password, the logon and the
+  rule of a worker account, and the privileges of the agent's account. Their wording is
+  "One wording, with a remedy that exists" of "Internal of S10b" in
+  [S10's brief](#s10--the-console); `pair` and `secret` give them too for the files they
+  read.
 - *(S10a)* **The COM connector** is the one that the classes of HKLM register, in the
   64-bit view and in the 32-bit one, never HKCR, which merges in the classes of the user
   who runs the console, unseen by the service; a registration counts only when its file
@@ -5982,19 +5992,22 @@ An independent reviewer reviews them, and the owner approves them. Until then th
   these commands and their exit codes. *(S10a)* The commands of S10a are built; their
   steps, messages and exit codes are those of "Internal of S10a" in
   [S10's brief](#s10--the-console), with the list "What S10a changes in the public
-  contract", and each needs a console run as administrator:
+  contract", and each needs a console run as administrator. *(S10b)* So is `check`: its
+  steps, lines, messages and exit codes are those of "Internal of S10b" there, with the list
+  "What S10b changes in the public contract"; its tests against a real 1C run on the lab
+  with S10c, which builds `metadata`:
   - `install [--stop-timeout <TIME>]` and `uninstall [--stop-timeout <TIME>]`;
   - `pair <server address> <token>`;
   - `secret <base key> <read|write|worker>`, which asks for the password without echoing
     it, or reads it as one line of a redirected standard input;
-  - `check`, which reports, each as passed or failed with its reason:
+  - `check [--clock-skew <TIME>]`, which reports, each as passed or failed with its reason:
     - the COM connector and its version: whether one is registered for each bitness, and
       where a `comcntr.dll` that is not registered lies (the owner, 21 November 2026, after
       L1: the console finds, diagnoses and registers the connector);
     - the connection to each base under each account;
-    - for each base, the event subscriptions whose common module is not available to an
-      external connection, named with their modules, since a write that reaches one of
-      them fails (concept §1 and §12, O1);
+    - for each base *(S10b)* that may be written, the event subscriptions whose common
+      module is not available to an external connection, named with their modules, since a
+      write that reaches one of them fails (concept §1 and §12, O1);
     - the rights to change data that each read account has;
     - the server;
     - the clock skew;
@@ -6005,14 +6018,16 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     - that the agent's account holds "Replace a process level token" and "Adjust memory
       quotas for a process";
     - a start of the COM worker under each worker account on the desktop the agent makes
-      for it, as the service starts it, which opens no base and reports the exit code or
-      the error of Windows, 0xC0000142 named as a failure to initialise on its desktop;
-    - the access lists of the data folder, its files and the program folder, naming who
-      else may write to them;
-    - that `policy.json` reads and that `secrets.dat` decrypts and holds every password
-      the policy needs.
+      for it, as the service starts it, *(S10b)* but in the console's session, on a window
+      station of the console's own, which opens no base and reports the exit code or the
+      error of Windows, 0xC0000142 named as a failure to initialise on its desktop;
+    - the access lists of the data folder, its files and the program folder, *(S10b)* and
+      of each registered connector's folder, naming who else may write to them;
+    - that `policy.json` reads, *(S10b)* that `agent.json` reads, and that `secrets.dat`
+      decrypts and holds every password the policy needs.
 
-    `check` only reads: it writes nothing to a base and runs no script that changes data.
+    `check` only reads: it writes nothing to a base and runs no script that changes data,
+    *(S10b)* writes no file of the data folder and never polls.
     Every cause of a failure that a lab run finds becomes a line of `check` with its test
     (the owner, 23 November 2026).
   - `connector register`, after L1, which registers the COM connector of the installed

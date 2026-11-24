@@ -115,8 +115,8 @@ unchanged, and a Write without safe mode could not read the agent's secrets. The
 `install` prepares the program folder and grants the agent's account its rights, and
 `secret` grants each worker account its own, as below. Limitations:
 
-- the folder of the COM connector is not checked by the agent; the console's `check` will
-  judge it by the rule of the program folder;
+- the folder of the COM connector is not checked by the agent; the console's `check`
+  judges it by the rule of the program folder;
 - a script without safe mode can start a process outside the job object through a
   service that its account may use, such as Task Scheduler or WMI, so the rights of the
   worker account are the boundary;
@@ -142,11 +142,29 @@ needs a console run as administrator, and ends with an exit code that says why:
 - `connector register` registers the COM connector of each bitness that has none
   registered and exactly one version installed;
 - `uninstall [--stop-timeout <TIME>]` takes the two rights back and removes the service,
-  leaving both folders with the audit log.
+  leaving both folders with the audit log;
+- `check [--clock-skew <TIME>]` checks the agent machine and shows one table of lines,
+  each passed or failed with its reason: the COM connector; `policy.json`, `agent.json`
+  and `secrets.dat`, read as the agent's start reads them; the access lists of the data
+  folder, the program folder and the connector's folder; the agent's two rights; for each
+  base its worker account, a start of the worker under it, the connection under each
+  account, the event subscriptions that a Write would reach and that an external
+  connection cannot run, and the rights to change data that its read account holds; the
+  server, by one outcome of a made-up command signed with the agent's key, and the clock
+  skew. It writes nothing to a base or to the data folder, runs only Reads of its own in
+  safe mode, never polls, and works while the service runs. It starts no worker from a
+  folder that someone else may change, and logs each worker account on once. Where the
+  agent's start and `check` judge the same thing, they give the same reason, with its
+  remedy.
 
 These are tested against fakes of Windows, and in CI's elevated Windows job against the
-service controller, LSA and the access lists. Planned next: `check`, `metadata`, their
-run on the lab machine and the guide on installing and running an agent.
+service controller, LSA and the access lists. The tests of `check` against a real 1C are
+written; they run on the lab machine with the next sprint. Limitations of `check`: the
+write account is checked in Read and safe mode; the start of the worker runs in the
+console's session, not in the service's; it sees a right of the agent's account only when
+it was granted to the account itself; and each worker it starts holds a client licence of
+1C while it is open. Planned next: `metadata`, the run of the console on the lab machine
+and the guide on installing and running an agent.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from

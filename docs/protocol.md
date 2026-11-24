@@ -14,7 +14,8 @@ all three requests: `pair`, `poll` with the commands it hands out, and `outcome`
 sends all three, keeps its audit log as §13 says, gives poll numbers with the reservation
 of §6.2, and runs its commands in the COM workers it starts, which hand over the
 executor's outcomes of §8; the tests of that path against a real 1C passed on the lab.
-The console's `pair` pairs an agent by §5 and §6.1; its check of §12 is not built yet.
+The console's `pair` pairs an agent by §5 and §6.1, and its `check` checks the server by
+§12, tested against a stub of the `outcome` endpoint.
 
 ## 1. Overview
 
@@ -661,7 +662,7 @@ service's place (rule 10).
   `{"kind":"refused","code":"not-addressed","result":null,"errorText":null,"messages":[],"messagesTrimmed":false}`.
 - The server confirms it and keeps nothing (§6.3).
 - A verified confirmation shows that the server is reachable and accepts the agent's key.
-  Its `time` gives the skew between the clocks.
+  Its `time`, as that of a verified refusal, gives the skew between the clocks.
 - Any other answer is reported as its status together with the console's own account of
   what it saw, as §6.1 does, such as "the answer's signature does not verify" or "an
   unsigned answer in the form the server uses for a protocol version it does not speak".
