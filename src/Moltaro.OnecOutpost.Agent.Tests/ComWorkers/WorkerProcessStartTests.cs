@@ -57,7 +57,7 @@ public sealed partial class WorkerProcessStartTests : IDisposable
         Assert.Equal("", await reader.ReadToEndAsync(cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public void A_worker_refused_by_its_job_has_exited_when_the_start_failure_is_reported()
     {
         using SafeAccessTokenHandle token = TestTokens.Own();

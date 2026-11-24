@@ -158,6 +158,7 @@ internal static class MetadataScripts
 
                 Try
                     MetadataObject = PageCollection.Get(Index);
+                    MetadataObjects.Add(MetadataObject);
                 Except
                     Item.error = "object: " + ErrorDescription();
                     Continue;
@@ -171,9 +172,7 @@ internal static class MetadataScripts
 
                 Try
                     Item.fullName = MetadataObject.FullName();
-                    // Storage rows can be attached only to objects identified by their full names.
                     ByFullName.Insert(Item.fullName, Item);
-                    MetadataObjects.Add(MetadataObject);
                 Except
                     Errors.Add("fullName: " + ErrorDescription());
                 EndTry;
@@ -410,14 +409,23 @@ internal static class MetadataScripts
             EndDo;
         EndIf;
 
-        If Asked = "common" Or (Asked = "page" And Parameters["storage"] = True And MetadataObjects.Count() > 0) Then
+        If Asked = "common" Or (Asked = "page" And Parameters["storage"] = True) Then
             Try
                 If Asked = "page" Then
+                    If MetadataObjects.Count() = 0 Then
+                        Raise "No metadata object was available for the storage inspection.";
+                    EndIf;
+
+                    // The storage API can inspect the object even when its full name is unreadable.
+                    Table = GetDBStorageStructureInfo(MetadataObjects, True);
+
+                    If ByFullName.Count() = 0 Then
+                        Raise "No metadata object had a readable full name for matching its storage tables.";
+                    EndIf;
+
                     For Each Entry In ByFullName Do
                         Entry.Value.storage = New Array;
                     EndDo;
-
-                    Table = GetDBStorageStructureInfo(MetadataObjects, True);
                 Else
                     Table = GetDBStorageStructureInfo(Undefined, True);
                 EndIf;
@@ -483,7 +491,7 @@ internal static class MetadataScripts
                         Owner = ByFullName.Get(OwnerName);
 
                         If Owner = Undefined Then
-                            Raise "The storage table " + StorageTable.storageName + " belongs to " + MetadataName + ", which is no object of the page.";
+                            Raise "The storage table " + StorageTable.storageName + " belongs to " + MetadataName + ", which matches no readable full name on the page.";
                         EndIf;
 
                         Owner.storage.Add(StorageTable);

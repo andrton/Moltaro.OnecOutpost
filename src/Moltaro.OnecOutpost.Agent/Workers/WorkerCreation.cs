@@ -75,9 +75,7 @@ internal static partial class WorkerCreation
 
     // Puts the suspended process into the job and resumes its thread, whose handle it closes, so that a worker is in the
     // job before any of its code runs. A process that the job does not take, which would outlive its owner, or whose
-    // thread does not resume is terminated and its Win32Exception passes; any other exception, such as the
-    // ObjectDisposedException of a disposed job, passes after the termination as well, so that no process is ever left
-    // outside the job.
+    // thread does not resume is terminated and waited for before the original startup error passes to the caller.
     public static void JoinAndResume(WorkerJob job, SafeProcessHandle process, nint thread)
     {
         bool resumed = false;
@@ -100,6 +98,9 @@ internal static partial class WorkerCreation
             if (!resumed)
             {
                 Terminate(process);
+
+                // TerminateProcess returns before the process exits. The caller still holds the creation handle.
+                WaitForSingleObject(process, Infinite);
             }
         }
     }

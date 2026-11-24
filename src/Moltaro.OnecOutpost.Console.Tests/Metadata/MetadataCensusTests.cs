@@ -115,7 +115,7 @@ public sealed class MetadataCensusTests : IDisposable
             Accounting.Answers.Select(answer => answer.Read));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_error_seen_only_by_the_probe_is_reported_with_the_values_read_by_the_objects_page()
     {
         const string ProbeError = "synonym: The synonym could not be read";
