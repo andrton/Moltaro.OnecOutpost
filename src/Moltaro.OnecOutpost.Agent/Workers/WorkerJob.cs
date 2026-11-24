@@ -19,6 +19,9 @@ internal sealed partial class WorkerJob : IDisposable
     // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: closing the last handle of the job ends every process in it.
     private const uint KillOnJobClose = 0x2000;
 
+    // JOB_OBJECT_LIMIT_BREAKAWAY_OK and JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK: a process of the job may leave it.
+    private const uint BreakawayOk = 0x0800 | 0x1000;
+
     private readonly JobHandle _job;
 
     public WorkerJob()
@@ -62,6 +65,33 @@ internal sealed partial class WorkerJob : IDisposable
         _job.Dispose();
     }
 
+    // How the calling process stands to jobs, for the reason of a failed start through the Secondary Logon service: in
+    // no job, in a job that lets a process break away, the innermost one when jobs are nested, or in one that does not;
+    // or that this cannot be told.
+    public static string OfCaller()
+    {
+        if (!IsProcessInJob(GetCurrentProcess(), 0, out bool inJob))
+        {
+            return "whose job cannot be told";
+        }
+
+        if (!inJob)
+        {
+            return "in no job";
+        }
+
+        int length = Marshal.SizeOf<ExtendedLimitInformation>();
+
+        if (!QueryInformationJobObject(0, ExtendedLimitInformationClass, out ExtendedLimitInformation limits, length, 0))
+        {
+            return "in a job whose limits cannot be read";
+        }
+
+        return (limits.LimitFlags & BreakawayOk) != 0
+            ? "in a job that lets a process break away"
+            : "in a job that lets no process break away";
+    }
+
     // The security attributes and the name are null: a handle that no child inherits, of a job that has no name.
     [LibraryImport("kernel32.dll", SetLastError = true)]
     private static partial JobHandle CreateJobObjectW(nint attributes, nint name);
@@ -77,4 +107,21 @@ internal sealed partial class WorkerJob : IDisposable
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool AssignProcessToJobObject(JobHandle job, SafeProcessHandle process);
+
+    [LibraryImport("kernel32.dll")]
+    private static partial nint GetCurrentProcess();
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool IsProcessInJob(nint process, nint job, [MarshalAs(UnmanagedType.Bool)] out bool result);
+
+    // A null job is the job of the calling process.
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool QueryInformationJobObject(
+        nint job,
+        int informationClass,
+        out ExtendedLimitInformation information,
+        int length,
+        nint returnLength);
 }

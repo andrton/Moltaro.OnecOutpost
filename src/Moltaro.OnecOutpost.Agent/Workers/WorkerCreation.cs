@@ -22,6 +22,14 @@ internal static partial class WorkerCreation
     // loaded, as under the agent.
     private const int NoLogonFlags = 0;
 
+    // MAXIMUM_ALLOWED, SecurityImpersonation of SECURITY_IMPERSONATION_LEVEL and TokenPrimary of TOKEN_TYPE, for the
+    // duplicate of a token that CreateProcessWithTokenW is given.
+    private const uint MaximumAllowed = 0x02000000;
+
+    private const int SecurityImpersonation = 2;
+
+    private const int PrimaryToken = 1;
+
     // STARTF_USESTDHANDLES.
     private const int UseStandardHandles = 0x00000100;
 
@@ -185,9 +193,14 @@ internal static partial class WorkerCreation
     // CreateProcessWithTokenW: the Secondary Logon service creates the process with the token, which needs no privilege
     // but "Impersonate a client after authentication" of the caller, and gives it duplicates of the standard handles
     // alone, so it takes no list of handles and inherits nothing else of the caller; its STARTUPINFOW is the extended
-    // form's without the list of attributes.
+    // form's without the list of attributes. The service is given a primary duplicate of the token with every access
+    // that the caller may have to it, rather than the handle given, which may hold no more than the documented
+    // TOKEN_QUERY, TOKEN_DUPLICATE and TOKEN_ASSIGN_PRIMARY, as one from OpenProcessToken does: the service refused such
+    // a handle of the process's own token with ERROR_ACCESS_DENIED in CI's elevated run, and a duplicate is the remedy
+    // known for that refusal, not yet proven there. A refusal names the call and the job of the caller, since the
+    // service may also refuse a caller whose job lets no process break away.
     private static unsafe (SafeProcessHandle Process, nint Thread) WithToken(
-        SafeAccessTokenHandle token,
+        SafeAccessTokenHandle given,
         string program,
         string commandLine,
         string desktop,
@@ -195,6 +208,8 @@ internal static partial class WorkerCreation
         SafePipeHandle output,
         SafePipeHandle? error)
     {
+        using SafeAccessTokenHandle token = PrimaryDuplicateOf(given);
+
         if (!CreateEnvironmentBlock(out nint environment, token, inherit: false))
         {
             throw new Win32Exception(Marshal.GetLastPInvokeError());
@@ -229,7 +244,11 @@ internal static partial class WorkerCreation
                     in startup,
                     out ProcessInformation created))
                 {
-                    throw new Win32Exception(Marshal.GetLastPInvokeError());
+                    int refused = Marshal.GetLastPInvokeError();
+
+                    throw new Win32Exception(
+                        refused,
+                        $"{new Win32Exception(refused).Message} (CreateProcessWithTokenW, from a caller {WorkerJob.OfCaller()})");
                 }
 
                 return (new SafeProcessHandle(created.Process, ownsHandle: true), created.Thread);
@@ -239,6 +258,22 @@ internal static partial class WorkerCreation
         {
             DestroyEnvironmentBlock(environment);
         }
+    }
+
+    // DuplicateTokenEx with MAXIMUM_ALLOWED to a primary token; the caller owns the duplicate. A failure is a
+    // Win32Exception.
+    private static SafeAccessTokenHandle PrimaryDuplicateOf(SafeAccessTokenHandle token)
+    {
+        if (!DuplicateTokenEx(token, MaximumAllowed, 0, SecurityImpersonation, PrimaryToken, out SafeAccessTokenHandle duplicate))
+        {
+            int error = Marshal.GetLastPInvokeError();
+
+            duplicate.Dispose();
+
+            throw new Win32Exception(error);
+        }
+
+        return duplicate;
     }
 
     [LibraryImport("userenv.dll", SetLastError = true)]
@@ -284,6 +319,16 @@ internal static partial class WorkerCreation
         string currentDirectory,
         in StartupInfo startupInfo,
         out ProcessInformation processInformation);
+
+    [LibraryImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool DuplicateTokenEx(
+        SafeAccessTokenHandle existingToken,
+        uint desiredAccess,
+        nint tokenAttributes,
+        int impersonationLevel,
+        int tokenType,
+        out SafeAccessTokenHandle newToken);
 
     [LibraryImport("advapi32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
     [return: MarshalAs(UnmanagedType.Bool)]
