@@ -5194,6 +5194,15 @@ S8.
     `ProgramFolderLayout`;
   - the comments S10b made untrue (`WorkerExitCodes`, `WorkerCreation.WithToken`,
     `WorkerCallEnum.AsUser`) and the row of the test worker in `AGENTS.md`.
+- **Q16** (the owner, 24 November 2026; built in S10c, whose guide G1 reads the audit log,
+  as an amendment of its contract after its implementation step): a new entry `stopped` of
+  the audit log, with `error`, the reason in plain words in the form of `started`'s, never a
+  value of a command or a secret. The agent writes it when it stops for a fault after its
+  `started` while the log can still be written (an outbox file it cannot write, a cleared log
+  answered as older, no poll number left) and then exits as today; after a failed write of
+  the log itself nothing more is written and the exit code is the reason; a normal stop of
+  the service writes none. A change of the public format of the audit log: "The files of
+  the agent", the concept and G1 say it. Its test author and implementer work on `xhigh`.
 - **Q14** (the planner, 23 November 2026): the rule stays strict. A file of the data
   folder whose owner is not Administrators, SYSTEM or the agent's account counts as
   somebody else, since an owner can always change the file's access list. `install` makes
