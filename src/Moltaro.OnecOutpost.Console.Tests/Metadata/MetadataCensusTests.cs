@@ -139,6 +139,36 @@ public sealed class MetadataCensusTests : IDisposable
         Assert.Single(report.Objects, item => MetadataReport.TextOf(item, "error") is not null);
     }
 
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task The_report_keeps_the_partial_probe_object_once_when_its_page_fails_and_the_walk_goes_on()
+    {
+        const string ProbeError = "The hierarchy type could not be read";
+        const string PageError = "The page of catalogs could not be read";
+        Accounting.PropertyFails("Catalog.Products", "hierarchyType", ProbeError);
+        Accounting.ObjectsOf("Catalogs")[0]["fields"] = new JsonArray(FakeConfiguration.Text("StandardAttributes", "Description", 25));
+        Accounting.FailsPage("Catalog.Units", PageError);
+
+        MetadataRun run = await _metadata.RunAsync();
+
+        run.AssertSucceeded(read: 4, found: 6, failed: 2);
+        MetadataReport report = run.Report;
+        Assert.Equal(new MetadataCategory("Catalogs", 2, 0, 2), report.Category("Catalogs"));
+
+        JsonElement products = report.Object("Catalog.Products");
+        Assert.Equal($"hierarchyType: {ProbeError}", MetadataReport.TextOf(products, "error"));
+        Assert.True(products.GetProperty("properties").GetProperty("hierarchical").GetBoolean());
+        JsonElement description = MetadataReport.FieldOf(products, "StandardAttributes", "Description");
+        Assert.Equal(25, description.GetProperty("string").GetProperty("length").GetInt32());
+        Assert.Equal(
+            ["Catalog.Products", "Document.GoodsReceipt", "Enum.Statuses", "Constant.Currency", "AccumulationRegister.Stock"],
+            report.Objects.Select(item => MetadataReport.TextOf(item, "fullName")));
+
+        MetadataRead page = report.Reads[2];
+        Assert.Equal(
+            ("page", "Catalogs", 0, 2, "failed", "script-error", PageError),
+            (page.Read, page.Category, page.From, page.Count, page.Kind, page.Code, page.ErrorText));
+    }
+
     // The S10 brief, "After the lab run of deeb370", 1: a value of the census without an XML form, which XMLString
     // raises on, as the lab found on a typical copy, is {"error": text} in its place, the walk goes on, and the caption
     // of the table names it. The caption may wrap within the width of the table, so its words are read across the

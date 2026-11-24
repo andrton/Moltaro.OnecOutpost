@@ -64,15 +64,26 @@ public sealed partial class WorkerProcessStartTests : IDisposable
         using AnonymousPipeServerStream input = new(PipeDirection.Out, HandleInheritability.Inheritable);
         using AnonymousPipeServerStream output = new(PipeDirection.In, HandleInheritability.Inheritable);
 
-        (SafeProcessHandle process, nint thread) = WorkerCreation.CreateSuspended(
-            WorkerCallEnum.AsUser,
-            token,
-            TestProgram.Path,
-            $"\"{TestProgram.Path}\" accounting read",
-            "",
-            input.ClientSafePipeHandle,
-            output.ClientSafePipeHandle,
-            error: null);
+        SafeProcessHandle process;
+        nint thread;
+
+        try
+        {
+            (process, thread) = WorkerCreation.CreateSuspended(
+                WorkerCallEnum.AsUser,
+                token,
+                TestProgram.Path,
+                $"\"{TestProgram.Path}\" accounting read",
+                "",
+                input.ClientSafePipeHandle,
+                output.ClientSafePipeHandle,
+                error: null);
+        }
+        finally
+        {
+            input.DisposeLocalCopyOfClientHandle();
+            output.DisposeLocalCopyOfClientHandle();
+        }
 
         using (process)
         {
