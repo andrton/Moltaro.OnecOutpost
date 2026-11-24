@@ -5464,7 +5464,8 @@ S8.
       contract of stage 3 take the drafts below.
   - *Internal of S10b* (the contract author, 24 November 2026, from S10b's study, with the
     coordinator's decisions under PQ2; reviewed in two rounds; approved by the coordinator under
-    PQ2, 24 November 2026, with round 2's fixes, which no further round reviews). Every type is
+    PQ2, 24 November 2026, with round 2's fixes, which no further round reviews; with the
+    coordinator's amendments after code review round 1, 24 November 2026). Every type is
     `internal`. The console gains a boundary folder, `Workers`, which uses the agent alone.
 
     ```csharp
@@ -5620,9 +5621,10 @@ S8.
       `AccessLists`, `AgentRights`; per base `WorkerAccount`, `WorkerStart`, `Connection` read then
       write, `Subscriptions`, `ReadRights`; `Server`, `ClockSkew`. A line whose input failed fails
       as `not checked: {subject} failed`. `WorkerStart` and each `Connection` take as inputs the
-      `AccessLists` rows of the program folder and of the connector's folder of the bitness they
-      start, a `Connection` its base's `WorkerAccount` and `WorkerStart` too: `check` never starts
-      code that somebody else may have changed. Then one table, `Check`, `Result` (`passed` green,
+      `AccessLists` rows of the data folder, so that no worker starts with a `policy.json` or
+      `secrets.dat` that somebody else may have planted, of the program folder and of the
+      connector's folder of the bitness they start, a `Connection` its base's `WorkerAccount` and
+      `WorkerStart` too: `check` never starts code that somebody else may have changed. Then one table, `Check`, `Result` (`passed` green,
       `failed` red), `Reason`, by `CheckLineEnum`, the stage contract's order, then the policy's;
       `Every line passed.` and `Success`, else `CheckFailed (19): {n} of {m} lines failed`; the
       row `| 19 | CheckFailed | check | A line failed, or was not checked |`, `NotInstalled` gaining `check`.
@@ -5663,15 +5665,18 @@ S8.
       ended with exit code 0x{code:X8}`; null `the worker did not end within {runLimit} and was
       ended`; the call's 1314 `the console lacks "Impersonate a client after authentication"`,
       1058 `the Secondary Logon service is disabled; check does not start it`, 2 or 3 `{program}
-      is missing`, 5 `{account} may not read or run {program}`; `Desktop()`'s `{account} cannot get
+      is missing`, 5 `{account} may not read or run {program}`, 267 `{account} may not read the
+      folder of {program}, or it does not exist`; `Desktop()`'s `{account} cannot get
       a desktop: {message}`; any other `{message} (Windows error {code})`. One logon per account per
       run, never retried: each failure counts toward a lockout. *Limitations:* the probe runs in
-      the console's session, so S9c's manual line stays the proof of session 0, and for its run a
-      process of the worker account is in the administrator's session, on a station of the
-      console's own, which keeps an ACE for the probe's logon until the administrator signs out.
+      the administrator's session, so S9c's manual line stays the proof of session 0, on a station
+      of the console's own, which keeps an ACE for the probe's logon until the administrator signs out.
     - **The connections**, `Start` with the first `Registered` bitness's `WorkerOf` and
-      `ExecutorOf`: for a base without a `workerAccount` `null`, `AsUser` with the console's own
-      token and `lpDesktop` `""`; else the account, `WithToken` on its desktop, as in the service.
+      `ExecutorOf`: for a base without a `workerAccount` `null`, `AsUser` with `lpDesktop` `""` and
+      a restricted version of the console's own token, `CreateRestrictedToken` with
+      `DISABLE_MAX_PRIVILEGE` and Administrators deny-only, which `CreateProcessAsUserW` assigns
+      without "Replace a process level token" [Win32 docs], so that the base's code does not run as
+      an administrator; else the account, `WithToken` on its desktop, as in the service.
       Three pipes, `"{program}" {base key} read`, a job of its own; `Diagnostics` the standard
       error read to its end as UTF-8, awaited after the job is closed, shown when the open gives
       false. The worker opens with `For(served, mode with { SafeMode = true }, password,
@@ -5692,7 +5697,7 @@ S8.
       sequences; as `global`, `categories` of `category`, `right`, `count`, and `objects` by full
       name. *Limitations:* the write account runs in Read and safe mode, so its executor without
       safe mode first opens at the service's first Write; each worker takes a client licence while
-      open (O3); the console's token may reach a file base's folder that the agent's account may not.
+      open (O3).
     - **The server and the skew**: `ReadPairing`, `ReadSecrets`' key, an `AgentConnection` on
       `Handlers(server, policy.Proxy)`, `SendOutcomeAsync(Guid.NewGuid(), OwnOutcome.Write(Refused,
       not-addressed), policy.RequestTimeout)`, `t0` and `t1` by `Clock.GetUtcNow()` around it.
@@ -5712,7 +5717,7 @@ S8.
       `CommandAppTester` on `TestMachine` with a scripted `FakeWorkerStarts`, `FakeAccountRights.Held`
       and a stub of the outcome endpoint signed with test keys: every line passed, in order,
       `Success`; each failed sentence above at its line, with `CheckFailed` and the lines that need
-      it not checked; a program or connector's folder that somebody else may change: no worker
+      it not checked; a data, program or connector's folder that somebody else may change: no worker
       starts; one logon per account; `AsUser` in safe mode, the account without; every command line
       `read` with `SafeMode` true, the data folder only read; a file gone between listing and list;
       every missing password; no poll; each `ServerAnswerSentences` row, never the body; the skew
@@ -5725,7 +5730,9 @@ S8.
       reasons; `OnDisk` with `Requires=Windows`. `ComWorker.Tests`: the diagnostics come before
       `{"ready":false}` and the worker's `base-unreachable` line.
     - **Tests with `Requires=Windows`**: `AsUser` with three ends, the error end carrying the test
-      program's diagnostics; with `Requires=Administrator`, the probe of the own token by `Account`, 0, a missing program 2.
+      program's diagnostics, and the token of `Start(null, …)` with Administrators deny-only and no
+      privilege but `SeChangeNotifyPrivilege`; with `Requires=Administrator`, the probe of the own
+      token by `Account`, 0, a missing program 2.
     - **Lab tests**, `Moltaro.OnecOutpost.OneC.Tests`, folder `Console`, built in S10b and run with
       S10c, by `CommandAppTester` with `LabConsole.Parts(agent)`: `Program.MachineParts` for the
       agent's folders, its program folder now in the `x64\` layout, `with` the test's account as
@@ -5737,25 +5744,17 @@ S8.
       names `Catalog.Products`. Broken without changing the machine: a changed worker password and
       a made-up account, 1326; `Guest`, disabled, with a blank password, 1331, or 1327 if Windows
       judges the blank password first, which the run records and the test then states; a program
-      folder without Users' entry, the probe's 5. `LabWorkerProbe` goes for the probe's line in
+      folder without Users' entry, the probe's 5 or 267, which the run records likewise. `LabWorkerProbe` goes for the probe's line in
       `LabRun.WhyNotOpened`. The test configuration gains the catalog `Notes`, written by nothing,
       the common module `NoteChecks`, `Server` without `ExternalConnection`, and the subscriptions
       on it `NoteBeforeWrite`, `BeforeWrite` of `CatalogObject.Notes`, and `NoteFormGet`,
       `FormGetProcessing` of `CatalogManager.Notes`; both roles read `Notes` alone; its `README.md`
       names them.
-    - **The steps.** Contract: the members above; what replaces a working member works at once
-      with today's texts (the layouts, `StartChecks`, `OtherAccounts`, `Held`, `Name`,
-      `AccountRightNames`, `WorkerLogon`, `AsUser`, `For`, `Judge`, the cause in pairing),
-      `OutcomeAnswer` with `Result` alone; the two tables, the settings, the
-      converters, `CheckFailed` and `check` in `ConsoleApp` work; `ExecuteAsync`,
-      `WindowsWorkerStarts` and `WithToken` throw `NotSupportedException`. Edits that state nothing
-      new, made there: the callers of every moved name; `ConsoleParts`' new members in
-      `MachineParts`, `TestMachine` and `InstallOnWindowsTests`, the steps using `AgentSid`;
-      `FakeAccessLists`; `InternalsVisibleTo` for `OneC.Tests`, which references the console and
-      Spectre's two Testing packages; `LabLogon` going. Tests step: the tests above, the reworded
-      assertions skipped, the test configuration. Implementation: the rest, the wording, the
-      worker's order. Documents: `README.md` names `check`; "The files of the agent" and the
-      stage-3 contract take the drafts below.
+    - **The steps.** Contract: the members above, what replaces a working member working at once
+      with today's texts, the rest throwing `NotSupportedException`, every edit that states nothing
+      new made there. Tests step: the tests above, the reworded assertions skipped, the test
+      configuration. Implementation: the rest, the wording, the worker's order. Documents:
+      `README.md` names `check`; "The files of the agent" and the stage-3 contract take the drafts.
 - **What S10a changes in the public contract, as a draft for the owner** (the contract
   author, 23 November 2026). Each holds until the owner overturns it:
   - the commands `install [--stop-timeout <TIME>]`, `uninstall [--stop-timeout <TIME>]`,
@@ -5778,20 +5777,21 @@ S8.
   author, 24 November 2026). Each holds until the owner overturns it:
   - `check [--clock-skew <TIME>]`, its lines in the stage contract's order, their messages, exit
     code 19 `CheckFailed`, and the allowed skew two minutes, the server's default, when absent;
-  - `check` reads only: no Write, no script that changes data, no file of the data folder
-    written, no poll; while the service runs it signs one `outcome` of a made-up command with the
-    agent's key, and each worker it starts takes a client licence while open;
+  - `check` reads only, no Write, no script that changes data, no file of the data folder written,
+    no poll; it signs one `outcome` of a made-up command, and each of its workers takes a licence;
   - `check` judges the event subscriptions of a base with `write` alone, all but those to
     `FormGetProcessing`, which no external connection raises;
   - `check` judges each registered connector's folder by the program folder's rule, starts no
-    worker from a folder that somebody else may change, and names a data file owned by somebody
-    else with the `icacls "{path}" /setowner *S-1-5-32-544` that restores it (Q14);
+    worker from a data, program or connector's folder that somebody else may change, starts one
+    of a base without a worker account under its own token restricted, Administrators deny-only
+    and no privilege, and names a data file owned by somebody else with the `icacls "{path}"
+    /setowner *S-1-5-32-544` that restores it (Q14);
   - the agent's `started` reasons take one wording with a remedy that exists (data folder entries
     and owners, program-folder writers, `agent.json` and `secrets.dat`, missing passwords, the
     worker account's logon and rule, the agent's privileges), shared with `pair` and `secret`;
   - the COM worker writes its diagnostics before `{"ready":false}` and its `base-unreachable` line;
   - `check`'s limitations above: the write account in Read and safe mode; the probe in the
-    console's session; direct grants alone seen; a connector's siblings; a file base's folder.
+    console's session; direct grants alone seen; a connector's siblings.
 - **To read.** The [concept](../concept.md), §3 "Pairing" and §5 (20 November 2026);
   `docs/protocol.md`; `AGENTS.md`, principles 9 and 12; this plan, "The files of the agent",
   the contract of stage 2 and S9c's brief.
