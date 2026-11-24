@@ -85,6 +85,65 @@ public sealed class MetadataStorageTests : IDisposable
         Assert.NotNull(report.CommonStorage);
     }
 
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task The_common_read_recovers_unseen_tables_for_objects_that_have_storage_and_keeps_common_storage_separate()
+    {
+        const string Owner = "Документ.StorageSample";
+        const string FailedOwner = "AccumulationRegister.Stock";
+        const string RecoveredName = "_OutpostNestedStorage";
+        Accounting.Add("Documents", Owner, "Storage sample");
+        Accounting.StorageFails(FailedOwner, StorageError);
+
+        JsonObject paged = (JsonObject)Accounting.Paged(Owner, storage: true)["storage"]![0]!;
+        string pagedName = paged["storageName"]!.GetValue<string>();
+        JsonObject recovered = (JsonObject)paged.DeepClone();
+        recovered["storageName"] = RecoveredName;
+        recovered["metadata"] = $"{Owner}.TabularSection.Items";
+        Accounting.AddGlobalOnlyStorage(Owner, recovered);
+
+        JsonObject unavailable = (JsonObject)recovered.DeepClone();
+        unavailable["storageName"] = "_OutpostUnavailableStorage";
+        unavailable["metadata"] = FailedOwner;
+        Accounting.AddGlobalOnlyStorage(FailedOwner, unavailable);
+
+        MetadataRun run = await _metadata.RunAsync();
+
+        run.AssertSucceeded(read: 6, found: 7, failed: 1);
+        MetadataReport report = run.Report;
+        Assert.True(report.StorageAvailable);
+        JsonElement storage = report.Object(Owner).GetProperty("storage");
+        Assert.Equal(2, storage.GetArrayLength());
+        MetadataRun.AssertJson(paged, Assert.Single(storage.EnumerateArray(), table => MetadataReport.TextOf(table, "storageName") == pagedName));
+        MetadataRun.AssertJson(recovered, Assert.Single(storage.EnumerateArray(), table => MetadataReport.TextOf(table, "storageName") == RecoveredName));
+        MetadataRun.AssertJson(Accounting.CommonStorage, report.CommonStorage!.Value);
+
+        JsonElement failed = report.Object(FailedOwner);
+        Assert.Equal(JsonValueKind.Null, failed.GetProperty("storage").ValueKind);
+        Assert.Equal($"storage: {StorageError}", MetadataReport.TextOf(failed, "error"));
+
+        string commonParameters = Assert.Single(
+            Assert.Single(_metadata.Machine.Workers.Processes).Commands,
+            command => FakeConfiguration.Describe(command.ParametersJson) == "common").ParametersJson;
+        using JsonDocument parameters = JsonDocument.Parse(commonParameters);
+        string[] expectedOwners = ["Catalog.Products", "Catalog.Units", "Document.GoodsReceipt", Owner, "Enum.Statuses", "Constant.Currency"];
+        IEnumerable<string> expectedNames = expectedOwners.Select(owner =>
+            Accounting.Paged(owner, storage: true)["storage"]![0]!["storageName"]!.GetValue<string>());
+
+        Assert.Equal(
+            expectedOwners.Order(StringComparer.Ordinal),
+            parameters.RootElement.GetProperty("owners").EnumerateArray().Select(owner => owner.GetString()).Order(StringComparer.Ordinal));
+        Assert.Equal(
+            expectedNames.Order(StringComparer.Ordinal),
+            parameters.RootElement.GetProperty("seenStorageNames").EnumerateArray().Select(name => name.GetString()).Order(StringComparer.Ordinal));
+
+        IEnumerable<string?> reportedNames = report.Objects
+            .Select(item => item.GetProperty("storage"))
+            .Where(tables => tables.ValueKind == JsonValueKind.Array)
+            .SelectMany(tables => tables.EnumerateArray())
+            .Select(table => MetadataReport.TextOf(table, "storageName"));
+        Assert.Equal(expectedNames.Append(RecoveredName).Order(StringComparer.Ordinal), reportedNames.Order(StringComparer.Ordinal));
+    }
+
     [Fact]
     public async Task A_common_storage_that_fails_is_recorded_in_the_reads_and_leaves_the_common_storage_null()
     {

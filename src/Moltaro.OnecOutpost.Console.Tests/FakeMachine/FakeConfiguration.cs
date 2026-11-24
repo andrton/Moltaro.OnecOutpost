@@ -61,6 +61,9 @@ internal sealed class FakeConfiguration
 
     private readonly JsonArray _commonStorage = [];
 
+    // Owned tables the global storage read can see and the scoped pages cannot.
+    private readonly List<(string Owner, JsonNode Table)> _globalOnlyStorage = [];
+
     private readonly HashSet<string> _tooLarge = new(StringComparer.Ordinal);
 
     private readonly HashSet<string> _overruns = new(StringComparer.Ordinal);
@@ -247,6 +250,11 @@ internal sealed class FakeConfiguration
         });
     }
 
+    public void AddGlobalOnlyStorage(string owner, JsonObject table)
+    {
+        _globalOnlyStorage.Add((owner, table));
+    }
+
     // The objects of the category, in the order of its collection.
     public IReadOnlyList<JsonObject> ObjectsOf(string category)
     {
@@ -419,7 +427,7 @@ internal sealed class FakeConfiguration
                 && root.TryGetProperty("storage", out JsonElement storage):
                 return Page(category.GetString()!, from.GetInt32(), count.GetInt32(), storage.GetBoolean());
             case "common":
-                return Common();
+                return Common(root);
             default:
                 return Failed(OutpostOutcomeCodes.ScriptError, $"The fake configuration reads nothing by {parametersJson}.");
         }
@@ -492,13 +500,34 @@ internal sealed class FakeConfiguration
         });
     }
 
-    private byte[] Common()
+    private byte[] Common(JsonElement parameters)
     {
         if (_commonError is string error)
         {
             return Failed(OutpostOutcomeCodes.ScriptError, error);
         }
 
-        return Succeeded(_commonStorage.DeepClone());
+        // Until the console sends the amended request, give its current result shape.
+        if (!parameters.TryGetProperty("owners", out JsonElement owners))
+        {
+            return Succeeded(_commonStorage.DeepClone());
+        }
+
+        HashSet<string> eligible = owners.EnumerateArray().Select(owner => owner.GetString()!).ToHashSet(StringComparer.Ordinal);
+        HashSet<string> seen = parameters.GetProperty("seenStorageNames").EnumerateArray().Select(name => name.GetString()!).ToHashSet(StringComparer.Ordinal);
+        JsonArray rows = new([.. _commonStorage.Select(table => new JsonObject { ["owner"] = null, ["table"] = table!.DeepClone() })]);
+        IEnumerable<(string Owner, JsonNode Table)> ownedRows = _storage
+            .SelectMany(entry => entry.Value.Select(table => (Owner: entry.Key, Table: table!)))
+            .Concat(_globalOnlyStorage);
+
+        foreach ((string owner, JsonNode table) in ownedRows)
+        {
+            if (eligible.Contains(owner) && !seen.Contains(table["storageName"]!.GetValue<string>()))
+            {
+                rows.Add(new JsonObject { ["owner"] = owner, ["table"] = table.DeepClone() });
+            }
+        }
+
+        return Succeeded(rows);
     }
 }
