@@ -5779,6 +5779,254 @@ S8.
       and `NoteFormGet` (`FormGetProcessing` of `CatalogManager.Notes`).
     - **The steps**, as process.md's full track; documents: `README.md` names `check`, and "The
       files of the agent" and the stage-3 contract take the drafts.
+  - *Internal of S10c* (the contract author, 24 November 2026, from S10b's study, §5 and §6, and
+    the planner's rules for the owner's collector, with the coordinator's decisions under PQ2).
+    Every type is `internal`; `Workers` still uses the agent alone, never `Commands`.
+
+    ```csharp
+    // Moltaro.OnecOutpost.Agent.Workers (review 3, 1): one start of a worker's process; ComWorkerLauncher's JoinAndResume goes
+    [SupportedOSPlatform("windows")]
+    internal sealed partial class ComWorkerProcess
+    {
+        // Win32Exception or IOException; the error end, when given, stays the caller's; the job the worker's when ownsJob
+        public static ComWorkerProcess Start(WorkerCallEnum call, SafeAccessTokenHandle token, string program, string baseKey,
+            OutpostModeEnum mode, string desktop, WorkerJob job, bool ownsJob, AnonymousPipeServerStream? error);
+    }
+    internal static partial class WorkerCreation { public static void Terminate(SafeProcessHandle process); } // the one TerminateProcess
+    // Agent.Start: StartChecks gains PolicyReason(AgentPolicyException) and EntryOf(string), now internal; ProgramFolderLayout gains
+    // the const AgentFile, Moltaro.OnecOutpost.Agent.exe, and AgentOf(programFolder). Agent.Connector: ConnectorFinding gains
+    // static FirstRegistered(IReadOnlyList<ConnectorFinding>), null for none. Agent.Transport: ServerAnswer gains IsUnsupportedVersion.
+
+    // Moltaro.OnecOutpost.Console.Workers (review 3, the runner joined to S10c); CheckWorker becomes ConsoleWorker, as metadata starts it too
+    internal sealed class WorkerSession : IDisposable
+    {
+        // Start(account, program, baseKey), then the open, raced with runLimit; Reason null once open; Start's exception passes
+        public static Task<(WorkerSession? Session, string? Reason)> OpenAsync(IWorkerStarts starts, IWorkerAccount? account,
+            string program, string baseKey, WorkerConnectionLine connection, TimeSpan runLimit, TimeProvider clock,
+            CancellationToken cancellationToken);
+        public bool Ended { get; } // at the run limit, or as WorkerOutcome.Judge says
+        // one Read, MaxOutcomeSizeLimit, raced with runLimit; Outcome null when it did not end within it; after Ended, InvalidOperationException
+        public Task<(OutpostOutcomeMessage? Outcome, long Size)> ReadAsync(string script, string parametersJson, CancellationToken cancellationToken);
+    }
+
+    // Moltaro.OnecOutpost.Console.Commands (review 3, 2): check's rule before a worker starts, for check and metadata
+    internal sealed class WorkerGate(ConsoleParts parts)
+    {
+        public AgentPolicy? Policy { get; } public AgentPairingSettings? Pairing { get; } public AgentSecrets? Secrets { get; }
+        public CheckLine PolicyLine { get; } public CheckLine PairingLine { get; } public CheckLine SecretsLine { get; }
+        public IReadOnlyList<ConnectorFinding> Findings { get; } public string? Program { get; } // WorkerOf the first registered
+        public IReadOnlyList<CheckLine> Files();                                   // policy.json, agent.json, secrets.dat
+        public CheckLine Connector();
+        public IReadOnlyList<CheckLine> AccessLists(FolderKindEnum dataFolder);    // data folder, program folder, each connector's
+        public (CheckLine Line, IWorkerAccount? Account) WorkerAccount(string baseKey, string workerAccount); // one logon
+        public CheckLine? WorkerInputFailed(); // the first failed of the connector's, data, program and its connector's folder lines
+    }
+    internal sealed record SessionScript(CheckLineEnum Kind, string Subject, string Script, Func<JsonElement, (bool Passed, string Reason)> Read);
+    internal sealed partial class MetadataCommand : AsyncCommand<MetadataCommand.Settings> { } // Settings: <BASE> Base, <FILE> File
+    internal static class MetadataScripts { public const string Walk = """…"""; } // the one script of the walk, as CheckScripts holds check's
+    // ConsoleExitCodes gains ReportFailed = 20. How MetadataCommand divides the walk and the file is the implementer's, a type per file.
+    ```
+
+    - **The refactorings of review 3**, made first, each its own commit with every test green:
+      - *Entry 1, a fix as well.* `Start` builds `"{program}" {base key} {read|write}` once, makes
+        the input and output pipes, `CreateSuspended`, then closes the caller's copy of every client
+        end, the error's too, whether the process was made or not, then `JoinAndResume`; on a
+        failure it disposes its two pipes and any process it made, and the job stays the caller's. The launcher keeps its
+        token, its desktop and `NoProcess`; the console keeps its call, its token, a job of its own
+        (`ownsJob`) and its error pipe with `DiagnosticsOf`; the probe stays as it is. Unchanged: a
+        worker of the agent inherits only its two pipe ends and one of a console only its three; it
+        joins its job before its thread resumes, a process the job refuses terminated; the
+        launcher's `Start` throws nothing but the `ObjectDisposedException` of a disposed job; the
+        console's fails with a `Win32Exception` or an `IOException`; the command line; the password
+        only in the first input line. Fixed: the launcher's copies of the client ends close after a
+        failed creation, not at the finalizer.
+      - *Entry 2, with the runner.* `Files`, `Connector`, `AccessLists` and `WorkerAccount` of
+        `CheckCommand` move into `WorkerGate` with their fields and `WorkerInputFailed`; `check`
+        adds the lines each gives to its table, keeps `AgentRights`, the probe, the server, the skew
+        and the table. `SessionAsync`, `ConnectAsync`, `ScriptLineAsync`'s run and `WithinAsync` move
+        into `WorkerSession`: `OpenAsync` gives today's reasons `1C opened no session within
+        {runLimit:c}, the mode's runLimit` and `1C opened no session: {diagnostics}`, its process
+        closed before the diagnostics are awaited. A session's scripts are one ordered list of
+        `SessionScript`, the read account's `Connection`, `Subscriptions` for a base with `write`,
+        `ReadRights`, the write account's `Connection`; one loop runs it, and when the first line
+        fails, the session does not open or a script ends the worker, every later one is `not
+        checked: {that line} failed`. `AddSessionLinesNotChecked` and the third spelling go.
+        Unchanged: the order and text of every line; no worker while a gate failed; one logon per
+        account per run; a line not checked names its input.
+      - *Entry 3.* `CheckServerAsync`'s nested ternary and `CheckConnectionAsync`'s chain become
+        `if`s; `PolicyReason`, `{PolicyName} is not valid: {message}`, serves `AgentStart.Open`,
+        `SharedSteps.ReadPolicy` and the gate, and `EntryOf` `AgentStart.CheckAccess` and the
+        data folder's line; `Terminate` replaces the three imports and their `KilledExitCode`;
+        `IsUnsupportedVersion` the three checks in `AgentConnection` and `AgentPairing`;
+        `FirstRegistered` the launcher's `ProgramOfConnector` loop and the gate's; `AgentOf` the
+        `InstallCommand.AgentProgram`. Unchanged: every text, every judgment, the bitness chosen.
+      - *Entry 4.* `WorkerExitCodes` names the probe as a reader of `Ended` and `BadInput`, and
+        `ProbeEnd` names the two constants it mirrors; `WithToken`'s comment says the duplicate was
+        proven by CI's elevated run of S10b; `AsUser` is the agent's and the restricted own token's
+        of the console; `AGENTS.md`'s row of the test worker names the console's tests too.
+    - **`metadata <BASE> <FILE>`**, `BASE` by `OutpostNames.IsBaseKey`, with `secret`'s sentence,
+      else `Usage`. It writes nothing to a base or the data folder, runs Reads alone, in safe mode,
+      never reaches the server, and works while the service runs. Steps, the token checked before each:
+      1. *elevation*, as every command;
+      2. *the file*: `FILE` made full by `Path.GetFullPath`; an existing file or folder gives
+         `Usage`, `{file} exists; metadata never replaces a file: name a new one`; a missing folder
+         `the folder of {file} does not exist`; a folder whose `FinalPath` is or lies in that of
+         `DataFolder` `{file} lies in the data folder {folder}, which metadata never writes`;
+      3. *the data folder*: `SharedSteps.DataFolderKind`, `Absent` giving `NotInstalled`;
+      4. *the gate*, behind check's spinners: `Files`; a `PolicyLine` that failed, or `Secrets`
+         null, refuses; `BASE` absent from the policy gives `NotInPolicy`, `the policy names no base
+         {key}`; `MissingPasswords` of that base alone, any, refuses; then `Connector`,
+         `AccessLists` and `WorkerInputFailed`; for a base with a `workerAccount`, `WorkerAccount`,
+         whose account is disposed at the end. A refusal is `CheckFailed`, `the line {Check} of
+         check failed, so metadata starts no worker: {reason}`, nothing started; no probe runs, as
+         the worker's open names its own failure;
+      5. *the session*: `WorkerSession.OpenAsync` with `Program`, `For(served, served.Read with {
+         SafeMode = true }, password, ExecutorOf)` and the read mode's `runLimit`; a reason, or a
+         start that threw, `{program} did not start: {message} (Windows error {code})`, gives
+         `ReportFailed`, `the base {key} did not open as {account}: {reason}`;
+      6. *the census*, `{"read":"census"}`; then *the probe*, a page of one object, the first of the
+         first category that has one, with storage. A census or probe that does not succeed, or a
+         probe object with an `error`, gives `ReportFailed`, `the census | the probe of {fullName}
+         ended {kind} {code}: {errorText}`, `… did not end within {runLimit:c}` or `the probe of
+         {fullName} failed: {error}`; a configuration with no object, `the configuration has no
+         object to read` (not handled: an empty configuration). A probe whose `storageError` is
+         set makes the storage unavailable with that reason: the pages then run without it and
+         the common storage is not read;
+      7. *the pages*, `{"read":"page","category":…,"from":…,"count":…,"storage":true|false}`, each
+         category from 0 in pages of 50, a constant: a granularity of the walk that nobody
+         observes, since every page fits the halving below (principle 10). Each page that gives
+         `result-too-large`, or no outcome within the run limit, is read again as two halves, the
+         first `⌈count/2⌉`, until one object, which is then recorded as failed with that code. Any
+         other end of a page records its objects as failed with its kind, code and error text. A
+         page that ended its worker, by the run limit or as `Judge` says, makes the next page open
+         a new session with the same account and token; a session that does not open again
+         records every page left as failed with its reason and opens none further;
+      8. *the common storage*, `{"read":"common"}`, when the storage is available; failing, it is
+         recorded in `reads` and `commonStorage` is null;
+      9. no page succeeded gives `ReportFailed`, `no page of the walk was read: {the first end}`;
+      10. *the report*, behind a spinner: `{FILE}.{32 hex digits}.tmp` with `FileMode.CreateNew`,
+          written, flushed to the disk, closed, then `File.Move` to `FILE` without overwrite, so a
+          file made meanwhile is never replaced; any failure deletes the temporary file and gives
+          `Failure`, `the step "report" failed: {message}`.
+
+      Steps 7 and 8 show one progress bar, `Reading the objects of {key}`, of the objects found
+      plus one when the common storage is read, each page advancing it by its objects; Spectre's
+      fallback writes plain lines when the output is not interactive. Then one table, `Category`, `Found`,
+      `Read`, `Failed`, in the census's order; `The storage structure could not be read: {reason};
+      the report holds the objects and their fields without it.` when so; and `Wrote the metadata
+      report of the base {key} to {file}: {read} of {found} objects read, {failed} failed.`,
+      `Success`, failures named in the report. Ctrl+C between two Reads gives `Cancelled`, before
+      any file exists. Rows: `| 20 | ReportFailed | metadata | The base did not open, the census or
+      the probe failed, or no page was read; no file was written |`; `Usage`, `NotInstalled`,
+      `NotInPolicy` and `CheckFailed` gain `metadata`. *Limitations:* a configuration changed
+      during the walk gives a report of both; each worker of `metadata` takes a client licence (O3);
+      the code of a base without a worker account runs as the administrator's unelevated account,
+      as in `check`; the file gets its folder's access list.
+    - **The report**, one UTF-8 JSON file without a byte order mark, indented, non-ASCII written as
+      it is (`UnsafeRelaxedJsonEscaping`); nothing of it is data of the base, a password or an account:
+      ```json
+      { "format": 1, "base": "test", "written": "2026-11-24T10:15:07.123Z",
+        "platform": "8.3.17.1851", "configuration": { "name": "…", "version": "…", "compatibilityMode": "Version8_2_13" },
+        "storage": { "available": true, "reason": null },
+        "categories": [ { "category": "Catalogs", "found": 3, "read": 3, "failed": 0 } ],
+        "objects": [ { "category": "Documents", "name": "GoodsReceipt", "fullName": "Document.GoodsReceipt",
+          "synonym": "…", "comment": "…", "properties": { "posting": "Allow" },
+          "fields": [ { "collection": "Attributes", "tabularSection": null, "name": "Quantity", "synonym": "…",
+            "indexing": "DontIndex", "types": [ "Number" ], "string": null,
+            "number": { "digits": 15, "fractionDigits": 3, "allowedSign": "Any" }, "date": null } ],
+          "values": [], "storage": [ { "storageName": "_document12", "name": "…", "metadata": "Document.GoodsReceipt",
+            "purpose": "…", "fields": [ { "storageName": "…", "name": "…", "metadata": "…" } ],
+            "indexes": [ { "storageName": "…", "fields": [ { "storageName": "…", "name": "…" } ] } ] } ],
+          "error": null } ],
+        "commonStorage": [ { "storageName": "…", "name": "…", "metadata": "", "purpose": "…", "fields": [], "indexes": [] } ],
+        "reads": [ { "read": "page", "category": "Catalogs", "from": 0, "count": 3, "size": 18211,
+          "kind": "succeeded", "code": null, "errorText": null } ] }
+      ```
+      `written` is the clock's in the form of §2; `found` the census's count, `failed` the objects
+      with an `error` and those of failed pages, `read` the rest; `objects` in the census's order,
+      each by its index; `storage` null when unavailable or failed; `reads` every Read of the run in
+      its order with the bytes of its outcome, which the lab records.
+    - **The script**, `MetadataScripts.Walk`, one Read whole by the executor, in the English variant
+      within compatibility mode 8.2.13, no procedure [1C docs; the lab proves each]:
+      - the fifteen categories in the report's order, `Catalogs`, `Documents`, `Enums`,
+        `Constants`, the four register kinds, `ChartsOfCharacteristicTypes`, `ChartsOfAccounts`,
+        `ChartsOfCalculationTypes`, `BusinessProcesses`, `Tasks`, `ExchangePlans` and
+        `CommonAttributes`, each collection picked by one `If … ElsIf` in a loop over them, which
+        the three reads share; `census` gives `New SystemInfo().AppVersion`, `Metadata.Name`,
+        `Version`, `XMLString(CompatibilityMode)` and each `Count()`;
+      - `page` takes `Get(i)` from `from` to `from + count − 1`, the last index at most; per object,
+        in its own `Try`, `ErrorDescription()` as its `error`: `name`, `fullName` by `FullName()`,
+        `synonym`, `comment`; `properties`, of a catalog `hierarchical`, `hierarchyType`,
+        `codeLength`, `descriptionLength` and `owners`, of a document `numberLength`, `numberType`,
+        `numberPeriodicity`, `posting` and `registerRecords`, of an information register
+        `periodicity` and `writeMode`, of an accumulation register `registerType`, of the charts,
+        business processes, tasks and exchange plans `codeLength` or `numberLength` and
+        `descriptionLength`, a system enumeration by `XMLString`, an object by its full name;
+        `fields`, each collection its kind has of `StandardAttributes`, `Attributes`, `Dimensions`,
+        `Resources`, `AccountingFlags`, `ExtDimensionAccountingFlags` and `AddressingAttributes`,
+        then each tabular section's `Attributes` with `tabularSection` named, a constant's and a
+        common attribute's own `Type` as one field `Value`; `values` of an enum, `name` and
+        `synonym`;
+      - a field: `indexing` by `XMLString` in a `Try`, null for a field without it; each type of
+        `Type.Types()` compared with `Type("String")`, `Number`, `Date`, `Boolean`, `ValueStorage`
+        and `UUID` and written by that name, else `Metadata.FindByType(T).FullName()`, else
+        `String(T)`; `string` `{length, allowedLength}`, `number` `{digits, fractionDigits,
+        allowedSign}` and `date` `{dateFractions}` when that type is among them, an enumeration
+        by `XMLString`;
+      - with `storage`, in one `Try`, `GetDBStorageStructureInfo(objects, True)` for a page,
+        `(Undefined, True)` for `common`; the columns by `Columns.Find("StorageTableName")`, else
+        the Russian names: `StorageTableName`/`ИмяТаблицыХранения`, `TableName`/`ИмяТаблицы`,
+        `Metadata`/`Метаданные`, `Purpose`/`Назначение`, `Fields`/`Поля`, `Indexes`/`Индексы`,
+        `StorageFieldName`/`ИмяПоляХранения`, `FieldName`/`ИмяПоля`, `StorageIndexName`/
+        `ИмяИндексаХранения`; each row rewritten into a `Structure`, since `WriteJSON` refuses a
+        value table, and keyed by its `Metadata` up to its second dot, the object's full name;
+        a page attaches each to the object of that key, a row of no object of the page raising, so
+        that no table goes unseen; `common` keeps the rows whose key is empty or no object of the
+        fifteen categories, such as a sequence's or a document journal's; a raise is the
+        `storageError` of the page, written as `storage: {text}` into every `error` still null.
+    - **Tests on every platform**, `Moltaro.OnecOutpost.Console.Tests`, folder `Metadata`, by
+      `CommandAppTester` on `TestMachine` with `FakeWorkerStarts` answering by the `read` of the
+      parameters, reports in a temporary folder: the steps in order and `Success` with the report's
+      JSON as above; an existing file or folder, a missing folder, a file in the data folder, a bad
+      `BASE`: `Usage`, nothing started; each gate refusal, a data, program or connector's folder
+      that somebody else may change among them: `CheckFailed` with its line, no worker started;
+      `NotInPolicy`; a missing password of another base not refusing; one logon; no probe;
+      `AsUser` in safe mode, the account without; every command line `read` with `SafeMode` true;
+      the data folder only read; no poll and no handler made; the open, census and probe failures,
+      a probe object with an error, no object, no page read: `ReportFailed`, no file; the probe's
+      `storageError`: storage unavailable with its reason, pages with `storage` false, no
+      `common`; `result-too-large` halved to one object recorded failed; the run limit on the fake
+      clock halved with a new session; a session that does not reopen; a failed write: `Failure`,
+      no temporary file left; no password in the output or the report; `Cancelled` with no file.
+      `metadata` joins `ElevationTests`, `RunEndTests`, `DataFolderStepTests` and
+      `RedirectedOutputTests` (`metadata --help`, `metadata Bad! report.json`). Every test of
+      `Check/*` unchanged. Agent's: `PolicyReason`, `FirstRegistered`, `AgentOf`,
+      `IsUnsupportedVersion`, each a case.
+    - **Tests with `Requires=Windows`**: a `Start` whose program is missing gives its
+      `Win32Exception` 2 and the error end given reads to its end at once, since every copy of a
+      client end closed; the tests review 3 names for entries 1 and 3, unchanged.
+    - **Lab tests**, `Moltaro.OnecOutpost.OneC.Tests`, folder `Console`, `MetadataTests` by
+      `LabConsole.MetadataAsync(agent, file)`, a file in a temporary folder removed after, each
+      asserting no poll: the test base in safe mode: `Success`, `read` equal to `found` in every
+      category; `Document.GoodsReceipt` with `Product` of `Catalog.Products`, `Quantity` with
+      digits 15 and fraction 3, `Comment` of length 200, `AccumulationRegister.Stock` with the
+      dimension `Product` and the resource `Quantity`, `Catalog.Products` hierarchical; with the
+      storage available, a table of `Document.GoodsReceipt` with a storage name and its fields,
+      else the reason, which the run records and the test then states, as S10b's 1331; each typical
+      copy, as its `writeSafeMode` says: `Success`, `found` equal to `read` plus `failed`, the
+      object of its `documentType` with fields, and storage tables when available. Each records
+      in its output the reads, the largest outcome, the halvings and whether the storage was
+      available, and in which language its columns came; the lab run writes the figures into this
+      brief. The test base's sessions are in English and a typical copy's are likely Russian, so
+      both names are proven only as the lab's sessions give them.
+    - **The steps**, as process.md's full track: the contract adds the types above, `metadata`
+      registered with its settings working and `ExecuteAsync`, `Start`, `OpenAsync`, `ReadAsync`
+      and the gate's members throwing `NotSupportedException`, unused; the tests step writes the
+      tests above, skipped where they need them; the implementation makes review 3's entries first,
+      then `metadata`. Then the documents step: `README.md` names `metadata`; "The files of the
+      agent" says that `metadata` holds `check`'s rule; the stage-3 contract takes the drafts. Then guide G1, by an agent of its own, before the independent review. Then the
+      lab run of S10, by the owner: `Moltaro.OnecOutpost.OneC.Tests` whole, S10b's `check` and
+      these, and the manual lines of the Acceptance.
 - **What S10a changes in the public contract, as a draft for the owner** (the contract
   author, 23 November 2026). Each holds until the owner overturns it:
   - the commands `install [--stop-timeout <TIME>]`, `uninstall [--stop-timeout <TIME>]`,
@@ -5817,6 +6065,23 @@ S8.
     console's session; direct grants alone seen; a connector's siblings; a base's code as the
     administrator's unelevated account, so only trusted bases, and its worker open to the
     administrator's unelevated programs; a file base's folder.
+- **What S10c changes in the public contract, as a draft for the owner** (the contract
+  author, 24 November 2026). Each holds until the owner overturns it:
+  - `metadata <base key> <file>`, its steps and messages, exit code 20 `ReportFailed`, and
+    `Usage`, `NotInstalled`, `NotInPolicy` and `CheckFailed` given by it too;
+  - `metadata` starts no worker while a line of `check`'s rule fails, the files, the connector,
+    the data, program and connector's folders and the worker account's logon, and then refuses
+    with `CheckFailed` and that line; it runs no probe;
+  - `metadata` reads only: Reads in safe mode under the base's read account, as the service runs
+    its workers, nothing written to the base or the data folder, no poll, nothing sent to the
+    server; each worker takes a licence;
+  - the report's JSON form `format` 1 above, written whole or not at all, under a temporary name
+    then renamed, never replacing a file, never in the data folder, holding metadata alone;
+  - a storage structure that the read account may not read is recorded as unavailable with its
+    reason, and the report still holds the objects and their fields; an object that fails is
+    recorded with its error and counted, and the report is `Success` saying how many;
+  - its limitations above: a configuration changed during the walk; the administrator's
+    unelevated account for a base without a worker account; the file's access list its folder's.
 - **To read.** The [concept](../concept.md), §3 "Pairing" and §5 (20 November 2026);
   `docs/protocol.md`; `AGENTS.md`, principles 9 and 12; this plan, "The files of the agent",
   the contract of stage 2 and S9c's brief.
