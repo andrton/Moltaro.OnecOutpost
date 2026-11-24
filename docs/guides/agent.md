@@ -715,6 +715,8 @@ configuration has one on purpose:
 a Write that reaches these fails: NoteBeforeWrite (BeforeWrite) in NoteChecks; set "External connection" of each module
 ```
 
+The event name is the one 1C returns for the session. For example, `ПередЗаписью` is the Russian spelling of `BeforeWrite`.
+
 The remedy is not yours to make on the agent machine: ask the developer of the configuration to set the one flag
 "External connection" in the properties of each common module named, and to update the base with it. A subscription that
 `check` names with `, which is not a common module` has a handler that names no common module of the configuration;

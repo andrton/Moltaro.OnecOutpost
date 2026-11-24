@@ -11,10 +11,9 @@ internal static class CheckScripts
     // The user of the session, compared with the account of the policy.
     public const string User = """Result = New Structure("user, fullName", UserName(), UserFullName());""";
 
-    // Each event subscription that an external connection can raise, all but those to FormGetProcessing, whose
-    // handler's module, the second part of Handler, CommonModule.{module}.{procedure} with the first word in the
-    // language of the configuration, is no common module or one without ExternalConnection. The name of an event is in
-    // the language of the configuration too, so the event is named in both.
+    // Each event subscription that an external connection can raise whose handler's common module is missing or
+    // lacks ExternalConnection. Handler puts the module before the procedure, with an optional metadata type prefix.
+    // 1C can return the event name in English or Russian.
     public const string Subscriptions = """
         Result = New Array;
 
@@ -25,9 +24,17 @@ internal static class CheckScripts
                 Continue;
             EndIf;
 
-            Handler = Subscription.Handler;
-            Rest = Mid(Handler, Find(Handler, ".") + 1);
-            ModuleName = Left(Rest, Find(Rest, ".") - 1);
+            Handler = String(Subscription.Handler);
+            FirstDot = Find(Handler, ".");
+            Rest = Mid(Handler, FirstDot + 1);
+            NextDot = Find(Rest, ".");
+
+            If NextDot > 0 Then
+                ModuleName = Left(Rest, NextDot - 1);
+            Else
+                ModuleName = Left(Handler, Max(FirstDot - 1, 0));
+            EndIf;
+
             Module = Metadata.CommonModules.Find(ModuleName);
             Found = Module <> Undefined;
 

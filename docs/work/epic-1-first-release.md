@@ -1382,7 +1382,7 @@ The release
 | S10a | The console's setup: `install`, `uninstall`, `pair`, `secret`, `connector register` | Full | Done, 23 November 2026: the console on Spectre.Console.Cli with `install`, `uninstall`, `pair`, `secret` and `connector register`, and one finder of the COM connector in the agent, which its launcher and the console use. The study read actions/runner and Octopus Tentacle; the internal contract was reviewed in two rounds and approved under PQ2, round 2's fixes (a P2 of the contract step and six P3) taken without a third round. The code review took three rounds: three P1 of round 1 (the lists of `audit` and `outcomes`, tests that expected an order of entries, colour forced on in CI), five P3 of round 2, none in round 3. 2697 tests passed here; CI passed with the tests of `Requires=Administrator` on its elevated `windows` job. The manual run of its commands is on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
 | S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 and entry 1 of review 2 | Refactoring | Done, 23 November 2026: one transaction frame in the store, measured again with every p95 within S7b's; one growing delay of a retry; the forms of §2 in the protocol alone; four small cleanups; the console's install test running the program's own parts. One commit per entry, every test green after each, no public member, assertion or test changed; the review took one round (five P4, two fixed in this plan) |
 | S10b | The console's check | Full | Done, 24 November 2026: `check` with every line of the stage contract, a table of passed and failed lines, `--clock-skew` and the exit code `CheckFailed`; the probe of each worker account on a desktop of the console's own, each base under each account through the COM worker and the executor in Read and safe mode, the server by an `outcome` that takes no poll's place; the architect's entries joined to it (the launcher's steps, the start's checks free of the audit log, the outcome answer as a record, the worker's connection line and judgment outside the pool, the privileges, the layout and one wording of reasons). The internal contract was reviewed in two rounds and approved under PQ2 (round 2's P2, the events judged, taken without a third round); the code review took three rounds: a P1 and two P2 of round 1 (no worker while the data folder admits others; a restricted token, then medium integrity and the user's default list, its limitation stated), one P2 back in round 2, settled by the coordinator, none open in round 3. 2861 tests passed here; the tests with `Requires=Administrator` first run on its pull request, and those of `Moltaro.OnecOutpost.OneC.Tests` on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
-| S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | In progress. The lab run of `deeb370` on 24 November 2026 passed 81 of 86 tests. Round 4, approved by the owner, closed the remaining probe and pipe findings. Both CI jobs passed at `b1e8ec5`. The owner stopped that lab run after 20 min 23 s with no results displayed. The lab console uses the machine clock for worker limits and cancels each command at its deadline, awaiting cleanup. A focused `CheckTests` run with test names visible comes before another full lab run. Draft PR #23 awaits lab acceptance. |
+| S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | In progress. The lab run of `deeb370` on 24 November 2026 passed 81 of 86 tests. Round 4, approved by the owner, closed the remaining probe and pipe findings. The owner stopped the lab run of `b1e8ec5` after 20 min 23 s with no results displayed. The lab console now uses the machine clock for worker limits and cancels each command at its deadline, awaiting cleanup. Both CI jobs passed at `d21fe09`. Its focused lab run of `CheckTests` finished in 1 min 59 s with three of four tests passing. The safe-mode case exposed an empty module name in the `Subscriptions` row. The parser fix awaits lab confirmation. Draft PR #23 awaits lab acceptance. |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
 
@@ -5736,7 +5736,7 @@ S8.
       compatibility mode 8.2.13 [1C docs; the lab proves each]: `Result = New Structure("user,
       fullName", UserName(), UserFullName())`, the user compared with the policy's account
       ignoring case; each of `Metadata.EventSubscriptions` but those to `FormGetProcessing`, which
-      no external connection raises, whose module, the second part of `Handler`,
+      no external connection raises, whose module, the name before the procedure in `Handler`,
       `Metadata.CommonModules.Find` misses or finds without `ExternalConnection`, as
       `subscription`, `event`, `module`, `found`; `AccessRight(right, object)`, no third argument,
       each in a `Try`, a raise not held: `Administration`, `DataAdministration`,
@@ -5788,9 +5788,10 @@ S8.
       integrity and no privilege but `SeChangeNotifyPrivilege`; with `Requires=Administrator`, the
       probe of the own token by `Account`, 0, a missing program 2.
     - **Lab tests**, `Moltaro.OnecOutpost.OneC.Tests`, folder `Console`, built in S10b and run with
-      S10c, by `CommandAppTester` with `LabConsole.Parts(agent)`: `Program.MachineParts` for the
-      agent's folders, its program folder now in the `x64\` layout, `with` the test's account as
-      `AgentSid`, the agent's clock and a `LabServer` of its keys; each asserts it saw no poll. The
+      S10c, by `CommandAppTester` with `LabConsole` and `Program.MachineParts` for the agent's
+      folders, its program folder in the `x64\` layout, with the test's account as `AgentSid`
+      and a `LabServer` of the agent's keys. The console and server share the machine's clock.
+      Each run checks that the program folder can be removed at once and the server saw no poll. The
       test base in safe mode: every line passed but `Subscriptions`, which names `NoteBeforeWrite`
       in `NoteChecks` and not `NoteFormGet`, the users those of the session; under `outpost-worker`: its account, rights, probe 0 and
       connections; each typical copy, as its `writeSafeMode` says: its connections pass, the other
@@ -6036,6 +6037,10 @@ S8.
          holding any of them; the reader groups the script's `categories` by `category`.
       5. The subscriptions script writes `subscription`, `event` and `module` with `String()` and
          `found` as a `Boolean`, so only values of §8 remain (it ended `failed result-type`).
+    - **After the focused lab run of `d21fe09`**. The safe-mode case showed `ПередЗаписью`
+      for `BeforeWrite` and an empty module for `NoteBeforeWrite`. The lab assertion accepts
+      both spellings of that event and requires `NoteChecks` as a common module. The script reads the module in both
+      `Module.Procedure` and `CommonModule.Module.Procedure` forms of `Handler`.
     - **The amendment for Q16**, the agent's, on `xhigh`. `AuditLog.Stopped(string error)` records
       `{"time":…,"entry":"stopped","error":…}`; it throws nothing and writes nothing once a write of
       the log failed, its own failed write cut back as any entry's; the reader accepts `stopped`
