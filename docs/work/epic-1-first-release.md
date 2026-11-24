@@ -5793,7 +5793,8 @@ S8.
       files of the agent" and the stage-3 contract take the drafts.
   - *Internal of S10c* (the contract author, 24 November 2026, from S10b's study, §5 and §6, and
     the planner's rules for the collector, with the coordinator's decisions under PQ2; reviewed in
-    two rounds; approved by the coordinator under PQ2, 24 November 2026). Every type is `internal`.
+    two rounds; approved by the coordinator under PQ2, 24 November 2026; with the owner's Q16 as an
+    amendment, 24 November 2026, approved by the coordinator under PQ2). Every type is `internal`.
 
     ```csharp
     // Moltaro.OnecOutpost.Agent.Workers (review 3, 1): one start of a worker's process; ComWorkerLauncher's JoinAndResume goes
@@ -5997,6 +5998,20 @@ S8.
         a sequence's or a document journal's. A raise is the page's `storageError`, and the script
         leaves each `error` as it was: the console writes `storage: {storageError}` into each
         `error` still null of a page's objects, never of the probe's.
+    - **The amendment for Q16**, the agent's, on `xhigh`. `AuditLog.Stopped(string error)` records
+      `{"time":…,"entry":"stopped","error":…}`; it throws nothing and writes nothing once a write of
+      the log failed, its own failed write cut back as any entry's; the reader accepts `stopped`
+      with its string `error`, so the next start reads it. `AgentHost.RunAsync`, catching the
+      loop's `AgentStopException`, calls `run.Log.Stopped(exception.Message)` before it returns
+      `Error`: the reasons that today stop the run, worded once where they are thrown, as
+      `started`'s `error` is, naming a file by its path and never a script, a parameter, a result
+      or a secret: `outcomes\{id}.json cannot be written` and the outbox's others, the cleared log
+      answered as older, and `the poll numbers are used up; pair the agent anew`. A failed write
+      of the log stops with nothing more written, the exit code its reason; a stop by the token
+      writes none; a failed start still records `started` with its `error`. Exit codes unchanged.
+      Tests, `Agent.Tests`, folder `Host`, through the fakes of the disk: one per fault, the
+      entry's `error` and `Error`; a stop by the token writing none; a failed write of the log
+      writing none after it; a start that reads a log ending with `stopped`.
     - **Tests on every platform**, `Console.Tests`, folder `Metadata`, by `CommandAppTester` on
       `TestMachine`, `FakeWorkerStarts` answering by the `read` of the parameters as the script
       would, reports in a temporary folder: the steps in order, `Success`, the JSON as above; an
@@ -6093,7 +6108,10 @@ S8.
     the objects and fields kept; a failed object is recorded and counted, and the run `Success`;
   - its limitations above: a configuration changed during the walk; halving at the run limit; a
     base without a worker account run as the administrator's unelevated account, its worker's 1C
-    password open to their unelevated programs the whole walk; the file's access list its folder's.
+    password open to their unelevated programs the whole walk; the file's access list its folder's;
+  - *(Q16)* the audit log gains the entry `stopped`, `time` and `error`, written when the agent
+    stops for a fault after `started` while the log can be written; none after a failed write of
+    the log, none for a normal stop; the exit codes unchanged.
 - **To read.** The [concept](../concept.md), §3 "Pairing" and §5 (20 November 2026);
   `docs/protocol.md`; `AGENTS.md`, principles 9 and 12; this plan, "The files of the agent",
   the contract of stage 2 and S9c's brief.
