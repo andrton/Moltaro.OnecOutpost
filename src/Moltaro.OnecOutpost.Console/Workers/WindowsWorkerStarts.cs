@@ -28,13 +28,25 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
     // The exit code of a probe ended at its deadline, as Process.Kill gives it.
     private const uint KilledExitCode = uint.MaxValue;
 
-    // What CreateRestrictedToken needs of the console's own primary token, and CreateProcessAsUserW and
-    // CreateEnvironmentBlock of the restricted one, which has the same access.
+    // What CreateRestrictedToken needs of the console's own primary token, and SetTokenInformation, CreateProcessAsUserW
+    // and CreateEnvironmentBlock of the restricted one, which has the same access: TOKEN_ADJUST_DEFAULT sets its
+    // integrity level.
     private const TokenAccessLevels OwnTokenAccess =
-        TokenAccessLevels.AssignPrimary | TokenAccessLevels.Duplicate | TokenAccessLevels.Query;
+        TokenAccessLevels.AssignPrimary
+        | TokenAccessLevels.Duplicate
+        | TokenAccessLevels.Query
+        | TokenAccessLevels.AdjustDefault;
 
     // DISABLE_MAX_PRIVILEGE of CreateRestrictedToken: every privilege but SeChangeNotifyPrivilege deleted.
     private const uint DisableMaxPrivilege = 0x1;
+
+    // TokenIntegrityLevel of TOKEN_INFORMATION_CLASS, the medium level's label S-1-16-8192, and SE_GROUP_INTEGRITY, the
+    // attribute of a label.
+    private const int TokenIntegrityLevelClass = 25;
+
+    private const string MediumIntegrity = "S-1-16-8192";
+
+    private const uint GroupIntegrity = 0x20;
 
     // The clock of the probe's deadline.
     private TimeProvider Clock { get; } = clock;
@@ -62,8 +74,9 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         string desktop = worker.Desktop();
         string commandLine = CommandLineOf(program, baseKey, OutpostModeEnum.Write);
 
-        using AnonymousPipeServerStream output = new(PipeDirection.In, HandleInheritability.Inheritable);
-        Task drained = Task.CompletedTask;
+        // Owned by the drain once it reads it, and disposed here before.
+        AnonymousPipeServerStream output = new(PipeDirection.In, HandleInheritability.Inheritable);
+        Task? drained = null;
 
         try
         {
@@ -99,15 +112,21 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
             {
                 WorkerCreation.JoinAndResume(job, process, thread);
 
-                // An anonymous pipe has no asynchronous I/O, so a pool thread reads it.
-                drained = Task.Run(() => output.CopyTo(Stream.Null));
+                drained = DrainAsync(output);
 
                 return await ExitCodeWithinAsync(process, deadline, cancellationToken);
             }
         }
         finally
         {
-            await drained.WaitAsync(cancellationToken);
+            if (drained is null)
+            {
+                output.Dispose();
+            }
+            else
+            {
+                await drained.WaitAsync(cancellationToken);
+            }
         }
     }
 
@@ -213,8 +232,11 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
     }
 
     // The console's own primary token restricted, so that the code that 1C runs when it opens a base, which somebody
-    // else may have written, does not run as an administrator: DISABLE_MAX_PRIVILEGE, and Administrators for deny only,
-    // when the token holds it. A failure is a Win32Exception.
+    // else may have written, runs without the rights of an administrator and cannot reach the elevated terminal of
+    // check: DISABLE_MAX_PRIVILEGE, Administrators for deny only, when the token holds it, and medium integrity, so that
+    // User Interface Privilege Isolation keeps it from the elevated programs of the desktop. It is still the
+    // administrator's own account, unelevated, with its profile and the secrets DPAPI keeps for it. Lowering the level
+    // needs no privilege. A failure is a Win32Exception.
     private static unsafe SafeAccessTokenHandle RestrictedOwnToken()
     {
         using WindowsIdentity own = WindowsIdentity.GetCurrent(OwnTokenAccess);
@@ -235,8 +257,51 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
                 throw new Win32Exception(error);
             }
 
+            try
+            {
+                SetMediumIntegrity(restricted);
+            }
+            catch
+            {
+                restricted.Dispose();
+                throw;
+            }
+
             return restricted;
         }
+    }
+
+    // TOKEN_MANDATORY_LABEL, which is one SID_AND_ATTRIBUTES, with the label of the medium level; its length counts the
+    // SID it points at, as the call expects.
+    private static unsafe void SetMediumIntegrity(SafeAccessTokenHandle token)
+    {
+        SecurityIdentifier medium = new(MediumIntegrity);
+        byte[] sid = new byte[medium.BinaryLength];
+        medium.GetBinaryForm(sid, 0);
+
+        fixed (byte* sidStart = sid)
+        {
+            SidAndAttributes label = new() { Sid = (nint)sidStart, Attributes = GroupIntegrity };
+            int length = sizeof(SidAndAttributes) + sid.Length;
+
+            if (!SetTokenInformation(token, TokenIntegrityLevelClass, &label, length))
+            {
+                throw new Win32Exception(Marshal.GetLastPInvokeError());
+            }
+        }
+    }
+
+    // Reads the probe's output to its end on a pool thread, since an anonymous pipe has no asynchronous I/O, and then
+    // disposes it, so that nothing disposes the pipe while the read may still run.
+    private static Task DrainAsync(AnonymousPipeServerStream output)
+    {
+        return Task.Run(() =>
+        {
+            using (output)
+            {
+                output.CopyTo(Stream.Null);
+            }
+        });
     }
 
     // A pipe and the console's copy of its client end, which the pipe's dispose leaves open once it was handed out.
@@ -307,6 +372,14 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         uint restrictedSidCount,
         nint sidsToRestrict,
         out SafeAccessTokenHandle newToken);
+
+    [LibraryImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static unsafe partial bool SetTokenInformation(
+        SafeAccessTokenHandle token,
+        int informationClass,
+        SidAndAttributes* information,
+        int length);
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     private static partial uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);

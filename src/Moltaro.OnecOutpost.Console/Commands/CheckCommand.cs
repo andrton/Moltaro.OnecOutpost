@@ -42,8 +42,10 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // that somebody else may have named; a base with a worker account only after its logon and its probe passed; a
 // connection only with its password. Each worker account is logged on once, never retried, since each failure counts
 // toward a lockout, and closed with its base. A worker of a base without a worker account runs under a restricted
-// version of the console's own token, so that the code of a base does not run as an administrator. Spectre makes a
-// command for each run, so its fields are the state of one run, written by one task at a time.
+// version of the console's own token, at medium integrity, so that the code of a base runs without the rights of an
+// administrator and cannot reach the elevated terminal of check; it is still the administrator's own account,
+// unelevated. Spectre makes a command for each run, so its fields are the state of one run, written by one task at a
+// time.
 internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
 {
     private const string Command = "check";

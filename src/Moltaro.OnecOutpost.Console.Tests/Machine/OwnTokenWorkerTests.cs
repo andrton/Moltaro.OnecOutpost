@@ -76,7 +76,7 @@ public sealed partial class OwnTokenWorkerTests
     // coordinator's decision after the second code review): an elevated console holds Administrators, the privileges of
     // an administrator and high integrity, a console that is not elevated holds Administrators for deny only already, or
     // not at all, privileges of its own beside SeChangeNotifyPrivilege, and medium integrity.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_under_the_console_own_token_holds_Administrators_for_deny_only_no_privilege_but_change_notify_and_at_most_medium_integrity()
     {
         CheckWorker worker = new WindowsWorkerStarts(TimeProvider.System).Start(null, TestProgram, "accounting");

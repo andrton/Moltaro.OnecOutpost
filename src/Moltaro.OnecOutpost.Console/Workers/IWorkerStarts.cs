@@ -16,10 +16,11 @@ internal interface IWorkerStarts
     // own; its exit code, or null once it was ended at the deadline. A failed call is a Win32Exception with its code.
     Task<uint?> ProbeAsync(IWorkerAccount account, string program, string baseKey, TimeSpan deadline, CancellationToken cancellationToken);
 
-    // A worker of the program in read mode, "{program}" {base key} read, in a job of its own: under a restricted version
-    // of the console's own token, without a privilege and with Administrators for deny only, with lpDesktop "" when
-    // account is null, else under the account on its desktop; Diagnostics is its standard
-    // error read to its end as UTF-8. A failed call is a Win32Exception with its code, a pipe Windows cannot make an
-    // IOException.
+    // A worker of the program in read mode, "{program}" {base key} read, in a job of its own: with lpDesktop "" when
+    // account is null, under a restricted version of the console's own token, without a privilege, with Administrators
+    // for deny only and at medium integrity, so without the rights of an administrator and out of reach of the elevated
+    // terminal, yet still the administrator's own account, unelevated; else under the account on its desktop.
+    // Diagnostics is its standard error read to its end as UTF-8. A failed call is a Win32Exception with its code, a pipe
+    // Windows cannot make an IOException.
     CheckWorker Start(IWorkerAccount? account, string program, string baseKey);
 }
