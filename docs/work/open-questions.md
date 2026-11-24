@@ -104,15 +104,6 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Until answered** | The rule stays as it is, and `MigrateAsync` reports the error of PostgreSQL through its task. `AddOutpostServer` accepts such a schema. It blocks no sprint: the planner carried it to the closing of the epic (21 November 2026), since either answer is a small change of one check |
 | **Decides** | The owner: the rule of names is public contract |
 
-### Q15. The outcome of a command the purge removed
-
-| | |
-| --- | --- |
-| **Found** | 23 November 2026, Epic 1 S8, the refactorer's survey (left by S5a's and S5b's reviews) |
-| **Question** | A repeat of a call that finds its command just as the purge removes it gets `InvalidOperationException` from `PassCommandAsync`. Should it get an outcome instead, and which: the stored one is gone, so Unknown, or a fresh run of the call? |
-| **Until answered** | The exception reaches the caller of the repeat. It needs a repeat within the outcome retention's last moment and is not seen in the tests |
-| **Decides** | The owner: the outcomes of a call are public contract |
-
 ### Q16. The reason of a stop after `started`
 
 | | |
@@ -123,6 +114,17 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Decides** | The owner: the audit log is public contract |
 
 ## Answered
+
+### Q15. The outcome of a command the purge removed
+
+| | |
+| --- | --- |
+| **Found** | 23 November 2026, Epic 1 S8, the refactorer's survey (left by S5a's and S5b's reviews) |
+| **Question** | A repeat of a call that finds its command just as the purge removes it gets `InvalidOperationException` from `PassCommandAsync`. Should it get an outcome instead, and which: the stored one is gone, so Unknown, or a fresh run of the call? |
+| **Until answered** | The exception reaches the caller of the repeat. It needs a repeat within the outcome retention's last moment and is not seen in the tests |
+| **Decides** | The owner: the outcomes of a call are public contract |
+| **Answer** | 24 November 2026, the owner, in their words: as a new Write («Как новая запись»). A repeat that finds its command just as the purge removes it is served as if it had come a moment later: the command is gone, so the call creates a new one with its caller key, as a repeat after the retention does. It is one more create-or-find after the command vanished, not a retry loop; what a second vanishing gives is fixed by S11's contract, the simplest that never reports an approximate success. No new code of the public contract |
+| **Now lives in** | Concept §3, rule 4; the S11 brief of the [epic document](epic-1-first-release.md#s11--the-shell), which builds it |
 
 ### Q14. A file of the data folder that an administrator's own account owns
 

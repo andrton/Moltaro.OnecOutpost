@@ -6201,6 +6201,14 @@ merged.
   real agent with the fake worker, `LoopbackAgent` and its fakes, moves from
   `Moltaro.OnecOutpost.Agent.Tests` to `Moltaro.OnecOutpost.TestSupport`, where the shell's
   tests reach it.
+- **Q15** (the owner, 24 November 2026; the coordinator puts it here, since the shell
+  drives the server's calls): a repeat of a call that finds its command just as the purge
+  removes it is served as if it had come a moment later. `PassCommandAsync` no longer
+  throws `InvalidOperationException` then: the call makes one more create-or-find with its
+  caller key, which creates a new command as a repeat after the retention does. Not a
+  retry loop: S11's internal contract fixes what a second vanishing gives, the simplest
+  that never reports an approximate success; no new code of the public contract. A test
+  drives the race to a known order against PostgreSQL.
 - **From the architect's review 2** (the planner, 23 November 2026): the shell writes a
   redirected output as the console does, its `Program` and `RedirectedOutputTests` the
   model: a UTF-8 writer, Spectre's default enrichers off, so that CI's variables force no
