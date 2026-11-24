@@ -6008,8 +6008,11 @@ S8.
       or a secret: `outcomes\{id}.json cannot be written` and the outbox's others, the cleared log
       answered as older, and `the poll numbers are used up; pair the agent anew`. A failed write
       of the log stops with nothing more written, the exit code its reason; a stop by the token
-      writes none; a failed start still records `started` with its `error`. Exit codes unchanged.
-      Tests, `Agent.Tests`, folder `Host`, through the fakes of the disk: one per fault, the
+      writes none; a failed start still records `started` with its `error`. A fault of the
+      outbox that the start's recovery meets after `started` (a file it cannot write or remove, or
+      one that is not an outcome it may send) records `stopped` the same way (the coordinator, 24
+      November 2026, from the test author's report). Exit codes unchanged. Tests, `Agent.Tests`,
+      folder `Host`, through the fakes of the disk: one per fault, the recovery's included, the
       entry's `error` and `Error`; a stop by the token writing none; a failed write of the log
       writing none after it; a start that reads a log ending with `stopped`.
     - **Tests on every platform**, `Console.Tests`, folder `Metadata`, by `CommandAppTester` on
