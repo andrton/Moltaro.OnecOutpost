@@ -152,8 +152,9 @@ needs a console run as administrator, and ends with an exit code that says why:
   connection cannot run, and the rights to change data that its read account holds; the
   server, by one outcome of a made-up command signed with the agent's key, and the clock
   skew. It writes nothing to a base or to the data folder, runs only Reads of its own in
-  safe mode, never polls, and works while the service runs. It starts no worker from a
-  folder that someone else may change, and logs each worker account on once. Where the
+  safe mode, never polls, and works while the service runs. It starts no worker while the
+  data folder admits somebody else, nor from a folder that someone else may change, and
+  logs each worker account on once. Where the
   agent's start and `check` judge the same thing, they give the same reason, with its
   remedy.
 
@@ -162,8 +163,11 @@ service controller, LSA and the access lists. The tests of `check` against a rea
 written; they run on the lab machine with the next sprint. Limitations of `check`: the
 write account is checked in Read and safe mode; the start of the worker runs in the
 console's session, not in the service's; it sees a right of the agent's account only when
-it was granted to the account itself; and each worker it starts holds a client licence of
-1C while it is open. Planned next: `metadata`, the run of the console on the lab machine
+it was granted to the account itself; it judges a connector's folder and its parents, not
+its siblings; each worker it starts holds a client licence of 1C while it is open; and the
+code of a base without a worker account runs as the administrator's own account, without
+its rights but with its HKCU and its DPAPI user secrets, which UAC does not guard, so run
+`check` only on a machine whose bases you trust as much as the agent's configuration does. Planned next: `metadata`, the run of the console on the lab machine
 and the guide on installing and running an agent.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
