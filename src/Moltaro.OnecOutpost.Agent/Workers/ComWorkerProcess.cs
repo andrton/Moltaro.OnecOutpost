@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
@@ -6,10 +7,11 @@ using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
+using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Agent.Workers;
 
-// One COM worker process of the program's launcher, or of the console's check, speaking the worker's lines over its raw
+// One COM worker process of the program's launcher, or of the console's check and metadata, speaking the worker's lines over its raw
 // standard streams, as the lab's WorkerProcess does: one JSON object per line in UTF-8, ended with LF, each line read as
 // bytes up to its LF. A failed write gives false or null; cancellation kills and throws OperationCanceledException.
 // Every open or run that does not give true or an outcome has killed the process. Limitation: the agent keeps no
@@ -18,13 +20,11 @@ namespace Moltaro.OnecOutpost.Agent.Workers;
 // The pool calls OpenAsync and then RunAsync one at a time; Kill may run beside either, from any thread. A read from
 // the pipe of a process does not end on cancellation, so cancellation kills the process, which ends its output.
 // Limitation: Windows gives anonymous pipes no asynchronous I/O, so each open or run holds a pool thread while it waits.
-// It owns its streams, the handle of its process, and the job of its own when it is given one.
+// It owns its streams, the handle of its process, and the job of its own when it is given one. Start is the one start
+// of a worker's process, for the launcher and the console (review 3, entry 1).
 [SupportedOSPlatform("windows")]
 internal sealed partial class ComWorkerProcess : IWorkerProcess
 {
-    // The exit code of a killed worker, as Process.Kill gives it.
-    private const uint KilledExitCode = uint.MaxValue;
-
     // The longest ready line, its LF not counted.
     private const int ReadyLimit = 1024;
 
@@ -61,6 +61,73 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
         _input = input;
         _output = output;
         _job = job;
+    }
+
+    // Starts the program as a worker of the base in the mode: the command line CommandLineOf gives, two pipes of its own
+    // for the standard input and output, the error end when given, WorkerCreation.CreateSuspended with the call, the
+    // token and the desktop; then one statement, run whether the process was made or not, closes the caller's copies of
+    // the client ends given to it, so that the process holds the only ones and none waits for the finalizer; then
+    // WorkerCreation.JoinAndResume into the job, so that the worker is in it before any of its code runs. The worker owns
+    // the job when ownsJob, and the caller keeps the error pipe. A failure is the Win32Exception of a call, or the
+    // IOException of a pipe that Windows could not make, after which its pipes and any process it made are disposed and
+    // the job stays the caller's; any other exception, such as the ObjectDisposedException of a disposed job, passes
+    // the same way. The connection, with its password, travels only in the first input line, never here.
+    public static ComWorkerProcess Start(
+        WorkerCallEnum call,
+        SafeAccessTokenHandle token,
+        string program,
+        string baseKey,
+        OutpostModeEnum mode,
+        string desktop,
+        WorkerJob job,
+        bool ownsJob,
+        AnonymousPipeServerStream? error)
+    {
+        AnonymousPipeServerStream? input = null;
+        AnonymousPipeServerStream? output = null;
+        SafeProcessHandle? process = null;
+
+        try
+        {
+            input = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
+            output = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
+            nint thread;
+
+            try
+            {
+                (process, thread) = WorkerCreation.CreateSuspended(
+                    call,
+                    token,
+                    program,
+                    CommandLineOf(program, baseKey, mode),
+                    desktop,
+                    input.ClientSafePipeHandle,
+                    output.ClientSafePipeHandle,
+                    error?.ClientSafePipeHandle);
+            }
+            finally
+            {
+                // A pipe's dispose leaves its client end open once it was handed out, so the copies close here.
+                CloseClientCopies(input, output, error);
+            }
+
+            WorkerCreation.JoinAndResume(job, process, thread);
+
+            return new ComWorkerProcess(process, input, output, ownsJob ? job : null);
+        }
+        catch
+        {
+            process?.Dispose();
+            input?.Dispose();
+            output?.Dispose();
+            throw;
+        }
+    }
+
+    // "{program}" {base key} {read|write}, the one command line of a worker, which the console's probe uses too.
+    public static string CommandLineOf(string program, string baseKey, OutpostModeEnum mode)
+    {
+        return $"\"{program}\" {baseKey} {OutpostForms.WriteMode(mode)}";
     }
 
     // Writes the connection line and reads one line of at most 1 KiB: true only for an object whose one member is
@@ -109,6 +176,13 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
         return null;
     }
 
+    // Ends the console's session by closing the input, then waits until the worker has released the base and exited.
+    public async Task EndAsync(TimeSpan deadline, TimeProvider clock)
+    {
+        CloseInput();
+        await WorkerCreation.ExitCodeWithinAsync(_process, deadline, clock, CancellationToken.None);
+    }
+
     // TerminateProcess. Its failure is ignored: the handle of a started process may terminate it, so the call fails
     // only for a process that has ended, as Process.Kill ignores one.
     public void Kill()
@@ -118,13 +192,21 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
             return;
         }
 
-        TerminateProcess(_process, KilledExitCode);
+        WorkerCreation.Terminate(_process);
     }
 
     // Closes the worker's input, which ends a worker that still runs at the end of its input, and its output, then
     // releases the process, and closes its own job, which ends whatever of it still runs. The pool disposes a worker
     // only after it killed it and its open and run ended.
     public void Dispose()
+    {
+        CloseInput();
+        _output.Dispose();
+        _process.Dispose();
+        _job?.Dispose();
+    }
+
+    private void CloseInput()
     {
         try
         {
@@ -135,15 +217,16 @@ internal sealed partial class ComWorkerProcess : IWorkerProcess
             // A write that failed left its bytes in the buffer of the stream, which its dispose writes again into a
             // pipe whose worker has ended. The handle is closed all the same.
         }
-
-        _output.Dispose();
-        _process.Dispose();
-        _job?.Dispose();
     }
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool TerminateProcess(SafeProcessHandle process, uint exitCode);
+    // The caller's copies of the client ends of the pipes, in one call.
+    private static void CloseClientCopies(params AnonymousPipeServerStream?[] pipes)
+    {
+        foreach (AnonymousPipeServerStream? pipe in pipes)
+        {
+            pipe?.DisposeLocalCopyOfClientHandle();
+        }
+    }
 
     // The connection line of the worker: location, user, password, safeMode and executor. The password travels only
     // here.

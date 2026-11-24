@@ -104,14 +104,7 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Until answered** | The rule stays as it is, and `MigrateAsync` reports the error of PostgreSQL through its task. `AddOutpostServer` accepts such a schema. It blocks no sprint: the planner carried it to the closing of the epic (21 November 2026), since either answer is a small change of one check |
 | **Decides** | The owner: the rule of names is public contract |
 
-### Q15. The outcome of a command the purge removed
-
-| | |
-| --- | --- |
-| **Found** | 23 November 2026, Epic 1 S8, the refactorer's survey (left by S5a's and S5b's reviews) |
-| **Question** | A repeat of a call that finds its command just as the purge removes it gets `InvalidOperationException` from `PassCommandAsync`. Should it get an outcome instead, and which: the stored one is gone, so Unknown, or a fresh run of the call? |
-| **Until answered** | The exception reaches the caller of the repeat. It needs a repeat within the outcome retention's last moment and is not seen in the tests |
-| **Decides** | The owner: the outcomes of a call are public contract |
+## Answered
 
 ### Q16. The reason of a stop after `started`
 
@@ -121,8 +114,19 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Question** | When the agent stops after its `started` entry, for a failed write of the log or an outbox failure during the run or a cleared log, the audit log records no reason. Should a new entry, or `error` on a second `started`, record it? |
 | **Until answered** | The agent stops with exit code 1 and writes nothing more; the administrator reads the service's exit code |
 | **Decides** | The owner: the audit log is public contract |
+| **Answer** | 24 November 2026, the owner, in their words: yes, `stopped` («Да, stopped»). A new entry `stopped` with the member `error`, the reason in plain words in the form of `started`'s `error`, never a value of a command or a secret. The agent writes it when it stops for a fault after its `started`, whenever the log can still be written: an outbox file it cannot write, a cleared log answered as older, no poll number left; then it exits as today. When the fault is a failed write of the log itself, nothing more is written, and the service's exit code is the reason, which G1 explains. A normal stop of the service writes no `stopped` |
+| **Now lives in** | The audit log in "The files of the agent" of the [epic document](epic-1-first-release.md#the-audit-log), the concept's audit log, and the S10 brief, whose sprint S10c builds it and whose guide G1 reads it |
 
-## Answered
+### Q15. The outcome of a command the purge removed
+
+| | |
+| --- | --- |
+| **Found** | 23 November 2026, Epic 1 S8, the refactorer's survey (left by S5a's and S5b's reviews) |
+| **Question** | A repeat of a call that finds its command just as the purge removes it gets `InvalidOperationException` from `PassCommandAsync`. Should it get an outcome instead, and which: the stored one is gone, so Unknown, or a fresh run of the call? |
+| **Until answered** | The exception reaches the caller of the repeat. It needs a repeat within the outcome retention's last moment and is not seen in the tests |
+| **Decides** | The owner: the outcomes of a call are public contract |
+| **Answer** | 24 November 2026, the owner, in their words: as a new Write («Как новая запись»). A repeat that finds its command just as the purge removes it is served as if it had come a moment later: the command is gone, so the call creates a new one with its caller key, as a repeat after the retention does. It is one more create-or-find after the command vanished, not a retry loop; what a second vanishing gives is fixed by S11's contract, the simplest that never reports an approximate success. No new code of the public contract |
+| **Now lives in** | Concept §3, rule 4; the S11 brief of the [epic document](epic-1-first-release.md#s11--the-shell), which builds it |
 
 ### Q14. A file of the data folder that an administrator's own account owns
 

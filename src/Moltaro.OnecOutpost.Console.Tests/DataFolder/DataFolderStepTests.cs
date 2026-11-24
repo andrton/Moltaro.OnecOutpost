@@ -1,5 +1,7 @@
 using System.Text;
+using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Policy;
+using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
@@ -8,7 +10,8 @@ using Spectre.Console.Cli.Testing;
 namespace Moltaro.OnecOutpost.Console.Tests.DataFolder;
 
 // The steps that pair and secret share, written once (the S10 brief, "The steps pair and secret share", and Q14): after
-// the elevation, a data folder that is absent ends the command with NotInstalled, check's too (the S10b brief), and one that is a reparse point with
+// the elevation, a data folder that is absent ends the command with NotInstalled, check's (the S10b brief) and
+// metadata's too ("Internal of S10c"), and one that is a reparse point with
 // DataFolderAdmitsOthers; the access list of the folder, made for the agent's account, admitting anyone else ends it
 // with DataFolderAdmitsOthers too, since DPAPI for the machine lets every local process decrypt and only the folder's
 // list keeps the secrets; and policy.json that is absent or invalid ends it with PolicyInvalid and the agent's reason.
@@ -26,6 +29,7 @@ public sealed class DataFolderStepTests
     [InlineData("pair")]
     [InlineData("secret")]
     [InlineData("check")]
+    [InlineData("metadata")]
     public async Task A_data_folder_that_is_absent_ends_the_command_with_NotInstalled(string command)
     {
         CommandAppResult result = await _machine.RunAsync(TestMachine.CommandLine(command));
@@ -54,6 +58,8 @@ public sealed class DataFolderStepTests
         Assert.Empty(_machine.Routes);
     }
 
+    // pair and secret run after install, so they give the start's sentence for the data folder, word for word, whose
+    // remedy removes no audit log (the coordinator's decision in S10c).
     [Theory]
     [InlineData("pair")]
     [InlineData("secret")]
@@ -61,11 +67,12 @@ public sealed class DataFolderStepTests
     {
         _machine.Installed();
         _machine.Access.Admit("", @"BUILTIN\Users", @"OFFICE\clerk");
+        string reason = StartChecks.AccessReason("", new OtherAccounts(_machine.Access.FullPathOf(""), null, [@"BUILTIN\Users", @"OFFICE\clerk"]))!;
 
         CommandAppResult result = await _machine.RunAsync(TestMachine.CommandLine(command));
 
         Assert.Equal(ConsoleExitCodes.DataFolderAdmitsOthers, result.ExitCode);
-        Assert.Contains("DataFolderAdmitsOthers (9): ", result.Output);
+        Assert.Contains($"DataFolderAdmitsOthers (9): {reason}", TestMachine.LinesOf(result));
         Assert.Contains(@"BUILTIN\Users", result.Output);
         Assert.Contains(@"OFFICE\clerk", result.Output);
         Assert.Equal(["others \"\""], _machine.Operations);

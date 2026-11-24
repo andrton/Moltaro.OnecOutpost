@@ -11,8 +11,8 @@ server node and with two on one PostgreSQL, with the real agent and a fake in pl
 COM worker. The agent with its COM workers ran Reads and Writes in a real
 1C:Enterprise 8.3.17.1851 on the lab machine, with the test's own server, a Write without
 safe mode under the Windows account of its base included. The console installs, pairs and
-checks an agent on its machine, its check tested against fakes so far; the shell is not
-built yet.
+checks an agent on its machine and writes a metadata report of a base. The lab confirmed
+the check and the report on the test base and a copy of a typical base. The shell is planned.
 
 ## The parts
 

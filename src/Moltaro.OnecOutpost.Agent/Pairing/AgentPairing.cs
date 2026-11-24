@@ -71,7 +71,7 @@ internal static class AgentPairing
             return Ended(answer.Status, ServerAnswerCauseEnum.Answer);
         }
 
-        if (answer.Status == (int)HttpStatusCode.BadRequest && OutpostCodec.IsUnsupportedVersion(read))
+        if (answer.IsUnsupportedVersion)
         {
             return Ended(answer.Status, ServerAnswerCauseEnum.ProtocolVersion);
         }

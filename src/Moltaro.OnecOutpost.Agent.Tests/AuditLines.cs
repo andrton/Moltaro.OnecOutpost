@@ -86,6 +86,15 @@ internal static class AuditLines
             $"\"agent\":\"{agent}\",\"below\":{below.ToString(CultureInfo.InvariantCulture)}");
     }
 
+    // A stopped (the owner's Q16): the reason of a stop after started, its \ and " escaped as the writer of §2 escapes
+    // them.
+    public static string Stopped(DateTimeOffset time, string error)
+    {
+        string escaped = error.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
+
+        return Line(time, "stopped", $"\"error\":\"{escaped}\"");
+    }
+
     private static string Mode(OutpostModeEnum mode)
     {
         return mode == OutpostModeEnum.Read ? "read" : "write";

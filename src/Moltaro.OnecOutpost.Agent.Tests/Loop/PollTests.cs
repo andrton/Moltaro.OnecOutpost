@@ -144,9 +144,8 @@ public sealed class PollTests
             }
 
             Assert.Equal(AgentExitCodes.Error, await host.ExitAsync());
-            JsonElement last = AuditEntries.AppendedSince(host.Data, 0)[^1];
-            Assert.Equal("reservation", AuditEntries.Kind(last));
-            Assert.Equal(OutpostProtocol.MaxPollNumber + 1 + PollNumbers.ReservationSpan, last.GetProperty("below").GetInt64());
+            JsonElement reservation = AuditEntries.AppendedSince(host.Data, 0).Last(entry => AuditEntries.Kind(entry) == "reservation");
+            Assert.Equal(OutpostProtocol.MaxPollNumber + 1 + PollNumbers.ReservationSpan, reservation.GetProperty("below").GetInt64());
             Assert.Equal(1, host.Server.Count(OutpostRequestKindEnum.Poll));
         }
 

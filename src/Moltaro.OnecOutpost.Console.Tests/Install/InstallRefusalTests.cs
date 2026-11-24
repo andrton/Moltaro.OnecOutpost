@@ -26,6 +26,12 @@ public sealed class InstallRefusalTests
 
     private static readonly string Grant = $"grant {TestMachine.AgentSid} SeAssignPrimaryTokenPrivilege, SeIncreaseQuotaPrivilege";
 
+    // The remedy of a data folder that install refuses, one that existed before it and that a local user may have
+    // made: install repairs it not, and one in which the agent ran holds its audit log, which goes with the folder
+    // unless it is copied first (the coordinator's decision in S10c of one remedy that removes no audit log).
+    private const string Remedy =
+        @"install does not repair it: inspect it, remove it and run install again; if the agent ever ran there, copy its audit\ folder elsewhere first";
+
     private readonly TestMachine _machine = new();
 
     // The archive unpacked into a folder of the program folder, whose content install would empty before it copied.
@@ -177,7 +183,7 @@ public sealed class InstallRefusalTests
 
         Assert.Equal(ConsoleExitCodes.DataFolderAdmitsOthers, result.ExitCode);
         Assert.Contains("DataFolderAdmitsOthers (9): ", result.Output);
-        Assert.Contains("is a reparse point; install does not repair it: inspect it, remove it and run install again", result.Output);
+        Assert.Contains($"is a reparse point; {Remedy}", result.Output);
         AssertNamed(folder, result);
         Assert.DoesNotContain(_machine.Operations, line => line.StartsWith("apply data folder", StringComparison.Ordinal));
     }
@@ -196,7 +202,7 @@ public sealed class InstallRefusalTests
 
         Assert.Equal(ConsoleExitCodes.DataFolderAdmitsOthers, result.ExitCode);
         Assert.Contains("DataFolderAdmitsOthers (9): ", result.Output);
-        Assert.Contains(@"admits OFFICE\clerk; install does not repair it: inspect it, remove it and run install again", result.Output);
+        Assert.Contains($@"admits OFFICE\clerk; {Remedy}", result.Output);
         AssertNamed(folder, result);
         Assert.Equal($"others \"{folder}\"", _machine.Operations[^1]);
         Assert.DoesNotContain(_machine.Operations, line => line.StartsWith("apply data folder", StringComparison.Ordinal));

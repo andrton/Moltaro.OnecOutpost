@@ -12,23 +12,15 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Console.Workers;
 
-// The COM workers of check on Windows: the logon by WorkerLogon, the desktop by WorkerDesktop.Make, the process by
-// WorkerCreation, AsUser with a restricted version of the console's own token and WithToken with a worker account's,
-// each in a WorkerJob of its own, since a process already in a job, the Secondary Logon service's or a terminal's,
-// joins only an empty job or one of its hierarchy. The clock gives the probe's deadline. Every call to Windows goes
-// through LibraryImport, no package (principle 12). check calls it from one task at a time, so no two desktops are
-// made at once.
+// The COM workers of check and metadata on Windows: the logon by WorkerLogon, the desktop by WorkerDesktop.Make, the
+// process by WorkerCreation, AsUser with a restricted version of the console's own token and WithToken with a worker
+// account's, each in a WorkerJob of its own, since a process already in a job, the Secondary Logon service's or a
+// terminal's, joins only an empty job or one of its hierarchy. The clock gives the probe's deadline. Every call to
+// Windows goes through LibraryImport, no package (principle 12). Each command calls it from one task at a time, so no
+// two desktops are made at once.
 [SupportedOSPlatform("windows")]
 internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerStarts
 {
-    // INFINITE of WaitForSingleObject, and WAIT_FAILED, what it gives when the wait itself fails.
-    private const uint Infinite = uint.MaxValue;
-
-    private const uint WaitFailed = uint.MaxValue;
-
-    // The exit code of a probe ended at its deadline, as Process.Kill gives it.
-    private const uint KilledExitCode = uint.MaxValue;
-
     // What CreateRestrictedToken needs of the console's own primary token, and SetTokenInformation, CreateProcessAsUserW
     // and CreateEnvironmentBlock of the restricted one, which has the same access: TOKEN_ADJUST_DEFAULT sets its default
     // owner, its default list and its integrity level.
@@ -80,7 +72,7 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
     {
         WindowsWorkerAccount worker = (WindowsWorkerAccount)account;
         string desktop = worker.Desktop();
-        string commandLine = CommandLineOf(program, baseKey, OutpostModeEnum.Write);
+        string commandLine = ComWorkerProcess.CommandLineOf(program, baseKey, OutpostModeEnum.Write);
 
         // Owned by the drain once it reads it, and disposed here before.
         AnonymousPipeServerStream output = new(PipeDirection.In, HandleInheritability.Inheritable);
@@ -122,7 +114,7 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
 
                 drained = DrainAsync(output);
 
-                return await ExitCodeWithinAsync(process, deadline, cancellationToken);
+                return await WorkerCreation.ExitCodeWithinAsync(process, deadline, Clock, cancellationToken);
             }
         }
         finally
@@ -138,51 +130,28 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         }
     }
 
-    // A worker of the read mode with three pipes, in a job of its own, which its ComWorkerProcess owns and closes when
-    // disposed: under a restricted version of the console's own token by CreateProcessAsUserW, with lpDesktop "", or
-    // under the account through the Secondary Logon service, on its desktop. Diagnostics is its standard error read to its end as UTF-8 on a pool
-    // thread, which ends when the worker ends, its job closed at the latest.
-    public CheckWorker Start(IWorkerAccount? account, string program, string baseKey)
+    // A worker of the read mode, by ComWorkerProcess.Start, in a job of its own, which the worker owns and closes when
+    // disposed, with an error pipe of the console's: under a restricted version of the console's own token by
+    // CreateProcessAsUserW, with lpDesktop "", or under the account through the Secondary Logon service, on its desktop.
+    // Diagnostics is its standard error read to its end as UTF-8 on a pool thread, which ends when the worker ends, its
+    // job closed at the latest.
+    public ConsoleWorker Start(IWorkerAccount? account, string program, string baseKey)
     {
-        string commandLine = CommandLineOf(program, baseKey, OutpostModeEnum.Read);
         WorkerJob job = new();
-        AnonymousPipeServerStream? input = null;
-        AnonymousPipeServerStream? output = null;
         AnonymousPipeServerStream? error = null;
-        ComWorkerProcess? worker = null;
 
         try
         {
-            input = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
-            output = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
             error = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
 
-            (SafeProcessHandle process, nint thread) = Create(account, program, commandLine, input, output, error);
+            ComWorkerProcess worker = StartWorker(account, program, baseKey, job, error);
 
-            // The worker holds the client ends now: once the console's copies close, its ends close with it.
-            input.DisposeLocalCopyOfClientHandle();
-            output.DisposeLocalCopyOfClientHandle();
-            error.DisposeLocalCopyOfClientHandle();
-
-            worker = new ComWorkerProcess(process, input, output, job);
-            WorkerCreation.JoinAndResume(job, process, thread);
-
-            return new CheckWorker(worker, DiagnosticsOf(error));
+            return new ConsoleWorker(worker, DiagnosticsOf(error));
         }
         catch
         {
-            // A worker that was made owns its streams, its process and its job; before it, each goes by itself.
-            if (worker is null)
-            {
-                Close(input);
-                Close(output);
-                job.Dispose();
-            }
-            else
-            {
-                worker.Dispose();
-            }
-
+            // No worker was made, so the job and the error pipe are still the console's.
+            job.Dispose();
             Close(error);
             throw;
         }
@@ -194,49 +163,44 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         return new WindowsWorkerAccount(baseKey, token);
     }
 
-    // "{program}" {base key} {read|write}, as the agent's launcher starts a worker.
-    private static string CommandLineOf(string program, string baseKey, OutpostModeEnum mode)
-    {
-        return $"\"{program}\" {baseKey} {OutpostForms.WriteMode(mode)}";
-    }
-
-    // The worker's process, suspended: WithToken under the account, or AsUser under the restricted version of the
-    // console's own token, which CreateProcessAsUserW assigns without "Replace a process level token", since it is a
-    // restricted version of the caller's primary token.
-    private static (SafeProcessHandle Process, nint Thread) Create(
+    // The worker's process: WithToken under the account, or AsUser under the restricted version of the console's own
+    // token, which CreateProcessAsUserW assigns without "Replace a process level token", since it is a restricted version
+    // of the caller's primary token.
+    private static ComWorkerProcess StartWorker(
         IWorkerAccount? account,
         string program,
-        string commandLine,
-        AnonymousPipeServerStream input,
-        AnonymousPipeServerStream output,
+        string baseKey,
+        WorkerJob job,
         AnonymousPipeServerStream error)
     {
         if (account is not null)
         {
             WindowsWorkerAccount worker = (WindowsWorkerAccount)account;
 
-            return WorkerCreation.CreateSuspended(
+            return ComWorkerProcess.Start(
                 WorkerCallEnum.WithToken,
                 worker.Token,
                 program,
-                commandLine,
+                baseKey,
+                OutpostModeEnum.Read,
                 worker.Desktop(),
-                input.ClientSafePipeHandle,
-                output.ClientSafePipeHandle,
-                error.ClientSafePipeHandle);
+                job,
+                ownsJob: true,
+                error);
         }
 
         using SafeAccessTokenHandle restricted = RestrictedOwnToken();
 
-        return WorkerCreation.CreateSuspended(
+        return ComWorkerProcess.Start(
             WorkerCallEnum.AsUser,
             restricted,
             program,
-            commandLine,
+            baseKey,
+            OutpostModeEnum.Read,
             "",
-            input.ClientSafePipeHandle,
-            output.ClientSafePipeHandle,
-            error.ClientSafePipeHandle);
+            job,
+            ownsJob: true,
+            error);
     }
 
     // The console's own primary token restricted, so that the code that 1C runs when it opens a base, which somebody
@@ -365,44 +329,6 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         });
     }
 
-    // The exit code once the process ends, waited for on a pool thread; a failed wait is a Win32Exception.
-    private static uint ExitCodeOf(SafeProcessHandle process)
-    {
-        if (WaitForSingleObject(process, Infinite) == WaitFailed || !GetExitCodeProcess(process, out uint exitCode))
-        {
-            throw new Win32Exception(Marshal.GetLastPInvokeError());
-        }
-
-        return exitCode;
-    }
-
-    // The exit code of the process, or null once it was ended at the deadline: its end is raced with the deadline on
-    // the clock, whose timer goes with the race. A cancellation ends the process too, and then passes. The process has
-    // ended whenever this returns, so the wait of the pool thread is over before its handle closes.
-    private async Task<uint?> ExitCodeWithinAsync(SafeProcessHandle process, TimeSpan deadline, CancellationToken cancellationToken)
-    {
-        Task<uint> exited = Task.Run(() => ExitCodeOf(process), CancellationToken.None);
-
-        using (CancellationTokenSource race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
-        {
-            Task limit = Task.Delay(deadline, Clock, race.Token);
-
-            if (await Task.WhenAny(exited, limit) == exited)
-            {
-                race.Cancel();
-
-                return await exited;
-            }
-        }
-
-        // The handle of a created process may terminate it, so the call fails only for one that has ended.
-        TerminateProcess(process, KilledExitCode);
-        await exited;
-        cancellationToken.ThrowIfCancellationRequested();
-
-        return null;
-    }
-
     // The SIDs to disable become deny-only groups of the new token; neither a privilege nor a restricting SID is given.
     [LibraryImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -424,15 +350,4 @@ internal sealed partial class WindowsWorkerStarts(TimeProvider clock) : IWorkerS
         int informationClass,
         void* information,
         int length);
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    private static partial uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool GetExitCodeProcess(SafeProcessHandle process, out uint exitCode);
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool TerminateProcess(SafeProcessHandle process, uint exitCode);
 }

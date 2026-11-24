@@ -16,7 +16,6 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
 {
     // The agent's program in the program folder, which the service runs with its one argument.
-    private const string AgentProgram = "Moltaro.OnecOutpost.Agent.exe";
 
     private const string DisplayName = "Moltaro OnecOutpost agent";
 
@@ -95,14 +94,14 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
             return null;
         }
 
-        if (IsInside(source, programFolder))
+        if (SharedSteps.IsInside(source, programFolder))
         {
             throw new CommandEndException(
                 ConsoleExitCodes.Usage,
                 $"unpack the archive outside {_parts.ProgramFolder} and run install from there");
         }
 
-        if (IsInside(programFolder, source))
+        if (SharedSteps.IsInside(programFolder, source))
         {
             throw new CommandEndException(
                 ConsoleExitCodes.Usage,
@@ -111,14 +110,6 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
         }
 
         return _parts.Source;
-    }
-
-    // Whether the path lies inside the folder, both final paths; a root, such as C:\, ends with its separator.
-    private static bool IsInside(string path, string folder)
-    {
-        string prefix = Path.EndsInDirectorySeparator(folder) ? folder : folder + Path.DirectorySeparatorChar;
-
-        return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
     // Step 3: the program folder, copied and given its lists, then judged by the agent's own rule before any service
@@ -172,7 +163,7 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
     // Step 4: the service under its virtual account, created, or reconfigured when it exists.
     private void RegisterService(string account)
     {
-        string binaryPath = $"\"{Path.Combine(_parts.ProgramFolder, AgentProgram)}\" service";
+        string binaryPath = $"\"{ProgramFolderLayout.AgentOf(_parts.ProgramFolder)}\" service";
         bool created;
 
         try
@@ -264,10 +255,12 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
         }
     }
 
+    // install refuses a data folder that existed before it, which a local user may have made: it repairs it not, and one
+    // in which the agent ran holds its audit log, which goes with the folder unless it is copied first.
     private static CommandEndException Refused(string fault)
     {
         return new CommandEndException(
             ConsoleExitCodes.DataFolderAdmitsOthers,
-            $"{fault}; install does not repair it: inspect it, remove it and run install again");
+            $@"{fault}; install does not repair it: inspect it, remove it and run install again; if the agent ever ran there, copy its audit\ folder elsewhere first");
     }
 }

@@ -14,8 +14,8 @@ namespace Moltaro.OnecOutpost.Agent.Audit;
 // It reads the files named YYYY-MM-DD.jsonl at its opening, cutting a torn last line, and adds one entry at a time,
 // each with one Append to the file of the UTC day of its time and on the disk before the writer returns. Not
 // thread-safe: one task makes every change of the agent's files. A failed write cuts the file back, sets Fault and
-// throws AgentStopException; with Fault set, every writer but Started writes nothing and throws AgentStopException,
-// and after a failed write Started too.
+// throws AgentStopException; with Fault set, every writer but Started and Stopped writes nothing and throws
+// AgentStopException, and after a failed write Started too. Stopped throws nothing: with Fault set it writes nothing.
 internal sealed class AuditLog : IDisposable
 {
     private const string LockName = "lock";
@@ -124,6 +124,32 @@ internal sealed class AuditLog : IDisposable
         }
 
         Append(writer, time);
+    }
+
+    // Records stopped (the owner's Q16): the reason of a stop of the agent's own after its started, as the
+    // AgentStopException that stops the run words it, which names a file by its path and never a script, a parameter, a
+    // result or a secret. It throws nothing: with Fault set, a failed write of the log or a log that cannot be read,
+    // it writes nothing, and its own failed write is cut back as any entry's; the agent stops either way.
+    public void Stopped(string error)
+    {
+        if (_fault is not null)
+        {
+            return;
+        }
+
+        (OutpostJsonWriter writer, DateTimeOffset time) = Begin("stopped");
+
+        writer.Name("error");
+        writer.String(error);
+
+        try
+        {
+            Append(writer, time);
+        }
+        catch (AgentStopException)
+        {
+            // Append cut the file back and set Fault; the stop it would report is the one being recorded.
+        }
     }
 
     // Records policy, valid exactly when the error is null.
@@ -471,7 +497,8 @@ internal sealed class AuditLog : IDisposable
 
     // Reading an entry: each reader takes the member of that name only when the entry gives it exactly once, in its
     // form. The log reads time of every line; command and mode of received; command, mode and code of refused; command,
-    // outcome, code and durationMs of ended; command of confirmed; agent and below of reservation; nothing else.
+    // outcome, code and durationMs of ended; command of confirmed; agent and below of reservation; error of stopped,
+    // a string; nothing else.
     private static bool TryReadTime(JsonElement entry, out DateTimeOffset time)
     {
         time = default;
@@ -739,6 +766,14 @@ internal sealed class AuditLog : IDisposable
                 }
 
                 ApplyReservation(file, agent, below);
+                break;
+
+            case "stopped":
+                if (!TryReadText(entry, "error", out _))
+                {
+                    return false;
+                }
+
                 break;
 
             default:

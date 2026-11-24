@@ -196,6 +196,13 @@ internal sealed class FakeWorkerProcess : IWorkerProcess
         _ended.TrySetResult();
     }
 
+    public Task EndAsync(TimeSpan deadline, TimeProvider clock)
+    {
+        Kill();
+
+        return Task.CompletedTask;
+    }
+
     public void Dispose()
     {
         lock (_lock)

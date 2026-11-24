@@ -39,8 +39,10 @@ after it checked that nobody else may change its program folder. The tests of th
 against a real 1C passed on the lab, with a server of the test, those of the worker
 account included. The console installs, pairs and uninstalls an agent, writes its secrets
 and registers the COM connector (`install`, `uninstall`, `pair`, `secret` and `connector
-register`), and checks the agent machine (`check`), tested against fakes; the run of
-`check` against a real 1C on the lab, and `metadata`, are planned. The server is the one
+register`), checks the agent machine (`check`) and writes a metadata report of a base
+(`metadata`). See the README for the status of the lab tests that run `check` and
+`metadata` against a real 1C. When the agent stops for a fault after its start, its audit
+log records why (`stopped`). The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions
@@ -60,7 +62,7 @@ in code, tests, samples or documents.
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | The wire protocol, extended by the sprint that introduces a part of it |
 | `docs/explanations` | Explanations of the architecture and of how the library works, each as Markdown and as HTML: the path of a command and why a command never runs twice exist; how the library is built is planned |
-| `docs/guides` | The user guides: how to write scripts (`scripts.md`); planned, how to install and run an agent and how to embed the server. Every command and script they show is run by a test |
+| `docs/guides` | The user guides: how to write scripts (`scripts.md`) and how to install and run an agent (`agent.md`); planned, how to embed the server. Every command and script they show is run by a test |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
 Each project is created by the sprint that first needs it, under the name the plan of the
@@ -84,7 +86,7 @@ server is packed; every other project is not.
 | `src/*.Tests` | Tests, one project per library or program |
 | `Moltaro.OnecOutpost.OneC.Tests` | The tests that need 1C, run only on the lab machine. It is not in the solution, so `dotnet test` from `src` never runs it; CI builds it and checks its format |
 | `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake clock, the PostgreSQL fixture, the loopback server with its proxy and test agent, the observed launcher of the COM workers and the edits of access lists. Never shipped; no tests |
-| `Moltaro.OnecOutpost.TestWorker` | The test program that stands in for the COM worker in the agent's tests on Windows: it speaks the worker's lines without 1C. Never shipped |
+| `Moltaro.OnecOutpost.TestWorker` | The test program that stands in for the COM worker in the agent's and the console's tests on Windows: it speaks the worker's lines without 1C. Never shipped |
 
 The repository root holds only repository-level files. Code never lives there.
 

@@ -1,7 +1,9 @@
 namespace Moltaro.OnecOutpost.ComWorker;
 
 // The exit codes of the worker program, which Worker.Run returns. The agent does not read them, since it keeps nothing
-// of a worker that ended; the tests of the worker read them, on the fake connection and on the lab's 1C.
+// of a worker that ended. The console's probe reads Ended and BadInput, as literals in CheckCommand.ProbeEnd, since the
+// console cannot reference the worker (principle 12); the tests of the worker read them all, on the fake connection and
+// on the lab's 1C.
 internal static class WorkerExitCodes
 {
     // The input ended: before the first line, or once the command the worker ran had its outcome written.

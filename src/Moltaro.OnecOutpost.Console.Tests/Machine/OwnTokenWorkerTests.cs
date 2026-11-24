@@ -57,7 +57,7 @@ public sealed partial class OwnTokenWorkerTests
     [Fact]
     public async Task A_worker_under_the_console_own_token_runs_in_read_mode_in_a_job_of_its_own_and_its_standard_error_is_its_diagnostics()
     {
-        CheckWorker worker = new WindowsWorkerStarts(TimeProvider.System).Start(null, TestProgram, "accounting");
+        ConsoleWorker worker = new WindowsWorkerStarts(TimeProvider.System).Start(null, TestProgram, "accounting");
         JsonElement arguments;
         JsonElement pid;
         JsonElement job;
@@ -88,7 +88,7 @@ public sealed partial class OwnTokenWorkerTests
     [Fact]
     public async Task A_worker_under_the_console_own_token_holds_Administrators_for_deny_only_no_privilege_but_change_notify_and_at_most_medium_integrity()
     {
-        CheckWorker worker = new WindowsWorkerStarts(TimeProvider.System).Start(null, TestProgram, "accounting");
+        ConsoleWorker worker = new WindowsWorkerStarts(TimeProvider.System).Start(null, TestProgram, "accounting");
         List<(SecurityIdentifier Sid, uint Attributes)> groups;
         List<string> privileges;
         uint integrity;
@@ -117,7 +117,7 @@ public sealed partial class OwnTokenWorkerTests
     [Fact]
     public async Task A_worker_under_the_console_own_token_has_the_user_as_its_default_owner_and_a_default_list_that_grants_the_user_all_access()
     {
-        CheckWorker worker = new WindowsWorkerStarts(TimeProvider.System).Start(null, TestProgram, "accounting");
+        ConsoleWorker worker = new WindowsWorkerStarts(TimeProvider.System).Start(null, TestProgram, "accounting");
         SecurityIdentifier owner;
         RawAcl? list;
 
@@ -155,7 +155,7 @@ public sealed partial class OwnTokenWorkerTests
     }
 
     // The result of the script of the test program, which succeeds with it at its true size.
-    private static async Task<JsonElement> ResultOfAsync(CheckWorker worker, string script)
+    private static async Task<JsonElement> ResultOfAsync(ConsoleWorker worker, string script)
     {
         (long Size, byte[] Outcome)? given = await TestTimes.EndOf(
             worker.Process.RunAsync(new WorkerCommandLine(script, "{}", null, 1024), TestContext.Current.CancellationToken));

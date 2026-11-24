@@ -64,8 +64,9 @@ internal static class CheckTable
             && subject.All(part => row.Check.Contains(part, StringComparison.Ordinal));
     }
 
-    // The cells of a line of the table between its borders, trimmed; none for a line that is not one of its rows.
-    private static string[] Cells(string line)
+    // The cells of a line of the table between its borders, trimmed; none for a line that is not one of its rows. The
+    // table of the console's metadata is drawn the same way.
+    public static string[] Cells(string line)
     {
         string trimmed = line.TrimEnd('\r').Trim();
 

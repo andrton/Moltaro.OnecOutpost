@@ -19,6 +19,7 @@ public sealed class RunEndTests
     [InlineData("install", "--force")]
     [InlineData("pair", "https://outpost.example.com/agents/")]
     [InlineData("secret", "accounting")]
+    [InlineData("metadata", "accounting")]
     public async Task An_unknown_command_or_option_or_a_missing_argument_ends_with_Usage_and_changes_nothing(params string[] arguments)
     {
         CommandAppResult result = await _machine.RunAsync(arguments);
@@ -39,6 +40,7 @@ public sealed class RunEndTests
         Assert.Contains("pair", result.Output);
         Assert.Contains("secret", result.Output);
         Assert.Contains("check", result.Output);
+        Assert.Contains("metadata", result.Output);
         Assert.Contains("connector", result.Output);
         Assert.Empty(_machine.Operations);
     }
@@ -51,6 +53,7 @@ public sealed class RunEndTests
     [InlineData("pair")]
     [InlineData("secret")]
     [InlineData("check")]
+    [InlineData("metadata")]
     [InlineData("connector", "register")]
     public async Task The_help_of_each_command_ends_with_Success_and_changes_nothing(params string[] command)
     {
@@ -107,6 +110,7 @@ public sealed class RunEndTests
     [InlineData("pair")]
     [InlineData("secret")]
     [InlineData("check")]
+    [InlineData("metadata")]
     [InlineData("connector register")]
     public async Task A_cancelled_run_ends_with_Cancelled_before_its_first_step(string command)
     {

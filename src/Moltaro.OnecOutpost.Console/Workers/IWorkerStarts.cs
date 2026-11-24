@@ -2,8 +2,8 @@ using Moltaro.OnecOutpost.Agent.Workers;
 
 namespace Moltaro.OnecOutpost.Console.Workers;
 
-// The COM workers that check starts: the boundary that WindowsWorkerStarts implements and tests replace. A worker of
-// check opens no pool, and never runs a Write.
+// The COM workers that check and metadata start: the boundary that WindowsWorkerStarts implements and tests replace. A
+// worker of the console opens no pool, and never runs a Write.
 internal interface IWorkerStarts
 {
     // One batch logon of the local account, by WorkerLogon.LogOn, for the base's desktop; the caller disposes it. A
@@ -23,5 +23,5 @@ internal interface IWorkerStarts
     // that the worker reopens what it creates; else under the account on its desktop.
     // Diagnostics is its standard error read to its end as UTF-8. A failed call is a Win32Exception with its code, a pipe
     // Windows cannot make an IOException.
-    CheckWorker Start(IWorkerAccount? account, string program, string baseKey);
+    ConsoleWorker Start(IWorkerAccount? account, string program, string baseKey);
 }

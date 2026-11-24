@@ -5,4 +5,12 @@ namespace Moltaro.OnecOutpost.Agent.Connector;
 internal sealed record ConnectorFinding(
     ConnectorBitnessEnum Bitness,
     ConnectorFile? Registered,
-    IReadOnlyList<ConnectorFile> Unregistered);
+    IReadOnlyList<ConnectorFile> Unregistered)
+{
+    // The first finding with a registered connector, in the finder's order, 64 bits first, or null for none: the one
+    // whose bitness the workers start with, for the agent's launcher and the console alike.
+    public static ConnectorFinding? FirstRegistered(IReadOnlyList<ConnectorFinding> findings)
+    {
+        return findings.FirstOrDefault(finding => finding.Registered is not null);
+    }
+}

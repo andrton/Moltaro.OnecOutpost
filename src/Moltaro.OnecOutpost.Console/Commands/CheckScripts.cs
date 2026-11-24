@@ -11,26 +11,36 @@ internal static class CheckScripts
     // The user of the session, compared with the account of the policy.
     public const string User = """Result = New Structure("user, fullName", UserName(), UserFullName());""";
 
-    // Each event subscription that an external connection can raise, all but those to FormGetProcessing, whose
-    // handler's module, the second part of Handler, CommonModule.{module}.{procedure} with the first word in the
-    // language of the configuration, is no common module or one without ExternalConnection. The name of an event is in
-    // the language of the configuration too, so the event is named in both.
+    // Each event subscription that an external connection can raise whose handler's common module is missing or
+    // lacks ExternalConnection. Handler puts the module before the procedure, with an optional metadata type prefix.
+    // 1C can return the event name in English or Russian.
     public const string Subscriptions = """
         Result = New Array;
 
         For Each Subscription In Metadata.EventSubscriptions Do
-            If Subscription.Event = "FormGetProcessing" Or Subscription.Event = "ОбработкаПолученияФормы" Then
+            EventName = String(Subscription.Event);
+
+            If EventName = "FormGetProcessing" Or EventName = "ОбработкаПолученияФормы" Then
                 Continue;
             EndIf;
 
-            Handler = Subscription.Handler;
-            Rest = Mid(Handler, Find(Handler, ".") + 1);
-            ModuleName = Left(Rest, Find(Rest, ".") - 1);
-            Module = Metadata.CommonModules.Find(ModuleName);
+            Handler = String(Subscription.Handler);
+            FirstDot = Find(Handler, ".");
+            Rest = Mid(Handler, FirstDot + 1);
+            NextDot = Find(Rest, ".");
 
-            If Module = Undefined Or Not Module.ExternalConnection Then
+            If NextDot > 0 Then
+                ModuleName = Left(Rest, NextDot - 1);
+            Else
+                ModuleName = Left(Handler, Max(FirstDot - 1, 0));
+            EndIf;
+
+            Module = Metadata.CommonModules.Find(ModuleName);
+            Found = Module <> Undefined;
+
+            If Not Found Or Not Module.ExternalConnection Then
                 Result.Add(New Structure("subscription, event, module, found",
-                    Subscription.Name, Subscription.Event, ModuleName, Module <> Undefined));
+                    String(Subscription.Name), EventName, String(ModuleName), Found));
             EndIf;
         EndDo;
         """;
@@ -100,8 +110,8 @@ internal static class CheckScripts
         Result = New Structure("global, categories", Held, Categories);
         """;
 
-    // The objects of a right that a failed line names by their full names.
-    private const int NamedObjects = 10;
+    // The objects of a kind that a failed line names by their full names.
+    private const int NamedObjects = 3;
 
     // The line Connection: passed only for a session of the account of the policy, ignoring case, in a base with users,
     // since 1C opens a base without users to anybody with every right.
@@ -147,8 +157,7 @@ internal static class CheckScripts
         return (false, $"a Write that reaches these fails: {string.Join(", ", named)}; set \"External connection\" of each module");
     }
 
-    // The line ReadRights: the global rights, then each right of a category with how many objects hold it and the first
-    // ten of their full names, and how many more.
+    // The line ReadRights: the global rights, then the rights of each kind and the objects that hold any of them.
     public static (bool Passed, string Reason) RightsOf(JsonElement result, string account)
     {
         List<string> rights = [];
@@ -159,15 +168,26 @@ internal static class CheckScripts
             rights.Add(string.Join(", ", held));
         }
 
-        foreach (JsonElement category in result.GetProperty("categories").EnumerateArray())
+        foreach (IGrouping<string, JsonElement> kind in result.GetProperty("categories").EnumerateArray()
+            .GroupBy(category => TextOf(category, "category"), StringComparer.Ordinal))
         {
-            string name = TextOf(category, "category");
-            string right = TextOf(category, "right");
-            int count = category.GetProperty("count").GetInt32();
-            List<string> objects = [.. category.GetProperty("objects").EnumerateArray().Take(NamedObjects).Select(TextOf)];
-            string more = count > objects.Count ? $" and {count - objects.Count} more" : "";
+            string kindRights = string.Join(", ", kind.Select(category => TextOf(category, "right")));
+            HashSet<string> objects = new(StringComparer.Ordinal);
+            List<string> names = [];
 
-            rights.Add($"{right} on {count} {name}: {string.Join(", ", objects)}{more}");
+            foreach (JsonElement item in kind.SelectMany(category => category.GetProperty("objects").EnumerateArray()))
+            {
+                string name = TextOf(item);
+
+                if (objects.Add(name) && names.Count < NamedObjects)
+                {
+                    names.Add(name);
+                }
+            }
+
+            string more = objects.Count > names.Count ? $" and {objects.Count - names.Count} more" : "";
+
+            rights.Add($"{kindRights} on {objects.Count} {kind.Key}: {string.Join(", ", names)}{more}");
         }
 
         if (rights.Count == 0)

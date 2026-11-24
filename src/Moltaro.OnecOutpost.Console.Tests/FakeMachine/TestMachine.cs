@@ -121,7 +121,8 @@ internal sealed class TestMachine
     public IReadOnlyList<string> Operations => [.. Data.Changes.Select(change => change.Line)];
 
     // The arguments of a run of the command, valid as its settings judge them: install, uninstall, pair, secret, check,
-    // or connector register.
+    // metadata, or connector register. The report of metadata is a new file of the temporary folder of the disk, which
+    // exists, outside the data folder; a run that ends before its walk writes nothing there.
     public static string[] CommandLine(string command)
     {
         return command switch
@@ -131,6 +132,7 @@ internal sealed class TestMachine
             "pair" => ["pair", "https://outpost.example.com/agents/", Token],
             "secret" => ["secret", "accounting", "read"],
             "check" => ["check"],
+            "metadata" => ["metadata", "accounting", Path.Combine(Path.GetTempPath(), $"outpost-metadata-{Guid.NewGuid():N}.json")],
             "connector register" => ["connector", "register"],
             _ => throw new ArgumentOutOfRangeException(nameof(command), command, "No such command."),
         };

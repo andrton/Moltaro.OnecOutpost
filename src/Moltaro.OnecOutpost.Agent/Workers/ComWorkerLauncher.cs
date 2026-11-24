@@ -174,16 +174,12 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     }
 
     // Asks the connector's finder at each start (concept §5, O8): the x64 program when the connector is registered for 64 bits,
-    // otherwise the x86 program when it is for 32 bits, otherwise a NoProcess. Two anonymous pipes, then
-    // CreateProcessAsUserW with the token that Use gave for the base, else the agent's own: the program's full path, the
-    // command line "{program}" {base key} {read|write}, suspended and without a window, the environment of the token's
-    // account, CreateEnvironmentBlock(token, false), never the agent's, the program's folder as its working folder,
-    // lpDesktop the Name of the base's desktop, or "" under the agent's own token, which connects the worker to the
-    // window station of the agent's logon session, the client ends of the pipes as its standard input and output, a
-    // null standard error, and a list of the handles it inherits that names those two ends alone. Then the agent's
-    // copies of the client ends close, the process joins the job and its thread resumes, so that a worker is in the job
-    // before any of its code runs; the job lets nothing break away from it. The connection with its password travels
-    // only in the first input line, never on the command line or in the environment. Any failure, a created process
+    // otherwise the x86 program when it is for 32 bits, otherwise a NoProcess. Then ComWorkerProcess.Start, AsUser with
+    // the token that Use gave for the base, else the agent's own, lpDesktop the Name of the base's desktop, or "" under
+    // the agent's own token, which connects the worker to the window station of the agent's logon session, no standard
+    // error, and the launcher's job, which the worker does not own; the job lets nothing break away from it. So the
+    // worker inherits the ends of its two pipes alone, joins the job before any of its code runs, and gets its
+    // connection, with its password, only in the first input line. A Win32Exception or an IOException, a created process
     // terminated first, gives a NoProcess: Start throws nothing but the ObjectDisposedException of a job that was
     // disposed, which only a test does. Limitations: the profile of a worker account is not loaded, since only an
     // administrator or LocalSystem may load one, so its HKCU is the default hive and its TEMP the system's; and a worker
@@ -206,41 +202,15 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             desktop = worker.Desktop.Name;
         }
 
-        string commandLine = $"\"{program}\" {baseKey} {OutpostForms.WriteMode(mode)}";
-
-        AnonymousPipeServerStream? input = null;
-        AnonymousPipeServerStream? output = null;
-
         try
         {
-            input = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
-            output = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
-
-            (SafeProcessHandle process, nint thread) = WorkerCreation.CreateSuspended(
-                WorkerCallEnum.AsUser,
-                token,
-                program,
-                commandLine,
-                desktop,
-                input.ClientSafePipeHandle,
-                output.ClientSafePipeHandle,
-                error: null);
-
-            // The worker holds the client ends now: once the agent's copies close, its end closes its output.
-            input.DisposeLocalCopyOfClientHandle();
-            output.DisposeLocalCopyOfClientHandle();
-
-            return JoinAndResume(new ComWorkerProcess(process, input, output), process, thread);
+            return ComWorkerProcess.Start(WorkerCallEnum.AsUser, token, program, baseKey, mode, desktop, _job, ownsJob: false, error: null);
         }
         catch (Exception exception) when (exception is IOException or Win32Exception)
         {
-            // A pipe that Windows could not make, or a process that it did not create.
+            // A pipe that Windows could not make, or a process that it did not create, or that the job did not take.
+            return new NoProcess();
         }
-
-        input?.Dispose();
-        output?.Dispose();
-
-        return new NoProcess();
     }
 
     // The sentence of the code, which holds no value given to the call.
@@ -250,45 +220,17 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             $"the worker account {account} of the base {baseKey} cannot log on: {WorkerAccountReasons.CannotLogOn(baseKey, error)}");
     }
 
-    // Puts the suspended worker into the job and resumes its thread by WorkerCreation.JoinAndResume, which terminates a
-    // process that the job does not take or whose thread does not resume: that worker is disposed, a NoProcess. Any other
-    // exception, such as the ObjectDisposedException of a disposed job, passes after the dispose, so that no process is
-    // ever left outside the job.
-    private IWorkerProcess JoinAndResume(ComWorkerProcess worker, SafeProcessHandle process, nint thread)
-    {
-        try
-        {
-            WorkerCreation.JoinAndResume(_job, process, thread);
-
-            return worker;
-        }
-        catch (Win32Exception)
-        {
-            worker.Dispose();
-
-            return new NoProcess();
-        }
-        catch
-        {
-            worker.Dispose();
-            throw;
-        }
-    }
-
     // The program of the first bitness whose finding has a registered connector, 64 bits first, or null for none.
     private string? ProgramOfConnector()
     {
-        foreach (ConnectorFinding finding in _connectors.Find())
-        {
-            if (finding.Registered is null)
-            {
-                continue;
-            }
+        ConnectorFinding? first = ConnectorFinding.FirstRegistered(_connectors.Find());
 
-            return finding.Bitness == ConnectorBitnessEnum.X64 ? _x64Program : _x86Program;
+        if (first is null)
+        {
+            return null;
         }
 
-        return null;
+        return first.Bitness == ConnectorBitnessEnum.X64 ? _x64Program : _x86Program;
     }
 
     [LibraryImport("kernel32.dll")]

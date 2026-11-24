@@ -5,8 +5,8 @@ using Microsoft.Win32.SafeHandles;
 
 namespace Moltaro.OnecOutpost.Agent.Workers;
 
-// The creation of a worker's process, suspended, and its start inside a job, for the agent's launcher and for the
-// console's check. Every call to Windows goes through LibraryImport, no package (principle 12).
+// Creates a worker's process suspended, starts it inside a job, and provides termination and exit waiting on its
+// handle. Every call to Windows goes through LibraryImport, no package (principle 12).
 [SupportedOSPlatform("windows")]
 internal static partial class WorkerCreation
 {
@@ -39,8 +39,13 @@ internal static partial class WorkerCreation
     // What ResumeThread gives when it fails, (DWORD)-1.
     private const uint ResumeFailed = uint.MaxValue;
 
-    // The exit code of a worker that never resumed, as Process.Kill gives it.
+    // The exit code of a worker that was ended, as Process.Kill gives it.
     private const uint KilledExitCode = uint.MaxValue;
+
+    // INFINITE and WAIT_FAILED of WaitForSingleObject.
+    private const uint Infinite = uint.MaxValue;
+
+    private const uint WaitFailed = uint.MaxValue;
 
     // Creates the process of the program under the token, suspended and without a window, with the command line
     // "{program}" {base key} {read|write} as given, the environment of the token's account, CreateEnvironmentBlock(token,
@@ -70,9 +75,7 @@ internal static partial class WorkerCreation
 
     // Puts the suspended process into the job and resumes its thread, whose handle it closes, so that a worker is in the
     // job before any of its code runs. A process that the job does not take, which would outlive its owner, or whose
-    // thread does not resume is terminated and its Win32Exception passes; any other exception, such as the
-    // ObjectDisposedException of a disposed job, passes after the termination as well, so that no process is ever left
-    // outside the job.
+    // thread does not resume is terminated and waited for before the original startup error passes to the caller.
     public static void JoinAndResume(WorkerJob job, SafeProcessHandle process, nint thread)
     {
         bool resumed = false;
@@ -94,10 +97,59 @@ internal static partial class WorkerCreation
 
             if (!resumed)
             {
-                // The handle of a created process may terminate it, so the call fails only for one that has ended.
-                TerminateProcess(process, KilledExitCode);
+                Terminate(process);
+
+                // TerminateProcess returns before the process exits. The caller still holds the creation handle.
+                WaitForSingleObject(process, Infinite);
             }
         }
+    }
+
+    // TerminateProcess with the exit code of Process.Kill, for the creation, the worker's process and the console's
+    // probe. Its failure is ignored: the handle of a created process may terminate it, so the call fails only for a
+    // process that has ended.
+    public static void Terminate(SafeProcessHandle process)
+    {
+        TerminateProcess(process, KilledExitCode);
+    }
+
+    // The exit code, or null after termination at the deadline. Cancellation terminates the process too. The wait
+    // for the actual exit finishes before the caller can close the process handle.
+    public static async Task<uint?> ExitCodeWithinAsync(
+        SafeProcessHandle process,
+        TimeSpan deadline,
+        TimeProvider clock,
+        CancellationToken cancellationToken)
+    {
+        Task<uint> exited = Task.Run(() => ExitCodeOf(process), CancellationToken.None);
+
+        using (CancellationTokenSource race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+        {
+            Task limit = Task.Delay(deadline, clock, race.Token);
+
+            if (await Task.WhenAny(exited, limit) == exited)
+            {
+                race.Cancel();
+
+                return await exited;
+            }
+        }
+
+        Terminate(process);
+        await exited;
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return null;
+    }
+
+    private static uint ExitCodeOf(SafeProcessHandle process)
+    {
+        if (WaitForSingleObject(process, Infinite) == WaitFailed || !GetExitCodeProcess(process, out uint exitCode))
+        {
+            throw new Win32Exception(Marshal.GetLastPInvokeError());
+        }
+
+        return exitCode;
     }
 
     private static unsafe (SafeProcessHandle Process, nint Thread) AsUser(
@@ -196,8 +248,8 @@ internal static partial class WorkerCreation
     // form's without the list of attributes. The service is given a primary duplicate of the token with every access
     // that the caller may have to it, rather than the handle given, which may hold no more than the documented
     // TOKEN_QUERY, TOKEN_DUPLICATE and TOKEN_ASSIGN_PRIMARY, as one from OpenProcessToken does: the service refused such
-    // a handle of the process's own token with ERROR_ACCESS_DENIED in CI's elevated run, and a duplicate is the remedy
-    // known for that refusal, not yet proven there. A refusal names the call and the job of the caller, since the
+    // a handle of the process's own token with ERROR_ACCESS_DENIED in CI's elevated run, and the duplicate, which CI's
+    // elevated run of S10b then passed with, is the remedy. A refusal names the call and the job of the caller, since the
     // service may also refuse a caller whose job lets no process break away.
     private static unsafe (SafeProcessHandle Process, nint Thread) WithToken(
         SafeAccessTokenHandle given,
@@ -353,4 +405,11 @@ internal static partial class WorkerCreation
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool TerminateProcess(SafeProcessHandle process, uint exitCode);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetExitCodeProcess(SafeProcessHandle process, out uint exitCode);
 }

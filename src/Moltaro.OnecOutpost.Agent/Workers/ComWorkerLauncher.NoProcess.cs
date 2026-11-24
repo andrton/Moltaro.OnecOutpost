@@ -17,6 +17,11 @@ internal sealed partial class ComWorkerLauncher
             return Task.FromResult<(long Size, byte[] Outcome)?>(null);
         }
 
+        public Task EndAsync(TimeSpan deadline, TimeProvider clock)
+        {
+            return Task.CompletedTask;
+        }
+
         public void Kill()
         {
         }

@@ -23,7 +23,8 @@ internal static class AgentStart
     // and the logon of each such worker account, in the policy's order, before any worker starts. A failed step after
     // the first records started with the error and withoutSafeMode empty, records policy invalid when policy.json
     // failed, disposes the log and throws AgentStopException with the same reason. When every step passes, it records
-    // started with the bases that write without safe mode and policy as valid, calls Recover and returns the run.
+    // started with the bases that write without safe mode and policy as valid, calls Recover and returns the run; an
+    // AgentStopException of Recover is recorded as stopped with its reason, and then passes as well, the log disposed.
     // version is the agent's version as given.
     public static AgentRun Open(
         AgentFolders folders,
@@ -53,7 +54,7 @@ internal static class AgentStart
             catch (AgentPolicyException exception)
             {
                 // An invalid file serves nothing: its outbox waits on the disk for a start with a valid policy.
-                string reason = $"{AgentFolders.PolicyName} is not valid: {exception.Message}";
+                string reason = StartChecks.PolicyReason(exception);
 
                 log.Started(version, [], reason);
                 log.Policy(exception.Message);
@@ -70,7 +71,18 @@ internal static class AgentStart
 
             log.Started(version, withoutSafeMode, null);
             log.Policy(null);
-            run.Records.Recover();
+
+            try
+            {
+                run.Records.Recover();
+            }
+            catch (AgentStopException exception)
+            {
+                // A fault of the outbox after started, recorded as the loop's are (the owner's Q16); the log writes
+                // nothing once a write of it failed.
+                log.Stopped(exception.Message);
+                throw;
+            }
 
             return run;
         }
@@ -135,9 +147,7 @@ internal static class AgentStart
             }
             catch (IOException)
             {
-                string entry = path.Length == 0 ? "the data folder" : path;
-
-                throw new AgentStopException($"the access list of {entry} cannot be read");
+                throw new AgentStopException($"the access list of {StartChecks.EntryOf(path)} cannot be read");
             }
 
             if (StartChecks.AccessReason(path, others) is string reason)

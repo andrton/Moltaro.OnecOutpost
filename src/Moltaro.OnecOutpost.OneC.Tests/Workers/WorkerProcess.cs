@@ -46,6 +46,11 @@ internal sealed class WorkerProcess : IAsyncDisposable
     // Starts the worker program with the command line given, normally a base key and a mode.
     public static WorkerProcess Start(params string[] arguments)
     {
+        return Start(arguments, includeDiagnostics: true);
+    }
+
+    public static WorkerProcess Start(string[] arguments, bool includeDiagnostics)
+    {
         ProcessStartInfo start = new(Repository.WorkerPath)
         {
             RedirectStandardInput = true,
@@ -63,7 +68,12 @@ internal sealed class WorkerProcess : IAsyncDisposable
         Process process = Process.Start(start) ?? throw new InvalidOperationException("The worker program did not start.");
         WorkerProcess worker = new(process);
 
-        process.ErrorDataReceived += (_, line) => worker.AddDiagnostics(line.Data);
+        // Drain standard error in both cases, but only retain the test base's diagnostics for assertions.
+        if (includeDiagnostics)
+        {
+            process.ErrorDataReceived += (_, line) => worker.AddDiagnostics(line.Data);
+        }
+
         process.BeginErrorReadLine();
 
         return worker;
