@@ -15,9 +15,9 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 // account, AgentSid, as the agent's tests make their access lists for it, the agent's fake clock, and a LabServer of the
 // agent's keys, so that the server's line reaches a stub in the process. check needs a console run as administrator,
 // and its probe needs "Impersonate a client after authentication", which only an elevated token holds, so the lab's
-// tests run elevated. Each run asserts that the server saw no poll. metadata runs on the clock of the machine instead,
-// so that the run limit of the policy holds its Reads as it holds them in use, and the lab records the halvings it
-// causes.
+// tests run elevated. Each run checks that the program folder can be removed at once and that the server saw no poll.
+// metadata runs on the clock of the machine so the policy's run limit applies as in use, and the lab records the
+// halvings it causes.
 [SupportedOSPlatform("windows")]
 internal static class LabConsole
 {
@@ -59,6 +59,7 @@ internal static class LabConsole
             .RunAsync(["check"], TestContext.Current.CancellationToken)
             .WaitAsync(Deadline, TestContext.Current.CancellationToken);
 
+        agent.RemoveProgramsAfterCommand();
         Assert.Equal(0, server.Polls);
 
         return new LabCheck(result);
@@ -77,6 +78,7 @@ internal static class LabConsole
             .RunAsync(["metadata", agent.Key, file], TestContext.Current.CancellationToken)
             .WaitAsync(MetadataDeadline, TestContext.Current.CancellationToken);
 
+        agent.RemoveProgramsAfterCommand();
         Assert.Equal(0, server.Polls);
 
         return new LabMetadata(result, file, named: agent.Key == LabTestBase.Key);

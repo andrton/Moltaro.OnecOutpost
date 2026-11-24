@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
@@ -14,12 +15,15 @@ namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 // the pipes, those of the worker's input and output as that of the error end given, so that none waits for the
 // finalizer; the error end, which the test can read, shows it, since a pipe reads to its end only once every copy of
 // its client end is closed. A program that is missing fails the start with its Win32Exception, 2, ERROR_FILE_NOT_FOUND;
-// its folder, the worker's working folder, exists, so that the error is not 267.
+// its folder, the worker's working folder, exists, so that the error is not 267. When the job refuses a suspended
+// worker, the process has exited before the failure is reported (the lab amendment to S10c).
 [Trait("Requires", "Windows")]
 [SupportedOSPlatform("windows")]
 [Collection(WindowStationCollection.Name)]
-public sealed class WorkerProcessStartTests : IDisposable
+public sealed partial class WorkerProcessStartTests : IDisposable
 {
+    private const uint Signaled = 0;
+
     private readonly WorkerJob _job = new();
 
     public void Dispose()
@@ -52,4 +56,41 @@ public sealed class WorkerProcessStartTests : IDisposable
 
         Assert.Equal("", await reader.ReadToEndAsync(cancellationToken).WaitAsync(TestTimes.Deadline, cancellationToken));
     }
+
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public void A_worker_refused_by_its_job_has_exited_when_the_start_failure_is_reported()
+    {
+        using SafeAccessTokenHandle token = TestTokens.Own();
+        using AnonymousPipeServerStream input = new(PipeDirection.Out, HandleInheritability.Inheritable);
+        using AnonymousPipeServerStream output = new(PipeDirection.In, HandleInheritability.Inheritable);
+
+        (SafeProcessHandle process, nint thread) = WorkerCreation.CreateSuspended(
+            WorkerCallEnum.AsUser,
+            token,
+            TestProgram.Path,
+            $"\"{TestProgram.Path}\" accounting read",
+            "",
+            input.ClientSafePipeHandle,
+            output.ClientSafePipeHandle,
+            error: null);
+
+        using (process)
+        {
+            _job.Dispose();
+            try
+            {
+                Assert.Throws<ObjectDisposedException>(() => WorkerCreation.JoinAndResume(_job, process, thread));
+                Assert.Equal(Signaled, WaitForSingleObject(process, 0));
+            }
+            finally
+            {
+                // The test still ends its child if the behavior it checks regresses.
+                WorkerCreation.Terminate(process);
+                WaitForSingleObject(process, (uint)TestTimes.Deadline.TotalMilliseconds);
+            }
+        }
+    }
+
+    [LibraryImport("kernel32.dll")]
+    private static partial uint WaitForSingleObject(SafeProcessHandle process, uint milliseconds);
 }

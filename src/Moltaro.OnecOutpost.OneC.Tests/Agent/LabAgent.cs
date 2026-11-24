@@ -154,6 +154,13 @@ internal sealed class LabAgent : IDisposable
         return path;
     }
 
+    // The console tests run one command per fixture. Remove its programs before Dispose waits for any worker exits.
+    public void RemoveProgramsAfterCommand()
+    {
+        Assert.Empty(LabJob.Others());
+        Remove(ProgramsPath);
+    }
+
     public void Dispose()
     {
         // Every process that the tests started and that runs is the agent's, its workers, since the tests run one at a

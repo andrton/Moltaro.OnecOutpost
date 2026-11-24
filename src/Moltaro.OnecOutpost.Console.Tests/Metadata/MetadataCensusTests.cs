@@ -115,6 +115,30 @@ public sealed class MetadataCensusTests : IDisposable
             Accounting.Answers.Select(answer => answer.Read));
     }
 
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task An_error_seen_only_by_the_probe_is_reported_with_the_values_read_by_the_objects_page()
+    {
+        const string ProbeError = "synonym: The synonym could not be read";
+        JsonObject product = Accounting.ObjectsOf("Catalogs")[0];
+        Accounting.Reading = read =>
+        {
+            bool probing = read == "page Catalogs 0 1 storage";
+            product["error"] = probing ? ProbeError : null;
+            product["synonym"] = probing ? null : "Products";
+        };
+
+        MetadataRun run = await _metadata.RunAsync();
+
+        run.AssertSucceeded(read: 5, found: 6, failed: 1);
+        MetadataReport report = run.Report;
+        JsonElement products = report.Object("Catalog.Products");
+        Assert.Equal(ProbeError, MetadataReport.TextOf(products, "error"));
+        Assert.Equal("Products", MetadataReport.TextOf(products, "synonym"));
+        Assert.True(products.GetProperty("properties").GetProperty("hierarchical").GetBoolean());
+        Assert.Equal(new MetadataCategory("Catalogs", 2, 1, 1), report.Category("Catalogs"));
+        Assert.Single(report.Objects, item => MetadataReport.TextOf(item, "error") is not null);
+    }
+
     // The S10 brief, "After the lab run of deeb370", 1: a value of the census without an XML form, which XMLString
     // raises on, as the lab found on a typical copy, is {"error": text} in its place, the walk goes on, and the caption
     // of the table names it. The caption may wrap within the width of the table, so its words are read across the
