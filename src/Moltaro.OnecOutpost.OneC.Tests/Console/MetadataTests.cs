@@ -84,8 +84,13 @@ public sealed class MetadataTests
             MetadataReport report = metadata.Report;
             AssertNonemptyText($"{about} configuration", report.Root.GetProperty("configuration"), "compatibilityMode");
 
-            string fullName = $"Document.{typicalBase.DocumentType}";
-            List<JsonElement> matching = [.. report.Objects.Where(item => MetadataReport.TextOf(item, "fullName") == fullName)];
+            // FullName() can localize the category prefix.
+            List<JsonElement> matching =
+            [
+                .. report.Objects.Where(item =>
+                    MetadataReport.TextOf(item, "category") == "Documents"
+                    && MetadataReport.TextOf(item, "name") == typicalBase.DocumentType),
+            ];
             Assert.True(matching.Count == 1, $"{about}: the report holds {matching.Count} objects of the configured document type, expected one.");
 
             JsonElement document = matching[0];
