@@ -13,10 +13,11 @@ namespace Moltaro.OnecOutpost.Agent.Host;
 internal static class AgentHost
 {
     // AgentStart.Open, whose IOException gives NotStarted and AgentStopException Error; the keys; the pool, its opens
-    // started; the connection over Handlers(server, proxy); the checks; the loop, which gives Stopped for the token and
-    // Error for AgentStopException. The pool, the checks and the loop serve the policy as the start read it: a base
-    // whose write turns safe mode off is served for Write, its workers under the worker account that the start logged
-    // on. It disposes the pool, the connection and the log, in that order.
+    // started; the connection over Handlers(server, proxy); the checks; the loop, which gives Stopped for the token,
+    // recording nothing, and Error for AgentStopException, after stopped with its reason (the owner's Q16), which the
+    // log does not write once a write of it failed. The pool, the checks and the loop serve the policy as the start
+    // read it: a base whose write turns safe mode off is served for Write, its workers under the worker account that the
+    // start logged on. It disposes the pool, the connection and the log, in that order.
     public static async Task<int> RunAsync(AgentParts parts, CancellationToken cancellationToken)
     {
         AgentRun run;
@@ -39,7 +40,8 @@ internal static class AgentHost
         }
         catch (AgentStopException)
         {
-            // Recorded by the start, as started with the error.
+            // Recorded by the start: as started with the error, or, for a fault of its recovery after started, as
+            // stopped.
             return AgentExitCodes.Error;
         }
 
@@ -51,8 +53,10 @@ internal static class AgentHost
         {
             return AgentExitCodes.Stopped;
         }
-        catch (AgentStopException)
+        catch (AgentStopException exception)
         {
+            run.Log.Stopped(exception.Message);
+
             return AgentExitCodes.Error;
         }
         finally

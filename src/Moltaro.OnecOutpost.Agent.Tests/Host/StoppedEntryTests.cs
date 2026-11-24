@@ -36,7 +36,7 @@ public sealed class StoppedEntryTests
 
     // The outbox file of the command cannot be written when its outcome is recorded, read when it is sent, or removed
     // once the server confirmed it.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("written")]
     [InlineData("read")]
     [InlineData("removed")]
@@ -75,7 +75,7 @@ public sealed class StoppedEntryTests
 
     // The log holds no reservation of the agent, so its first poll is counted; a server that answers it as older has
     // recorded polls that the log does not hold.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_cleared_log_that_the_server_answers_as_older_is_recorded_as_stopped_after_its_reservation_and_the_agent_exits_with_Error()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -91,7 +91,7 @@ public sealed class StoppedEntryTests
     }
 
     // The next number would pass 2⁶²: the agent records its reservation, then stopped.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Poll_numbers_used_up_are_recorded_as_stopped_after_their_reservation_and_the_agent_exits_with_Error()
     {
         PairedFolder folder = PairedFolder.Create();
@@ -158,7 +158,7 @@ public sealed class StoppedEntryTests
     // An earlier run received a Read and stopped while it ran, so the start's recovery, after started and policy,
     // writes its outcome of Failed lost, which the disk refuses: the start records stopped with the path of the file,
     // and polls nothing.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_outbox_file_that_the_start_recovery_cannot_write_is_recorded_as_stopped_after_started_and_the_agent_exits_with_Error()
     {
         const string RecordedScript = "Result = TheScriptOfTheCommand;";
@@ -178,7 +178,7 @@ public sealed class StoppedEntryTests
 
     // The reader of the log accepts stopped with its string error, so the start after a stop records started without an
     // error and polls.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_start_reads_a_log_that_ends_with_stopped_records_started_without_an_error_and_polls()
     {
         PairedFolder folder = PairedFolder.Create();

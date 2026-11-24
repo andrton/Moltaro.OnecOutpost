@@ -298,6 +298,54 @@ public sealed class AuditWriteTests
         Assert.Equal(OutpostAgentOutcomeKindEnum.Succeeded, reopened.Find(command)!.Kind);
     }
 
+    // The owner's Q16: stopped records the reason of a stop that is already under way, so a failed write of its own is
+    // cut back as any entry's and throws nothing.
+    [Fact]
+    public void A_failed_write_of_stopped_cuts_the_file_back_sets_the_fault_and_throws_nothing()
+    {
+        string before = AuditLines.Connection(TestTimes.Start);
+        _data.Audit.Seed("2026-11-22.jsonl", before);
+        using AuditLog log = AuditLog.Open(_data.Audit, _clock);
+        _data.Audit.FailNextWrite(bytesKept: 7);
+
+        log.Stopped("the poll numbers are used up; pair the agent anew");
+
+        Assert.Equal(
+            ["append audit\\2026-11-22.jsonl", $"cut audit\\2026-11-22.jsonl to {before.Length}"],
+            _data.LinesSince(0));
+        Assert.Equal(before, _data.Audit.Text("2026-11-22.jsonl"));
+        Assert.NotNull(log.Fault);
+    }
+
+    // The owner's Q16: after a failed write of the log, or with a log that cannot be read, stopped writes nothing and
+    // throws nothing.
+    [Theory]
+    [InlineData("failed write")]
+    [InlineData("read fault")]
+    public void With_a_fault_stopped_writes_nothing_and_throws_nothing(string fault)
+    {
+        if (fault == "read fault")
+        {
+            _data.Audit.Seed("2026-11-21.jsonl", "not an entry\n" + AuditLines.Connection(TestTimes.Start.AddDays(-1)));
+        }
+
+        using AuditLog log = AuditLog.Open(_data.Audit, _clock);
+
+        if (fault == "failed write")
+        {
+            _data.Audit.FailNextWrite(bytesKept: 0);
+            Assert.Throws<AgentStopException>(() => log.Connection(true, null));
+            _data.Audit.Heal();
+        }
+
+        Assert.NotNull(log.Fault);
+        int count = _data.Changes.Count;
+
+        log.Stopped(@"outcomes\9c1e2f3a-4b5c-4d6e-8f70-a1b2c3d4e5f6.json cannot be written");
+
+        Assert.Empty(_data.LinesSince(count));
+    }
+
     // What the log gives for the received list, for the restart and for the poll numbers follows each write.
     [Fact]
     public void Each_write_updates_what_Find_Unconfirmed_and_HighestReservation_give()
