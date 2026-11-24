@@ -6022,10 +6022,10 @@ S8.
       own worker. Each records the reads, the largest outcome, the halvings, whether the read
       account got the DBMS's names, and its columns' language (test base English, a typical copy
       likely Russian), which the lab run writes into this brief.
-    - **The steps**, as process.md's full track: the contract adds the types above, `metadata`
-      registered with its settings working, `ExecuteAsync`, `Start`, `OpenAsync`, `ReadAsync` and
-      the gate's members throwing `NotSupportedException`, unused; the tests step, skipped where
-      needed; the implementation, review 3's entries first. The documents step: `README.md` names
+    - **The steps**, as process.md's full track: the contract adds the types above, review 3's
+      entries working at once, as they replace working code (the coordinator, 24 November 2026),
+      `metadata` registered with its settings working and `ExecuteAsync` throwing; the tests step,
+      skipped where needed; the implementation, `metadata`. The documents step: `README.md` names
       `metadata`, "The files of the agent" that it holds `check`'s rule, the stage-3 contract the
       drafts. Then G1, by an agent of its own, before the independent review; then the owner's lab
       run of S10: `OneC.Tests` whole and the manual lines of the Acceptance.

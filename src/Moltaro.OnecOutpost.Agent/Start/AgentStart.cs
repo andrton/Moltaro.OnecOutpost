@@ -53,7 +53,7 @@ internal static class AgentStart
             catch (AgentPolicyException exception)
             {
                 // An invalid file serves nothing: its outbox waits on the disk for a start with a valid policy.
-                string reason = $"{AgentFolders.PolicyName} is not valid: {exception.Message}";
+                string reason = StartChecks.PolicyReason(exception);
 
                 log.Started(version, [], reason);
                 log.Policy(exception.Message);
@@ -135,9 +135,7 @@ internal static class AgentStart
             }
             catch (IOException)
             {
-                string entry = path.Length == 0 ? "the data folder" : path;
-
-                throw new AgentStopException($"the access list of {entry} cannot be read");
+                throw new AgentStopException($"the access list of {StartChecks.EntryOf(path)} cannot be read");
             }
 
             if (StartChecks.AccessReason(path, others) is string reason)

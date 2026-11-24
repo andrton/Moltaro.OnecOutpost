@@ -39,7 +39,7 @@ internal static partial class WorkerCreation
     // What ResumeThread gives when it fails, (DWORD)-1.
     private const uint ResumeFailed = uint.MaxValue;
 
-    // The exit code of a worker that never resumed, as Process.Kill gives it.
+    // The exit code of a worker that was ended, as Process.Kill gives it.
     private const uint KilledExitCode = uint.MaxValue;
 
     // Creates the process of the program under the token, suspended and without a window, with the command line
@@ -94,10 +94,17 @@ internal static partial class WorkerCreation
 
             if (!resumed)
             {
-                // The handle of a created process may terminate it, so the call fails only for one that has ended.
-                TerminateProcess(process, KilledExitCode);
+                Terminate(process);
             }
         }
+    }
+
+    // TerminateProcess with the exit code of Process.Kill, for the creation, the worker's process and the console's
+    // probe. Its failure is ignored: the handle of a created process may terminate it, so the call fails only for a
+    // process that has ended.
+    public static void Terminate(SafeProcessHandle process)
+    {
+        TerminateProcess(process, KilledExitCode);
     }
 
     private static unsafe (SafeProcessHandle Process, nint Thread) AsUser(
@@ -196,8 +203,8 @@ internal static partial class WorkerCreation
     // form's without the list of attributes. The service is given a primary duplicate of the token with every access
     // that the caller may have to it, rather than the handle given, which may hold no more than the documented
     // TOKEN_QUERY, TOKEN_DUPLICATE and TOKEN_ASSIGN_PRIMARY, as one from OpenProcessToken does: the service refused such
-    // a handle of the process's own token with ERROR_ACCESS_DENIED in CI's elevated run, and a duplicate is the remedy
-    // known for that refusal, not yet proven there. A refusal names the call and the job of the caller, since the
+    // a handle of the process's own token with ERROR_ACCESS_DENIED in CI's elevated run, and the duplicate, which CI's
+    // elevated run of S10b then passed with, is the remedy. A refusal names the call and the job of the caller, since the
     // service may also refuse a caller whose job lets no process break away.
     private static unsafe (SafeProcessHandle Process, nint Thread) WithToken(
         SafeAccessTokenHandle given,

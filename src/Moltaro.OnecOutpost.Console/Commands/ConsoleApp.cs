@@ -27,6 +27,8 @@ internal static class ConsoleApp
             .WithDescription("Writes a password of a base to secrets.dat.");
         config.AddCommand<CheckCommand>("check")
             .WithDescription("Checks the agent machine: the connector, the bases, the server, the worker accounts and the access lists.");
+        config.AddCommand<MetadataCommand>("metadata")
+            .WithDescription("Writes a local report of a base's metadata: its objects, their fields and how they are stored.");
         config.AddBranch("connector", connector =>
         {
             connector.SetDescription("The COM connector of 1C:Enterprise.");
@@ -82,6 +84,7 @@ internal static class ConsoleApp
             ConsoleExitCodes.ConnectorNotRegistered => nameof(ConsoleExitCodes.ConnectorNotRegistered),
             ConsoleExitCodes.RegistrationFailed => nameof(ConsoleExitCodes.RegistrationFailed),
             ConsoleExitCodes.CheckFailed => nameof(ConsoleExitCodes.CheckFailed),
+            ConsoleExitCodes.ReportFailed => nameof(ConsoleExitCodes.ReportFailed),
             _ => throw new ArgumentOutOfRangeException(nameof(code), code, "No end of a command has this code."),
         };
     }

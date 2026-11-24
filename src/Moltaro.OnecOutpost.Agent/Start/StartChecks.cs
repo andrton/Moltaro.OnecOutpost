@@ -131,6 +131,12 @@ internal static class StartChecks
         return AgentPolicyReader.ReadFile(bytes);
     }
 
+    // The reason of a policy.json that is not valid, as the start, pair, secret, check and metadata give it.
+    public static string PolicyReason(AgentPolicyException exception)
+    {
+        return $"{AgentFolders.PolicyName} is not valid: {exception.Message}";
+    }
+
     // A mode that the policy serves needs the password of its account, and a base with a worker account the password of
     // that account: every one missing, in the policy's order, each with the console's secret that writes it.
     public static IReadOnlyList<string> MissingPasswords(AgentPolicy policy, AgentSecrets secrets)
@@ -158,8 +164,8 @@ internal static class StartChecks
         return missing;
     }
 
-    // The entry as the reasons name it.
-    private static string EntryOf(string path)
+    // The entry at the path, relative to the data folder, as the reasons name it: "" is the data folder.
+    public static string EntryOf(string path)
     {
         return path.Length == 0 ? "the data folder" : path;
     }

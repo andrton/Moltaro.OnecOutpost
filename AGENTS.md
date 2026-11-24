@@ -84,7 +84,7 @@ server is packed; every other project is not.
 | `src/*.Tests` | Tests, one project per library or program |
 | `Moltaro.OnecOutpost.OneC.Tests` | The tests that need 1C, run only on the lab machine. It is not in the solution, so `dotnet test` from `src` never runs it; CI builds it and checks its format |
 | `Moltaro.OnecOutpost.TestSupport` | Code that two or more test projects need, such as the fake clock, the PostgreSQL fixture, the loopback server with its proxy and test agent, the observed launcher of the COM workers and the edits of access lists. Never shipped; no tests |
-| `Moltaro.OnecOutpost.TestWorker` | The test program that stands in for the COM worker in the agent's tests on Windows: it speaks the worker's lines without 1C. Never shipped |
+| `Moltaro.OnecOutpost.TestWorker` | The test program that stands in for the COM worker in the agent's and the console's tests on Windows: it speaks the worker's lines without 1C. Never shipped |
 
 The repository root holds only repository-level files. Code never lives there.
 

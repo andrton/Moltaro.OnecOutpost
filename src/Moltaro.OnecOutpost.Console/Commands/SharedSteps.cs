@@ -167,7 +167,7 @@ internal static class SharedSteps
         }
         catch (AgentPolicyException exception)
         {
-            throw new CommandEndException(ConsoleExitCodes.PolicyInvalid, $"{AgentFolders.PolicyName} is not valid: {exception.Message}");
+            throw new CommandEndException(ConsoleExitCodes.PolicyInvalid, StartChecks.PolicyReason(exception));
         }
     }
 }

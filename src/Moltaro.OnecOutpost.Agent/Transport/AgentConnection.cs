@@ -176,9 +176,7 @@ internal sealed class AgentConnection : IDisposable
             return new PollResult(null, refusal.Code);
         }
 
-        if (answer.Status == (int)HttpStatusCode.BadRequest
-            && answer.Body is byte[] unsigned
-            && OutpostCodec.IsUnsupportedVersion(unsigned))
+        if (answer.IsUnsupportedVersion)
         {
             return new PollResult(null, OutpostProtocolCodes.ProtocolVersion);
         }
@@ -209,9 +207,7 @@ internal sealed class AgentConnection : IDisposable
             return new OutcomeAnswer(result, refusal.Time, status, ServerAnswerCauseEnum.Refusal, refusal.Code);
         }
 
-        if (status == (int)HttpStatusCode.BadRequest
-            && answer.Body is byte[] unsigned
-            && OutpostCodec.IsUnsupportedVersion(unsigned))
+        if (answer.IsUnsupportedVersion)
         {
             return Lost(status, ServerAnswerCauseEnum.ProtocolVersion);
         }

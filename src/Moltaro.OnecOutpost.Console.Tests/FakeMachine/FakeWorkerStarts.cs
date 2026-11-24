@@ -93,7 +93,7 @@ internal sealed class FakeWorkerStarts : IWorkerStarts
         return Task.FromResult(ProbeExits.TryGetValue(name, out uint? exit) ? exit : 0u);
     }
 
-    public CheckWorker Start(IWorkerAccount? account, string program, string baseKey)
+    public ConsoleWorker Start(IWorkerAccount? account, string program, string baseKey)
     {
         string? name = (account as FakeWorkerAccount)?.Account;
 
@@ -107,7 +107,7 @@ internal sealed class FakeWorkerStarts : IWorkerStarts
         FakeCheckProcess process = new(this, baseKey, program, name);
         _processes.Add(process);
 
-        return new CheckWorker(process, process.Diagnostics);
+        return new ConsoleWorker(process, process.Diagnostics);
     }
 
     // The session that the test scripted for the user of the base; a user that it names not opens and gives its own

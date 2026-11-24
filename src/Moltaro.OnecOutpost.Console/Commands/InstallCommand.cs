@@ -16,7 +16,6 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
 {
     // The agent's program in the program folder, which the service runs with its one argument.
-    private const string AgentProgram = "Moltaro.OnecOutpost.Agent.exe";
 
     private const string DisplayName = "Moltaro OnecOutpost agent";
 
@@ -172,7 +171,7 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
     // Step 4: the service under its virtual account, created, or reconfigured when it exists.
     private void RegisterService(string account)
     {
-        string binaryPath = $"\"{Path.Combine(_parts.ProgramFolder, AgentProgram)}\" service";
+        string binaryPath = $"\"{ProgramFolderLayout.AgentOf(_parts.ProgramFolder)}\" service";
         bool created;
 
         try

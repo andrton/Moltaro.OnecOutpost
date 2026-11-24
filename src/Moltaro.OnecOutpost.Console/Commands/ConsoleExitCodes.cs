@@ -10,7 +10,8 @@ internal static class ConsoleExitCodes
     public const int Failure = 1;
 
     // Every command: an unknown command or option, a missing or invalid argument or password, install run from inside
-    // the program folder or from a folder that holds it.
+    // the program folder or from a folder that holds it, and metadata given a FILE that exists, whose folder does not
+    // exist, or that lies in the data folder.
     public const int Usage = 2;
 
     // Every command: the console is not run as administrator; nothing was changed.
@@ -22,7 +23,7 @@ internal static class ConsoleExitCodes
     // Every command: Ctrl+C, between two steps.
     public const int Cancelled = 5;
 
-    // uninstall, pair, secret and check: the service, or the data folder, does not exist.
+    // uninstall, pair, secret, check and metadata: the service, or the data folder, does not exist.
     public const int NotInstalled = 6;
 
     // install and uninstall: the service did not stop within --stop-timeout; nothing further was done.
@@ -46,7 +47,7 @@ internal static class ConsoleExitCodes
     // secret: secrets.dat is absent.
     public const int NotPaired = 13;
 
-    // secret: the policy names no such base, mode or worker account.
+    // secret and metadata: the policy names no such base, mode or worker account.
     public const int NotInPolicy = 14;
 
     // secret: the worker account is not a local user.
@@ -61,6 +62,11 @@ internal static class ConsoleExitCodes
     // connector register: a run of regsvr32 failed, or HKLM shows no registration after it.
     public const int RegistrationFailed = 18;
 
-    // check: a line failed, or was not checked since a line it needs failed.
+    // check: a line failed, or was not checked since a line it needs failed. metadata: a line of check's rule before a
+    // worker starts failed, so no worker started.
     public const int CheckFailed = 19;
+
+    // metadata: the base did not open, the census or the probe failed, the configuration has no object, or no page was
+    // read; no file was written.
+    public const int ReportFailed = 20;
 }
