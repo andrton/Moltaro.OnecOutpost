@@ -5,7 +5,6 @@ using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.DataFolder;
@@ -61,7 +60,7 @@ public sealed class DataFolderStepTests
 
     // pair and secret run after install, so they give the start's sentence for the data folder, word for word, whose
     // remedy removes no audit log (the coordinator's decision in S10c).
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("pair")]
     [InlineData("secret")]
     public async Task A_data_folder_whose_access_list_admits_anyone_else_ends_the_command_with_DataFolderAdmitsOthers_naming_them(string command)

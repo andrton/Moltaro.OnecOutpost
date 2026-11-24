@@ -3,7 +3,6 @@ using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Service;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
-using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Install;
@@ -170,7 +169,7 @@ public sealed class InstallRefusalTests
     }
 
     // A junction in the place of the data folder, or of a folder in it, would lead what the agent writes elsewhere.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
     [InlineData("audit")]
     [InlineData("outcomes")]
@@ -190,7 +189,7 @@ public sealed class InstallRefusalTests
     }
 
     // %ProgramData% lets every local user create a folder, so one made before install may admit its maker.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
     [InlineData("audit")]
     [InlineData("outcomes")]

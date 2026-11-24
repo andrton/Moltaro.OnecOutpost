@@ -255,10 +255,12 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
         }
     }
 
+    // install refuses a data folder that existed before it, which a local user may have made: it repairs it not, and one
+    // in which the agent ran holds its audit log, which goes with the folder unless it is copied first.
     private static CommandEndException Refused(string fault)
     {
         return new CommandEndException(
             ConsoleExitCodes.DataFolderAdmitsOthers,
-            $"{fault}; install does not repair it: inspect it, remove it and run install again");
+            $@"{fault}; install does not repair it: inspect it, remove it and run install again; if the agent ever ran there, copy its audit\ folder elsewhere first");
     }
 }

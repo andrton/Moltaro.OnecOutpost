@@ -302,7 +302,7 @@ internal sealed class WorkerGate(ConsoleParts parts)
 
         if (dataFolder == FolderKindEnum.ReparsePoint)
         {
-            return CheckLine.Fail(CheckLineEnum.AccessLists, folder, $"{folder} is a reparse point; inspect it and correct it, never remove what it holds");
+            return CheckLine.Fail(CheckLineEnum.AccessLists, folder, SharedSteps.ReparsePointReason(folder));
         }
 
         List<string> reasons = [];

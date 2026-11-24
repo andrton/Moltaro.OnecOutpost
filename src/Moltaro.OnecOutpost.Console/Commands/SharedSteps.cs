@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Start;
@@ -64,10 +65,11 @@ internal static class SharedSteps
 
     // The steps that pair and secret take first, each after a check of the token: the elevation; the data folder, absent
     // giving NotInstalled and a reparse point DataFolderAdmitsOthers; its access list for the agent's account, anyone
-    // else giving DataFolderAdmitsOthers, since DPAPI for the machine lets every local process decrypt and only the
-    // folder's list keeps the secrets; and policy.json read as the agent reads it, absent, unreadable or invalid giving
-    // PolicyInvalid with the agent's reason. Limitation: an entry that only the folder's content inherits, which only an
-    // administrator can add, reaches a file written there, which the agent's start then refuses.
+    // else giving DataFolderAdmitsOthers with the start's reason, since DPAPI for the machine lets every local process
+    // decrypt and only the folder's list keeps the secrets; and policy.json read as the agent reads it, absent,
+    // unreadable or invalid giving PolicyInvalid with the agent's reason. Limitation: an entry that only the folder's
+    // content inherits, which only an administrator can add, reaches a file written there, which the agent's start then
+    // refuses.
     public static AgentPolicy OpenDataFolder(ConsoleParts parts, string command, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -123,36 +125,38 @@ internal static class SharedSteps
         return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
+    // The reason of a data folder that is a reparse point, for check and for the commands that run after install, whose
+    // remedy removes nothing, since an installed data folder holds the audit log and the outcomes not yet sent.
+    public static string ReparsePointReason(string folder)
+    {
+        return $"{folder} is a reparse point; inspect it and correct it, never remove what it holds";
+    }
+
+    // The data folder of pair and secret, which run after install: a reparse point with check's reason, and one that
+    // admits anyone else with the start's, word for word, whose remedy removes no audit log either.
     private static void JudgeDataFolder(ConsoleParts parts)
     {
-        string folder = parts.DataFolder;
         FolderKindEnum kind = DataFolderKind(parts);
-        IReadOnlyList<string> others = [];
+
+        if (kind == FolderKindEnum.ReparsePoint)
+        {
+            throw new CommandEndException(ConsoleExitCodes.DataFolderAdmitsOthers, ReparsePointReason(parts.DataFolder));
+        }
+
+        OtherAccounts others;
 
         try
         {
-            if (kind == FolderKindEnum.Folder)
-            {
-                others = parts.AccessLists(parts.AgentSid).Others("").All;
-            }
+            others = parts.AccessLists(parts.AgentSid).Others("");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             throw CommandEndException.StepFailed("data folder", exception);
         }
 
-        if (kind == FolderKindEnum.ReparsePoint)
+        if (StartChecks.AccessReason("", others) is string reason)
         {
-            throw new CommandEndException(
-                ConsoleExitCodes.DataFolderAdmitsOthers,
-                $"the data folder {folder} is a reparse point; inspect it, remove it and run install again");
-        }
-
-        if (others.Count > 0)
-        {
-            throw new CommandEndException(
-                ConsoleExitCodes.DataFolderAdmitsOthers,
-                $"the data folder {folder} admits {string.Join(", ", others)}, who could read the secrets; inspect it, remove it and run install again");
+            throw new CommandEndException(ConsoleExitCodes.DataFolderAdmitsOthers, reason);
         }
     }
 
