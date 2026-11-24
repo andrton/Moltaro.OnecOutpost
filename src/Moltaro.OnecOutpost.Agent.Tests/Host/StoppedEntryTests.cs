@@ -18,8 +18,9 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Host;
 // records {"time","entry":"stopped","error"} with the reason, worded where it is thrown, which names a file by its path
 // and never a script, a parameter, a result or a secret, and then exits with Error, as before. The faults: an outbox
 // file that cannot be written, read or removed; a cleared log, which the server answers as older; and the poll numbers
-// used up. A stop by the token writes no stopped; after a failed write of the log nothing more is written, stopped
-// neither; and the next start reads a log that ends with stopped.
+// used up. A fault of the outbox that the start's recovery meets after started records stopped the same way. A stop by
+// the token writes no stopped; after a failed write of the log nothing more is written, stopped neither; and the next
+// start reads a log that ends with stopped.
 public sealed class StoppedEntryTests
 {
     // What a command and its result carry, none of which a stopped may hold.
@@ -152,6 +153,27 @@ public sealed class StoppedEntryTests
         Assert.All(
             host.Data.Audit.Names().Where(name => name.EndsWith(".jsonl", StringComparison.Ordinal)),
             name => Assert.DoesNotContain("\"entry\":\"stopped\"", host.Data.Audit.Text(name), StringComparison.Ordinal));
+    }
+
+    // An earlier run received a Read and stopped while it ran, so the start's recovery, after started and policy,
+    // writes its outcome of Failed lost, which the disk refuses: the start records stopped with the path of the file,
+    // and polls nothing.
+    [Fact(Skip = SkipReason.NotImplemented)]
+    public async Task An_outbox_file_that_the_start_recovery_cannot_write_is_recorded_as_stopped_after_started_and_the_agent_exits_with_Error()
+    {
+        const string RecordedScript = "Result = TheScriptOfTheCommand;";
+        PairedFolder folder = PairedFolder.Create();
+        Guid command = Guid.NewGuid();
+        EarlierRun.Append(folder, Received(EarlierRun.Time, command, OutpostModeEnum.Read, $$"""{"invoice":"{{Parameter}}"}""", RecordedScript));
+        folder.Data.Outcomes.FailReplace($"{command}.json");
+        await using TestHost host = TestHost.Start(folder, new FakeClock(TestTimes.Start));
+
+        Assert.Equal(AgentExitCodes.Error, await host.ExitAsync());
+
+        Assert.Equal<string>(["started", "policy", "stopped"], AuditEntries.KindsSince(host.Data, 0));
+        AuditEntries.AssertNone(AuditEntries.AppendedSince(host.Data, 0)[0], "error");
+        AssertStopped(host, $@"outcomes\{command}.json cannot be written", RecordedScript, Parameter);
+        Assert.Equal(0, host.Server.Count(OutpostRequestKindEnum.Poll));
     }
 
     // The reader of the log accepts stopped with its string error, so the start after a stop records started without an
