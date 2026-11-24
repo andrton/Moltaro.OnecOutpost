@@ -2,7 +2,7 @@ using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 
-namespace Moltaro.OnecOutpost.Agent.Tests;
+namespace Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 // Outcome objects (§8 of docs/protocol.md) as the outbox holds them.
 internal static class TestOutcomes

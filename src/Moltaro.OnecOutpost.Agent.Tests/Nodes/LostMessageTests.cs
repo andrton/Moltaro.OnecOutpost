@@ -5,6 +5,7 @@ using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Server;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Loopback;
+using Moltaro.OnecOutpost.TestSupport.RunningAgent;
 using static Moltaro.OnecOutpost.Agent.Tests.Nodes.NodeTraffic;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Nodes;

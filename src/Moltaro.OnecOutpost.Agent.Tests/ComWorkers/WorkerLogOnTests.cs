@@ -12,6 +12,7 @@ using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.FakeHttp;
 using Moltaro.OnecOutpost.TestSupport.FakeWindows;
+using Moltaro.OnecOutpost.TestSupport.RunningAgent;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 

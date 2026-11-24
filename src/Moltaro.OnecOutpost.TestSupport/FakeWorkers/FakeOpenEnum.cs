@@ -1,4 +1,4 @@
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
+namespace Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 // What the open of a fake worker gives, as the launcher's Opens decides for each process.
 internal enum FakeOpenEnum

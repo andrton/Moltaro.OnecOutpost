@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The shell is built and copied beside the tests to run as a child process. -->
+    <ProjectReference Include="..\Moltaro.OnecOutpost.Shell\Moltaro.OnecOutpost.Shell.csproj" />
+    <ProjectReference Include="..\Moltaro.OnecOutpost.TestSupport\Moltaro.OnecOutpost.TestSupport.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <None Include="..\..\docs\guides\server.md" Link="server.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

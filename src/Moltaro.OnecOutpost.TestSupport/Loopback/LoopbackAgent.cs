@@ -2,28 +2,26 @@ using System.Text;
 using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.Agent.Pairing;
 using Moltaro.OnecOutpost.Agent.Secrets;
-using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
-using Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 using Moltaro.OnecOutpost.Agent.Transport;
+using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.Protocol.Signing;
 using Moltaro.OnecOutpost.Server;
 using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 using Moltaro.OnecOutpost.TestSupport.FakeWindows;
-using Moltaro.OnecOutpost.TestSupport.Loopback;
+using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
+using Moltaro.OnecOutpost.TestSupport.RunningAgent;
+using Xunit;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.EndToEnd;
+namespace Moltaro.OnecOutpost.TestSupport.Loopback;
 
-// An agent paired with a LoopbackServer through a TestProxy, as the console pairs one: AgentPairing over the handler of
-// the program with the proxy of the policy, then agent.json, secrets.dat and policy.json in a data folder in memory.
-// agent.json names the node as https://outpost.test:{port}/outpost/ and policy.json the test proxy, so that every
-// request goes by CONNECT through the proxy, which opens TLS as a hop does (the S6 brief, "S6c's tests"). Its runs are
-// AgentHost.RunAsync with the fake access lists and protection, the fake workers in place of the COM workers, and the
-// handler of the program, which accepts the proxy's certificate in place of the system's validation. The policy serves
-// the base of TestCalls for Read and Write, one worker each.
+// An agent paired as the console pairs one, with its files in memory and fake COM workers. It connects directly to
+// an HTTP server on loopback, or through a TestProxy that opens the TLS of every request.
 internal sealed class LoopbackAgent
 {
     public static readonly TimeSpan RequestTimeout = TimeSpan.FromMinutes(5);
+
+    private const string ProgramFolder = @"C:\Program Files\Moltaro Outpost";
 
     private LoopbackAgent(Guid id)
     {
@@ -49,37 +47,68 @@ internal sealed class LoopbackAgent
         CancellationToken cancellationToken)
     {
         OutpostPairingToken token = await server.Server.CreatePairingTokenAsync("Agent of the tests", cancellationToken);
-        Assert.True(OutpostPairingTokenText.TryRead(token.Token, out OutpostPairingTokenText? text));
-        Uri address = TestProxy.ServerAddress(server);
+
+        return await PairAsync(
+            TestProxy.ServerAddress(server),
+            token.Token,
+            TestCalls.BaseKey,
+            proxy.Uri,
+            server.Clock,
+            null,
+            cancellationToken);
+    }
+
+    // A shell subprocess supplies the URL and token. Its first poll has a short hold so the accepted reply is an
+    // observable event before the test starts a command; later polls take their timeout from the server's reply.
+    public static Task<LoopbackAgent> PairAsync(Uri address, string token, string baseKey, CancellationToken cancellationToken)
+    {
+        return PairAsync(address, token, baseKey, null, TimeProvider.System, OutpostProtocol.MinPollTimeout, cancellationToken);
+    }
+
+    private static async Task<LoopbackAgent> PairAsync(
+        Uri address,
+        string token,
+        string baseKey,
+        Uri? proxy,
+        TimeProvider clock,
+        TimeSpan? initialPollTimeout,
+        CancellationToken cancellationToken)
+    {
+        Assert.True(OutpostPairingTokenText.TryRead(token, out OutpostPairingTokenText? text));
 
         AgentPairingResult result;
 
-        using (HttpMessageHandler handler = Handler(address, proxy.Uri))
+        using (HttpMessageHandler handler = Handler(address, proxy))
         {
             result = await AgentPairing.PairAsync(
                 address,
                 text,
-                PairedFolder.Version,
+                PollRequests.AgentVersion,
                 handler,
                 RequestTimeout,
-                server.Clock,
+                clock,
                 cancellationToken);
         }
 
         AgentPairingSettings settings = Assert.IsType<AgentPairingSettings>(result.Settings);
+        if (initialPollTimeout is TimeSpan timeout)
+        {
+            settings = settings with { PollTimeout = timeout };
+        }
+
         LoopbackAgent agent = new(settings.Agent);
         AgentSecrets secrets = new(
             Assert.IsType<byte[]>(result.PrivateKey),
             new Dictionary<(string Base, OutpostModeEnum Mode), string>
             {
-                [(TestCalls.BaseKey, OutpostModeEnum.Read)] = "read-pw",
-                [(TestCalls.BaseKey, OutpostModeEnum.Write)] = "write-pw",
+                [(baseKey, OutpostModeEnum.Read)] = "read-pw",
+                [(baseKey, OutpostModeEnum.Write)] = "write-pw",
             },
             new Dictionary<string, string>());
 
         agent.Data.Root.Seed("agent.json", AgentPairingFile.Write(settings));
         agent.Data.Root.Seed("secrets.dat", SecretsFile.Write(secrets, agent.Protection));
-        agent.Data.Root.Seed("policy.json", Policy(proxy));
+        agent.Data.Root.Seed("policy.json", Policy(baseKey, proxy));
 
         return agent;
     }
@@ -101,13 +130,33 @@ internal sealed class LoopbackAgent
             Access,
             Protection,
             Workers,
-            PairedFolder.ProgramFolder,
-            PairedFolder.Executor,
+            ProgramFolder,
+            ProgramFolder + @"\OutpostExecutor.epf",
             Handler,
             clock,
-            PairedFolder.Version);
+            PollRequests.AgentVersion);
 
         return HostRun.Start(parts);
+    }
+
+    // A verified poll reply means its bases and lease have committed to the server's store.
+    public Task WaitForConnectionAsync()
+    {
+        return Data.WaitForAsync(change => change.Line.StartsWith("append audit\\", StringComparison.Ordinal)
+            && change.Bytes.AsSpan().IndexOf("\"entry\":\"connection\",\"state\":\"connected\""u8) >= 0);
+    }
+
+    // The recorded command inputs, without exposing the agent's worker line type to tests of the shell.
+    public IReadOnlyList<(string Script, string ParametersJson, string? CallerKey)> Commands(OutpostModeEnum mode)
+    {
+        return [.. Workers.Processes.Where(process => process.Mode == mode)
+            .SelectMany(process => process.Commands)
+            .Select(command => (command.Script, command.ParametersJson, command.CallerKey))];
+    }
+
+    public void ReplyWith(byte[] outcome)
+    {
+        Workers.Runs = _ => FakeRun.Gives(outcome);
     }
 
     // The outcome of the executor for a script whose result is the parameters it was given.
@@ -124,14 +173,16 @@ internal sealed class LoopbackAgent
             $$"""{"kind":"succeeded","code":null,"result":"{{new string('x', length)}}","errorText":null,"messages":[],"messagesTrimmed":false}""");
     }
 
-    private static string Policy(TestProxy proxy)
+    private static string Policy(string baseKey, Uri? proxy)
     {
+        string proxyMember = proxy is null ? "" : $"\"proxy\": \"{proxy}\",";
+
         return $$"""
             {
-              "proxy": "{{proxy.Uri}}",
+              {{proxyMember}}
               "bases": [
                 {
-                  "key": "{{TestCalls.BaseKey}}",
+                  "key": "{{baseKey}}",
                   "server": "srv-1c:1541",
                   "database": "accounting",
                   "read": { "account": "outpost-read" },

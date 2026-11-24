@@ -4,13 +4,14 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.Agent.Secrets;
-using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 using Moltaro.OnecOutpost.Agent.Tests.Start;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 using Moltaro.OnecOutpost.TestSupport.FakeHttp;
+using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
+using Moltaro.OnecOutpost.TestSupport.RunningAgent;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Host;
 

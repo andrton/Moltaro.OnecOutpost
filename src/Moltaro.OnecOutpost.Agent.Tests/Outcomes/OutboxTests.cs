@@ -1,6 +1,7 @@
 using Moltaro.OnecOutpost.Agent.Outcomes;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport.FakeFiles;
+using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Outcomes;
 
