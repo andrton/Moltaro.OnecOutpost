@@ -87,7 +87,7 @@ internal sealed class MetadataWalk
     public string? StorageReason { get; private set; }
 
     // The tables of no object of the fifteen categories, null when they were not read.
-    public JsonElement? CommonStorage { get; private set; }
+    public IReadOnlyList<JsonElement>? CommonStorage { get; private set; }
 
     public IReadOnlyList<WalkRead> Reads => _reads;
 
@@ -217,8 +217,65 @@ internal sealed class MetadataWalk
             return;
         }
 
-        (_, CommonStorage) = await ReadAsync(new JsonObject { ["read"] = "common" }, "common", null, null, null, cancellationToken);
+        await ReadCommonStorageAsync(cancellationToken);
         advance(1);
+    }
+
+    // The full storage read can see tables omitted by scoped page reads. Ask for unseen rows and attach those whose
+    // owners have readable storage. The common storage holds the other rows returned by the Read.
+    private async Task ReadCommonStorageAsync(CancellationToken cancellationToken)
+    {
+        Dictionary<string, WalkObject> owners = new(StringComparer.Ordinal);
+        HashSet<string> seenStorageNames = new(StringComparer.Ordinal);
+
+        foreach (WalkObject item in _objects)
+        {
+            JsonElement storage = item.Item.GetProperty("storage");
+
+            if (storage.ValueKind != JsonValueKind.Array || TextOf(item.Item, "fullName") is not { Length: > 0 } fullName)
+            {
+                continue;
+            }
+
+            owners.TryAdd(fullName, item);
+
+            foreach (JsonElement table in storage.EnumerateArray())
+            {
+                string name = TextOf(table, "storageName") ?? throw new InvalidOperationException("The page gave a storage table without a name.");
+                seenStorageNames.Add(name);
+            }
+        }
+
+        JsonObject parameters = new()
+        {
+            ["read"] = "common",
+            ["owners"] = new JsonArray([.. owners.Keys.Select(name => JsonValue.Create(name))]),
+            ["seenStorageNames"] = new JsonArray([.. seenStorageNames.Select(name => JsonValue.Create(name))]),
+        };
+        (_, JsonElement? result) = await ReadAsync(parameters, "common", null, null, null, cancellationToken);
+
+        if (result is not JsonElement rows)
+        {
+            return;
+        }
+
+        List<JsonElement> common = [];
+
+        foreach (JsonElement row in rows.EnumerateArray())
+        {
+            JsonElement table = row.GetProperty("table");
+
+            if (TextOf(row, "owner") is string owner)
+            {
+                (owners[owner].AdditionalStorage ??= []).Add(table);
+            }
+            else
+            {
+                common.Add(table);
+            }
+        }
+
+        CommonStorage = common;
     }
 
     // Releases the current session before opening another one or writing the report.

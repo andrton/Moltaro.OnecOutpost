@@ -85,7 +85,7 @@ public sealed class MetadataStorageTests : IDisposable
         Assert.NotNull(report.CommonStorage);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_common_read_recovers_unseen_tables_for_objects_that_have_storage_and_keeps_common_storage_separate()
     {
         const string Owner = "Документ.StorageSample";

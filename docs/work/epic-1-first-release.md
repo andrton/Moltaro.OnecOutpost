@@ -1382,7 +1382,7 @@ The release
 | S10a | The console's setup: `install`, `uninstall`, `pair`, `secret`, `connector register` | Full | Done, 23 November 2026: the console on Spectre.Console.Cli with `install`, `uninstall`, `pair`, `secret` and `connector register`, and one finder of the COM connector in the agent, which its launcher and the console use. The study read actions/runner and Octopus Tentacle; the internal contract was reviewed in two rounds and approved under PQ2, round 2's fixes (a P2 of the contract step and six P3) taken without a third round. The code review took three rounds: three P1 of round 1 (the lists of `audit` and `outcomes`, tests that expected an order of entries, colour forced on in CI), five P3 of round 2, none in round 3. 2697 tests passed here; CI passed with the tests of `Requires=Administrator` on its elevated `windows` job. The manual run of its commands is on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
 | S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 and entry 1 of review 2 | Refactoring | Done, 23 November 2026: one transaction frame in the store, measured again with every p95 within S7b's; one growing delay of a retry; the forms of §2 in the protocol alone; four small cleanups; the console's install test running the program's own parts. One commit per entry, every test green after each, no public member, assertion or test changed; the review took one round (five P4, two fixed in this plan) |
 | S10b | The console's check | Full | Done, 24 November 2026: `check` with every line of the stage contract, a table of passed and failed lines, `--clock-skew` and the exit code `CheckFailed`; the probe of each worker account on a desktop of the console's own, each base under each account through the COM worker and the executor in Read and safe mode, the server by an `outcome` that takes no poll's place; the architect's entries joined to it (the launcher's steps, the start's checks free of the audit log, the outcome answer as a record, the worker's connection line and judgment outside the pool, the privileges, the layout and one wording of reasons). The internal contract was reviewed in two rounds and approved under PQ2 (round 2's P2, the events judged, taken without a third round); the code review took three rounds: a P1 and two P2 of round 1 (no worker while the data folder admits others; a restricted token, then medium integrity and the user's default list, its limitation stated), one P2 back in round 2, settled by the coordinator, none open in round 3. 2861 tests passed here; the tests with `Requires=Administrator` first run on its pull request, and those of `Moltaro.OnecOutpost.OneC.Tests` on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
-| S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | In progress. The lab run of `deeb370` on 24 November 2026 passed 81 of 86 tests. Round 4, approved by the owner, closed the remaining probe and pipe findings. The owner stopped the lab run of `b1e8ec5` after 20 min 23 s with no results displayed. The lab console now uses the machine clock for worker limits and cancels each command at its deadline, awaiting cleanup. `d21fe09` exposed a missing module name, fixed at `4add4b1`, whose two CI jobs and four lab `CheckTests` passed. The full lab run at `4add4b1` passed 84 of 86 tests in 42 min 16 s. At `6f216ab` both CI jobs and 85 of 86 lab tests passed. The full lab run took 33 min 23 s. The remaining test found every object of the typical copy but failed to look up its document by an English full-name prefix. Draft PR #23 awaits the focused lab rerun with the corrected document lookup. |
+| S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | In progress. The lab run of `deeb370` on 24 November 2026 passed 81 of 86 tests. Round 4, approved by the owner, closed the remaining probe and pipe findings. The owner stopped the lab run of `b1e8ec5` after 20 min 23 s with no results displayed. The lab console now uses the machine clock for worker limits and cancels each command at its deadline, awaiting cleanup. `d21fe09` exposed a missing module name, fixed at `4add4b1`, whose two CI jobs and four lab `CheckTests` passed. The full lab run at `4add4b1` passed 84 of 86 tests in 42 min 16 s. At `6f216ab` both CI jobs and 85 of 86 lab tests passed. The full lab run took 33 min 23 s. The focused rerun at `480d3bc` found the configured document and its fields on the typical copy. Its storage comparison found six table names missing from the report. Draft PR #23 awaits lab acceptance of storage coverage. |
 | S11 | The shell | Full | Not started |
 | S12 | Documents, packages and the archive | Light | Not started |
 
@@ -5929,8 +5929,10 @@ S8.
          objects as failed with its kind, code and error text. A page that ended its worker, by the
          run limit or as `Judge` says, makes the next Read open a new session with the same account
          and token; one that does not open records every page left, and `common`, as failed;
-      8. *the common storage*, `{"read":"common"}`, when the storage is available; failing, it is
-         recorded in `reads` and `commonStorage` is null;
+      8. *the remaining storage*, `{"read":"common","owners":[…],"seenStorageNames":[…]}`, when
+         storage is available. Owners are the full names of the report's objects with storage
+         arrays. Seen names are the distinct physical table names from those arrays. If the Read
+         fails, it is recorded in `reads` and `commonStorage` is null.
       9. no page succeeded gives `ReportFailed`, `no page of the walk was read: {the first end}`;
       10. *the report*, behind a spinner: `{FILE}.{32 hex digits}.tmp` by `FileMode.CreateNew`,
           flushed to the disk, closed, `File.Move` to `FILE` without overwrite, never replacing a
@@ -6010,9 +6012,12 @@ S8.
         `StorageFieldName`/`ИмяПоляХранения`, `FieldName`/`ИмяПоля`, `StorageIndexName`/
         `ИмяИндексаХранения`; each row rewritten into a `Structure`, since `WriteJSON` refuses a
         value table, and keyed by its `Metadata` up to its second dot, the object's full name; a
-        page attaches each to the object of that key, a row of no object of the page raising;
-        `common` keeps the rows whose key is empty or no object of the fifteen categories, such as
-        a sequence's or a document journal's. A raise is the page's `storageError`, and the script
+        page attaches each to the object of that key, a row of no object of the page raising.
+        The full `common` Read keeps rows with unseen names whose owners were supplied or whose
+        key is empty or outside the fifteen categories, such as a sequence's or a document
+        journal's. Each comes back as an `owner` and `table`. The console appends an owned table
+        to its object's storage. A row with no owner goes in `commonStorage`.
+        A raise is the page's `storageError`, and the script
         leaves each `error` as it was: the console writes `storage: {storageError}` into each
         `error` still null of a page's objects, never of the probe's.
     - **After the lab run of deeb370** (the coordinator, 24 November 2026, under PQ2; 81 of 86):
@@ -6061,6 +6066,11 @@ S8.
       category so it reaches the field and storage checks with either prefix. The 85 passing
       cases in the full run cover their code in the test-only fix. The corrected typical
       metadata test is run again on the lab.
+    - **Typical storage at `480d3bc`**. The focused test reached the storage comparison in
+      22 min 57 s. The direct Read found six table names that were absent from the report.
+      The full storage read checks the names collected by the pages before assigning or
+      excluding rows. A table returned only in the full view can then be attached to its
+      owner, whose page has read its storage.
     - **The amendment for Q16**, the agent's, on `xhigh`. `AuditLog.Stopped(string error)` records
       `{"time":…,"entry":"stopped","error":…}`; it throws nothing and writes nothing once a write of
       the log failed, its own failed write cut back as any entry's; the reader accepts `stopped`

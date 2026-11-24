@@ -4,8 +4,8 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // language and within what the compatibility mode 8.2.13 allows, without a procedure, Find and Mid where a later mode
 // has StrFind and StrSplit. Its parameter read chooses what it reads: census, the configuration and the count of each of
 // its fifteen categories; page, the objects of a category from an index with their fields and, when asked, their
-// storage by GetDBStorageStructureInfo with the DBMS's names; common, the storage tables of no object of those
-// categories. The S10 brief, "Internal of S10c", gives its outline and the form of what it gives:
+// storage by GetDBStorageStructureInfo with the DBMS's names; common, the remaining storage tables. The S10 brief,
+// "Internal of S10c", gives its outline and the form of what it gives:
 // - census: {"platform", "configuration": {"name", "version", "compatibilityMode"}, "categories": [{"category",
 //   "count"}]}, the fifteen categories in the report's order; an unreadable census value is {"error": "..."}.
 // - page, with category, from, count and storage: {"objects": [...], "storageError"}, each object with name, fullName,
@@ -13,8 +13,9 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 //   keeps the readable values and its error names each failed property. Storage is its tables when storage is true
 //   and null otherwise, and storageError the raise of the storage,
 //   which leaves every storage null and every error as it was;
-// - common: the storage tables whose object, the Metadata of a table up to its second dot, is empty or no object of
-//   the fifteen categories, such as a sequence's; a raise fails the Read.
+// - common, with owners and seenStorageNames: {"owner", "table"} rows for unseen storage. The owner is a reported
+//   object with readable page storage, or null for a table with no owner in the fifteen categories. A raise fails the
+//   Read.
 // The columns of the storage structure follow the language of the session, so each is found by its English name or
 // else by its Russian one. A page attaches each table to the object of its key, and a table of no object of the page
 // raises. A field names each of its types: String, Number, Date, Boolean, ValueStorage and UUID by those names, which
@@ -427,6 +428,17 @@ internal static class MetadataScripts
                         Entry.Value.storage = New Array;
                     EndDo;
                 Else
+                    ReadableOwners = New Map;
+                    SeenStorageNames = New Map;
+
+                    For Each OwnerName In Parameters["owners"] Do
+                        ReadableOwners.Insert(OwnerName, OwnerName);
+                    EndDo;
+
+                    For Each StorageName In Parameters["seenStorageNames"] Do
+                        SeenStorageNames.Insert(StorageName, True);
+                    EndDo;
+
                     Table = GetDBStorageStructureInfo(Undefined, True);
                 EndIf;
 
@@ -453,6 +465,27 @@ internal static class MetadataScripts
                 EndIf;
 
                 For Each Row In Table Do
+                    StorageName = Row[StorageTableColumn];
+                    MetadataName = Row[MetadataColumn];
+                    OwnerName = MetadataName;
+                    First = Find(MetadataName, ".");
+
+                    If First > 0 Then
+                        Second = Find(Mid(MetadataName, First + 1), ".");
+
+                        If Second > 0 Then
+                            OwnerName = Left(MetadataName, First + Second - 1);
+                        EndIf;
+                    EndIf;
+
+                    If Asked = "common" Then
+                        ReportedOwner = ReadableOwners.Get(OwnerName);
+
+                        If SeenStorageNames.Get(StorageName) <> Undefined Or (FullNames.Get(OwnerName) <> Undefined And ReportedOwner = Undefined) Then
+                            Continue;
+                        EndIf;
+                    EndIf;
+
                     TableFields = New Array;
 
                     For Each FieldRow In Row[FieldsColumn] Do
@@ -472,20 +505,8 @@ internal static class MetadataScripts
                         Indexes.Add(New Structure("storageName, fields", IndexRow[StorageIndexColumn], IndexFields));
                     EndDo;
 
-                    MetadataName = Row[MetadataColumn];
                     StorageTable = New Structure("storageName, name, metadata, purpose, fields, indexes",
-                        Row[StorageTableColumn], Row[TableNameColumn], MetadataName, Row[PurposeColumn], TableFields, Indexes);
-
-                    OwnerName = MetadataName;
-                    First = Find(MetadataName, ".");
-
-                    If First > 0 Then
-                        Second = Find(Mid(MetadataName, First + 1), ".");
-
-                        If Second > 0 Then
-                            OwnerName = Left(MetadataName, First + Second - 1);
-                        EndIf;
-                    EndIf;
+                        StorageName, Row[TableNameColumn], MetadataName, Row[PurposeColumn], TableFields, Indexes);
 
                     If Asked = "page" Then
                         Owner = ByFullName.Get(OwnerName);
@@ -495,8 +516,8 @@ internal static class MetadataScripts
                         EndIf;
 
                         Owner.storage.Add(StorageTable);
-                    ElsIf OwnerName = "" Or FullNames.Get(OwnerName) = Undefined Then
-                        Common.Add(StorageTable);
+                    Else
+                        Common.Add(New Structure("owner, table", ReportedOwner, StorageTable));
                     EndIf;
                 EndDo;
             Except

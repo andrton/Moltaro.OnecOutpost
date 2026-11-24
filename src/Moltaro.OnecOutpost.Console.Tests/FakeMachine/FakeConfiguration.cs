@@ -507,13 +507,7 @@ internal sealed class FakeConfiguration
             return Failed(OutpostOutcomeCodes.ScriptError, error);
         }
 
-        // Until the console sends the amended request, give its current result shape.
-        if (!parameters.TryGetProperty("owners", out JsonElement owners))
-        {
-            return Succeeded(_commonStorage.DeepClone());
-        }
-
-        HashSet<string> eligible = owners.EnumerateArray().Select(owner => owner.GetString()!).ToHashSet(StringComparer.Ordinal);
+        HashSet<string> eligible = parameters.GetProperty("owners").EnumerateArray().Select(owner => owner.GetString()!).ToHashSet(StringComparer.Ordinal);
         HashSet<string> seen = parameters.GetProperty("seenStorageNames").EnumerateArray().Select(name => name.GetString()!).ToHashSet(StringComparer.Ordinal);
         JsonArray rows = new([.. _commonStorage.Select(table => new JsonObject { ["owner"] = null, ["table"] = table!.DeepClone() })]);
         IEnumerable<(string Owner, JsonNode Table)> ownedRows = _storage

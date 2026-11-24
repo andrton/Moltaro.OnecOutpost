@@ -9,8 +9,8 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // indented, every character written as it is, since the report is a local file for people and not a page of HTML. Its
 // members in their order: format, base, written in the form of §2, platform, configuration, storage, categories in the
 // census's order, objects, each with the category of its page first and its error as the walk judged it, commonStorage
-// and reads. What the script gave is copied as it gave it, so nothing of the report is data of the base, a password or
-// an account.
+// and reads. Tables from the full storage read are returned to their owners or written as common storage. The report
+// holds metadata alone.
 internal static class MetadataJson
 {
     public const int Format = 1;
@@ -63,15 +63,13 @@ internal static class MetadataJson
 
         writer.WriteEndArray();
 
-        writer.WritePropertyName("commonStorage");
-
-        if (walk.CommonStorage is JsonElement common)
+        if (walk.CommonStorage is { } common)
         {
-            common.WriteTo(writer);
+            WriteStorage(writer, "commonStorage", common);
         }
         else
         {
-            writer.WriteNullValue();
+            writer.WriteNull("commonStorage");
         }
 
         writer.WriteStartArray("reads");
@@ -86,7 +84,7 @@ internal static class MetadataJson
         writer.Flush();
     }
 
-    // The object as its page gave it, after the category of the page, with the error that the walk judged.
+    // The object as its page gave it, after the category of the page, with the walk's error and additional storage.
     private static void WriteObject(Utf8JsonWriter writer, WalkObject item)
     {
         writer.WriteStartObject();
@@ -105,10 +103,28 @@ internal static class MetadataJson
                 continue;
             }
 
+            if (property.NameEquals("storage") && item.AdditionalStorage is { } additional)
+            {
+                WriteStorage(writer, "storage", property.Value.EnumerateArray().Concat(additional));
+                continue;
+            }
+
             property.WriteTo(writer);
         }
 
         writer.WriteEndObject();
+    }
+
+    private static void WriteStorage(Utf8JsonWriter writer, string member, IEnumerable<JsonElement> tables)
+    {
+        writer.WriteStartArray(member);
+
+        foreach (JsonElement table in tables)
+        {
+            table.WriteTo(writer);
+        }
+
+        writer.WriteEndArray();
     }
 
     private static void WriteRead(Utf8JsonWriter writer, WalkRead read)
