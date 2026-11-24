@@ -92,8 +92,9 @@ internal sealed class AgentConnection : IDisposable
 
     // Sends the outcome bytes of the command and waits requestTimeout over the answer and its body, read within 64 KiB.
     // Confirmed for a verified 200; TooLarge for a verified result-too-large and for a 413 without an Outpost-Signature
-    // that verifies, whatever its body; Lost otherwise.
-    public async Task<OutcomeResultEnum> SendOutcomeAsync(
+    // that verifies, whatever its body; Lost otherwise. The answer's time, status, cause and code are null until S10b's
+    // implementation computes them in Judge.
+    public async Task<OutcomeAnswer> SendOutcomeAsync(
         Guid command,
         ReadOnlyMemory<byte> outcome,
         TimeSpan requestTimeout,
@@ -110,14 +111,14 @@ internal sealed class AgentConnection : IDisposable
 
         if (response is null)
         {
-            return OutcomeResultEnum.Lost;
+            return Answered(OutcomeResultEnum.Lost);
         }
 
         using (response)
         {
             ServerAnswer answer = await ServerRequests.ReadAsync(response, OutpostProtocol.AnswerLimit, wait.Token, cancellationToken);
 
-            return Judge(command, body, answer);
+            return Answered(Judge(command, body, answer));
         }
     }
 
@@ -125,6 +126,11 @@ internal sealed class AgentConnection : IDisposable
     public void Dispose()
     {
         _invoker.Dispose();
+    }
+
+    private static OutcomeAnswer Answered(OutcomeResultEnum result)
+    {
+        return new OutcomeAnswer(result, null, null, null, null);
     }
 
     private static string StatusReason(int status)

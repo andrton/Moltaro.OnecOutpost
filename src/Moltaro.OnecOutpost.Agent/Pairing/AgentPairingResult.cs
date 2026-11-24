@@ -1,3 +1,5 @@
+using Moltaro.OnecOutpost.Agent.Transport;
+
 namespace Moltaro.OnecOutpost.Agent.Pairing;
 
 // What a pairing gives the console: for a verified 200, the settings that agent.json holds and the agent's new key in
@@ -11,5 +13,5 @@ internal sealed class AgentPairingResult
 
     public int? Status { get; init; }
 
-    public AgentPairingFailureEnum? Failure { get; init; }
+    public ServerAnswerCauseEnum? Failure { get; init; }
 }

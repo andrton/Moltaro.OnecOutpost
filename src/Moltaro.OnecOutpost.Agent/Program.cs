@@ -3,7 +3,6 @@ using System.Runtime.Versioning;
 using System.Security.Principal;
 using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Connector;
-using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
@@ -49,26 +48,20 @@ internal static class Program
     [SupportedOSPlatform("windows")]
     private static AgentParts MachineParts()
     {
-        string data = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "Moltaro.OnecOutpost");
-
-        AgentFolders folders = new(
-            new DiskFolder(data),
-            new DiskFolder(Path.Combine(data, "audit")),
-            new DiskFolder(Path.Combine(data, "outcomes")));
+        string data = AgentFolders.OnMachine();
+        AgentFolders folders = AgentFolders.OnDisk(data);
 
         return new AgentParts(
             folders,
             new WindowsAccessLists(data, AgentAccount()),
             new MachineDpapi(),
             new ComWorkerLauncher(
-                Path.Combine(AppContext.BaseDirectory, "x64", ComWorkerLauncher.WorkerFile),
-                Path.Combine(AppContext.BaseDirectory, "x86", ComWorkerLauncher.WorkerFile),
+                ProgramFolderLayout.WorkerOf(AppContext.BaseDirectory, ConnectorBitnessEnum.X64),
+                ProgramFolderLayout.WorkerOf(AppContext.BaseDirectory, ConnectorBitnessEnum.X86),
                 ConnectorFinder.Machine(),
                 new WorkerJob()),
             AppContext.BaseDirectory,
-            Path.Combine(AppContext.BaseDirectory, "OutpostExecutor.epf"),
+            ProgramFolderLayout.ExecutorOf(AppContext.BaseDirectory),
             (server, proxy) => ServerRoute.CreateHandler(server, proxy),
             TimeProvider.System,
             Version());

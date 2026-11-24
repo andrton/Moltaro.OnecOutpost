@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using Moltaro.OnecOutpost.Agent.Access;
+using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Console.Service;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -42,7 +42,7 @@ internal sealed class UninstallCommand : AsyncCommand<ServiceSettings>
 
         try
         {
-            _parts.Rights.Revoke(ServiceAccount.Sid(name), SharedSteps.AgentPrivileges);
+            _parts.Rights.Revoke(_parts.AgentSid, AccountRightNames.AgentPrivileges);
         }
         catch (Win32Exception exception)
         {

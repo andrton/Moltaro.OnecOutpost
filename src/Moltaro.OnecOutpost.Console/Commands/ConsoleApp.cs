@@ -25,6 +25,8 @@ internal static class ConsoleApp
             .WithDescription("Pairs the agent with the server by a pairing token.");
         config.AddCommand<SecretCommand>("secret")
             .WithDescription("Writes a password of a base to secrets.dat.");
+        config.AddCommand<CheckCommand>("check")
+            .WithDescription("Checks the agent machine: the connector, the bases, the server, the worker accounts and the access lists.");
         config.AddBranch("connector", connector =>
         {
             connector.SetDescription("The COM connector of 1C:Enterprise.");
@@ -79,6 +81,7 @@ internal static class ConsoleApp
             ConsoleExitCodes.NotInteractive => nameof(ConsoleExitCodes.NotInteractive),
             ConsoleExitCodes.ConnectorNotRegistered => nameof(ConsoleExitCodes.ConnectorNotRegistered),
             ConsoleExitCodes.RegistrationFailed => nameof(ConsoleExitCodes.RegistrationFailed),
+            ConsoleExitCodes.CheckFailed => nameof(ConsoleExitCodes.CheckFailed),
             _ => throw new ArgumentOutOfRangeException(nameof(code), code, "No end of a command has this code."),
         };
     }

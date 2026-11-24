@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.Principal;
 using Microsoft.Win32.SafeHandles;
+using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
@@ -89,7 +90,7 @@ internal static partial class LabJob
             return handles;
         }
 
-        using SafeAccessTokenHandle? token = LabLogon.LogOn(workerAccount, out _);
+        using SafeAccessTokenHandle? token = WorkerLogon.LogOn(workerAccount.User, workerAccount.Password, out _);
 
         if (token is null)
         {

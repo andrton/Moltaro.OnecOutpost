@@ -4,7 +4,7 @@ using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
-using Moltaro.OnecOutpost.Console.Rights;
+using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -121,17 +121,17 @@ internal sealed partial class SecretCommand : AsyncCommand<SecretCommand.Setting
 
         try
         {
-            file = _parts.Data.ReadAll(AgentStart.SecretsName);
+            file = _parts.Data.Root.ReadAll(AgentFolders.SecretsName);
         }
         catch (FileNotFoundException)
         {
-            throw new CommandEndException(ConsoleExitCodes.NotPaired, $"{AgentStart.SecretsName} is absent; pair the agent first");
+            throw new CommandEndException(ConsoleExitCodes.NotPaired, $"{AgentFolders.SecretsName} is absent; pair the agent first");
         }
         catch (IOException exception)
         {
             throw new CommandEndException(
                 ConsoleExitCodes.Failure,
-                $"{AgentStart.SecretsName} cannot be read: {CommandEndException.ReasonOf(exception)}");
+                $"{AgentFolders.SecretsName} cannot be read: {CommandEndException.ReasonOf(exception)}");
         }
 
         try
@@ -140,14 +140,14 @@ internal sealed partial class SecretCommand : AsyncCommand<SecretCommand.Setting
         }
         catch (FormatException exception)
         {
-            throw new CommandEndException(ConsoleExitCodes.Failure, $"{AgentStart.SecretsName} cannot be read: {exception.Message}");
+            throw new CommandEndException(ConsoleExitCodes.Failure, $"{AgentFolders.SecretsName} cannot be read: {exception.Message}");
         }
         catch (CryptographicException)
         {
             // Such as a file copied from another machine: the agent's key in it is lost with it.
             throw new CommandEndException(
                 ConsoleExitCodes.Failure,
-                $"{AgentStart.SecretsName} cannot be decrypted on this machine; to pair the agent anew, remove agent.json");
+                $"{AgentFolders.SecretsName} cannot be decrypted on this machine; to pair the agent anew, remove agent.json");
         }
     }
 
@@ -231,7 +231,7 @@ internal sealed partial class SecretCommand : AsyncCommand<SecretCommand.Setting
     {
         try
         {
-            SharedSteps.WriteDataFile(_parts, AgentStart.SecretsName, SecretsFile.Write(secrets, _parts.Protection));
+            SharedSteps.WriteDataFile(_parts, AgentFolders.SecretsName, SecretsFile.Write(secrets, _parts.Protection));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or CryptographicException)
         {

@@ -80,7 +80,6 @@ internal sealed partial class WindowsAccountRights : IAccountRights
         });
     }
 
-    // The rights the account holds, by LsaEnumerateAccountRights, for the tests and S10b's check.
     public IReadOnlyList<string> Held(string sid)
     {
         using PolicyHandle policy = OpenPolicy();

@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using System.Security.Principal;
 using Moltaro.OnecOutpost.Agent.Access;
+using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Rights;
 using Moltaro.OnecOutpost.TestSupport;
@@ -44,7 +45,7 @@ public sealed class InstallOnWindowsTests
             Assert.Equal(
                 TestService.Unordered($"O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;FR;;;{service.Sid})"),
                 TestService.ListsOf(service.DataFolder));
-            Assert.Empty(new WindowsAccessLists(service.DataFolder, new SecurityIdentifier(service.Sid)).Others(""));
+            Assert.Empty(new WindowsAccessLists(service.DataFolder, new SecurityIdentifier(service.Sid)).Others("").All);
 
             CommandAppResult removed = await RunAsync(parts, "uninstall");
 

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Agent.Pairing;
+using Moltaro.OnecOutpost.Agent.Transport;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
@@ -15,7 +16,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Pairing;
 // key, sends pair with the proof of that key under the token's secret, signed with that key, and reads the answer with
 // ReadPairAnswer, which checks the server key against the token's fingerprint before it verifies the signature with
 // it. A verified 200 gives the settings of agent.json and the key in PKCS#8; anything else ends the pairing with the
-// status when one came and the failure: Unreachable without one, Refused for a bare 403, ProtocolVersion for the
+// status when one came and the failure: Unreachable without one, Bare for a bare 403, ProtocolVersion for the
 // unsigned body of §9, ServerKey and Signature for the codec's codes, Answer for anything else. The agent waits
 // requestTimeout over the answer and its body, read within 64 KiB. It writes no file: the console does.
 public sealed class AgentPairingTests : IDisposable
@@ -87,10 +88,10 @@ public sealed class AgentPairingTests : IDisposable
     }
 
     // "Bare" means without an Outpost-Signature that verifies, whatever the body (§9), so a 403 with a page of its own
-    // is Refused too.
+    // is Bare too.
     [Theory]
-    [InlineData("bare-403", 403, "Refused")]
-    [InlineData("403-with-a-page", 403, "Refused")]
+    [InlineData("bare-403", 403, "Bare")]
+    [InlineData("403-with-a-page", 403, "Bare")]
     [InlineData("protocol-version", 400, "ProtocolVersion")]
     [InlineData("another-server-key", 200, "ServerKey")]
     [InlineData("signed-by-another-key", 200, "Signature")]
@@ -113,7 +114,7 @@ public sealed class AgentPairingTests : IDisposable
         Assert.Null(result.Settings);
         Assert.Null(result.PrivateKey);
         Assert.Equal(status, result.Status);
-        Assert.Equal(Enum.Parse<AgentPairingFailureEnum>(failure), result.Failure);
+        Assert.Equal(Enum.Parse<ServerAnswerCauseEnum>(failure), result.Failure);
     }
 
     [Fact]
@@ -123,7 +124,7 @@ public sealed class AgentPairingTests : IDisposable
         (await _server.NextAsync(OutpostRequestKindEnum.Pair)).Fail(new HttpRequestException("The connection was reset."));
         AgentPairingResult result = await TestTimes.EndOf(pairing);
 
-        AssertEnded(result, null, AgentPairingFailureEnum.Unreachable);
+        AssertEnded(result, null, ServerAnswerCauseEnum.Unreachable);
     }
 
     [Fact]
@@ -138,7 +139,7 @@ public sealed class AgentPairingTests : IDisposable
         _clock.Advance(RequestTimeout);
         AgentPairingResult result = await TestTimes.EndOf(pairing);
 
-        AssertEnded(result, null, AgentPairingFailureEnum.Unreachable);
+        AssertEnded(result, null, ServerAnswerCauseEnum.Unreachable);
     }
 
     // §10: each limit is accepted at it and refused one byte beyond it. White space after the answer keeps §2.
@@ -207,10 +208,10 @@ public sealed class AgentPairingTests : IDisposable
             exchange.AnswerStreamed(new GeneratedStream(OutpostProtocol.AnswerLimit + 1L), declared: true);
         }
 
-        AssertEnded(await TestTimes.EndOf(pairing), 200, AgentPairingFailureEnum.Answer);
+        AssertEnded(await TestTimes.EndOf(pairing), 200, ServerAnswerCauseEnum.Answer);
     }
 
-    private static void AssertEnded(AgentPairingResult result, int? status, AgentPairingFailureEnum failure)
+    private static void AssertEnded(AgentPairingResult result, int? status, ServerAnswerCauseEnum failure)
     {
         Assert.Null(result.Settings);
         Assert.Null(result.PrivateKey);

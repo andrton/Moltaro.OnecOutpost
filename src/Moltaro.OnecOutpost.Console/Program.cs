@@ -4,14 +4,15 @@ using System.Security.Principal;
 using System.Text;
 using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Connector;
-using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Secrets;
+using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Agent.Transport;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Connector;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Rights;
 using Moltaro.OnecOutpost.Console.Service;
+using Moltaro.OnecOutpost.Console.Workers;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -26,9 +27,6 @@ internal static class Program
 {
     // The service of the agent, whose virtual account is NT SERVICE\MoltaroOnecOutpost.
     private const string ServiceName = "MoltaroOnecOutpost";
-
-    // The folder of the program under %ProgramFiles% and of the data under %ProgramData%.
-    private const string FolderName = "Moltaro.OnecOutpost";
 
     private static async Task<int> Main(string[] arguments)
     {
@@ -60,8 +58,8 @@ internal static class Program
             ConsoleParts parts = MachineParts(
                 ServiceName,
                 AppContext.BaseDirectory,
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), FolderName),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), FolderName));
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), AgentFolders.Name),
+                AgentFolders.OnMachine());
 
             IAnsiConsole console = MachineConsole();
 
@@ -87,10 +85,11 @@ internal static class Program
         return new ConsoleParts(
             IsElevated(),
             serviceName,
+            ServiceAccount.Sid(serviceName),
             source,
             programFolder,
             dataFolder,
-            new DiskFolder(dataFolder),
+            AgentFolders.OnDisk(dataFolder),
             new WindowsServiceControl(TimeProvider.System),
             new WindowsAccountRights(),
             new WindowsFolderSetup(),
@@ -98,6 +97,7 @@ internal static class Program
             new MachineDpapi(),
             ConnectorFinder.Machine(),
             new RegSvr32Registration(),
+            new WindowsWorkerStarts(TimeProvider.System),
             (server, proxy) => ServerRoute.CreateHandler(server, proxy),
             RedirectedInput(),
             TimeProvider.System,

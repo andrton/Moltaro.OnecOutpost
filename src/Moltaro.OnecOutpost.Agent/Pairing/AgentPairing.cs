@@ -14,7 +14,7 @@ internal static class AgentPairing
 {
     // Makes a P-256 key, sends pair with the proof and reads the answer with ReadPairAnswer, waiting requestTimeout
     // over the answer and its body, read within 64 KiB. Gives Settings and the key in PKCS#8 for a verified 200;
-    // otherwise the status when one came, and Unreachable without one, Refused for a bare 403, ProtocolVersion for the
+    // otherwise the status when one came, and Unreachable without one, Bare for a bare 403, ProtocolVersion for the
     // unsigned body of §9, ServerKey and Signature for the codec's codes, Answer for anything else.
     public static async Task<AgentPairingResult> PairAsync(
         Uri server,
@@ -49,7 +49,7 @@ internal static class AgentPairing
         if (response is null)
         {
             // A proxy that refused the tunnel gave a status; without one, nothing came.
-            return Ended(status, status is null ? AgentPairingFailureEnum.Unreachable : AgentPairingFailureEnum.Answer);
+            return Ended(status, status is null ? ServerAnswerCauseEnum.Unreachable : ServerAnswerCauseEnum.Answer);
         }
 
         ServerAnswer answer;
@@ -62,23 +62,23 @@ internal static class AgentPairing
         // The agent knows no key that could verify a 403 before the pairing, so every 403 is bare, whatever its body.
         if (answer.Status == (int)HttpStatusCode.Forbidden)
         {
-            return Ended(answer.Status, AgentPairingFailureEnum.Refused);
+            return Ended(answer.Status, ServerAnswerCauseEnum.Bare);
         }
 
         if (answer.Body is not byte[] read)
         {
             // The status came, and no complete body within the limit and the wait: an answer all the same (§9).
-            return Ended(answer.Status, AgentPairingFailureEnum.Answer);
+            return Ended(answer.Status, ServerAnswerCauseEnum.Answer);
         }
 
         if (answer.Status == (int)HttpStatusCode.BadRequest && OutpostCodec.IsUnsupportedVersion(read))
         {
-            return Ended(answer.Status, AgentPairingFailureEnum.ProtocolVersion);
+            return Ended(answer.Status, ServerAnswerCauseEnum.ProtocolVersion);
         }
 
         if (answer.Status != (int)HttpStatusCode.OK || !answer.IsJson)
         {
-            return Ended(answer.Status, AgentPairingFailureEnum.Answer);
+            return Ended(answer.Status, ServerAnswerCauseEnum.Answer);
         }
 
         OutpostPairAnswer paired;
@@ -91,11 +91,11 @@ internal static class AgentPairing
         }
         catch (OutpostProtocolException refusal)
         {
-            AgentPairingFailureEnum failure = refusal.Code switch
+            ServerAnswerCauseEnum failure = refusal.Code switch
             {
-                OutpostProtocolCodes.ServerKey => AgentPairingFailureEnum.ServerKey,
-                OutpostProtocolCodes.Signature => AgentPairingFailureEnum.Signature,
-                _ => AgentPairingFailureEnum.Answer,
+                OutpostProtocolCodes.ServerKey => ServerAnswerCauseEnum.ServerKey,
+                OutpostProtocolCodes.Signature => ServerAnswerCauseEnum.Signature,
+                _ => ServerAnswerCauseEnum.Answer,
             };
 
             return Ended(answer.Status, failure);
@@ -108,7 +108,7 @@ internal static class AgentPairing
         };
     }
 
-    private static AgentPairingResult Ended(int? status, AgentPairingFailureEnum failure)
+    private static AgentPairingResult Ended(int? status, ServerAnswerCauseEnum failure)
     {
         return new AgentPairingResult { Status = status, Failure = failure };
     }

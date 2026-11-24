@@ -88,10 +88,7 @@ internal sealed class LabAgent : IDisposable
 
     public WorkerJob Job { get; } = new();
 
-    public AgentFolders Folders => new(
-        new DiskFolder(DataPath),
-        new DiskFolder(Path.Combine(DataPath, "audit")),
-        new DiskFolder(Path.Combine(DataPath, "outcomes")));
+    public AgentFolders Folders => AgentFolders.OnDisk(DataPath);
 
     // A data folder with the files of the agent of the test base, its Writes in safe mode.
     public static LabAgent Create()

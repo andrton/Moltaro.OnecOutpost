@@ -8,7 +8,11 @@ internal interface IAccountRights
     // or names a group or an alias.
     string? UserSid(string account);
 
-    // Grants the rights, by their names in AccountRightNames; a right already held changes nothing.
+    // The rights the account holds itself, by LsaEnumerateAccountRights, not those it holds through a group; empty for
+    // an account that LSA knows nothing of.
+    IReadOnlyList<string> Held(string sid);
+
+    // Grants the rights, by their names in the agent's AccountRightNames; a right already held changes nothing.
     void Grant(string sid, IReadOnlyList<string> rights);
 
     // Revokes the rights; an account that holds none is no error.

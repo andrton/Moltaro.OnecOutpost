@@ -24,9 +24,13 @@
          from TestSupport. They use no PostgreSQL, Testcontainers or store of a server. -->
     <ProjectReference Include="..\Moltaro.OnecOutpost.Agent\Moltaro.OnecOutpost.Agent.csproj" />
     <ProjectReference Include="..\Moltaro.OnecOutpost.TestSupport\Moltaro.OnecOutpost.TestSupport.csproj" />
+    <!-- The tests of check run the console's commands through CommandAppTester against the test base. -->
+    <ProjectReference Include="..\Moltaro.OnecOutpost.Console\Moltaro.OnecOutpost.Console.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Spectre.Console.Cli.Testing" />
+    <PackageReference Include="Spectre.Console.Testing" />
     <PackageReference Include="xunit.v3" />
   </ItemGroup>
 

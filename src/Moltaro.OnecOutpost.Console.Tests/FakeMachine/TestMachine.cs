@@ -92,6 +92,8 @@ internal sealed class TestMachine
 
     public FakeRegistration Registration { get; }
 
+    public FakeWorkerStarts Workers { get; } = new();
+
     public FakeClock Clock { get; } = new(TestTimes.Start);
 
     public bool Elevated { get; set; } = true;
@@ -166,10 +168,11 @@ internal sealed class TestMachine
         ConsoleParts parts = new(
             Elevated,
             ServiceName,
+            AgentSid,
             Source,
             ProgramFolder,
             DataFolder,
-            Data.Root,
+            Data.Folders,
             Services,
             Rights,
             Folders,
@@ -181,6 +184,7 @@ internal sealed class TestMachine
             Protection,
             Connectors,
             Registration,
+            Workers,
             (server, proxy) =>
             {
                 Routes.Add((server, proxy));

@@ -64,9 +64,11 @@ internal sealed class TestConnection : IDisposable
         return Connection.PollAsync(poll, FakeServer.LeaseGrace, RequestTimeout, TestContext.Current.CancellationToken);
     }
 
-    public Task<OutcomeResultEnum> SendOutcomeAsync(Guid command, byte[] outcome)
+    public async Task<OutcomeResultEnum> SendOutcomeAsync(Guid command, byte[] outcome)
     {
-        return Connection.SendOutcomeAsync(command, outcome, RequestTimeout, TestContext.Current.CancellationToken);
+        OutcomeAnswer answer = await Connection.SendOutcomeAsync(command, outcome, RequestTimeout, TestContext.Current.CancellationToken);
+
+        return answer.Result;
     }
 
     // Completes once the connection has armed a timer due at or before dueBy.

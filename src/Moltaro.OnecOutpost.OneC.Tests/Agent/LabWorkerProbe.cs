@@ -16,7 +16,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 // station nor the desktop of the agent's workers admits, so the probe makes the desktop of the base key followed by
 // -probe; but with no command line and no standard streams, so that the worker ends at once with exit code 1, its exit
 // for a command line it refuses. What it says is the Win32 error of the logon, of the desktop or of the start, or the
-// exit code of the program; never the password, which LabLogon gives only to LogonUserW.
+// exit code of the program; never the password, which WorkerLogon gives only to LogonUserW.
 [SupportedOSPlatform("windows")]
 internal static partial class LabWorkerProbe
 {
@@ -33,7 +33,7 @@ internal static partial class LabWorkerProbe
     {
         string about = $"a start of the worker program by the test under {account.User}, without a command line,";
 
-        using SafeAccessTokenHandle? token = LabLogon.LogOn(account, out int logonError);
+        using SafeAccessTokenHandle? token = WorkerLogon.LogOn(account.User, account.Password, out int logonError);
 
         if (token is null)
         {

@@ -74,7 +74,7 @@ internal sealed partial class TestService
 
     public string Name { get; }
 
-    public string Account => $@"NT SERVICE\{Name}";
+    public string Account => ServiceAccount.Name(Name);
 
     public string Sid => ServiceAccount.Sid(Name);
 

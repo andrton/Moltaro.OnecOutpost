@@ -29,35 +29,9 @@ namespace Moltaro.OnecOutpost.Agent.Workers;
 [SupportedOSPlatform("windows")]
 internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 {
-    // The file of the COM worker in x64\ and x86\ beside the agent's program, each with the files of its build.
-    public const string WorkerFile = "Moltaro.OnecOutpost.ComWorker.exe";
-
-    // LOGON32_LOGON_BATCH and LOGON32_PROVIDER_DEFAULT.
-    private const int BatchLogon = 4;
-
-    private const int DefaultProvider = 0;
-
     // TOKEN_ASSIGN_PRIMARY, TOKEN_DUPLICATE and TOKEN_QUERY: what CreateProcessAsUserW and CreateEnvironmentBlock need of
     // a primary token, and what GetTokenInformation needs.
     private const uint AgentTokenAccess = 0x0001 | 0x0002 | 0x0008;
-
-    // CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, EXTENDED_STARTUPINFO_PRESENT and CREATE_NO_WINDOW.
-    private const uint CreationFlags = 0x00000004 | 0x00000400 | 0x00080000 | 0x08000000;
-
-    // STARTF_USESTDHANDLES.
-    private const int UseStandardHandles = 0x00000100;
-
-    // PROC_THREAD_ATTRIBUTE_HANDLE_LIST: the only handles that the process inherits.
-    private const nuint HandleListAttribute = 0x00020002;
-
-    // What ResumeThread gives when it fails, (DWORD)-1.
-    private const uint ResumeFailed = uint.MaxValue;
-
-    // The privileges that CreateProcessAsUserW needs to start a process under a token that is not the caller's own:
-    // "Replace a process level token" and "Adjust memory quotas for a process".
-    private const string AssignPrimaryToken = "SeAssignPrimaryTokenPrivilege";
-
-    private const string IncreaseQuota = "SeIncreaseQuotaPrivilege";
 
     private readonly string _x64Program;
 
@@ -95,14 +69,13 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
     // Logs on the worker account of the base, before any Start. Each failure closes the token and throws
     // AgentStopException, never with the password:
-    // 1. LogonUserW(account, ".", password, LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT), the password in
-    //    Marshal.StringToHGlobalUni, zeroed in a finally; BATCH, since a service logon adds SERVICE with
-    //    SeImpersonatePrivilege. Failure: the worker account {account} of the base {key} cannot log on: {the Win32
-    //    message}, which is also the reason when the token's groups or privileges cannot be read;
-    // 2. the token's groups, whatever their attributes, and privileges, enabled or not, judged by WorkerAccountRule:
-    //    the worker account {account} of the base {key} is an administrator or holds a privilege beyond an ordinary
-    //    user's; expected a local user that is not in Administrators, as the console's install prepares it;
-    // 3. the agent's token holds SeAssignPrimaryTokenPrivilege and SeIncreaseQuotaPrivilege, enabled or not, since
+    // 1. WorkerLogon.LogOn, a batch logon whose password is zeroed after the call. Failure: the worker account {account}
+    //    of the base {key} cannot log on: {the Win32 message}, which is also the reason when the token's groups or
+    //    privileges cannot be read;
+    // 2. WorkerLogon.IsOrdinary: the worker account {account} of the base {key} is an administrator or holds a privilege
+    //    beyond an ordinary user's; expected a local user that is not in Administrators, as the console's install
+    //    prepares it;
+    // 3. the agent's token holds AccountRightNames.AgentPrivileges, enabled or not, since
     //    CreateProcessAsUserW enables them: the agent's account lacks the right "Replace a process level token" or
     //    "Adjust memory quotas for a process"; install the agent with the console. When the agent's privileges cannot
     //    be read: the privileges of the agent's account cannot be read: {the Win32 message};
@@ -112,7 +85,8 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     // live as long as the launcher; one logon per start of the agent, so no retries lock the account out.
     public void LogOn(string baseKey, string account, string password)
     {
-        SafeAccessTokenHandle token = LogOnUser(baseKey, account, password);
+        SafeAccessTokenHandle token = WorkerLogon.LogOn(account, password, out int error)
+            ?? throw CannotLogOn(baseKey, account, error);
 
         try
         {
@@ -120,9 +94,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
             try
             {
-                List<string> groups = [.. WorkerToken.Groups(token).Select(group => group.Sid.Value)];
-
-                ordinary = WorkerAccountRule.IsOrdinary(groups, WorkerToken.Privileges(token));
+                ordinary = WorkerLogon.IsOrdinary(token);
             }
             catch (Win32Exception exception)
             {
@@ -141,7 +113,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             {
                 List<string> agentPrivileges = WorkerToken.Privileges(_agentToken);
 
-                agentMayStart = agentPrivileges.Contains(AssignPrimaryToken) && agentPrivileges.Contains(IncreaseQuota);
+                agentMayStart = AccountRightNames.AgentPrivileges.All(agentPrivileges.Contains);
             }
             catch (Win32Exception exception)
             {
@@ -248,61 +220,31 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             input = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
             output = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
 
-            (SafeProcessHandle Process, nint Thread)? created = CreateSuspended(
+            (SafeProcessHandle process, nint thread) = WorkerCreation.CreateSuspended(
+                WorkerCallEnum.AsUser,
                 token,
                 program,
                 commandLine,
                 desktop,
                 input.ClientSafePipeHandle,
-                output.ClientSafePipeHandle);
+                output.ClientSafePipeHandle,
+                error: null);
 
-            if (created is (SafeProcessHandle process, nint thread))
-            {
-                // The worker holds the client ends now: once the agent's copies close, its end closes its output.
-                input.DisposeLocalCopyOfClientHandle();
-                output.DisposeLocalCopyOfClientHandle();
+            // The worker holds the client ends now: once the agent's copies close, its end closes its output.
+            input.DisposeLocalCopyOfClientHandle();
+            output.DisposeLocalCopyOfClientHandle();
 
-                return JoinAndResume(new ComWorkerProcess(process, input, output), process, thread);
-            }
+            return JoinAndResume(new ComWorkerProcess(process, input, output), process, thread);
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or Win32Exception)
         {
-            // A pipe that Windows could not make.
+            // A pipe that Windows could not make, or a process that it did not create.
         }
 
         input?.Dispose();
         output?.Dispose();
 
         return new NoProcess();
-    }
-
-    // The logon of step 1 of LogOn: the token, or an AgentStopException with the message of Windows.
-    private static SafeAccessTokenHandle LogOnUser(string baseKey, string account, string password)
-    {
-        nint secret = Marshal.StringToHGlobalUni(password);
-        SafeAccessTokenHandle token;
-        bool loggedOn;
-        int error;
-
-        try
-        {
-            loggedOn = LogonUserW(account, ".", secret, BatchLogon, DefaultProvider, out token);
-            error = Marshal.GetLastPInvokeError();
-        }
-        finally
-        {
-            // The native copy of the password is cleared before its memory is freed.
-            Marshal.ZeroFreeGlobalAllocUnicode(secret);
-        }
-
-        if (!loggedOn)
-        {
-            token.Dispose();
-
-            throw CannotLogOn(baseKey, account, error);
-        }
-
-        return token;
     }
 
     // The message of Windows for its error code holds the code's meaning alone, never a value given to the call.
@@ -312,124 +254,29 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             $"the worker account {account} of the base {baseKey} cannot log on: {new Win32Exception(error).Message}");
     }
 
-    // CreateProcessAsUserW as Start says, with the environment block and the list of attributes that only this call
-    // uses; null when a call fails, and then no process was created. The caller owns the handles it is given.
-    private static unsafe (SafeProcessHandle Process, nint Thread)? CreateSuspended(
-        SafeAccessTokenHandle token,
-        string program,
-        string commandLine,
-        string desktop,
-        SafePipeHandle standardInput,
-        SafePipeHandle standardOutput)
-    {
-        if (!CreateEnvironmentBlock(out nint environment, token, inherit: false))
-        {
-            return null;
-        }
-
-        // The first call gives the size of a list of one attribute and fails, with ERROR_INSUFFICIENT_BUFFER.
-        nuint listSize = 0;
-        InitializeProcThreadAttributeList(0, 1, 0, ref listSize);
-
-        nint attributes = Marshal.AllocHGlobal((nint)listSize);
-        bool initialized = false;
-
-        try
-        {
-            initialized = InitializeProcThreadAttributeList(attributes, 1, 0, ref listSize);
-
-            // The list points at the handles, which stay on this stack until CreateProcessAsUserW returned.
-            nint* inherited = stackalloc nint[2];
-            inherited[0] = standardInput.DangerousGetHandle();
-            inherited[1] = standardOutput.DangerousGetHandle();
-
-            if (!initialized
-                || !UpdateProcThreadAttribute(attributes, 0, HandleListAttribute, (nint)inherited, (nuint)(2 * sizeof(nint)), 0, 0))
-            {
-                return null;
-            }
-
-            // CreateProcessAsUserW may write into the command line, so it gets a copy of its own, ended by a null.
-            char[] line = [.. commandLine, '\0'];
-
-            fixed (char* desktopName = desktop)
-            fixed (char* lineStart = line)
-            {
-                StartupInfo startup = new()
-                {
-                    Size = Marshal.SizeOf<StartupInfo>(),
-                    Desktop = (nint)desktopName,
-                    Flags = UseStandardHandles,
-                    StandardInput = inherited[0],
-                    StandardOutput = inherited[1],
-                    AttributeList = attributes,
-                };
-
-                if (!CreateProcessAsUserW(
-                    token,
-                    program,
-                    lineStart,
-                    0,
-                    0,
-                    inheritHandles: true,
-                    CreationFlags,
-                    environment,
-                    Path.GetDirectoryName(program)!,
-                    in startup,
-                    out ProcessInformation created))
-                {
-                    return null;
-                }
-
-                return (new SafeProcessHandle(created.Process, ownsHandle: true), created.Thread);
-            }
-        }
-        finally
-        {
-            if (initialized)
-            {
-                DeleteProcThreadAttributeList(attributes);
-            }
-
-            Marshal.FreeHGlobal(attributes);
-            DestroyEnvironmentBlock(environment);
-        }
-    }
-
-    // Puts the suspended worker into the job and resumes its thread, whose handle it closes. A worker that the job does
-    // not take, which would outlive the agent, or whose thread does not resume is killed and disposed: a NoProcess. Any
-    // other exception, such as the ObjectDisposedException of a disposed job, passes after the kill as well, so that no
-    // process is ever left outside the job.
+    // Puts the suspended worker into the job and resumes its thread by WorkerCreation.JoinAndResume, which terminates a
+    // process that the job does not take or whose thread does not resume: that worker is disposed, a NoProcess. Any other
+    // exception, such as the ObjectDisposedException of a disposed job, passes after the dispose, so that no process is
+    // ever left outside the job.
     private IWorkerProcess JoinAndResume(ComWorkerProcess worker, SafeProcessHandle process, nint thread)
     {
-        bool resumed = false;
-
         try
         {
-            _job.Add(process);
-            resumed = ResumeThread(thread) != ResumeFailed;
+            WorkerCreation.JoinAndResume(_job, process, thread);
+
+            return worker;
         }
         catch (Win32Exception)
         {
-            // Not in the job, so never resumed.
+            worker.Dispose();
+
+            return new NoProcess();
         }
-        finally
+        catch
         {
-            CloseHandle(thread);
-
-            if (!resumed)
-            {
-                worker.Kill();
-                worker.Dispose();
-            }
+            worker.Dispose();
+            throw;
         }
-
-        if (resumed)
-        {
-            return worker;
-        }
-
-        return new NoProcess();
     }
 
     // The program of the first bitness whose finding has a registered connector, 64 bits first, or null for none.
@@ -454,66 +301,4 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     [LibraryImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool OpenProcessToken(nint process, uint access, out SafeAccessTokenHandle token);
-
-    // The password is a pointer to native memory that the caller clears, never a string that the marshalling copies.
-    [LibraryImport("advapi32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool LogonUserW(
-        string user,
-        string domain,
-        nint password,
-        int logonType,
-        int logonProvider,
-        out SafeAccessTokenHandle token);
-
-    [LibraryImport("userenv.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool CreateEnvironmentBlock(
-        out nint environment,
-        SafeAccessTokenHandle token,
-        [MarshalAs(UnmanagedType.Bool)] bool inherit);
-
-    [LibraryImport("userenv.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool DestroyEnvironmentBlock(nint environment);
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool InitializeProcThreadAttributeList(nint attributeList, int attributeCount, int flags, ref nuint size);
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool UpdateProcThreadAttribute(
-        nint attributeList,
-        uint flags,
-        nuint attribute,
-        nint value,
-        nuint size,
-        nint previousValue,
-        nint returnSize);
-
-    [LibraryImport("kernel32.dll")]
-    private static partial void DeleteProcThreadAttributeList(nint attributeList);
-
-    [LibraryImport("advapi32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static unsafe partial bool CreateProcessAsUserW(
-        SafeAccessTokenHandle token,
-        string applicationName,
-        char* commandLine,
-        nint processAttributes,
-        nint threadAttributes,
-        [MarshalAs(UnmanagedType.Bool)] bool inheritHandles,
-        uint creationFlags,
-        nint environment,
-        string currentDirectory,
-        in StartupInfo startupInfo,
-        out ProcessInformation processInformation);
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    private static partial uint ResumeThread(nint thread);
-
-    [LibraryImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool CloseHandle(nint handle);
 }

@@ -22,7 +22,7 @@ internal static class ConsoleExitCodes
     // Every command: Ctrl+C, between two steps.
     public const int Cancelled = 5;
 
-    // uninstall, pair and secret: the service, or the data folder, does not exist.
+    // uninstall, pair, secret and check: the service, or the data folder, does not exist.
     public const int NotInstalled = 6;
 
     // install and uninstall: the service did not stop within --stop-timeout; nothing further was done.
@@ -60,4 +60,7 @@ internal static class ConsoleExitCodes
 
     // connector register: a run of regsvr32 failed, or HKLM shows no registration after it.
     public const int RegistrationFailed = 18;
+
+    // check: a line failed, or was not checked since a line it needs failed.
+    public const int CheckFailed = 19;
 }

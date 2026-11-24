@@ -36,7 +36,8 @@ internal sealed class FakeAccessLists : IAccessLists
     // The folders whose writers were asked about, in the order of the questions.
     public IReadOnlyList<string> ProgramsAsked => _programsAsked;
 
-    public IReadOnlyList<string> Others(string path)
+    // The accounts it was told the path admits, as entries; no owner, and the path itself as the full path.
+    public OtherAccounts Others(string path)
     {
         _asked.Add(path);
         _notes?.Note($"others \"{path}\"");
@@ -46,7 +47,7 @@ internal sealed class FakeAccessLists : IAccessLists
             throw new IOException($"The test made the access list of \"{path}\" unreadable.");
         }
 
-        return _others.TryGetValue(path, out string[]? accounts) ? accounts : [];
+        return new OtherAccounts(path, null, _others.TryGetValue(path, out string[]? accounts) ? accounts : []);
     }
 
     public IReadOnlyList<(string Path, IReadOnlyList<string> Accounts)> Writers(string folder)

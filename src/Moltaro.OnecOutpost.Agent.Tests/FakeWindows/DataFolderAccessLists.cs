@@ -21,7 +21,7 @@ internal sealed class DataFolderAccessLists : IAccessLists
         _dataFolder = new WindowsAccessLists(dataFolder, AccessListEdits.TestAccount);
     }
 
-    public IReadOnlyList<string> Others(string path)
+    public OtherAccounts Others(string path)
     {
         return _dataFolder.Others(path);
     }

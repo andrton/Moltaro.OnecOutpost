@@ -388,7 +388,7 @@ internal sealed class AgentLoop
 
     private async Task<Action> SendOutcomeAsync(Guid command, byte[] outcome)
     {
-        OutcomeResultEnum result = await _connection.SendOutcomeAsync(command, outcome, _run.Policy.RequestTimeout, _stop);
+        OutcomeResultEnum result = (await _connection.SendOutcomeAsync(command, outcome, _run.Policy.RequestTimeout, _stop)).Result;
 
         return () => ActOnOutcome(command, outcome, result);
     }

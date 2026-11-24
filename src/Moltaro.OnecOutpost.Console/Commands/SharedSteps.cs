@@ -1,10 +1,8 @@
 using System.ComponentModel;
-using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Folders;
-using Moltaro.OnecOutpost.Console.Rights;
 using Moltaro.OnecOutpost.Console.Service;
 using Spectre.Console;
 
@@ -14,10 +12,6 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // pair and secret share"). Each ends its command with a CommandEndException, as the brief says.
 internal static class SharedSteps
 {
-    // The two privileges of the agent's account, which install grants and uninstall revokes: "Replace a process level
-    // token" and "Adjust memory quotas for a process", with which the agent starts a worker under a worker account.
-    public static readonly string[] AgentPrivileges = [AccountRightNames.AssignPrimaryToken, AccountRightNames.IncreaseQuota];
-
     // The first step of every command: a console that is not elevated, UAC's filtered token included, changes nothing.
     public static void Elevation(ConsoleParts parts, string command)
     {
@@ -84,14 +78,14 @@ internal static class SharedSteps
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        return ReadPolicy(parts.Data);
+        return ReadPolicy(parts.Data.Root);
     }
 
     // Writes a file of the data folder by Replace, then makes Administrators its owner (Q14), since the agent counts
     // any other owner as somebody else. An IOException or an UnauthorizedAccessException passes.
     public static void WriteDataFile(ConsoleParts parts, string name, byte[] bytes)
     {
-        parts.Data.Replace(name, bytes);
+        parts.Data.Root.Replace(name, bytes);
         parts.Folders.OwnByAdministrators(Path.Combine(parts.DataFolder, name));
     }
 
@@ -107,7 +101,7 @@ internal static class SharedSteps
 
             if (kind == FolderKindEnum.Folder)
             {
-                others = parts.AccessLists(ServiceAccount.Sid(parts.ServiceName)).Others("");
+                others = parts.AccessLists(parts.AgentSid).Others("").All;
             }
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -140,13 +134,13 @@ internal static class SharedSteps
     // As the agent's start reads it, with the same reasons.
     private static AgentPolicy ReadPolicy(IAgentFolder data)
     {
-        const string Invalid = $"{AgentStart.PolicyName} is not valid";
+        const string Invalid = $"{AgentFolders.PolicyName} is not valid";
 
         byte[] bytes;
 
         try
         {
-            bytes = data.ReadAll(AgentStart.PolicyName);
+            bytes = data.ReadAll(AgentFolders.PolicyName);
         }
         catch (FileNotFoundException)
         {
