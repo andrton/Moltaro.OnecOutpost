@@ -41,23 +41,41 @@ One agent holds one role in a sprint. The separation is the point: nobody checks
 | **Architect** | After every merged sprint, reads what the system has become: the code the sprint touched and what it leans on, two or three sprints back, and once per stage the whole code base; returns a short list of what to simplify | Write code; propose a change of behavior or of the public contract |
 | **Refactorer** | Carries out, in the refactoring sprint that follows a sprint, the entries of the architect's list that were taken | Change behavior, the public contract or what a test asserts; build for a future need; decide what needs the owner |
 
-**The model and the effort of each role** (the owner, 21 November 2026, after a run that
-spent its weekly limit in the middle of a sprint). Every agent of a sprint runs on Opus
-5.5. Whoever starts an agent or a session sets its model and its effort explicitly and
-checks them afterwards: a value that is left out is inherited from whoever starts it,
-which is rarely the one wanted. `xhigh` is the highest effort of any agent; `max` is not
-used (the owner, 23 November 2026).
+### Models and effort
+
+Set the model and effort explicitly when starting a session or subagent, and check both
+after it starts.
+
+#### Claude Code
+
+Every agent of a sprint uses Opus 5.5 (`claude-opus-5-5`), as the owner decided on
+21 November 2026 after a run spent its weekly limit during a sprint. Claude Code effort
+is capped at `xhigh` (the owner, 23 November 2026). The first two zones in
+[Quality Priorities](../../AGENTS.md#quality-priorities) cover command checks, pairing,
+local policy, the audit log, secrets, the protocol, transport and the store.
 
 | Role | Effort |
 | --- | --- |
 | Independent reviewer, of code, of a document and of a refactoring sprint | `xhigh`, always |
 | Architect | `xhigh` |
-| Test author and implementer of a sprint whose zone is first or second in the table of `AGENTS.md`, "Quality Priorities": command checks, pairing, the local policy, the audit log, secrets, the protocol, the transport, the store | `xhigh` |
-| Coordinator; contract author; refactorer; the study; fixes after a review; documents and explanations; every role of the light track; test author and implementer of any other zone | `high` |
+| Test author and implementer in the first two zones | `xhigh` |
+| Coordinator, contract author, refactorer, study, fixes after review, documents and explanations, light-track author, and test author and implementer in other zones | `high` |
 
-The planner names the effort of the test author and of the implementer in the brief of
-each sprint, with its track. When reviews start to take more rounds or to find more P1
-findings, the coordinator says so in its report, and the planner raises the effort.
+#### Codex
+
+Every agent uses GPT-6.2 Sol (`model = "gpt-6.2-sol"`). Set `model_reasoning_effort`
+for the role.
+[Codex configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference)
+
+| Role | Reasoning effort |
+| --- | --- |
+| Planner, architect, and independent reviewer for any track | `ultra` |
+| All other agent roles and assignments | `max` |
+
+For either runtime, the planner names the effort of the test author and the implementer
+in each sprint brief alongside its track. When reviews take more rounds or find more P1
+findings, the coordinator reports it. In Claude Code, the planner raises the effort
+within its cap.
 
 ## The plan
 
