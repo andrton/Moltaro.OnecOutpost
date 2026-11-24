@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Audit;
 using Moltaro.OnecOutpost.Agent.Files;
@@ -16,13 +15,6 @@ namespace Moltaro.OnecOutpost.Agent.Start;
 // What a start finds in the data folder, after a restart included.
 internal static class AgentStart
 {
-    // The files of the data folder that the agent reads, which the console writes.
-    public const string PolicyName = "policy.json";
-
-    public const string PairingName = "agent.json";
-
-    public const string SecretsName = "secrets.dat";
-
     // Runs the steps of a start, and the first that fails decides: the audit log, whose IOException passes and records
     // nothing; a Fault of the log; the access lists of the data folder, its folders and its files; the access lists of
     // the program folder, programFolder, its full path, through which nobody else may change the code that the agent's
@@ -61,7 +53,7 @@ internal static class AgentStart
             catch (AgentPolicyException exception)
             {
                 // An invalid file serves nothing: its outbox waits on the disk for a start with a valid policy.
-                string reason = $"{PolicyName} is not valid: {exception.Message}";
+                string reason = $"{AgentFolders.PolicyName} is not valid: {exception.Message}";
 
                 log.Started(version, [], reason);
                 log.Policy(exception.Message);
@@ -111,14 +103,14 @@ internal static class AgentStart
         CheckAccess(folders, access, log, rootNames);
         CheckProgramFolder(access, programFolder);
 
-        AgentPairingSettings pairing = ReadPairing(folders.Root, rootNames);
-        AgentSecrets secrets = ReadSecrets(folders.Root, rootNames, protection);
+        AgentPairingSettings pairing = StartChecks.ReadPairing(folders.Root, rootNames);
+        AgentSecrets secrets = StartChecks.ReadSecrets(folders.Root, rootNames, protection);
 
         Outbox outbox = Outbox.Open(folders.Outcomes);
         CommandRecords records = CommandRecords.Open(log, outbox);
         PollNumbers numbers = new(log, pairing.Agent, clock);
 
-        AgentPolicy policy = ReadPolicy(folders.Root, rootNames);
+        AgentPolicy policy = StartChecks.ReadPolicy(folders.Root, rootNames);
 
         CheckPasswords(policy, secrets);
         LogOn(policy, secrets, workers);
@@ -131,16 +123,11 @@ internal static class AgentStart
     // goes after a cut torn line (§13 of docs/protocol.md).
     private static void CheckAccess(AgentFolders folders, IAccessLists access, AuditLog log, IReadOnlyList<string> rootNames)
     {
-        List<string> paths = ["", "audit", "outcomes"];
+        IReadOnlyList<string> outbox = List(folders.Outcomes, $@"{AgentFolders.OutcomesName}\");
 
-        paths.AddRange(new[] { PolicyName, PairingName, SecretsName }.Where(rootNames.Contains));
-        paths.AddRange(log.Files.Select(name => $@"audit\{name}"));
-        paths.AddRange(List(folders.Outcomes, @"outcomes\").Select(name => $@"outcomes\{name}"));
-
-        foreach (string path in paths)
+        foreach (string path in StartChecks.DataPaths(rootNames, log.Files, outbox))
         {
-            string entry = path.Length == 0 ? "the data folder" : path;
-            IReadOnlyList<string> others;
+            OtherAccounts others;
 
             try
             {
@@ -148,13 +135,14 @@ internal static class AgentStart
             }
             catch (IOException)
             {
+                string entry = path.Length == 0 ? "the data folder" : path;
+
                 throw new AgentStopException($"the access list of {entry} cannot be read");
             }
 
-            if (others.Count > 0)
+            if (StartChecks.AccessReason(path, others) is string reason)
             {
-                throw new AgentStopException(
-                    $"the access list of {entry} admits {string.Join(", ", others)}; expected nobody but Administrators, SYSTEM and the agent's account, as the console's install sets it");
+                throw new AgentStopException(reason);
             }
         }
     }
@@ -176,96 +164,17 @@ internal static class AgentStart
 
         if (writers is [(string path, IReadOnlyList<string> accounts), ..])
         {
-            throw new AgentStopException(
-                $"the access list of {path} lets {string.Join(", ", accounts)} change it; expected nobody but Administrators, SYSTEM, TrustedInstaller and the agent's account, as the console's install sets it");
+            throw new AgentStopException(StartChecks.WritersReason(path, accounts));
         }
-    }
-
-    private static AgentPairingSettings ReadPairing(IAgentFolder root, IReadOnlyList<string> rootNames)
-    {
-        if (!rootNames.Contains(PairingName))
-        {
-            throw new AgentStopException($"{PairingName} is absent: the agent is not paired; pair it with the console");
-        }
-
-        try
-        {
-            return AgentPairingFile.Read(ReadFile(root, PairingName));
-        }
-        catch (FormatException exception)
-        {
-            throw new AgentStopException($"{PairingName} cannot be read: {exception.Message}");
-        }
-    }
-
-    private static AgentSecrets ReadSecrets(IAgentFolder root, IReadOnlyList<string> rootNames, IMachineProtection protection)
-    {
-        if (!rootNames.Contains(SecretsName))
-        {
-            throw new AgentStopException($"{SecretsName} is absent; write the secrets with the console");
-        }
-
-        try
-        {
-            return SecretsFile.Read(ReadFile(root, SecretsName), protection);
-        }
-        catch (FormatException exception)
-        {
-            throw new AgentStopException($"{SecretsName} cannot be read: {exception.Message}");
-        }
-        catch (CryptographicException)
-        {
-            // Such as a file copied from another machine.
-            throw new AgentStopException($"{SecretsName} cannot be decrypted on this machine; write the secrets with the console");
-        }
-    }
-
-    // The policy as AgentPolicyReader reads it from the file. A file that cannot be read is as invalid as one that breaks
-    // its rules.
-    private static AgentPolicy ReadPolicy(IAgentFolder root, IReadOnlyList<string> rootNames)
-    {
-        if (!rootNames.Contains(PolicyName))
-        {
-            throw new AgentPolicyException("", "the file is absent; expected the local policy of this machine");
-        }
-
-        byte[] bytes;
-
-        try
-        {
-            bytes = root.ReadAll(PolicyName);
-        }
-        catch (IOException)
-        {
-            throw new AgentPolicyException("", "the file cannot be read; expected a file that the agent's account may read");
-        }
-
-        return AgentPolicyReader.ReadFile(bytes);
     }
 
     // A mode that the policy serves needs the password of its account: a start without one would only fail later, in
-    // every command of that mode.
+    // every command of that mode. The first one missing stops it.
     private static void CheckPasswords(AgentPolicy policy, AgentSecrets secrets)
     {
-        foreach (AgentBasePolicy basePolicy in policy.Bases)
+        if (StartChecks.MissingPasswords(policy, secrets) is [string first, ..])
         {
-            if (!secrets.Passwords.ContainsKey((basePolicy.Key, OutpostModeEnum.Read)))
-            {
-                throw new AgentStopException(
-                    $"{SecretsName} holds no password for the read mode of the base {basePolicy.Key}; write it with the console");
-            }
-
-            if (basePolicy.Write is not null && !secrets.Passwords.ContainsKey((basePolicy.Key, OutpostModeEnum.Write)))
-            {
-                throw new AgentStopException(
-                    $"{SecretsName} holds no password for the write mode of the base {basePolicy.Key}; write it with the console");
-            }
-
-            if (basePolicy.Write?.WorkerAccount is not null && !secrets.WorkerPasswords.ContainsKey(basePolicy.Key))
-            {
-                throw new AgentStopException(
-                    $"{SecretsName} holds no password for the worker account of the base {basePolicy.Key}; write it with the console");
-            }
+            throw new AgentStopException(first);
         }
     }
 
@@ -279,19 +188,6 @@ internal static class AgentStart
             {
                 workers.LogOn(basePolicy.Key, account, secrets.WorkerPasswords[basePolicy.Key]);
             }
-        }
-    }
-
-    // A file of the data folder itself, read whole; an IOException stops the start, naming the file.
-    private static byte[] ReadFile(IAgentFolder root, string name)
-    {
-        try
-        {
-            return root.ReadAll(name);
-        }
-        catch (IOException)
-        {
-            throw new AgentStopException($"{name} cannot be read");
         }
     }
 

@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Console.Rights;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;

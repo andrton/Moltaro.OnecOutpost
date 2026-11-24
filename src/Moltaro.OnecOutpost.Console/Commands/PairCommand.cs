@@ -3,6 +3,8 @@ using Moltaro.OnecOutpost.Agent.Pairing;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
+using Moltaro.OnecOutpost.Agent.Transport;
+using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.Protocol.Signing;
 using Spectre.Console;
@@ -35,7 +37,7 @@ internal sealed partial class PairCommand : AsyncCommand<PairCommand.Settings>
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_parts.Data.Names().Contains(AgentStart.PairingName))
+        if (_parts.Data.Root.Names().Contains(AgentFolders.PairingName))
         {
             throw new CommandEndException(
                 ConsoleExitCodes.AlreadyPaired,
@@ -72,8 +74,8 @@ internal sealed partial class PairCommand : AsyncCommand<PairCommand.Settings>
             new Dictionary<(string Base, OutpostModeEnum Mode), string>(),
             new Dictionary<string, string>());
 
-        Write(AgentStart.SecretsName, () => SecretsFile.Write(secrets, _parts.Protection));
-        Write(AgentStart.PairingName, () => AgentPairingFile.Write(paired));
+        Write(AgentFolders.SecretsName, () => SecretsFile.Write(secrets, _parts.Protection));
+        Write(AgentFolders.PairingName, () => AgentPairingFile.Write(paired));
 
         _console.WriteLine($"Paired with {paired.Server} as {paired.Agent}; write the passwords with secret.");
 
@@ -83,24 +85,13 @@ internal sealed partial class PairCommand : AsyncCommand<PairCommand.Settings>
     // The status when one came, and the console's own reason in the words of §6.1, never text of the body.
     private static CommandEndException PairingFailed(AgentPairingResult result)
     {
-        string reason = result.Failure switch
-        {
-            AgentPairingFailureEnum.Unreachable =>
-                "no answer came: the server, or the proxy of the policy, could not be reached, or did not answer within the requestTimeout of the policy",
-            AgentPairingFailureEnum.Refused =>
-                "a bare 403: the server answers so to any failure of pairing, and so can anything on the path",
-            AgentPairingFailureEnum.ProtocolVersion =>
-                "an unsigned answer in the form the server uses for a protocol version it does not speak",
-            AgentPairingFailureEnum.ServerKey => "the server's key does not match the fingerprint in the token",
-            AgentPairingFailureEnum.Signature => "the answer's signature does not verify",
+        string reason = ServerAnswerSentences.Of(
+            OutpostRequestKindEnum.Pair,
+            result.Failure ?? ServerAnswerCauseEnum.Answer,
+            result.Status,
+            null);
 
-            // Answer: anything else.
-            _ => "an answer that is not the signed answer of §6.1 of the protocol",
-        };
-
-        string status = result.Status is int code ? $"HTTP {code}: " : "";
-
-        return new CommandEndException(ConsoleExitCodes.PairingFailed, status + reason);
+        return new CommandEndException(ConsoleExitCodes.PairingFailed, reason);
     }
 
     // A file of the pairing, its content made and written; a failure leaves the agent paired on the server alone.

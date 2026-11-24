@@ -39,7 +39,8 @@ after it checked that nobody else may change its program folder. The tests of th
 against a real 1C passed on the lab, with a server of the test, those of the worker
 account included. The console installs, pairs and uninstalls an agent, writes its secrets
 and registers the COM connector (`install`, `uninstall`, `pair`, `secret` and `connector
-register`); its check and metadata are planned. The server is the one
+register`), and checks the agent machine (`check`), tested against fakes; the run of
+`check` against a real 1C on the lab, and `metadata`, are planned. The server is the one
 package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
 assembly inside it, so that the two can never be mixed at different versions. The concept
 is the authority for what the library guarantees: its semantics, its rules, its decisions

@@ -22,6 +22,8 @@
   <ItemGroup>
     <!-- The console has no public surface: its tests address its types directly. -->
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Console.Tests" />
+    <!-- The lab's tests run check against a real 1C through the console's own commands. -->
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.OneC.Tests" />
   </ItemGroup>
 
 </Project>

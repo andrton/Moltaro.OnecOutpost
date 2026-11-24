@@ -8,6 +8,12 @@ namespace Moltaro.OnecOutpost.Agent.Access;
 // The account NT SERVICE\{name} that Windows gives a service, such as the agent's virtual account.
 internal static class ServiceAccount
 {
+    // The account's name, NT SERVICE\{name}.
+    public static string Name(string serviceName)
+    {
+        return $@"NT SERVICE\{serviceName}";
+    }
+
     // The SID in its string form, as Windows derives it from the name, so that it is known before the service exists and
     // without Windows: S-1-5-80- and the SHA-1 of the upper-cased name in UTF-16 as five sub-authorities, each four bytes
     // in little-endian order.

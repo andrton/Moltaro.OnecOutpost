@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using Microsoft.Win32.SafeHandles;
+using Moltaro.OnecOutpost.Agent.Start;
 
 namespace Moltaro.OnecOutpost.Console.Folders;
 
@@ -48,7 +49,7 @@ internal sealed partial class WindowsFolderSetup : IFolderSetup
 
     private const string LongSharePrefix = @"\\?\UNC\";
 
-    private static readonly string[] WritableFolders = ["audit", "outcomes"];
+    private static readonly string[] WritableFolders = [AgentFolders.AuditName, AgentFolders.OutcomesName];
 
     public FolderKindEnum Kind(string path)
     {

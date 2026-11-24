@@ -13,7 +13,9 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 // "AgentConnection"): Confirmed for a verified 200 that confirms the request's command; TooLarge for a verified
 // result-too-large and for a 413 without an Outpost-Signature that verifies, whatever its body, as anything on the path
 // sends one; Lost for every other answer, and for none. The agent waits requestTimeout over the answer and its body,
-// and reads no more than 64 KiB.
+// and reads no more than 64 KiB. The answer is judged once into an OutcomeAnswer (the S10b brief, "The answer to an
+// outcome"), which the console's check reads too: the time of a verified confirmation or refusal, the status when one
+// came, and for any answer but a confirmation its cause in §9's order, with the code of a verified refusal.
 public sealed class OutcomeAnswerTests
 {
     [Fact]
@@ -66,6 +68,66 @@ public sealed class OutcomeAnswerTests
         Give(test, await test.Server.NextOutcomeAsync(), answer);
 
         Assert.Equal(OutcomeResultEnum.Lost, await TestTimes.EndOf(result));
+    }
+
+    // One case for each row of §9's order: no status Unreachable, a proxy's status Answer; a verified 200 Confirmed with
+    // its time; a 200 whose signature does not verify Signature, any other unverified 200 Answer; a verified refusal
+    // Refusal with its time and code; the unsigned protocol-version body ProtocolVersion; a 401, 403 or 413 without a
+    // signature that verifies Bare; anything else Answer. The result is the one of the tests above.
+    [Theory]
+    [InlineData("connection-error", "Lost", false, null, "Unreachable", null)]
+    [InlineData("tunnel-refused", "Lost", false, 407, "Answer", null)]
+    [InlineData("confirmed", "Confirmed", true, 200, null, null)]
+    [InlineData("signed-by-another-key", "Lost", false, 200, "Signature", null)]
+    [InlineData("unsigned-200", "Lost", false, 200, "Signature", null)]
+    [InlineData("confirms-another-command", "Lost", false, 200, "Answer", null)]
+    [InlineData("content-type-with-charset", "Lost", false, 200, "Answer", null)]
+    [InlineData("refusal-result-too-large", "TooLarge", true, 413, "Refusal", "result-too-large")]
+    [InlineData("refusal-form", "Lost", true, 400, "Refusal", "form")]
+    [InlineData("refusal-signature", "Lost", true, 401, "Refusal", "signature")]
+    [InlineData("protocol-version", "Lost", false, 400, "ProtocolVersion", null)]
+    [InlineData("bare-401", "Lost", false, 401, "Bare", null)]
+    [InlineData("bare-403", "Lost", false, 403, "Bare", null)]
+    [InlineData("bare", "TooLarge", false, 413, "Bare", null)]
+    [InlineData("html-page", "TooLarge", false, 413, "Bare", null)]
+    [InlineData("refusal-signed-by-another-key", "TooLarge", false, 413, "Bare", null)]
+    [InlineData("signed-413-with-another-code", "Lost", false, 413, "Answer", null)]
+    [InlineData("bare-503", "Lost", false, 503, "Answer", null)]
+    [InlineData("redirect", "Lost", false, 302, "Answer", null)]
+    public async Task Each_answer_to_an_outcome_is_judged_once_with_its_time_its_status_its_cause_and_its_code(
+        string answer,
+        string result,
+        bool timed,
+        int? status,
+        string? cause,
+        string? code)
+    {
+        using TestConnection test = new();
+
+        Task<OutcomeAnswer> judged = test.AnswerToOutcomeAsync(Guid.NewGuid(), TestOutcomes.Succeeded());
+        Give(test, await test.Server.NextOutcomeAsync(), answer);
+
+        OutcomeAnswer expected = new(
+            Enum.Parse<OutcomeResultEnum>(result),
+            timed ? TestTimes.Start : null,
+            status,
+            cause is null ? null : Enum.Parse<ServerAnswerCauseEnum>(cause),
+            code);
+        Assert.Equal(expected, await TestTimes.EndOf(judged));
+    }
+
+    [Fact]
+    public async Task An_answer_that_does_not_begin_within_the_request_timeout_is_Unreachable_without_a_status()
+    {
+        using TestConnection test = new();
+
+        Task<OutcomeAnswer> judged = test.AnswerToOutcomeAsync(Guid.NewGuid(), TestOutcomes.Succeeded());
+        await test.Server.NextOutcomeAsync();
+        await test.PassExactlyAsync(RequestTimeout);
+
+        Assert.Equal(
+            new OutcomeAnswer(OutcomeResultEnum.Lost, null, null, ServerAnswerCauseEnum.Unreachable, null),
+            await TestTimes.EndOf(judged));
     }
 
     // The answer begins after half of requestTimeout and its body stops: the one wait of requestTimeout covers both.
@@ -180,6 +242,19 @@ public sealed class OutcomeAnswerTests
                 break;
             case "protocol-version":
                 exchange.AnswerUnsupportedVersion();
+                break;
+            case "confirmed":
+                exchange.Confirm();
+                break;
+            case "signed-by-another-key":
+                using (ECDsa other = ECDsa.Create(ECCurve.NamedCurves.nistP256))
+                {
+                    exchange.AnswerSignedBy(other, 200, confirmed);
+                }
+
+                break;
+            case "bare-401":
+                exchange.AnswerBare(401);
                 break;
             case "bare-403":
                 exchange.AnswerBare(403);

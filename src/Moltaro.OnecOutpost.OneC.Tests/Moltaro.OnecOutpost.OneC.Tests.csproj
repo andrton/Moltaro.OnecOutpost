@@ -5,8 +5,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
-    <!-- The marshalling that LibraryImport generates for the job of the tests and the probe of a worker account is
-         unsafe code. -->
+    <!-- The marshalling that LibraryImport generates for the job of the tests is unsafe code. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
@@ -24,9 +23,13 @@
          from TestSupport. They use no PostgreSQL, Testcontainers or store of a server. -->
     <ProjectReference Include="..\Moltaro.OnecOutpost.Agent\Moltaro.OnecOutpost.Agent.csproj" />
     <ProjectReference Include="..\Moltaro.OnecOutpost.TestSupport\Moltaro.OnecOutpost.TestSupport.csproj" />
+    <!-- The tests of check run the console's commands through CommandAppTester against the test base. -->
+    <ProjectReference Include="..\Moltaro.OnecOutpost.Console\Moltaro.OnecOutpost.Console.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Spectre.Console.Cli.Testing" />
+    <PackageReference Include="Spectre.Console.Testing" />
     <PackageReference Include="xunit.v3" />
   </ItemGroup>
 

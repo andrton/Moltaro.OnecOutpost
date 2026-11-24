@@ -1,11 +1,11 @@
 using System.Runtime.InteropServices;
 
-namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
+namespace Moltaro.OnecOutpost.Agent.Workers;
 
-internal static partial class LabWorkerProbe
+internal static partial class WorkerCreation
 {
     // PROCESS_INFORMATION of processthreadsapi.h: the handles of the created process and of its first thread, which the
-    // probe closes, and their identities.
+    // caller owns, and their identities.
     [StructLayout(LayoutKind.Sequential)]
     private struct ProcessInformation
     {

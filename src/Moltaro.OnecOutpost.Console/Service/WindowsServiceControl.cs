@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using Moltaro.OnecOutpost.Agent.Access;
 
 namespace Moltaro.OnecOutpost.Console.Service;
 
@@ -94,7 +95,7 @@ internal sealed partial class WindowsServiceControl : IServiceControl
 
     public bool Install(string name, string displayName, string binaryPath)
     {
-        string account = $@"NT SERVICE\{name}";
+        string account = ServiceAccount.Name(name);
 
         using ServiceHandle manager = OpenManager(ManagerConnect | ManagerCreateService);
         ServiceHandle service = OpenServiceW(manager, name, ChangeConfig | StartService);

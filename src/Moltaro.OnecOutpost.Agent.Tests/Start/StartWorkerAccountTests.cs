@@ -31,8 +31,9 @@ public sealed class StartWorkerAccountTests
         }
         """;
 
+    // The remedy of the reworded reason (the S10b brief, "One wording, with a remedy that exists").
     private const string ExpectedNobodyElse =
-        "; expected nobody but Administrators, SYSTEM, TrustedInstaller and the agent's account, as the console's install sets it";
+        "; expected nobody but Administrators, SYSTEM, TrustedInstaller and the agent's account: remove their entries, and make Administrators the owner of what they own";
 
     private static readonly (string Base, OutpostModeEnum Mode, string Password)[] FourBasesPasswords =
     [
@@ -69,7 +70,7 @@ public sealed class StartWorkerAccountTests
     }
 
     // The console's secret writes the password of the worker account; a start without one would fail every worker of
-    // the base.
+    // the base. The reason names the command (the S10b brief, "One wording, with a remedy that exists").
     [Fact]
     public void A_base_whose_worker_account_has_no_password_in_the_secrets_stops_the_start_naming_the_base()
     {
@@ -79,7 +80,7 @@ public sealed class StartWorkerAccountTests
         List<JsonElement> entries = StoppedStart.Of(_folder, _clock);
 
         Assert.Equal(
-            "secrets.dat holds no password for the worker account of the base accounting; write it with the console",
+            "secrets.dat holds no password for the worker account of the base accounting; write it with secret accounting worker",
             StoppedStart.Error(entries));
         Assert.Empty(_folder.Workers.LogOns);
     }

@@ -1,10 +1,10 @@
 using System.ComponentModel;
 using System.Security.Cryptography;
-using Moltaro.OnecOutpost.Agent.Files;
+using Moltaro.OnecOutpost.Agent;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
-using Moltaro.OnecOutpost.Console.Rights;
+using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -114,40 +114,31 @@ internal sealed partial class SecretCommand : AsyncCommand<SecretCommand.Setting
         return new AgentSecrets(secrets.PrivateKey, passwords, workerPasswords);
     }
 
-    // secrets.dat as pair wrote it and secret since; one that is absent means that the agent is not paired.
+    // secrets.dat as pair wrote it and secret since, read as the agent's start reads it, by StartChecks, with the same
+    // reasons: one that is absent means that the agent is not paired, NotPaired; one that cannot be read or decrypted,
+    // such as a file copied from another machine, whose key is lost with it, is a Failure.
     private AgentSecrets ReadSecrets()
     {
-        byte[] file;
+        IReadOnlyList<string> names;
 
         try
         {
-            file = _parts.Data.ReadAll(AgentStart.SecretsName);
-        }
-        catch (FileNotFoundException)
-        {
-            throw new CommandEndException(ConsoleExitCodes.NotPaired, $"{AgentStart.SecretsName} is absent; pair the agent first");
+            names = _parts.Data.Root.Names();
         }
         catch (IOException exception)
         {
-            throw new CommandEndException(
-                ConsoleExitCodes.Failure,
-                $"{AgentStart.SecretsName} cannot be read: {CommandEndException.ReasonOf(exception)}");
+            throw CommandEndException.StepFailed("secrets", exception);
         }
 
         try
         {
-            return SecretsFile.Read(file, _parts.Protection);
+            return StartChecks.ReadSecrets(_parts.Data.Root, names, _parts.Protection);
         }
-        catch (FormatException exception)
+        catch (AgentStopException exception)
         {
-            throw new CommandEndException(ConsoleExitCodes.Failure, $"{AgentStart.SecretsName} cannot be read: {exception.Message}");
-        }
-        catch (CryptographicException)
-        {
-            // Such as a file copied from another machine: the agent's key in it is lost with it.
-            throw new CommandEndException(
-                ConsoleExitCodes.Failure,
-                $"{AgentStart.SecretsName} cannot be decrypted on this machine; to pair the agent anew, remove agent.json");
+            int code = names.Contains(AgentFolders.SecretsName) ? ConsoleExitCodes.Failure : ConsoleExitCodes.NotPaired;
+
+            throw new CommandEndException(code, exception.Message);
         }
     }
 
@@ -231,7 +222,7 @@ internal sealed partial class SecretCommand : AsyncCommand<SecretCommand.Setting
     {
         try
         {
-            SharedSteps.WriteDataFile(_parts, AgentStart.SecretsName, SecretsFile.Write(secrets, _parts.Protection));
+            SharedSteps.WriteDataFile(_parts, AgentFolders.SecretsName, SecretsFile.Write(secrets, _parts.Protection));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or CryptographicException)
         {

@@ -66,6 +66,12 @@ internal sealed class FakeConnectors : IConnectorFinder
         ];
     }
 
+    // The registered copy of the bitness is gone, with its registration, as an uninstall of its platform leaves it.
+    public void Uninstall(ConnectorBitnessEnum bitness)
+    {
+        _registered[bitness] = null;
+    }
+
     // The installed copy at the path becomes the registered one of its bitness, as a run of regsvr32 that HKLM shows.
     public void Register(ConnectorBitnessEnum bitness, string path)
     {

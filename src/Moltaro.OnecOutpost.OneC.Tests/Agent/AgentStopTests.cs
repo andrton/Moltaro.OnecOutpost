@@ -21,7 +21,7 @@ public sealed class AgentStopTests
 
         await using (LabRun first = agent.Start())
         {
-            Assert.True(await first.OpenedAsync(OutpostModeEnum.Write), first.WhyNotOpened(OutpostModeEnum.Write));
+            Assert.True(await first.OpenedAsync(OutpostModeEnum.Write), await first.WhyNotOpenedAsync(OutpostModeEnum.Write));
             write = first.Send(OutpostModeEnum.Write, TestBaseScripts.LoopForTenMinutes);
             await first.ReceivedAsync(write);
             await first.RanAsync(OutpostModeEnum.Write);

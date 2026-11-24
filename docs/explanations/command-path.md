@@ -10,8 +10,9 @@ the path. The same explanation, animated, is [`command-path.html`](command-path.
 server node and with two on one PostgreSQL, with the real agent and a fake in place of the
 COM worker. The agent with its COM workers ran Reads and Writes in a real
 1C:Enterprise 8.3.17.1851 on the lab machine, with the test's own server, a Write without
-safe mode under the Windows account of its base included. The console installs and pairs
-an agent on its machine; its check and the shell are not built yet.
+safe mode under the Windows account of its base included. The console installs, pairs and
+checks an agent on its machine, its check tested against fakes so far; the shell is not
+built yet.
 
 ## The parts
 

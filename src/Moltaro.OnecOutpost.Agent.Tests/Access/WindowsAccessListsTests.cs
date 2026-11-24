@@ -38,10 +38,10 @@ public sealed class WindowsAccessListsTests : IDisposable
     {
         WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
-        Assert.Empty(access.Others(""));
-        Assert.Empty(access.Others("audit"));
-        Assert.Empty(access.Others(@"audit\2026-11-22.jsonl"));
-        Assert.Empty(access.Others("policy.json"));
+        Assert.Empty(access.Others("").All);
+        Assert.Empty(access.Others("audit").All);
+        Assert.Empty(access.Others(@"audit\2026-11-22.jsonl").All);
+        Assert.Empty(access.Others("policy.json").All);
     }
 
     // A local user could plant a policy, a pinned key or an outcome in a file that admits him.
@@ -51,8 +51,8 @@ public sealed class WindowsAccessListsTests : IDisposable
         AccessListEdits.Allow(Path.Combine(_data, "policy.json"), AccessListEdits.Everyone);
         WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
-        Assert.Equal([AccessListEdits.NameOf(AccessListEdits.Everyone)], access.Others("policy.json"));
-        Assert.Empty(access.Others(""));
+        Assert.Equal([AccessListEdits.NameOf(AccessListEdits.Everyone)], access.Others("policy.json").All);
+        Assert.Empty(access.Others("").All);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public sealed class WindowsAccessListsTests : IDisposable
         AccessListEdits.Allow(Path.Combine(_data, "audit"), AccessListEdits.Everyone);
         WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
-        Assert.Equal([AccessListEdits.NameOf(AccessListEdits.Everyone)], access.Others("audit"));
+        Assert.Equal([AccessListEdits.NameOf(AccessListEdits.Everyone)], access.Others("audit").All);
     }
 
     // An account that Windows cannot name, such as one of a domain that no longer exists, is named by its SID.
@@ -72,7 +72,7 @@ public sealed class WindowsAccessListsTests : IDisposable
         AccessListEdits.Allow(Path.Combine(_data, "policy.json"), unknown);
         WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
-        Assert.Equal(["S-1-5-21-1-2-3-1001"], access.Others("policy.json"));
+        Assert.Equal(["S-1-5-21-1-2-3-1001"], access.Others("policy.json").All);
     }
 
     // A deny entry gives no right.
@@ -82,7 +82,7 @@ public sealed class WindowsAccessListsTests : IDisposable
         AccessListEdits.Deny(Path.Combine(_data, "policy.json"), AccessListEdits.Everyone);
         WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
-        Assert.Empty(access.Others("policy.json"));
+        Assert.Empty(access.Others("policy.json").All);
     }
 
     // An entry that applies only to what is created inside the folder does not apply to the folder itself; a file
@@ -96,8 +96,8 @@ public sealed class WindowsAccessListsTests : IDisposable
         File.WriteAllText(Path.Combine(outcomes, "planted.json"), "{}");
         WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
-        Assert.Empty(access.Others("outcomes"));
-        Assert.Equal([AccessListEdits.NameOf(AccessListEdits.Everyone)], access.Others(@"outcomes\planted.json"));
+        Assert.Empty(access.Others("outcomes").All);
+        Assert.Equal([AccessListEdits.NameOf(AccessListEdits.Everyone)], access.Others(@"outcomes\planted.json").All);
     }
 
     [Fact]
@@ -105,6 +105,6 @@ public sealed class WindowsAccessListsTests : IDisposable
     {
         WindowsAccessLists access = new(_data, AccessListEdits.TestAccount);
 
-        Assert.ThrowsAny<IOException>(() => access.Others("secrets.dat"));
+        Assert.ThrowsAny<IOException>(() => access.Others("secrets.dat").All);
     }
 }

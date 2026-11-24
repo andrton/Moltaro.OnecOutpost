@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,7 +17,8 @@ namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
 // The logon of a worker account by the real launcher (the S9c brief, "ComWorkerLauncher.LogOn"): LogonUserW comes
 // first, so that an account that does not exist fails with 1326, ERROR_LOGON_FAILURE, whatever rights the agent holds,
-// and the failure is an AgentStopException that names the base, the account and the message of Windows, never the
+// and the failure is an AgentStopException that names the base, the account and the sentence of the code with its
+// remedy, WorkerAccountReasons.CannotLogOn (the S10b brief, "One wording, with a remedy that exists"), never the
 // password. The account is a random name that no machine has, never the account that runs the tests, so no account
 // is created, changed or locked out; its password is random too.
 [Trait("Requires", "Windows")]
@@ -42,7 +42,7 @@ public sealed class WorkerLogOnTests : IDisposable
     }
 
     [Fact]
-    public void The_logon_of_an_account_that_does_not_exist_fails_naming_the_base_the_account_and_the_message_of_1326()
+    public void The_logon_of_an_account_that_does_not_exist_fails_naming_the_base_the_account_and_the_reason_of_1326()
     {
         using WorkerJob job = new();
         using ComWorkerLauncher launcher = new(TestProgram.Path, TestProgram.Path, _noConnector.Finder, job);
@@ -50,7 +50,7 @@ public sealed class WorkerLogOnTests : IDisposable
         AgentStopException exception = Assert.Throws<AgentStopException>(() => launcher.LogOn("accounting", _account, _password));
 
         Assert.Equal(
-            $"the worker account {_account} of the base accounting cannot log on: {new Win32Exception(1326).Message}",
+            $"the worker account {_account} of the base accounting cannot log on: {WorkerAccountReasons.CannotLogOn("accounting", 1326)}",
             exception.Message);
         Assert.DoesNotContain(_password, exception.Message, StringComparison.Ordinal);
     }
@@ -89,7 +89,7 @@ public sealed class WorkerLogOnTests : IDisposable
         JsonElement started = _data.LastEntry(TestTimes.Start);
         Assert.Equal("started", started.GetProperty("entry").GetString());
         Assert.Equal(
-            $"the worker account {_account} of the base accounting cannot log on: {new Win32Exception(1326).Message}",
+            $"the worker account {_account} of the base accounting cannot log on: {WorkerAccountReasons.CannotLogOn("accounting", 1326)}",
             started.GetProperty("error").GetString());
         Assert.Equal(0, server.Count(OutpostRequestKindEnum.Poll));
 

@@ -19,7 +19,8 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 // one comes; and confirms each outcome, which it gives the test. It grants the agent every base it declares, pairs no
 // agent, and runs no command of the samples. Its answers carry the poll timeout and the lease grace of agent.json, the
 // longest the protocol allows, so that no move of the test's clock ends a held poll. A request it cannot take faults
-// every wait of the test, which then fails with the reason.
+// every wait of the test, which then fails with the reason. It counts the polls, for the tests of the console's check,
+// which never polls.
 internal sealed class LabServer : HttpMessageHandler
 {
     public static readonly TimeSpan PollTimeout = OutpostProtocol.MaxPollTimeout;
@@ -55,6 +56,8 @@ internal sealed class LabServer : HttpMessageHandler
 
     private readonly Dictionary<Guid, TaskCompletionSource<OutpostOutcomeMessage>> _outcomes = [];
 
+    private int _polls;
+
     // The server's key signs; the agent's key verifies; the clock gives the times of commands and answers.
     public LabServer(ECDsa serverKey, ECDsa agentKey, Guid agent, TimeProvider clock)
     {
@@ -63,6 +66,9 @@ internal sealed class LabServer : HttpMessageHandler
         _agent = agent;
         _clock = clock;
     }
+
+    // The polls that came so far.
+    public int Polls => Volatile.Read(ref _polls);
 
     // Makes a command of the base and the mode, issued now, signs it and hands it to the next poll that declares a free
     // worker for it. A Write has a caller key of its own unless the test gives one. It gives the command's identity.
@@ -148,6 +154,8 @@ internal sealed class LabServer : HttpMessageHandler
 
     private async Task<HttpResponseMessage> PollAsync(byte[] body, byte[] signature, CancellationToken cancellationToken)
     {
+        Interlocked.Increment(ref _polls);
+
         OutpostPollRequest poll = Read(() => OutpostCodec.ReadPollRequest(_agentKey, _agent, body, signature));
 
         foreach (Guid command in poll.Received)

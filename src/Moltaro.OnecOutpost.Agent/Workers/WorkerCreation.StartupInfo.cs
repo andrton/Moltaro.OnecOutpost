@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace Moltaro.OnecOutpost.Agent.Workers;
 
-internal sealed partial class ComWorkerLauncher
+internal static partial class WorkerCreation
 {
     // STARTUPINFOEXW of winbase.h, with its STARTUPINFOW laid out in place, in their order: the sequential layout aligns
     // each field as the C compiler does, for 64 and for 32 bits. The strings are pointers that the caller keeps pinned;

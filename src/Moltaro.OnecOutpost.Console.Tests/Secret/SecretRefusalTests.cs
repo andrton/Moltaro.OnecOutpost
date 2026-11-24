@@ -20,6 +20,8 @@ public sealed class SecretRefusalTests
         _machine.Input = new FakeInput(_machine.Data, "new-password\n");
     }
 
+    // secret reads secrets.dat through the agent's StartChecks, with the start's reason and its own code (the S10b brief,
+    // "One wording, with a remedy that exists").
     [Fact]
     public async Task A_secrets_dat_that_is_absent_ends_secret_with_NotPaired()
     {
@@ -28,8 +30,9 @@ public sealed class SecretRefusalTests
         CommandAppResult result = await _machine.RunAsync("secret", "accounting", "read");
 
         Assert.Equal(ConsoleExitCodes.NotPaired, result.ExitCode);
-        Assert.Contains("NotPaired (13): ", result.Output);
-        Assert.Contains("pair the agent first", result.Output);
+        Assert.Contains(
+            "NotPaired (13): secrets.dat is absent; to pair the agent anew, remove agent.json, if any, and run the console's pair",
+            result.Output);
         Assert.Equal(["others \"\""], _machine.Operations);
     }
 

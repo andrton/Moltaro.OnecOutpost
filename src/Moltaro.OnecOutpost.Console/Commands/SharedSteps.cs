@@ -1,10 +1,8 @@
 using System.ComponentModel;
-using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Files;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Folders;
-using Moltaro.OnecOutpost.Console.Rights;
 using Moltaro.OnecOutpost.Console.Service;
 using Spectre.Console;
 
@@ -14,10 +12,6 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // pair and secret share"). Each ends its command with a CommandEndException, as the brief says.
 internal static class SharedSteps
 {
-    // The two privileges of the agent's account, which install grants and uninstall revokes: "Replace a process level
-    // token" and "Adjust memory quotas for a process", with which the agent starts a worker under a worker account.
-    public static readonly string[] AgentPrivileges = [AccountRightNames.AssignPrimaryToken, AccountRightNames.IncreaseQuota];
-
     // The first step of every command: a console that is not elevated, UAC's filtered token included, changes nothing.
     public static void Elevation(ConsoleParts parts, string command)
     {
@@ -84,31 +78,26 @@ internal static class SharedSteps
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        return ReadPolicy(parts.Data);
+        return ReadPolicy(parts.Data.Root);
     }
 
     // Writes a file of the data folder by Replace, then makes Administrators its owner (Q14), since the agent counts
     // any other owner as somebody else. An IOException or an UnauthorizedAccessException passes.
     public static void WriteDataFile(ConsoleParts parts, string name, byte[] bytes)
     {
-        parts.Data.Replace(name, bytes);
+        parts.Data.Root.Replace(name, bytes);
         parts.Folders.OwnByAdministrators(Path.Combine(parts.DataFolder, name));
     }
 
-    private static void JudgeDataFolder(ConsoleParts parts)
+    // The kind of the data folder, which pair, secret and check need: Absent ends the command with NotInstalled, and an
+    // error of Windows or of the disk with Failure.
+    public static FolderKindEnum DataFolderKind(ConsoleParts parts)
     {
-        string folder = parts.DataFolder;
         FolderKindEnum kind;
-        IReadOnlyList<string> others = [];
 
         try
         {
-            kind = parts.Folders.Kind(folder);
-
-            if (kind == FolderKindEnum.Folder)
-            {
-                others = parts.AccessLists(ServiceAccount.Sid(parts.ServiceName)).Others("");
-            }
+            kind = parts.Folders.Kind(parts.DataFolder);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -119,7 +108,28 @@ internal static class SharedSteps
         {
             throw new CommandEndException(
                 ConsoleExitCodes.NotInstalled,
-                $"the data folder {folder} does not exist; run install first");
+                $"the data folder {parts.DataFolder} does not exist; run install first");
+        }
+
+        return kind;
+    }
+
+    private static void JudgeDataFolder(ConsoleParts parts)
+    {
+        string folder = parts.DataFolder;
+        FolderKindEnum kind = DataFolderKind(parts);
+        IReadOnlyList<string> others = [];
+
+        try
+        {
+            if (kind == FolderKindEnum.Folder)
+            {
+                others = parts.AccessLists(parts.AgentSid).Others("").All;
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw CommandEndException.StepFailed("data folder", exception);
         }
 
         if (kind == FolderKindEnum.ReparsePoint)
@@ -137,37 +147,27 @@ internal static class SharedSteps
         }
     }
 
-    // As the agent's start reads it, with the same reasons.
+    // As the agent's start reads it, by StartChecks, with the same reasons.
     private static AgentPolicy ReadPolicy(IAgentFolder data)
     {
-        const string Invalid = $"{AgentStart.PolicyName} is not valid";
-
-        byte[] bytes;
+        IReadOnlyList<string> names;
 
         try
         {
-            bytes = data.ReadAll(AgentStart.PolicyName);
-        }
-        catch (FileNotFoundException)
-        {
-            throw new CommandEndException(
-                ConsoleExitCodes.PolicyInvalid,
-                $"{Invalid}: the file is absent; expected the local policy of this machine");
+            names = data.Names();
         }
         catch (IOException exception)
         {
-            throw new CommandEndException(
-                ConsoleExitCodes.PolicyInvalid,
-                $"{Invalid}: the file cannot be read: {CommandEndException.ReasonOf(exception)}");
+            throw CommandEndException.StepFailed("data folder", exception);
         }
 
         try
         {
-            return AgentPolicyReader.ReadFile(bytes);
+            return StartChecks.ReadPolicy(data, names);
         }
         catch (AgentPolicyException exception)
         {
-            throw new CommandEndException(ConsoleExitCodes.PolicyInvalid, $"{Invalid}: {exception.Message}");
+            throw new CommandEndException(ConsoleExitCodes.PolicyInvalid, $"{AgentFolders.PolicyName} is not valid: {exception.Message}");
         }
     }
 }

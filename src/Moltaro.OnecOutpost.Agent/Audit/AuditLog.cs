@@ -359,7 +359,9 @@ internal sealed class AuditLog : IDisposable
         _held.Dispose();
     }
 
-    private static bool IsAuditFile(string name)
+    // Whether the name is that of a file of the log, {yyyy-MM-dd}.jsonl, for the start and for the console's check,
+    // which judge the access list of each.
+    public static bool IsAuditFile(string name)
     {
         return name.Length == DayFormat.Length + FileExtension.Length
             && name.EndsWith(FileExtension, StringComparison.Ordinal)

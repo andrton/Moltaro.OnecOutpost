@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Access;
@@ -5,6 +6,7 @@ using Moltaro.OnecOutpost.Agent.Connector;
 using Moltaro.OnecOutpost.Agent.Host;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Workers;
+using Moltaro.OnecOutpost.Console.Workers;
 using Moltaro.OnecOutpost.OneC.Tests.Lab;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
@@ -20,8 +22,8 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 // connection, which the connection owns. The launcher is wrapped in
 // TestSupport's ObservedLauncher, which only reports when an open ended and when a run began, so that a test moves the
 // clock only after it observed the script running. A test stops the run as the service controller stops the service,
-// by cancelling its token. When a worker does not open, WhyNotOpened gives the test's message what the agent recorded
-// and what its launcher gave.
+// by cancelling its token. When a worker does not open, WhyNotOpenedAsync gives the test's message what the agent
+// recorded and what its launcher gave.
 [SupportedOSPlatform("windows")]
 internal sealed class LabRun : IAsyncDisposable
 {
@@ -90,9 +92,9 @@ internal sealed class LabRun : IAsyncDisposable
     // the reason of a logon that failed. What its launcher gave for each start of the mode: a process, whose open did
     // not give ready, or none, as for a connector that is not registered or a program that did not start. The agent
     // keeps no reason for a worker that does not start, and the launcher keeps no standard error of a worker, by
-    // design; so for a base with a worker account the message adds LabWorkerProbe's start of the program under that
-    // account, with its Win32 error or its exit code. No part holds a password.
-    public string WhyNotOpened(OutpostModeEnum mode, int number = 1)
+    // design; so for a base with a worker account the message adds the probe of the console's check under that account
+    // (the S10b brief, "The probe"), with its exit code or its error of Windows. No part holds a password.
+    public async Task<string> WhyNotOpenedAsync(OutpostModeEnum mode, int number = 1)
     {
         Task<bool> opened = Workers.OpenedAsync(_key, mode, number);
 
@@ -120,7 +122,7 @@ internal sealed class LabRun : IAsyncDisposable
 
         if (_workerAccount is not null)
         {
-            parts.Add(LabWorkerProbe.Describe(_workerAccount, _workerPath, _key, LabLimits.Deadline));
+            parts.Add(await ProbeAsync(_workerAccount));
         }
 
         return string.Join("; ", parts);
@@ -200,6 +202,30 @@ internal sealed class LabRun : IAsyncDisposable
     private static Task Within(Task wait)
     {
         return wait.WaitAsync(LabLimits.Deadline, TestContext.Current.CancellationToken);
+    }
+
+    // The probe of check under the worker account: its batch logon, and a start of the worker program on the account's
+    // desktop that opens no base, with the exit code of the program, 0 when the account runs it, or the error of
+    // Windows of the logon or the start, which never holds the password.
+    private async Task<string> ProbeAsync(LabAccount workerAccount)
+    {
+        string about = $"the probe of check under {workerAccount.User}";
+        WindowsWorkerStarts starts = new(TimeProvider.System);
+
+        try
+        {
+            using IWorkerAccount account = starts.LogOn(_key, workerAccount.User, workerAccount.Password);
+
+            uint? exitCode = await starts.ProbeAsync(account, _workerPath, _key, LabLimits.Deadline, TestContext.Current.CancellationToken);
+
+            return exitCode is uint code
+                ? $"{about} ended with exit code 0x{code:X8}"
+                : $"{about} did not end within {LabLimits.Deadline} and was ended";
+        }
+        catch (Win32Exception exception)
+        {
+            return $"{about} failed: {exception.Message} (Windows error {exception.NativeErrorCode})";
+        }
     }
 
     // Whether the agent runs, or how its run ended.

@@ -83,8 +83,10 @@ internal sealed class Worker
         }
         catch (Exception failure)
         {
-            WriteLine(output, ReadyLine(false));
+            // The diagnostics come first, so that a reader of the ready line finds them written; the console's check
+            // reads them once the line has told it that no session opened.
             Report(diagnostics, connection, "No session opened", failure.Message);
+            WriteLine(output, ReadyLine(false));
 
             return WorkerExitCodes.NoSession;
         }

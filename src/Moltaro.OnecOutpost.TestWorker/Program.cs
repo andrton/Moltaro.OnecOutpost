@@ -20,9 +20,10 @@ namespace Moltaro.OnecOutpost.TestWorker;
 //   with the true size of the object.
 //
 // The scripts: wait writes nothing until the input ends or a kill ends the program; exit <n> ends it with n and no
-// outcome; line <text> writes <text> as the line of its outcome; pid, path, arguments and connection succeed with the
-// identity of the process, its Environment.ProcessPath, its command line as an array and the members of its connection
-// line as an object; job succeeds with the process ids of the immediate job of the process when its Main began, which
+// outcome; line <text> writes <text> as the line of its outcome; diagnostics <text> writes <text> and LF to its
+// standard error, as the COM worker writes its diagnostics, and succeeds with null; pid, path, arguments and connection
+// succeed with the identity of the process, its Environment.ProcessPath, its command line as an array and the members of
+// its connection line as an object; job succeeds with the process ids of the immediate job of the process when its Main began, which
 // Main asks before anything else, as an array, or null when the process was in no job, so that a test tells the job of
 // the launcher from any other, such as one that the test host runs in; desktop succeeds with the window station and the
 // desktop that the process runs on, as "{station}\{desktop}", the form of lpDesktop; user succeeds with the SID of the
@@ -35,6 +36,8 @@ internal static partial class Program
     private const string LinePrefix = "line ";
 
     private const string ExitPrefix = "exit ";
+
+    private const string DiagnosticsPrefix = "diagnostics ";
 
     private const string HandlePrefix = "handle ";
 
@@ -114,6 +117,13 @@ internal static partial class Program
                 WriteLine(output, script[LinePrefix.Length..]);
 
                 continue;
+            }
+
+            if (script.StartsWith(DiagnosticsPrefix, StringComparison.Ordinal))
+            {
+                Stream error = Console.OpenStandardError();
+                error.Write(Encoding.UTF8.GetBytes(script[DiagnosticsPrefix.Length..] + "\n"));
+                error.Flush();
             }
 
             WriteLine(output, OutcomeLine(script, arguments, connection));

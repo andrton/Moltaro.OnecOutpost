@@ -56,6 +56,23 @@ public sealed class SessionTests
         Assert.Equal(0, session.OpenAttempts);
     }
 
+    // The console's check reads the diagnostics of a worker whose open gave false (the S10b brief, "The connections"),
+    // so they are written before {"ready":false}.
+    [Fact]
+    public void The_diagnostics_of_a_session_that_does_not_open_come_before_ready_false()
+    {
+        FakeConnector connector = new(new FakeSession())
+        {
+            Failure = new InvalidOperationException("The fake refused the session."),
+        };
+
+        WorkerRun run = WorkerRun.Of(WorkerModeEnum.Read, connector, LineText.Connection().ToLine());
+
+        Assert.Equal("{\"ready\":false}\n", run.Output.Text);
+        Assert.Contains("The fake refused the session.", run.Diagnostics);
+        Assert.Equal(0, run.OutputLinesBeforeDiagnostics);
+    }
+
     [Fact]
     public void The_text_of_the_failure_of_a_session_that_does_not_open_goes_to_the_diagnostics()
     {

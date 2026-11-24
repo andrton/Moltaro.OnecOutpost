@@ -8,7 +8,7 @@ using Spectre.Console.Cli.Testing;
 namespace Moltaro.OnecOutpost.Console.Tests.DataFolder;
 
 // The steps that pair and secret share, written once (the S10 brief, "The steps pair and secret share", and Q14): after
-// the elevation, a data folder that is absent ends the command with NotInstalled, and one that is a reparse point with
+// the elevation, a data folder that is absent ends the command with NotInstalled, check's too (the S10b brief), and one that is a reparse point with
 // DataFolderAdmitsOthers; the access list of the folder, made for the agent's account, admitting anyone else ends it
 // with DataFolderAdmitsOthers too, since DPAPI for the machine lets every local process decrypt and only the folder's
 // list keeps the secrets; and policy.json that is absent or invalid ends it with PolicyInvalid and the agent's reason.
@@ -25,6 +25,7 @@ public sealed class DataFolderStepTests
     [Theory]
     [InlineData("pair")]
     [InlineData("secret")]
+    [InlineData("check")]
     public async Task A_data_folder_that_is_absent_ends_the_command_with_NotInstalled(string command)
     {
         CommandAppResult result = await _machine.RunAsync(TestMachine.CommandLine(command));

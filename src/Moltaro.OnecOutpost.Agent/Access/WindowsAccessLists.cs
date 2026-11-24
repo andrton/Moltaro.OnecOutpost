@@ -64,12 +64,16 @@ internal sealed class WindowsAccessLists : IAccessLists
         _admittedToProgramFolder = [.. _admitted, TrustedInstaller];
     }
 
-    public IReadOnlyList<string> Others(string path)
+    public OtherAccounts Others(string path)
     {
         string fullPath = path.Length == 0 ? _dataFolder : Path.Combine(_dataFolder, path);
         FileSystemInfo entry = Directory.Exists(fullPath) ? new DirectoryInfo(fullPath) : new FileInfo(fullPath);
+        FileSystemSecurity security = Read(entry);
 
-        return Accounts(entry, _admitted, rights => rights != 0);
+        string? owner = OwnerOf(security) is SecurityIdentifier other && !_admitted.Contains(other) ? NameOf(other) : null;
+        List<string> entries = [.. Entries(security, rights => rights != 0).Distinct().Where(account => !_admitted.Contains(account)).Select(NameOf)];
+
+        return new OtherAccounts(entry.FullName, owner, entries);
     }
 
     // As IAccessLists says. Limitations: an administrator's own account counts as somebody else, as in Others; a volume
@@ -136,11 +140,25 @@ internal sealed class WindowsAccessLists : IAccessLists
         // The owner can rewrite the access list, so an owner counts as much as an entry that gives a right.
         List<SecurityIdentifier> accounts = [];
 
-        if (security.GetOwner(typeof(SecurityIdentifier)) is SecurityIdentifier owner)
+        if (OwnerOf(security) is SecurityIdentifier owner)
         {
             accounts.Add(owner);
         }
 
+        accounts.AddRange(Entries(security, judged));
+
+        return [.. accounts.Distinct().Where(account => !admitted.Contains(account)).Select(NameOf)];
+    }
+
+    private static SecurityIdentifier? OwnerOf(FileSystemSecurity security)
+    {
+        return security.GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
+    }
+
+    // The accounts of the allow entries that apply to the entry itself and give rights that judged accepts, in their
+    // order.
+    private static IEnumerable<SecurityIdentifier> Entries(FileSystemSecurity security, Func<FileSystemRights, bool> judged)
+    {
         foreach (FileSystemAccessRule rule in security.GetAccessRules(true, true, typeof(SecurityIdentifier)))
         {
             // A deny entry gives no right, and an entry that is only inherited by what the folder holds does not apply
@@ -152,11 +170,9 @@ internal sealed class WindowsAccessLists : IAccessLists
                 && judged(rule.FileSystemRights)
                 && rule.IdentityReference is SecurityIdentifier account)
             {
-                accounts.Add(account);
+                yield return account;
             }
         }
-
-        return [.. accounts.Distinct().Where(account => !admitted.Contains(account)).Select(NameOf)];
     }
 
     // The owner and the access entries of a folder or a file; those of a reparse point are its own, never its

@@ -2,7 +2,6 @@ using Moltaro.OnecOutpost.Agent.Outcomes;
 using Moltaro.OnecOutpost.Agent.Policy;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Protocol;
-using Moltaro.OnecOutpost.Protocol.Codec;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 
@@ -157,75 +156,24 @@ internal sealed partial class WorkerPool : IAsyncDisposable
         stop.Dispose();
     }
 
-    // The object of §8 that the bytes hold for the mode, or null when ReadOutcome refuses them.
-    private static OutpostOutcomeMessage? ReadOrNull(OutpostModeEnum mode, byte[] outcome)
-    {
-        try
-        {
-            return OutpostCodec.ReadOutcome(mode, outcome);
-        }
-        catch (OutpostProtocolException)
-        {
-            return null;
-        }
-    }
-
-    // The outcome sent for what a run gave within its limit (§8): the bytes of the executor, or of the COM worker
-    // itself, as they came when the agent may accept them, and otherwise an outcome of the agent's own. The worker is
-    // dropped when it ended, or broke its line, without an outcome, and when it gave base-unreachable or
-    // connection-lost, after which the COM worker ends.
+    // The outcome sent for what a run gave within its limit, by WorkerOutcome.Judge; the pool drops the worker that it
+    // ends.
     private static byte[] Accept(Worker worker, OutpostModeEnum mode, (long Size, byte[] Outcome)? given)
     {
-        if (given is not (long size, byte[] outcome))
-        {
-            worker.Drop();
+        JudgedOutcome judged = WorkerOutcome.Judge(mode, given);
 
-            return OwnOutcome.AfterStart(mode, OutpostOutcomeCodes.ConnectionLost);
-        }
-
-        OutpostOutcomeMessage? message = ReadOrNull(mode, outcome);
-
-        if (message?.Code is OutpostOutcomeCodes.BaseUnreachable or OutpostOutcomeCodes.ConnectionLost)
+        if (judged.EndsWorker)
         {
             worker.Drop();
         }
 
-        // As the brief of S9 requires: the size the executor measured is the length of the bytes the agent received.
-        bool accepted = size == outcome.Length
-            && message is not null
-            && OutpostOutcomeCodes.IsComWorkerOutcome(mode, message.Kind, message.Code);
-
-        return accepted ? outcome : OwnOutcome.AfterStart(mode, OutpostOutcomeCodes.ResultType);
-    }
-
-    // The base as the COM worker completes it into a 1C connection string: Srvr and Ref for a cluster, File for a
-    // folder, each " in a value doubled.
-    private static string LocationOf(AgentBasePolicy served)
-    {
-        if (served.File is string file)
-        {
-            return $"File=\"{Quoted(file)}\";";
-        }
-
-        return $"Srvr=\"{Quoted(served.Server!)}\";Ref=\"{Quoted(served.Database!)}\";";
-    }
-
-    private static string Quoted(string value)
-    {
-        return value.Replace("\"", "\"\"", StringComparison.Ordinal);
+        return judged.Outcome;
     }
 
     // Gives one mode its slots, which open their workers with the connection line of the mode.
     private void OpenMode(AgentBasePolicy served, OutpostModeEnum mode, AgentModePolicy policy, CancellationToken stop)
     {
-        WorkerConnectionLine connection = new()
-        {
-            Location = LocationOf(served),
-            User = policy.Account,
-            Password = _secrets.Passwords[(served.Key, mode)],
-            SafeMode = policy.SafeMode,
-            Executor = _executor,
-        };
+        WorkerConnectionLine connection = WorkerConnectionLine.For(served, policy, _secrets.Passwords[(served.Key, mode)], _executor);
 
         List<Slot> slots = [];
         _slots[(served.Key, mode)] = slots;

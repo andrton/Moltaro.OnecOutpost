@@ -192,7 +192,11 @@
 			<Role>OutpostWrite</Role>
 			<Role>Administrator</Role>
 			<CommonModule>Calculations</CommonModule>
+			<CommonModule>NoteChecks</CommonModule>
+			<EventSubscription>NoteBeforeWrite</EventSubscription>
+			<EventSubscription>NoteFormGet</EventSubscription>
 			<Catalog>Products</Catalog>
+			<Catalog>Notes</Catalog>
 			<Document>GoodsReceipt</Document>
 			<AccumulationRegister>Stock</AccumulationRegister>
 		</ChildObjects>

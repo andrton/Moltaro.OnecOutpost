@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using Moltaro.OnecOutpost.Agent.Access;
+using Moltaro.OnecOutpost.Agent.Start;
+using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Service;
 using Spectre.Console;
@@ -33,8 +35,8 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
 
     public override async Task<int> ExecuteAsync(CommandContext context, ServiceSettings settings, CancellationToken cancellationToken)
     {
-        string sid = ServiceAccount.Sid(_parts.ServiceName);
-        string account = $@"NT SERVICE\{_parts.ServiceName}";
+        string sid = _parts.AgentSid;
+        string account = ServiceAccount.Name(_parts.ServiceName);
 
         cancellationToken.ThrowIfCancellationRequested();
         string? source = Source();
@@ -198,7 +200,7 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
     {
         try
         {
-            _parts.Rights.Grant(sid, SharedSteps.AgentPrivileges);
+            _parts.Rights.Grant(sid, AccountRightNames.AgentPrivileges);
         }
         catch (Win32Exception exception)
         {
@@ -225,8 +227,8 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
                 IAccessLists lists = _parts.AccessLists(sid);
 
                 Judge(lists, "", kind);
-                Judge(lists, "audit", _parts.Folders.Kind(Path.Combine(folder, "audit")));
-                Judge(lists, "outcomes", _parts.Folders.Kind(Path.Combine(folder, "outcomes")));
+                Judge(lists, AgentFolders.AuditName, _parts.Folders.Kind(Path.Combine(folder, AgentFolders.AuditName)));
+                Judge(lists, AgentFolders.OutcomesName, _parts.Folders.Kind(Path.Combine(folder, AgentFolders.OutcomesName)));
             }
 
             _parts.Folders.ApplyDataFolder(folder, sid, create);
@@ -254,7 +256,7 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
             throw Refused($"{name} is a reparse point");
         }
 
-        IReadOnlyList<string> others = lists.Others(entry);
+        IReadOnlyList<string> others = lists.Others(entry).All;
 
         if (others.Count > 0)
         {

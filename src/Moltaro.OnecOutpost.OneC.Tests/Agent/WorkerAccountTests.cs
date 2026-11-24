@@ -15,7 +15,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 // the first test is the probe of that risk on the typical bases. The agent's program folder, under the root of the
 // system drive, lets Users read and run what the account runs, and its data folder, in the temporary folder of the
 // account that runs the tests, admits nobody but Administrators, SYSTEM and that account, as LabAgent sets them. A
-// worker that does not open fails its test with what LabRun.WhyNotOpened says.
+// worker that does not open fails its test with what LabRun.WhyNotOpenedAsync says.
 [SupportedOSPlatform("windows")]
 public sealed class WorkerAccountTests
 {
@@ -66,7 +66,7 @@ public sealed class WorkerAccountTests
         using LabAgent agent = LabAgent.WithoutSafeMode(lab.TestBase, LabAgent.WorkerAccountOf(lab));
         string control = agent.WriteFileForUsers("control.txt", "the control file of the test");
         await using LabRun run = agent.Start();
-        Assert.True(await run.OpenedAsync(OutpostModeEnum.Write), run.WhyNotOpened(OutpostModeEnum.Write));
+        Assert.True(await run.OpenedAsync(OutpostModeEnum.Write), await run.WhyNotOpenedAsync(OutpostModeEnum.Write));
 
         OutpostOutcomeMessage secrets = await run.OutcomeAsync(run.Send(OutpostModeEnum.Write, CanReadTheFile, PathParameters(Path.Combine(agent.DataPath, "secrets.dat"))));
         OutpostOutcomeMessage readable = await run.OutcomeAsync(run.Send(OutpostModeEnum.Write, CanReadTheFile, PathParameters(control)));
@@ -85,7 +85,7 @@ public sealed class WorkerAccountTests
         LabAccount workerAccount = LabAgent.WorkerAccountOf(lab);
         using LabAgent agent = LabAgent.WithoutSafeMode(lab.TestBase, workerAccount);
         await using LabRun run = agent.Start();
-        Assert.True(await run.OpenedAsync(OutpostModeEnum.Write), run.WhyNotOpened(OutpostModeEnum.Write));
+        Assert.True(await run.OpenedAsync(OutpostModeEnum.Write), await run.WhyNotOpenedAsync(OutpostModeEnum.Write));
 
         OutpostOutcomeMessage user = await run.OutcomeAsync(run.Send(OutpostModeEnum.Write, WindowsUser));
 
@@ -101,10 +101,10 @@ public sealed class WorkerAccountTests
         await using LabRun run = agent.Start();
         Assert.True(
             await run.OpenedAsync(OutpostModeEnum.Read),
-            $"{about}: the Read worker did not open under the worker account: {run.WhyNotOpened(OutpostModeEnum.Read)}.");
+            $"{about}: the Read worker did not open under the worker account: {await run.WhyNotOpenedAsync(OutpostModeEnum.Read)}.");
         Assert.True(
             await run.OpenedAsync(OutpostModeEnum.Write),
-            $"{about}: the Write worker did not open under the worker account: {run.WhyNotOpened(OutpostModeEnum.Write)}.");
+            $"{about}: the Write worker did not open under the worker account: {await run.WhyNotOpenedAsync(OutpostModeEnum.Write)}.");
 
         OutpostOutcomeMessage latest = await run.OutcomeAsync(run.Send(
             OutpostModeEnum.Read,

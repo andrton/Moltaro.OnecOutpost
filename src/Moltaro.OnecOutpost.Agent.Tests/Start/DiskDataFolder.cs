@@ -28,10 +28,7 @@ internal sealed class DiskDataFolder : IDisposable
 
     public string Path { get; }
 
-    public AgentFolders Folders => new(
-        new DiskFolder(Path),
-        new DiskFolder(System.IO.Path.Combine(Path, "audit")),
-        new DiskFolder(System.IO.Path.Combine(Path, "outcomes")));
+    public AgentFolders Folders => AgentFolders.OnDisk(Path);
 
     public string PathOf(string relativePath)
     {

@@ -155,7 +155,7 @@ public sealed class WindowsFolderSetupTests
         SecurityIdentifier agent = new(service.Sid);
         WindowsAccessLists lists = new(service.DataFolder, agent);
 
-        Assert.Empty(lists.Others(""));
+        Assert.Empty(lists.Others("").All);
 
         foreach (string name in new[] { "audit", "outcomes" })
         {
@@ -168,7 +168,7 @@ public sealed class WindowsFolderSetupTests
             Assert.Equal(
                 BySid([(TestService.Administrators, FullAccess), (System, FullAccess), (agent, ReadAccess)]),
                 BySid(Entries(security, inherited: true)));
-            Assert.Empty(lists.Others(name));
+            Assert.Empty(lists.Others(name).All);
         }
     }
 

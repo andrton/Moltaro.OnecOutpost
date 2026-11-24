@@ -15,6 +15,7 @@ public sealed class ElevationTests
     [InlineData("uninstall")]
     [InlineData("pair")]
     [InlineData("secret")]
+    [InlineData("check")]
     [InlineData("connector register")]
     public async Task A_command_in_a_console_that_is_not_elevated_ends_with_NotElevated_and_changes_nothing(string command)
     {

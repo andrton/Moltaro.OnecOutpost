@@ -23,13 +23,14 @@ public sealed class RedirectedOutputTests
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
         "Moltaro.OnecOutpost");
 
-    // The help of install and uninstall describes --stop-timeout with [d.]hh:mm:ss, which Spectre reads as markup, so
-    // the description escapes it.
+    // The help of install, uninstall and check describes --stop-timeout and --clock-skew with [d.]hh:mm:ss, which
+    // Spectre reads as markup, so the description escapes it.
     [Theory]
     [InlineData("install")]
     [InlineData("uninstall")]
     [InlineData("pair")]
     [InlineData("secret")]
+    [InlineData("check")]
     [InlineData("connector", "register")]
     public async Task The_help_of_each_command_is_plain_text_that_ends_with_Success_and_changes_nothing(params string[] command)
     {
@@ -50,6 +51,7 @@ public sealed class RedirectedOutputTests
     [InlineData("uninstall", "--stop-timeout", "01:00:01")]
     [InlineData("pair", "outpost.example.com", "{token}")]
     [InlineData("secret", "Accounting", "read")]
+    [InlineData("check", "--clock-skew", "00:00:00")]
     [InlineData("connector", "register", "now")]
     public async Task A_refused_argument_of_each_command_is_plain_text_that_ends_with_Usage_and_changes_nothing(params string[] arguments)
     {

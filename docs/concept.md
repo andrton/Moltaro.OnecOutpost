@@ -453,6 +453,10 @@ supported platform. It is committed as the built `.epf` and its XML sources.
   - the COM connector and its version;
   - the connection to each base under each account;
   - the rights to change data that the read account has;
+  - for a base that may be written, the event subscriptions whose common module is not
+    available to an external connection (section 1);
+  - the worker accounts and the rights of the agent's account;
+  - the access lists of the agent's folders, and the files of its data folder;
   - the server and the clock skew, without polling, so that the console never takes the
     place of the service's poll;
 - write a local metadata report of a base: its objects, their fields and how they are

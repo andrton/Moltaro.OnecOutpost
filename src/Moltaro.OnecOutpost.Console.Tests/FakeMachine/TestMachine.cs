@@ -65,12 +65,13 @@ internal sealed class TestMachine
 
     public TestMachine()
     {
-        Access = new FakeAccessLists(Data);
+        Access = new FakeAccessLists(Data, DataFolder);
         Services = new FakeServiceControl(Data);
         Rights = new FakeAccountRights(Data);
         Folders = new FakeFolderSetup(Data);
         Connectors = new FakeConnectors(Data);
         Registration = new FakeRegistration(Data, Connectors);
+        Workers = new FakeWorkerStarts(Data);
     }
 
     // The SID of NT SERVICE\MoltaroOnecOutpost, the agent's account.
@@ -91,6 +92,8 @@ internal sealed class TestMachine
     public FakeConnectors Connectors { get; }
 
     public FakeRegistration Registration { get; }
+
+    public FakeWorkerStarts Workers { get; }
 
     public FakeClock Clock { get; } = new(TestTimes.Start);
 
@@ -117,8 +120,8 @@ internal sealed class TestMachine
     // The lines of the operation list so far.
     public IReadOnlyList<string> Operations => [.. Data.Changes.Select(change => change.Line)];
 
-    // The arguments of a run of the command, valid as its settings judge them: install, uninstall, pair, secret, or
-    // connector register.
+    // The arguments of a run of the command, valid as its settings judge them: install, uninstall, pair, secret, check,
+    // or connector register.
     public static string[] CommandLine(string command)
     {
         return command switch
@@ -127,6 +130,7 @@ internal sealed class TestMachine
             "uninstall" => ["uninstall"],
             "pair" => ["pair", "https://outpost.example.com/agents/", Token],
             "secret" => ["secret", "accounting", "read"],
+            "check" => ["check"],
             "connector register" => ["connector", "register"],
             _ => throw new ArgumentOutOfRangeException(nameof(command), command, "No such command."),
         };
@@ -166,10 +170,11 @@ internal sealed class TestMachine
         ConsoleParts parts = new(
             Elevated,
             ServiceName,
+            AgentSid,
             Source,
             ProgramFolder,
             DataFolder,
-            Data.Root,
+            Data.Folders,
             Services,
             Rights,
             Folders,
@@ -181,6 +186,7 @@ internal sealed class TestMachine
             Protection,
             Connectors,
             Registration,
+            Workers,
             (server, proxy) =>
             {
                 Routes.Add((server, proxy));
