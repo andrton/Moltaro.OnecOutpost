@@ -6119,6 +6119,9 @@ S8.
   - its limitations above: a configuration changed during the walk; halving at the run limit; a
     base without a worker account run as the administrator's unelevated account, its worker's 1C
     password open to their unelevated programs the whole walk; the file's access list its folder's;
+  - the data folder's refusals (the coordinator, 24 November 2026): `pair` and `secret` give the
+    start's sentence, which never tells to remove the folder, and `check`'s for a reparse point;
+    `install` adds `; if the agent ever ran there, copy its audit\ folder elsewhere first`;
   - *(Q16)* the audit log gains the entry `stopped`, `time` and `error`, written when the agent
     stops for a fault after `started` while the log can be written; none after a failed write of
     the log, none for a normal stop; the exit codes unchanged.
