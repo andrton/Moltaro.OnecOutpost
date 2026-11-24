@@ -17,7 +17,7 @@ namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 // for the COM worker, starts with the base key and read as its command line, in a job of its own, which holds it and
 // not the console, speaks the worker's lines, and what it writes to its standard error is the worker's Diagnostics,
 // read to its end once the worker was disposed. Its token is a restricted version of the console's own (the contract
-// amended after the first code review), so that the code of a base does not run as an administrator: Administrators,
+// amended after the first code review), so that the code of a base runs without the rights of an administrator: Administrators,
 // when the console's token holds it, for deny only, no privilege but SeChangeNotifyPrivilege, and an integrity level no
 // higher than medium, so that the base's code cannot send input to the elevated programs of the desktop; and the user as
 // its default owner, with a default list that grants the user, so that the worker reopens what it creates.

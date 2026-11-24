@@ -166,9 +166,11 @@ console's session, not in the service's; it sees a right of the agent's account 
 it was granted to the account itself; it judges a connector's folder and its parents, not
 its siblings; each worker it starts holds a client licence of 1C while it is open; and the
 code of a base without a worker account runs as the administrator's own account, without
-its rights but with its HKCU and its DPAPI user secrets, which UAC does not guard, so run
-`check` only on a machine whose bases you trust as much as the agent's configuration does. Planned next: `metadata`, the run of the console on the lab machine
-and the guide on installing and running an agent.
+its rights but with its HKCU and its DPAPI user secrets, which UAC does not guard, and
+while `check` runs an unelevated program of the administrator may open that worker and read
+the 1C password it holds; so run `check` only on a machine whose bases you trust as the local
+policy does. Planned next: `metadata`, the run of the console on the lab machine and the guide
+on installing and running an agent.
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from
