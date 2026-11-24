@@ -5805,7 +5805,8 @@ S8.
   - *Internal of S10c* (the contract author, 24 November 2026, from S10b's study, §5 and §6, and
     the planner's rules for the collector, with the coordinator's decisions under PQ2; reviewed in
     two rounds; approved by the coordinator under PQ2, 24 November 2026; with the owner's Q16 as an
-    amendment, 24 November 2026, approved by the coordinator under PQ2). Every type is `internal`.
+    amendment, 24 November 2026, approved by the coordinator under PQ2; amended after the lab run
+    of deeb370, 24 November 2026). Every type is `internal`.
 
     ```csharp
     // Moltaro.OnecOutpost.Agent.Workers (review 3, 1): one start of a worker's process; ComWorkerLauncher's JoinAndResume goes
@@ -6009,6 +6010,28 @@ S8.
         a sequence's or a document journal's. A raise is the page's `storageError`, and the script
         leaves each `error` as it was: the console writes `storage: {storageError}` into each
         `error` still null of a page's objects, never of the probe's.
+    - **After the lab run of deeb370** (the coordinator, 24 November 2026, under PQ2; 81 of 86):
+      1. *The census*: `platform`, `name`, `version` and `compatibilityMode`, and every value it
+         converts with `XMLString`, each in its own `Try`; one that fails is `{"error": "{1C's
+         text}"}` in its place and the walk goes on, so no value without an XML form fails the
+         census; the table's caption names them, `Not read: {property} ({text}), …`. A page reads
+         each property of an object in its own `Try` too: one that fails makes the object's `error`
+         `{property}: {text}`, several joined by `; `, the rest still read, the object failed.
+      2. *Workers end before the command*: `IWorkerProcess` gains `Task EndAsync(TimeSpan deadline,
+         TimeProvider clock)`, which closes the worker's input, waits for its process to exit within
+         the deadline, then terminates it and waits for the exit; `WorkerSession` becomes
+         `IAsyncDisposable`, its `DisposeAsync` calling it with the mode's `runLimit`, the job
+         disposed after; Ctrl+C terminates at once and waits. The probe already waits so. So `check`
+         and `metadata` end with none of their workers running, and the program folder can be
+         updated at once.
+      3. `check`'s `Connection` rows name the mode: `Connection {base} read {account}`, `… write
+         {account}`, two rows for a base whose modes share one account; the lines not checked name
+         that row.
+      4. `ReadRights` groups by kind: `{account} holds rights to change data: {general rights}; {rights}
+         on {n} {kind}: {first 3 names} and {m} more; …`, rights joined by `, `, `n` the objects
+         holding any of them; the reader groups the script's `categories` by `category`.
+      5. The subscriptions script writes `subscription`, `event` and `module` with `String()` and
+         `found` as a `Boolean`, so only values of §8 remain (it ended `failed result-type`).
     - **The amendment for Q16**, the agent's, on `xhigh`. `AuditLog.Stopped(string error)` records
       `{"time":…,"entry":"stopped","error":…}`; it throws nothing and writes nothing once a write of
       the log failed, its own failed write cut back as any entry's; the reader accepts `stopped`
@@ -6128,7 +6151,12 @@ S8.
     `install` adds `; if the agent ever ran there, copy its audit\ folder elsewhere first`;
   - *(Q16)* the audit log gains the entry `stopped`, `time` and `error`, written when the agent
     stops for a fault after `started` while the log can be written; none after a failed write of
-    the log, none for a normal stop; the exit codes unchanged.
+    the log, none for a normal stop; the exit codes unchanged;
+  - after the lab run of deeb370: a census value that 1C cannot give is `{"error": …}` in format 1
+    and named in the table's caption; an object's `error` names its property; `check`'s
+    `Connection` rows read `Connection {base} read|write {account}`; `ReadRights` gives `{rights}
+    on {n} {kind}: {first 3 names} and {m} more`; `check` and `metadata` end only once their
+    workers have exited.
 - **To read.** The [concept](../concept.md), §3 "Pairing" and §5 (20 November 2026);
   `docs/protocol.md`; `AGENTS.md`, principles 9 and 12; this plan, "The files of the agent",
   the contract of stage 2 and S9c's brief.
