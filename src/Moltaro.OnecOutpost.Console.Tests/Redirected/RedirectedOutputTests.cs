@@ -31,6 +31,7 @@ public sealed class RedirectedOutputTests
     [InlineData("pair")]
     [InlineData("secret")]
     [InlineData("check")]
+    [InlineData("metadata")]
     [InlineData("connector", "register")]
     public async Task The_help_of_each_command_is_plain_text_that_ends_with_Success_and_changes_nothing(params string[] command)
     {
@@ -52,6 +53,7 @@ public sealed class RedirectedOutputTests
     [InlineData("pair", "outpost.example.com", "{token}")]
     [InlineData("secret", "Accounting", "read")]
     [InlineData("check", "--clock-skew", "00:00:00")]
+    [InlineData("metadata", "Bad!", "report.json")]
     [InlineData("connector", "register", "now")]
     public async Task A_refused_argument_of_each_command_is_plain_text_that_ends_with_Usage_and_changes_nothing(params string[] arguments)
     {

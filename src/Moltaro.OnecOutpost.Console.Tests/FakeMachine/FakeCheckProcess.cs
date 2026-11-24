@@ -1,13 +1,16 @@
 using Moltaro.OnecOutpost.Agent.Workers;
+using Moltaro.OnecOutpost.Console.Commands;
 
 namespace Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 
-// One COM worker that check started on a test's machine, of a base, under a worker account or under the console's own
-// token, which FakeWorkerStarts made. The user of its connection line chooses the FakeSession that the test scripted for
-// the base and that user. Its open, each run and the kill that ends it are lines of the operation list, never with a
-// password: "open {base} {user}", "run {base} {user} {script}" and "kill {base} {user}", the user "-" before the open,
-// the script by its kind: user for the script that gives UserName(), subscriptions for the one that reads
-// Metadata.EventSubscriptions, rights for the one that calls AccessRight, other for any other. As the boundary says, it
+// One COM worker that check or metadata started on a test's machine, of a base, under a worker account or under the
+// console's own token, which FakeWorkerStarts made. The user of its connection line chooses the FakeSession that the
+// test scripted for the base and that user. Its open, each run and the kill that ends it are lines of the operation
+// list, never with a password: "open {base} {user}", "run {base} {user} {script}" and "kill {base} {user}", the user "-"
+// before the open, the script by its kind: user for the script that gives UserName(), subscriptions for the one that
+// reads Metadata.EventSubscriptions, rights for the one that calls AccessRight, other for any other; and for
+// MetadataScripts.Walk, the walk of metadata, the Read that its parameters ask for, as FakeConfiguration.Describe names
+// it, such as "run accounting outpost-read page Catalogs 0 2 storage". As the boundary says, it
 // reports failures as results, by no exception but OperationCanceledException: an open gives what its session gives, or waits until Kill and then gives false; a run
 // gives the executor's outcome with its size, or waits until Kill and then gives null; an open or a run of a worker that
 // ended gives false or null at once. Its standard error, Diagnostics, ends when the worker ends: after an open that gave
@@ -21,6 +24,8 @@ internal sealed class FakeCheckProcess : IWorkerProcess
     public const string SubscriptionsScript = "subscriptions";
 
     public const string RightsScript = "rights";
+
+    public const string WalkScript = "walk";
 
     private readonly FakeWorkerStarts _starts;
 
@@ -98,9 +103,14 @@ internal sealed class FakeCheckProcess : IWorkerProcess
     // Its standard error, read to its end.
     public Task<string> Diagnostics => _diagnostics.Task;
 
-    // The kind of a script of check, as the lines of the operation list name it.
+    // The kind of a script of check, or of the walk of metadata, as the lines of the operation list name it.
     public static string KindOf(string script)
     {
+        if (script == MetadataScripts.Walk)
+        {
+            return WalkScript;
+        }
+
         if (script.Contains("UserName()", StringComparison.Ordinal))
         {
             return UserScript;
@@ -122,6 +132,7 @@ internal sealed class FakeCheckProcess : IWorkerProcess
     public Task<bool> OpenAsync(WorkerConnectionLine connection, CancellationToken cancellationToken)
     {
         FakeSession session = _starts.SessionOf(Base, connection.User);
+        bool refuses = session.RefusesOpen();
         TaskCompletionSource<bool> waiting = new(TaskCreationOptions.RunContinuationsAsynchronously);
         bool ended;
 
@@ -151,7 +162,7 @@ internal sealed class FakeCheckProcess : IWorkerProcess
             return waiting.Task;
         }
 
-        if (session.Refuses)
+        if (refuses)
         {
             End(session.Diagnostics);
 
@@ -164,6 +175,7 @@ internal sealed class FakeCheckProcess : IWorkerProcess
     public Task<(long Size, byte[] Outcome)?> RunAsync(WorkerCommandLine command, CancellationToken cancellationToken)
     {
         string kind = KindOf(command.Script);
+        string read = kind == WalkScript ? FakeConfiguration.Describe(command.ParametersJson) : kind;
         TaskCompletionSource<(long Size, byte[] Outcome)?> waiting = new(TaskCreationOptions.RunContinuationsAsynchronously);
         FakeSession? session;
         string user;
@@ -177,7 +189,7 @@ internal sealed class FakeCheckProcess : IWorkerProcess
             ended = _ended || session is null;
         }
 
-        byte[]? outcome = session?.OutcomeOf(kind);
+        byte[]? outcome = ended ? null : session?.OutcomeOf(kind, command.ParametersJson);
 
         lock (_lock)
         {
@@ -187,7 +199,7 @@ internal sealed class FakeCheckProcess : IWorkerProcess
             }
         }
 
-        _starts.Note($"run {Base} {user} {kind}");
+        _starts.Note($"run {Base} {user} {read}");
 
         if (ended)
         {

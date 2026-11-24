@@ -1,6 +1,7 @@
 using Moltaro.OnecOutpost.Agent.Connector;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
+using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Runs;
@@ -16,6 +17,7 @@ public sealed class ElevationTests
     [InlineData("pair")]
     [InlineData("secret")]
     [InlineData("check")]
+    [InlineData("metadata", Skip = SkipReason.NotImplemented)]
     [InlineData("connector register")]
     public async Task A_command_in_a_console_that_is_not_elevated_ends_with_NotElevated_and_changes_nothing(string command)
     {

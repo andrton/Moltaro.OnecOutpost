@@ -141,6 +141,26 @@ public sealed class StartReasonTests
             StartChecks.MissingPasswords(policy, secrets));
     }
 
+    // The one sentence of a policy.json that is not valid, which the start, pair, secret, check and metadata give (the
+    // S10 brief, "Internal of S10c", review 3's entry 3), with the reason of the reader.
+    [Fact]
+    public void A_policy_that_is_not_valid_is_named_with_the_reason_of_its_reader()
+    {
+        AgentPolicyException exception = Assert.Throws<AgentPolicyException>(() => AgentPolicyReader.ReadFile("""{ "bases": [] }"""u8.ToArray()));
+
+        Assert.Equal($"policy.json is not valid: {exception.Message}", StartChecks.PolicyReason(exception));
+    }
+
+    // The entry at a path of the data folder as every reason names it: "" is the data folder itself.
+    [Theory]
+    [InlineData("", "the data folder")]
+    [InlineData("audit", "audit")]
+    [InlineData(@"outcomes\0b7e6a4c-2f1d-4e3a-9c8b-7a6f5e4d3c2b.json", @"outcomes\0b7e6a4c-2f1d-4e3a-9c8b-7a6f5e4d3c2b.json")]
+    public void An_entry_of_the_data_folder_is_named_by_its_path_and_the_folder_itself_as_the_data_folder(string path, string entry)
+    {
+        Assert.Equal(entry, StartChecks.EntryOf(path));
+    }
+
     private static string FullPathOf(string path)
     {
         return path.Length == 0 ? DataFolder : $@"{DataFolder}\{path}";

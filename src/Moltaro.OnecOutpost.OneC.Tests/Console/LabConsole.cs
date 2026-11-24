@@ -8,19 +8,25 @@ using Spectre.Console.Testing;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 
-// The console's check on a LabAgent (the S10b brief, "Lab tests"), through CommandAppTester with ConsoleApp.Configure, as
-// Program runs it: the parts that Program.MachineParts makes for the agent's program folder, in the x64\ layout, and its
-// data folder, with the account that runs the tests as the agent's account, AgentSid, as the agent's tests make their
-// access lists for it, the agent's fake clock, and a LabServer of the agent's keys, so that the server's line reaches a
-// stub in the process. check needs a console run as administrator, and its probe needs "Impersonate a client after
-// authentication", which only an elevated token holds, so the lab's tests run elevated. Each run asserts that the
-// server saw no poll.
+// The console's check and metadata on a LabAgent (the S10b brief, "Lab tests", and "Internal of S10c"), through
+// CommandAppTester with ConsoleApp.Configure, as Program runs it: the parts that Program.MachineParts makes for the
+// agent's program folder, in the x64\ layout, and its data folder, with the account that runs the tests as the agent's
+// account, AgentSid, as the agent's tests make their access lists for it, the agent's fake clock, and a LabServer of the
+// agent's keys, so that the server's line reaches a stub in the process. check needs a console run as administrator,
+// and its probe needs "Impersonate a client after authentication", which only an elevated token holds, so the lab's
+// tests run elevated. Each run asserts that the server saw no poll. metadata runs on the clock of the machine instead,
+// so that the run limit of the policy holds its Reads as it holds them in use, and the lab records the halvings it
+// causes.
 [SupportedOSPlatform("windows")]
 internal static class LabConsole
 {
     // The longest a run of check takes on the lab: a worker of each account of the base, each of which may take twenty
     // seconds to open on a Windows account that never used 1C (LabLimits), and the probe.
     public static readonly TimeSpan Deadline = TimeSpan.FromMinutes(10);
+
+    // The longest a run of metadata takes on the lab: the walk of a copy of a typical base, of thousands of objects with
+    // their storage, outlasts check's deadline by far.
+    public static readonly TimeSpan MetadataDeadline = TimeSpan.FromHours(2);
 
     private const string ServiceName = "MoltaroOnecOutpost";
 
@@ -55,5 +61,23 @@ internal static class LabConsole
         Assert.Equal(0, server.Polls);
 
         return new LabCheck(result);
+    }
+
+    // Runs metadata of the agent's base to its end, its report the file given.
+    public static async Task<LabMetadata> MetadataAsync(LabAgent agent, string file)
+    {
+        using LabServer server = new(agent.ServerKey, agent.AgentKey, agent.Agent, agent.Clock);
+        ConsoleParts parts = Parts(agent, server) with { Clock = TimeProvider.System };
+
+        CommandAppTester tester = new(console: new TestConsole().Width(int.MaxValue));
+        tester.Configure(config => ConsoleApp.Configure(config, parts));
+
+        CommandAppResult result = await tester
+            .RunAsync(["metadata", agent.Key, file], TestContext.Current.CancellationToken)
+            .WaitAsync(MetadataDeadline, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, server.Polls);
+
+        return new LabMetadata(result, file);
     }
 }
