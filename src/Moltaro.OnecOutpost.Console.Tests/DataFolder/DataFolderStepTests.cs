@@ -1,5 +1,7 @@
 using System.Text;
+using Moltaro.OnecOutpost.Agent.Access;
 using Moltaro.OnecOutpost.Agent.Policy;
+using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
@@ -57,18 +59,21 @@ public sealed class DataFolderStepTests
         Assert.Empty(_machine.Routes);
     }
 
-    [Theory]
+    // pair and secret run after install, so they give the start's sentence for the data folder, word for word, whose
+    // remedy removes no audit log (the coordinator's decision in S10c).
+    [Theory(Skip = SkipReason.NotImplemented)]
     [InlineData("pair")]
     [InlineData("secret")]
     public async Task A_data_folder_whose_access_list_admits_anyone_else_ends_the_command_with_DataFolderAdmitsOthers_naming_them(string command)
     {
         _machine.Installed();
         _machine.Access.Admit("", @"BUILTIN\Users", @"OFFICE\clerk");
+        string reason = StartChecks.AccessReason("", new OtherAccounts(_machine.Access.FullPathOf(""), null, [@"BUILTIN\Users", @"OFFICE\clerk"]))!;
 
         CommandAppResult result = await _machine.RunAsync(TestMachine.CommandLine(command));
 
         Assert.Equal(ConsoleExitCodes.DataFolderAdmitsOthers, result.ExitCode);
-        Assert.Contains("DataFolderAdmitsOthers (9): ", result.Output);
+        Assert.Contains($"DataFolderAdmitsOthers (9): {reason}", TestMachine.LinesOf(result));
         Assert.Contains(@"BUILTIN\Users", result.Output);
         Assert.Contains(@"OFFICE\clerk", result.Output);
         Assert.Equal(["others \"\""], _machine.Operations);

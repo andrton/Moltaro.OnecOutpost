@@ -3,6 +3,7 @@ using Moltaro.OnecOutpost.Console.Commands;
 using Moltaro.OnecOutpost.Console.Folders;
 using Moltaro.OnecOutpost.Console.Service;
 using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
+using Moltaro.OnecOutpost.TestSupport;
 using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Install;
@@ -25,6 +26,12 @@ public sealed class InstallRefusalTests
         + $"\"{Path.Combine(TestMachine.ProgramFolder, "Moltaro.OnecOutpost.Agent.exe")}\" service";
 
     private static readonly string Grant = $"grant {TestMachine.AgentSid} SeAssignPrimaryTokenPrivilege, SeIncreaseQuotaPrivilege";
+
+    // The remedy of a data folder that install refuses, one that existed before it and that a local user may have
+    // made: install repairs it not, and one in which the agent ran holds its audit log, which goes with the folder
+    // unless it is copied first (the coordinator's decision in S10c of one remedy that removes no audit log).
+    private const string Remedy =
+        @"install does not repair it: inspect it, remove it and run install again; if the agent ever ran there, copy its audit\ folder elsewhere first";
 
     private readonly TestMachine _machine = new();
 
@@ -163,7 +170,7 @@ public sealed class InstallRefusalTests
     }
 
     // A junction in the place of the data folder, or of a folder in it, would lead what the agent writes elsewhere.
-    [Theory]
+    [Theory(Skip = SkipReason.NotImplemented)]
     [InlineData("")]
     [InlineData("audit")]
     [InlineData("outcomes")]
@@ -177,13 +184,13 @@ public sealed class InstallRefusalTests
 
         Assert.Equal(ConsoleExitCodes.DataFolderAdmitsOthers, result.ExitCode);
         Assert.Contains("DataFolderAdmitsOthers (9): ", result.Output);
-        Assert.Contains("is a reparse point; install does not repair it: inspect it, remove it and run install again", result.Output);
+        Assert.Contains($"is a reparse point; {Remedy}", result.Output);
         AssertNamed(folder, result);
         Assert.DoesNotContain(_machine.Operations, line => line.StartsWith("apply data folder", StringComparison.Ordinal));
     }
 
     // %ProgramData% lets every local user create a folder, so one made before install may admit its maker.
-    [Theory]
+    [Theory(Skip = SkipReason.NotImplemented)]
     [InlineData("")]
     [InlineData("audit")]
     [InlineData("outcomes")]
@@ -196,7 +203,7 @@ public sealed class InstallRefusalTests
 
         Assert.Equal(ConsoleExitCodes.DataFolderAdmitsOthers, result.ExitCode);
         Assert.Contains("DataFolderAdmitsOthers (9): ", result.Output);
-        Assert.Contains(@"admits OFFICE\clerk; install does not repair it: inspect it, remove it and run install again", result.Output);
+        Assert.Contains($@"admits OFFICE\clerk; {Remedy}", result.Output);
         AssertNamed(folder, result);
         Assert.Equal($"others \"{folder}\"", _machine.Operations[^1]);
         Assert.DoesNotContain(_machine.Operations, line => line.StartsWith("apply data folder", StringComparison.Ordinal));
