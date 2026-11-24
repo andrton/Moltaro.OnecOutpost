@@ -77,8 +77,8 @@ You need:
   - the base key under which the application will call each base: 1 to 64 characters of `a`–`z`, `0`–`9`, `-`, `_`
     and `.`, the first a letter or a digit. The key in your local policy has to be the one the application uses.
 
-One agent machine serves the bases of one platform version for each bitness, since one COM connector is registered for
-each bitness. Bases of another version need an agent machine of their own.
+One agent machine serves the bases of one platform version: the agent starts every COM worker with the first
+registered connector, 64 bits first. Bases of another version need an agent machine of their own.
 
 ## The 1C accounts
 
@@ -597,8 +597,8 @@ Passed: the server is reachable and accepts the agent's key. Failed, with `HTTP 
 | `no answer came: the server, or the proxy of the policy, could not be reached, or did not answer within the requestTimeout of the policy` | No route, a certificate Windows does not trust, no answer in time | Check the address in `agent.json`, the proxy and the firewall |
 | `HTTP 401: the server knows no such agent, or it is still pending` | The server does not know this agent | Ask the application whether it is listed; pair anew if not |
 | `HTTP 403: the agent is revoked, or something on the path refused it` | The application revoked the agent, or a proxy refused | Ask the application; a revoked agent works again only after a new pairing |
-| `HTTP 200: the server does not verify the agent's signature: secrets.dat and agent.json come from different pairings` | The two files do not belong together | Pair anew |
-| `HTTP {status}: the server refused the form of the request` | | Update the agent or the server |
+| `HTTP 401: the server does not verify the agent's signature: secrets.dat and agent.json come from different pairings` | The two files do not belong together | Pair anew |
+| `HTTP 400: the server refused the form of the request` | The agent and the server disagree on the form of a message | Update the agent or the server |
 | `HTTP 413: something on the path refused even this small body` | A proxy or ingress limits the size of a request | Ask for the limit to be raised: outcomes can be large |
 | `HTTP {status}: an unsigned answer in the form the server uses for a protocol version it does not speak` | Versions that do not speak to each other | Update the older one |
 | `HTTP {status}: the answer's signature does not verify` | The answer was changed on the path | Check the path to the server |
@@ -768,7 +768,7 @@ stopped with a service-specific error, 1066, and the code, which `sc.exe query M
 | Code | Meaning | What to do |
 | --- | --- | --- |
 | 0 | Stopped by Windows or by you | |
-| 1 | It stopped on its own; the reason is in the audit log, as `started` with an `error` or as `stopped` | Read the last entries, act on the reason, start it again |
+| 1 | It stopped on its own; the reason is in the audit log, as `started` with an `error` or as `stopped`. When the log ends without either, the log itself could not be written, as on a full disk, and nothing more was recorded: the exit code is the reason | Read the last entries, act on the reason, start it again; when there is none, free the disk, then start it again |
 | 2 | It could not open its audit log, so it recorded nothing: another copy of the agent runs, or `audit\` is missing or refuses the agent's account | Look for another copy; run `install` again, which restores the folders' access lists |
 | 3 | Its program was started by hand, outside the service controller; nothing in the data folder changed | Start the service instead |
 | 4 | Its program was started with other arguments than `service` | Run `install` again, which sets the service's command line |
