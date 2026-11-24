@@ -32,7 +32,7 @@ public sealed class MetadataPageTests : IDisposable
 
     // Catalogs holds Products, Units and Warehouses, of which Units is too large: the page of three is read as two and
     // one, the two as one and one.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_page_that_gives_result_too_large_is_halved_until_its_one_object_too_large_is_recorded_as_failed()
     {
         Accounting.Add("Catalogs", "Catalog.Warehouses", "Warehouses");
@@ -64,7 +64,7 @@ public sealed class MetadataPageTests : IDisposable
 
     // Each Read that reaches the run limit ends its worker, so each half is read in a new session, of the same account
     // with the token of its one logon.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_page_that_does_not_end_within_the_run_limit_is_halved_each_half_in_a_new_session_of_the_same_account()
     {
         Accounting.Add("Catalogs", "Catalog.Warehouses", "Warehouses");
@@ -100,7 +100,7 @@ public sealed class MetadataPageTests : IDisposable
     }
 
     // A script error is no matter of size, so the page is not halved and both of its objects fail; the worker goes on.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_page_that_fails_in_1C_records_its_objects_as_failed_with_its_kind_its_code_and_the_text_of_1C()
     {
         Accounting.FailsPage("Catalog.Units", ErrorText);
@@ -120,7 +120,7 @@ public sealed class MetadataPageTests : IDisposable
 
     // connection-lost ends the COM worker, so the next page, Documents, is read in a new session; the lost page is not
     // halved.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_page_that_loses_the_connection_records_its_objects_as_failed_and_the_next_page_opens_a_new_session()
     {
         Accounting.LosesConnection("Catalog.Units");
@@ -151,7 +151,7 @@ public sealed class MetadataPageTests : IDisposable
     // The page of Documents ends the worker and the session that would replace it does not open: Enums, Constants,
     // AccumulationRegisters and common are recorded as failed without a code, with the open's reason, and no further
     // session is tried. Catalogs was read, so the report is written.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_session_that_does_not_reopen_records_every_page_left_and_common_as_failed_with_the_reason_of_its_open()
     {
         const string Diagnostics = "No session opened: the cluster refused the connection";
@@ -179,7 +179,7 @@ public sealed class MetadataPageTests : IDisposable
         Assert.Equal(new MetadataCategory("Enums", 1, 0, 1), run.Report.Category("Enums"));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task An_object_with_an_error_of_its_own_is_recorded_with_it_and_counted_as_failed()
     {
         Accounting.ObjectsOf("Catalogs")[1]["error"] = "The object cannot be read";
@@ -193,7 +193,7 @@ public sealed class MetadataPageTests : IDisposable
     }
 
     // The probe reads Products alone, and the one page of the configuration, Products and Units, fails.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_walk_in_which_no_page_was_read_ends_metadata_with_ReportFailed_and_its_first_end()
     {
         FakeConfiguration configuration = new();

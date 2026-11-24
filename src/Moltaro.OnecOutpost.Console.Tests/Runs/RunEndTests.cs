@@ -110,7 +110,7 @@ public sealed class RunEndTests
     [InlineData("pair")]
     [InlineData("secret")]
     [InlineData("check")]
-    [InlineData("metadata", Skip = SkipReason.NotImplemented)]
+    [InlineData("metadata")]
     [InlineData("connector register")]
     public async Task A_cancelled_run_ends_with_Cancelled_before_its_first_step(string command)
     {

@@ -94,14 +94,14 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
             return null;
         }
 
-        if (IsInside(source, programFolder))
+        if (SharedSteps.IsInside(source, programFolder))
         {
             throw new CommandEndException(
                 ConsoleExitCodes.Usage,
                 $"unpack the archive outside {_parts.ProgramFolder} and run install from there");
         }
 
-        if (IsInside(programFolder, source))
+        if (SharedSteps.IsInside(programFolder, source))
         {
             throw new CommandEndException(
                 ConsoleExitCodes.Usage,
@@ -110,14 +110,6 @@ internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
         }
 
         return _parts.Source;
-    }
-
-    // Whether the path lies inside the folder, both final paths; a root, such as C:\, ends with its separator.
-    private static bool IsInside(string path, string folder)
-    {
-        string prefix = Path.EndsInDirectorySeparator(folder) ? folder : folder + Path.DirectorySeparatorChar;
-
-        return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
     // Step 3: the program folder, copied and given its lists, then judged by the agent's own rule before any service

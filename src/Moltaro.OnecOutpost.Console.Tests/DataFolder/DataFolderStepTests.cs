@@ -28,7 +28,7 @@ public sealed class DataFolderStepTests
     [InlineData("pair")]
     [InlineData("secret")]
     [InlineData("check")]
-    [InlineData("metadata", Skip = SkipReason.NotImplemented)]
+    [InlineData("metadata")]
     public async Task A_data_folder_that_is_absent_ends_the_command_with_NotInstalled(string command)
     {
         CommandAppResult result = await _machine.RunAsync(TestMachine.CommandLine(command));

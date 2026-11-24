@@ -47,7 +47,7 @@ public sealed class MetadataFileTests : IDisposable
         AssertNothingStarted();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_file_that_exists_ends_metadata_with_Usage_and_stays_as_it_was()
     {
         string file = _metadata.ReportOf("accounting");
@@ -62,7 +62,7 @@ public sealed class MetadataFileTests : IDisposable
         AssertNothingStarted();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_folder_at_the_path_of_the_file_ends_metadata_with_Usage()
     {
         string file = _metadata.ReportOf("accounting");
@@ -76,7 +76,7 @@ public sealed class MetadataFileTests : IDisposable
         AssertNothingStarted();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_file_whose_folder_does_not_exist_ends_metadata_with_Usage()
     {
         string file = Path.Combine(_metadata.Reports.Path, "missing", "accounting.json");
@@ -91,7 +91,7 @@ public sealed class MetadataFileTests : IDisposable
 
     // The folder of the file is judged by its final path, as a junction or a short name leads into the data folder: the
     // data folder itself, or a folder inside it such as audit\.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("")]
     [InlineData("audit")]
     public async Task A_file_whose_folder_by_its_final_path_is_or_lies_in_the_data_folder_ends_metadata_with_Usage(string inside)
@@ -110,7 +110,7 @@ public sealed class MetadataFileTests : IDisposable
     }
 
     // A folder beside the data folder, whose name begins with the data folder's, lies outside it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_file_whose_folder_lies_beside_the_data_folder_under_a_longer_name_is_written()
     {
         Machine.Folders.FinalPaths[_metadata.Reports.Path] = TestMachine.DataFolder + "-reports";

@@ -17,7 +17,7 @@ public sealed class ElevationTests
     [InlineData("pair")]
     [InlineData("secret")]
     [InlineData("check")]
-    [InlineData("metadata", Skip = SkipReason.NotImplemented)]
+    [InlineData("metadata")]
     [InlineData("connector register")]
     public async Task A_command_in_a_console_that_is_not_elevated_ends_with_NotElevated_and_changes_nothing(string command)
     {

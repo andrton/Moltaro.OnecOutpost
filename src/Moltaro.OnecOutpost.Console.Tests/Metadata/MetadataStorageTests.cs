@@ -25,7 +25,7 @@ public sealed class MetadataStorageTests : IDisposable
         _metadata.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_storage_error_of_the_probe_makes_the_storage_unavailable_with_its_reason_and_the_pages_run_without_it()
     {
         Accounting.StorageFails("Catalog.Products", StorageError);
@@ -66,7 +66,7 @@ public sealed class MetadataStorageTests : IDisposable
     }
 
     // An object whose own error came first keeps it; the probe found the storage available, and it stays so.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_storage_error_of_a_later_page_is_the_error_of_each_of_its_objects_without_one_which_then_fail()
     {
         Accounting.Add("Documents", "Document.Broken", "Broken")["error"] = "The object cannot be read";
@@ -85,7 +85,7 @@ public sealed class MetadataStorageTests : IDisposable
         Assert.NotNull(report.CommonStorage);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_common_storage_that_fails_is_recorded_in_the_reads_and_leaves_the_common_storage_null()
     {
         Accounting.CommonFails("The fake common storage refused the call");

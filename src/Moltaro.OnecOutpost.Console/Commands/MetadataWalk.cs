@@ -1,0 +1,356 @@
+using System.ComponentModel;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Moltaro.OnecOutpost.Agent.Policy;
+using Moltaro.OnecOutpost.Agent.Start;
+using Moltaro.OnecOutpost.Agent.Workers;
+using Moltaro.OnecOutpost.Console.Workers;
+using Moltaro.OnecOutpost.Protocol.Messages;
+using Moltaro.OnecOutpost.Protocol.Outcomes;
+
+namespace Moltaro.OnecOutpost.Console.Commands;
+
+// The Reads of metadata in a base (the S10 brief, "metadata <BASE> <FILE>", steps 5 to 9): every one of
+// MetadataScripts.Walk, in one worker session of the base's read account at a time, in read mode and in safe mode,
+// under its worker account or the console's own restricted token, each within the read mode's run limit. The census,
+// then the probe, a page of the first object of the first category that has one, with the storage, which a storage
+// error of its own makes unavailable to the rest of the walk; then each category from its first object in pages of 50,
+// a page that gives result-too-large or no outcome within the run limit read again as two halves, the first the larger,
+// down to one object; and the common storage while the storage is available. A Read that ended its worker makes the
+// next one open a new session with the same account and its token; one that does not open is the last tried, and every
+// Read after it is recorded as not run, with its reason. It keeps every Read, every object read and the counts of each
+// category, for the report, and checks the token before each Read. A result of another form than the script's is an
+// InvalidOperationException or a KeyNotFoundException, which ends metadata with Failure. The walk owns its session and
+// is run from one task at a time.
+internal sealed class MetadataWalk : IDisposable
+{
+    // A granularity nobody observes, since a page that does not fit an outcome or the run limit is halved (principle
+    // 10).
+    private const int PageSize = 50;
+
+    private readonly List<WalkRead> _reads = [];
+
+    private readonly List<WalkObject> _objects = [];
+
+    private readonly List<WalkCategory> _categories = [];
+
+    private readonly ConsoleParts _parts;
+
+    private readonly IWorkerAccount? _account;
+
+    private readonly string _program;
+
+    private readonly string _baseKey;
+
+    private readonly WorkerConnectionLine _connection;
+
+    private readonly TimeSpan _runLimit;
+
+    // The session of the Reads, null before the first open and after one that failed.
+    private WorkerSession? _session;
+
+    // The reason of the session that did not open, after which no Read runs.
+    private string? _unopened;
+
+    // The first page that was not read, and whether any was.
+    private WalkRead? _firstFailedPage;
+
+    private bool _pageRead;
+
+    public MetadataWalk(ConsoleParts parts, string program, AgentBasePolicy served, string password, IWorkerAccount? account)
+    {
+        _parts = parts;
+        _program = program;
+        _baseKey = served.Key;
+        _account = account;
+        _runLimit = served.Read.RunLimit;
+        _connection = WorkerConnectionLine.For(
+            served,
+            served.Read with { SafeMode = true },
+            password,
+            ProgramFolderLayout.ExecutorOf(parts.ProgramFolder));
+    }
+
+    // What the census gave: the version of the platform and the configuration's name, version and compatibility mode.
+    public string Platform { get; private set; } = "";
+
+    public JsonElement Configuration { get; private set; }
+
+    // The reason the probe gave for a storage structure that the read account may not read, null while it is
+    // available.
+    public string? StorageReason { get; private set; }
+
+    // The tables of no object of the fifteen categories, null when they were not read.
+    public JsonElement? CommonStorage { get; private set; }
+
+    public IReadOnlyList<WalkRead> Reads => _reads;
+
+    // The objects read, each category's in its order, in the census's order of the categories.
+    public IReadOnlyList<WalkObject> Objects => _objects;
+
+    public IReadOnlyList<WalkCategory> Categories => _categories;
+
+    // What the progress of the pages and the common storage counts: every object found, and the common storage.
+    public int Steps => _categories.Sum(category => category.Found) + (StorageReason is null ? 1 : 0);
+
+    // Null once a page was read; otherwise how the first page ended, as step 9 names it.
+    public string? NoPageRead
+    {
+        get
+        {
+            if (_pageRead || _firstFailedPage is not WalkRead first)
+            {
+                return null;
+            }
+
+            string objects = first.Count == 1 ? "1 object" : $"{first.Count} objects";
+
+            return $"the page of {first.Category} from {first.From}, {objects}, {first.Ended(_runLimit)}";
+        }
+    }
+
+    // A session of the base, the first of step 5 and each that replaces one whose worker ended: null once it opened,
+    // otherwise why not, a start that Windows refused included.
+    public async Task<string?> OpenAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            (_session, string? reason) = await WorkerSession.OpenAsync(
+                _parts.Workers,
+                _account,
+                _program,
+                _baseKey,
+                _connection,
+                _runLimit,
+                _parts.Clock,
+                cancellationToken);
+
+            return reason;
+        }
+        catch (Exception exception) when (exception is Win32Exception or IOException)
+        {
+            return $"{_program} did not start: {CommandEndException.ReasonOf(exception)}";
+        }
+    }
+
+    // The census, {"read":"census"}: the platform, the configuration and the count of each category. One that does not
+    // succeed ends metadata with ReportFailed.
+    public async Task CensusAsync(CancellationToken cancellationToken)
+    {
+        (WalkRead read, JsonElement? result) = await ReadAsync(new JsonObject { ["read"] = "census" }, "census", null, null, null, cancellationToken);
+
+        if (result is not JsonElement census)
+        {
+            throw ReportFailed($"the census {read.Ended(_runLimit)}");
+        }
+
+        Platform = TextOf(census, "platform") ?? throw new InvalidOperationException("The census gave no platform.");
+        Configuration = census.GetProperty("configuration");
+
+        foreach (JsonElement category in census.GetProperty("categories").EnumerateArray())
+        {
+            string name = TextOf(category, "category") ?? throw new InvalidOperationException("The census gave a category without a name.");
+
+            _categories.Add(new WalkCategory(name, category.GetProperty("count").GetInt32()));
+        }
+    }
+
+    // The probe: a page of the first object of the first category that has one, with the storage, which runs before the
+    // walk so that a base whose objects cannot be read gives no report in which each object carries the same failure.
+    // A probe that does not succeed, or whose object has an error, judged before the storage error of the page, ends
+    // metadata with ReportFailed, and so does a configuration without an object; the storage error alone makes the
+    // storage unavailable to the walk, with its reason. The probe's object is read again by its page.
+    public async Task ProbeAsync(CancellationToken cancellationToken)
+    {
+        if (_categories.FirstOrDefault(category => category.Found > 0) is not WalkCategory first)
+        {
+            throw ReportFailed("the configuration has no object to read");
+        }
+
+        (WalkRead read, JsonElement? result) = await ReadPageAsync(first.Name, 0, 1, storage: true, cancellationToken);
+
+        if (result is not JsonElement page)
+        {
+            throw ReportFailed($"the probe, the first object of {first.Name}, {read.Ended(_runLimit)}");
+        }
+
+        JsonElement item = page.GetProperty("objects").EnumerateArray().FirstOrDefault();
+
+        if (item.ValueKind == JsonValueKind.Undefined)
+        {
+            throw ReportFailed("the configuration has no object to read");
+        }
+
+        if (TextOf(item, "error") is string error)
+        {
+            string probe = TextOf(item, "fullName") is string fullName ? $"the probe of {fullName}" : $"the probe, the first object of {first.Name},";
+
+            throw ReportFailed($"{probe} failed: {error}");
+        }
+
+        StorageReason = TextOf(page, "storageError");
+    }
+
+    // Steps 7 and 8: each category in pages, then the common storage while the storage is available, each step of the
+    // progress given to advance as it ends: the objects of a page read or recorded as failed, and the common storage.
+    public async Task PagesAsync(Action<int> advance, CancellationToken cancellationToken)
+    {
+        foreach (WalkCategory category in _categories)
+        {
+            for (int from = 0; from < category.Found; from += PageSize)
+            {
+                await PageAsync(category, from, Math.Min(PageSize, category.Found - from), advance, cancellationToken);
+            }
+        }
+
+        if (StorageReason is not null)
+        {
+            return;
+        }
+
+        (_, CommonStorage) = await ReadAsync(new JsonObject { ["read"] = "common" }, "common", null, null, null, cancellationToken);
+        advance(1);
+    }
+
+    // Closes the worker of the session, its job with it.
+    public void Dispose()
+    {
+        _session?.Dispose();
+    }
+
+    private static CommandEndException ReportFailed(string reason)
+    {
+        return new CommandEndException(ConsoleExitCodes.ReportFailed, reason);
+    }
+
+    // The text of a member, null for null; an absent member is a KeyNotFoundException, one of another kind an
+    // InvalidOperationException.
+    private static string? TextOf(JsonElement element, string member)
+    {
+        JsonElement value = element.GetProperty(member);
+
+        return value.ValueKind == JsonValueKind.Null ? null : value.GetString();
+    }
+
+    // One page of the category, halved depth first while it does not fit, its first half the larger.
+    private async Task PageAsync(WalkCategory category, int from, int count, Action<int> advance, CancellationToken cancellationToken)
+    {
+        (WalkRead read, JsonElement? result) = await ReadPageAsync(category.Name, from, count, StorageReason is null, cancellationToken);
+
+        if (result is JsonElement page)
+        {
+            Add(category, page);
+            _pageRead = true;
+            advance(count);
+
+            return;
+        }
+
+        if (read.DoesNotFit && count > 1)
+        {
+            int first = (count + 1) / 2;
+
+            await PageAsync(category, from, first, advance, cancellationToken);
+            await PageAsync(category, from + first, count - first, advance, cancellationToken);
+
+            return;
+        }
+
+        category.Failed += count;
+        _firstFailedPage ??= read;
+        advance(count);
+    }
+
+    // The objects of a page read, each with its error, or with storage: {storageError} when it has none and the storage
+    // of its page raised, which makes it failed.
+    private void Add(WalkCategory category, JsonElement page)
+    {
+        string? storageError = TextOf(page, "storageError");
+
+        foreach (JsonElement item in page.GetProperty("objects").EnumerateArray())
+        {
+            string? error = TextOf(item, "error");
+
+            if (error is null && storageError is not null)
+            {
+                error = $"storage: {storageError}";
+            }
+
+            _objects.Add(new WalkObject(category.Name, item, error));
+
+            if (error is null)
+            {
+                category.Read++;
+            }
+            else
+            {
+                category.Failed++;
+            }
+        }
+    }
+
+    private Task<(WalkRead Read, JsonElement? Result)> ReadPageAsync(
+        string category,
+        int from,
+        int count,
+        bool storage,
+        CancellationToken cancellationToken)
+    {
+        JsonObject parameters = new()
+        {
+            ["read"] = "page",
+            ["category"] = category,
+            ["from"] = from,
+            ["count"] = count,
+            ["storage"] = storage,
+        };
+
+        return ReadAsync(parameters, "page", category, from, count, cancellationToken);
+    }
+
+    // One Read of the walk with the parameters, recorded with the bytes of its outcome, and its result when it
+    // succeeded. A session whose worker ended is replaced first; once one did not open, the Read is recorded as not run.
+    private async Task<(WalkRead Read, JsonElement? Result)> ReadAsync(
+        JsonObject parameters,
+        string name,
+        string? category,
+        int? from,
+        int? count,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (_unopened is null && _session is not { Ended: false })
+        {
+            _session?.Dispose();
+            _session = null;
+            _unopened = await OpenAsync(cancellationToken);
+        }
+
+        WalkRead read;
+        JsonElement? result = null;
+
+        if (_unopened is string reason)
+        {
+            read = new WalkRead(name, category, from, count, 0, OutpostAgentOutcomeKindEnum.Failed, null, reason);
+        }
+        else
+        {
+            (OutpostOutcomeMessage? outcome, long size) = await _session!.ReadAsync(MetadataScripts.Walk, parameters.ToJsonString(), cancellationToken);
+
+            if (outcome is null)
+            {
+                read = new WalkRead(name, category, from, count, 0, OutpostAgentOutcomeKindEnum.Failed, OutpostOutcomeCodes.RunLimit, null);
+            }
+            else
+            {
+                read = new WalkRead(name, category, from, count, size, outcome.Kind, outcome.Code, outcome.ErrorText);
+                result = read.Succeeded ? outcome.Result : null;
+            }
+        }
+
+        _reads.Add(read);
+
+        return (read, result);
+    }
+}

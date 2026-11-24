@@ -25,7 +25,7 @@ public sealed class MetadataCensusTests : IDisposable
         _metadata.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_census_that_fails_in_1C_ends_metadata_with_ReportFailed_and_its_kind_its_code_and_the_text_of_1C()
     {
         Accounting.CensusFails(ErrorText);
@@ -36,7 +36,7 @@ public sealed class MetadataCensusTests : IDisposable
         Assert.Equal(["census"], Accounting.Answers.Select(answer => answer.Read));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_census_that_does_not_end_within_the_run_limit_ends_metadata_with_ReportFailed_and_its_worker_is_killed()
     {
         Accounting.CensusOverruns();
@@ -51,7 +51,7 @@ public sealed class MetadataCensusTests : IDisposable
         Assert.Equal(["census"], Accounting.Answers.Select(answer => answer.Read));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_probe_that_fails_in_1C_ends_metadata_with_ReportFailed_naming_the_category_of_its_object()
     {
         Accounting.FailsPage("Catalog.Products", ErrorText);
@@ -64,7 +64,7 @@ public sealed class MetadataCensusTests : IDisposable
         Assert.Equal(["census", "page Catalogs 0 1 storage"], Accounting.Answers.Select(answer => answer.Read));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_probe_that_does_not_end_within_the_run_limit_ends_metadata_with_ReportFailed_and_its_worker_is_killed()
     {
         Accounting.Overruns("Catalog.Products");
@@ -83,7 +83,7 @@ public sealed class MetadataCensusTests : IDisposable
 
     // The error of the object is judged before the storageError of its page, which alone would leave the walk without
     // the storage.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_probe_object_with_an_error_ends_metadata_with_ReportFailed_and_its_error_before_a_storage_error()
     {
         Accounting.ObjectsOf("Catalogs")[0]["error"] = "Field access denied";
@@ -96,7 +96,7 @@ public sealed class MetadataCensusTests : IDisposable
     }
 
     // A configuration whose catalogs are empty: the probe reads the first document.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_probe_reads_the_first_object_of_the_first_category_that_has_one()
     {
         FakeConfiguration configuration = new();
@@ -112,7 +112,7 @@ public sealed class MetadataCensusTests : IDisposable
             configuration.Answers.Select(answer => answer.Read));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_configuration_without_an_object_ends_metadata_with_ReportFailed()
     {
         FakeConfiguration configuration = new();

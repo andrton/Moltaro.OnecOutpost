@@ -24,7 +24,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 [SupportedOSPlatform("windows")]
 public sealed class MetadataTests
 {
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task On_the_test_base_in_safe_mode_the_report_holds_every_object_of_the_test_configuration_with_its_fields_and_its_storage()
     {
         using LabAgent agent = LabAgent.Create();
@@ -52,7 +52,7 @@ public sealed class MetadataTests
         metadata.Record(About);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task On_each_copy_of_a_typical_base_the_report_holds_every_object_and_that_of_its_document_type_with_its_fields_and_its_storage()
     {
         LabFile lab = LabFile.Read();

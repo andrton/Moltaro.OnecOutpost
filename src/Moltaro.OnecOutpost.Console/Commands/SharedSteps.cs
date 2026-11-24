@@ -114,6 +114,15 @@ internal static class SharedSteps
         return kind;
     }
 
+    // Whether the path lies inside the folder, both final paths, which install and metadata judge; a root, such as C:\,
+    // ends with its separator.
+    public static bool IsInside(string path, string folder)
+    {
+        string prefix = Path.EndsInDirectorySeparator(folder) ? folder : folder + Path.DirectorySeparatorChar;
+
+        return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static void JudgeDataFolder(ConsoleParts parts)
     {
         string folder = parts.DataFolder;

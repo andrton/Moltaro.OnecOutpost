@@ -29,7 +29,7 @@ public sealed class MetadataRunTests : IDisposable
         _metadata.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task On_a_machine_where_everything_holds_metadata_writes_the_report_and_ends_with_Success_showing_each_category_of_the_census()
     {
         MetadataRun run = await _metadata.RunAsync();
@@ -39,7 +39,7 @@ public sealed class MetadataRunTests : IDisposable
         Assert.Equal(FakeConfiguration.Categories, run.Rows.Select(row => row.Category));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_report_holds_its_format_the_base_the_time_the_platform_the_configuration_the_storage_and_each_category_in_the_order_of_the_census()
     {
         MetadataRun run = await _metadata.RunAsync();
@@ -66,7 +66,7 @@ public sealed class MetadataRunTests : IDisposable
 
     // Each object as its page gave it, with the category of the page and its tables, in the census's order: by
     // category, then by its index in its collection.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_report_holds_each_object_as_its_page_gave_it_with_its_category_and_its_tables_in_the_order_of_the_census()
     {
         MetadataRun run = await _metadata.RunAsync();
@@ -94,7 +94,7 @@ public sealed class MetadataRunTests : IDisposable
 
     // Every Read in its order: the census, the probe, a page of the first object of the first category with an object,
     // each category in a page from its first object, and the common storage, each with the bytes of its outcome.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_report_holds_the_common_storage_and_every_Read_in_its_order_with_the_bytes_of_its_outcome()
     {
         MetadataRun run = await _metadata.RunAsync();
@@ -114,7 +114,7 @@ public sealed class MetadataRunTests : IDisposable
     }
 
     // The probe and every page ask for the storage, which the probe found available.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_probe_and_every_page_ask_for_the_storage_and_the_common_storage_is_read_last()
     {
         await _metadata.RunAsync();
@@ -135,7 +135,7 @@ public sealed class MetadataRunTests : IDisposable
 
     // A category of 120 objects is read in pages of 50, the last one of what is left, each from the index after the
     // last one before it.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_category_is_read_from_its_first_object_in_pages_of_50()
     {
         for (int index = 3; index <= 120; index++)
@@ -154,7 +154,7 @@ public sealed class MetadataRunTests : IDisposable
 
     // One UTF-8 JSON file without a byte order mark, indented, every character written as it is, such as the Cyrillic
     // of a synonym and the &, <, > and ' that an encoder for HTML would escape.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_report_is_indented_UTF_8_without_a_byte_order_mark_and_writes_every_character_as_it_is()
     {
         MetadataRun run = await _metadata.RunAsync();
@@ -168,7 +168,7 @@ public sealed class MetadataRunTests : IDisposable
     }
 
     // Nothing of the report is data of the base, a password or an account.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_report_holds_no_password_and_no_account()
     {
         MetadataRun run = await _metadata.RunAsync();
@@ -182,7 +182,7 @@ public sealed class MetadataRunTests : IDisposable
 
     // check's rule first, the files, the connector and the access lists, then the one logon of the worker account, then
     // one session and its Reads; no probe.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Metadata_takes_its_steps_in_their_order_and_runs_no_probe()
     {
         await _metadata.RunAsync();
@@ -207,7 +207,7 @@ public sealed class MetadataRunTests : IDisposable
 
     // metadata works while the service runs, which holds the audit log and writes the outbox: it changes no file of the
     // data folder, takes no lock there, changes nothing else of the machine, and never reaches the server.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Metadata_only_reads_the_data_folder_changes_nothing_of_the_machine_and_reaches_no_server()
     {
         string outcome = $"{Guid.NewGuid()}.json";
@@ -230,7 +230,7 @@ public sealed class MetadataRunTests : IDisposable
 
     // metadata runs Reads of its one script alone, in read mode and in safe mode whatever the policy says of the Writes
     // of the base, such as accounting's without safe mode, under the read account with its password.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Every_worker_runs_the_walk_in_read_mode_and_in_safe_mode_with_the_read_account_and_its_password()
     {
         await _metadata.RunAsync();
@@ -257,7 +257,7 @@ public sealed class MetadataRunTests : IDisposable
 
     // The service runs every worker of a base with a worker account under it (D12), so metadata does as well, through
     // the Secondary Logon service; a base without one under the console's own token, which logs nothing on.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("accounting", "outpost-worker")]
     [InlineData("warehouse", null)]
     public async Task The_worker_of_a_base_with_a_worker_account_runs_under_it_and_that_of_a_base_without_one_under_the_console(
@@ -275,7 +275,7 @@ public sealed class MetadataRunTests : IDisposable
 
     // Each failed logon counts toward a lockout of the account, so metadata logs the worker account on once per run,
     // with the password of secrets.dat, and closes it with every worker by its end.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task The_worker_account_logs_on_once_and_every_worker_and_account_is_closed_by_the_end()
     {
         await _metadata.RunAsync();

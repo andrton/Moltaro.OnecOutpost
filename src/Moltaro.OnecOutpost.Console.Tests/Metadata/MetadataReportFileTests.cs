@@ -21,7 +21,7 @@ public sealed class MetadataReportFileTests : IDisposable
     }
 
     // Somebody makes the file while the walk reads the common storage, its last Read.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_file_made_during_the_walk_ends_metadata_with_Failure_stays_as_it_was_and_no_temporary_file_is_left()
     {
         string file = _metadata.ReportOf("accounting");
@@ -42,7 +42,7 @@ public sealed class MetadataReportFileTests : IDisposable
     }
 
     // Ctrl+C cancels the token of the run while the census is read; metadata checks it before the next Read.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Ctrl_C_between_two_Reads_ends_metadata_with_Cancelled_before_any_file_exists()
     {
         using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

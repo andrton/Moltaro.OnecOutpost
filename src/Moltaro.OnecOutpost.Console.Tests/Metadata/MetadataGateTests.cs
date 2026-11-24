@@ -31,7 +31,7 @@ public sealed class MetadataGateTests : IDisposable
         _metadata.Dispose();
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_policy_that_is_invalid_ends_metadata_with_CheckFailed_and_the_reason_of_the_agent()
     {
         const string Policy = """{ "bases": [] }""";
@@ -45,7 +45,7 @@ public sealed class MetadataGateTests : IDisposable
     }
 
     // pair refuses while agent.json exists, so the remedy says to remove it first.
-    [Theory(Skip = SkipReason.NotImplemented)]
+    [Theory]
     [InlineData("absent", "secrets.dat is absent; to pair the agent anew, remove agent.json, if any, and run the console's pair")]
     [InlineData("not decrypted", "secrets.dat cannot be decrypted on this machine; to pair the agent anew, remove agent.json, if any, and run the console's pair")]
     public async Task A_secrets_dat_that_cannot_be_used_ends_metadata_with_CheckFailed_and_its_reason(string fault, string reason)
@@ -65,7 +65,7 @@ public sealed class MetadataGateTests : IDisposable
         Assert.Empty(Machine.Workers.LogOns);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_base_that_the_policy_does_not_name_ends_metadata_with_NotInPolicy_before_the_connector_is_looked_for()
     {
         MetadataRun run = _metadata.Ended(
@@ -79,7 +79,7 @@ public sealed class MetadataGateTests : IDisposable
 
     // The read password of the base is the one named, alone, though its write password and its worker account's are
     // missing too.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_missing_read_password_of_the_base_ends_metadata_with_CheckFailed_naming_that_password_alone()
     {
         _metadata.WriteSecrets(Secrets(
@@ -97,7 +97,7 @@ public sealed class MetadataGateTests : IDisposable
         Assert.Empty(Machine.Workers.LogOns);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_missing_password_of_the_worker_account_of_the_base_ends_metadata_with_CheckFailed_naming_it()
     {
         _metadata.WriteSecrets(Secrets(
@@ -119,7 +119,7 @@ public sealed class MetadataGateTests : IDisposable
     }
 
     // metadata runs Reads alone, under the read account, so the write password is not needed, nor any of another base.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_missing_write_password_or_one_of_another_base_neither_refuses_nor_is_named()
     {
         _metadata.WriteSecrets(Secrets(
@@ -132,7 +132,7 @@ public sealed class MetadataGateTests : IDisposable
         Assert.DoesNotContain("holds no password", run.Output, StringComparison.Ordinal);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task Without_a_registered_connector_metadata_ends_with_CheckFailed_and_the_line_of_the_connector()
     {
         Machine.Connectors.Uninstall(ConnectorBitnessEnum.X64);
@@ -144,7 +144,7 @@ public sealed class MetadataGateTests : IDisposable
 
     // A local user admitted to the data folder could have planted a policy whose base runs code of his own, with
     // secrets that he encrypted for the machine.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_data_folder_that_admits_somebody_else_ends_metadata_with_CheckFailed_and_the_reason_of_the_start()
     {
         Machine.Access.Admit("", @"BUILTIN\Users");
@@ -154,7 +154,7 @@ public sealed class MetadataGateTests : IDisposable
         AssertRefused(run, $"AccessLists {TestMachine.DataFolder}", StartChecks.AccessReason("", Machine.Access.Others(""))!);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_data_folder_that_is_a_reparse_point_ends_metadata_with_CheckFailed()
     {
         Machine.Folders.Kinds[TestMachine.DataFolder] = FolderKindEnum.ReparsePoint;
@@ -168,7 +168,7 @@ public sealed class MetadataGateTests : IDisposable
     }
 
     // Somebody who may change the worker could run code under the worker account, or under the console's administrator.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_program_folder_that_somebody_else_may_change_ends_metadata_with_CheckFailed_and_the_reason_of_the_start()
     {
         Machine.Access.LetChange(MetadataMachine.Program, @"PC-1\intruder");
@@ -181,7 +181,7 @@ public sealed class MetadataGateTests : IDisposable
             StartChecks.WritersReason(MetadataMachine.Program, [@"PC-1\intruder"]));
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_folder_of_the_connector_that_somebody_else_may_change_ends_metadata_with_CheckFailed_and_the_reason_of_the_start()
     {
         string connector = Path.Combine(MetadataMachine.ConnectorFolder, "comcntr.dll");
@@ -193,7 +193,7 @@ public sealed class MetadataGateTests : IDisposable
     }
 
     // Each failed logon counts toward a lockout, so the account is logged on once, never again.
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_account_that_cannot_log_on_ends_metadata_with_CheckFailed_after_one_logon()
     {
         Machine.Workers.LogOnErrors[MetadataMachine.WorkerAccount] = 1326;
@@ -207,7 +207,7 @@ public sealed class MetadataGateTests : IDisposable
         Assert.Single(Machine.Workers.LogOns);
     }
 
-    [Fact(Skip = SkipReason.NotImplemented)]
+    [Fact]
     public async Task A_worker_account_whose_token_is_beyond_an_ordinary_user_ends_metadata_with_CheckFailed_and_is_closed()
     {
         Machine.Workers.Administrators.Add(MetadataMachine.WorkerAccount);
