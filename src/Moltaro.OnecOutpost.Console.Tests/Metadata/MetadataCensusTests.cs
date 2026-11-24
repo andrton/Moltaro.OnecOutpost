@@ -169,15 +169,14 @@ public sealed class MetadataCensusTests : IDisposable
             (page.Read, page.Category, page.From, page.Count, page.Kind, page.Code, page.ErrorText));
     }
 
-    // The S10 brief, "After the lab run of deeb370", 1: a value of the census without an XML form, which XMLString
-    // raises on, as the lab found on a typical copy, is {"error": text} in its place, the walk goes on, and the caption
-    // of the table names it. The caption may wrap within the width of the table, so its words are read across the
-    // lines.
+    // The S10 brief, "After the lab run of deeb370", 1: a census property that 1C cannot read is {"error": text} in
+    // its place, the walk goes on, and the table's caption names it. The caption may wrap within the width of the
+    // table, so its words are read across the lines.
     [Fact]
     public async Task Census_values_that_1C_cannot_give_are_errors_in_their_place_named_in_the_caption_and_the_report_is_written()
     {
         const string PlatformError = "SystemInfo is not available";
-        const string ModeError = "XMLString cannot convert the value";
+        const string ModeError = "The compatibility mode could not be read";
         Accounting.CensusValueFails("platform", PlatformError);
         Accounting.CensusValueFails("compatibilityMode", ModeError);
 

@@ -184,7 +184,7 @@ public sealed class MetadataPageTests : IDisposable
     [Fact]
     public async Task Properties_of_an_object_that_1C_cannot_give_fail_the_object_naming_them_and_the_rest_of_it_is_read()
     {
-        Accounting.PropertyFails("Document.GoodsReceipt", "numberPeriodicity", "The value has no XML form");
+        Accounting.PropertyFails("Document.GoodsReceipt", "numberPeriodicity", "The number periodicity could not be read");
         Accounting.PropertyFails("Document.GoodsReceipt", "registerRecords", "The collection cannot be read");
 
         MetadataRun run = await _metadata.RunAsync();
@@ -192,7 +192,7 @@ public sealed class MetadataPageTests : IDisposable
         run.AssertSucceeded(read: 5, found: 6, failed: 1);
         JsonElement receipt = run.Report.Object("Document.GoodsReceipt");
         Assert.Equal(
-            "numberPeriodicity: The value has no XML form; registerRecords: The collection cannot be read",
+            "numberPeriodicity: The number periodicity could not be read; registerRecords: The collection cannot be read",
             MetadataReport.TextOf(receipt, "error"));
         Assert.Equal("Allow", receipt.GetProperty("properties").GetProperty("posting").GetString());
         Assert.Equal(3, receipt.GetProperty("fields").GetArrayLength());

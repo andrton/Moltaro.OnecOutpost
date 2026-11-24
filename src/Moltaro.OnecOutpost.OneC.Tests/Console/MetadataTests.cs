@@ -37,18 +37,25 @@ public sealed class MetadataTests
         const string About = "the test base";
         metadata.AssertEveryObjectRead(About);
         MetadataReport report = metadata.Report;
+        AssertNonemptyText($"{About} configuration", report.Root.GetProperty("configuration"), "compatibilityMode");
 
         JsonElement receipt = report.Object("Document.GoodsReceipt");
+        AssertNonemptyText("Document.GoodsReceipt properties", receipt.GetProperty("properties"), "numberType", "numberPeriodicity", "posting");
         Assert.Equal(["Catalog.Products"], LabMetadata.TypesOf(MetadataReport.FieldOf(receipt, "Attributes", "Product")));
         JsonElement quantity = MetadataReport.FieldOf(receipt, "Attributes", "Quantity").GetProperty("number");
         Assert.Equal((15, 3), (quantity.GetProperty("digits").GetInt32(), quantity.GetProperty("fractionDigits").GetInt32()));
-        Assert.Equal(200, MetadataReport.FieldOf(receipt, "Attributes", "Comment").GetProperty("string").GetProperty("length").GetInt32());
+        JsonElement comment = MetadataReport.FieldOf(receipt, "Attributes", "Comment");
+        Assert.Equal(200, comment.GetProperty("string").GetProperty("length").GetInt32());
+        AssertNonemptyText("Document.GoodsReceipt.Attributes.Comment", comment, "indexing");
 
         JsonElement stock = report.Object("AccumulationRegister.Stock");
+        AssertNonemptyText("AccumulationRegister.Stock properties", stock.GetProperty("properties"), "registerType");
         Assert.Equal(["Catalog.Products"], LabMetadata.TypesOf(MetadataReport.FieldOf(stock, "Dimensions", "Product")));
         Assert.Equal(["Number"], LabMetadata.TypesOf(MetadataReport.FieldOf(stock, "Resources", "Quantity")));
 
-        Assert.True(report.Object("Catalog.Products").GetProperty("properties").GetProperty("hierarchical").GetBoolean());
+        JsonElement productProperties = report.Object("Catalog.Products").GetProperty("properties");
+        Assert.True(productProperties.GetProperty("hierarchical").GetBoolean());
+        AssertNonemptyText("Catalog.Products properties", productProperties, "hierarchyType");
 
         await AssertStorageAsync(About, report, receipt, metadata.Named, LabWorkers.TestBaseReadAsync);
         metadata.Record(About);
@@ -75,6 +82,8 @@ public sealed class MetadataTests
 
             metadata.AssertEveryObjectRead(about);
             MetadataReport report = metadata.Report;
+            AssertNonemptyText($"{about} configuration", report.Root.GetProperty("configuration"), "compatibilityMode");
+
             string fullName = $"Document.{typicalBase.DocumentType}";
             List<JsonElement> matching = [.. report.Objects.Where(item => MetadataReport.TextOf(item, "fullName") == fullName)];
             Assert.True(matching.Count == 1, $"{about}: the report holds {matching.Count} objects of the configured document type, expected one.");
@@ -84,6 +93,17 @@ public sealed class MetadataTests
 
             await AssertStorageAsync(about, report, document, metadata.Named, () => LabWorkers.TypicalBaseReadAsync(typicalBase));
             metadata.Record(about);
+        }
+    }
+
+    // The platform can render an enumeration in its own language, so require text without pinning the spelling.
+    private static void AssertNonemptyText(string about, JsonElement item, params string[] members)
+    {
+        foreach (string member in members)
+        {
+            Assert.False(
+                string.IsNullOrWhiteSpace(MetadataReport.TextOf(item, member)),
+                $"{about} must have a nonempty string for {member}.");
         }
     }
 
