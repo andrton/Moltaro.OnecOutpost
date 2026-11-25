@@ -15,7 +15,7 @@ namespace Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 // and then gives false; a run gives the executor's outcome with its size, or waits until Kill and then gives null; an
 // open or a run of a worker that ended gives false or null at once. Its standard error, Diagnostics, ends when the
 // worker ends: after an open that gave false, at Kill, or at its dispose, which closes its input. Its end as a session
-// ends it, EndAsync (the S10 brief, "After the lab run of deeb370", 2), is a line "end {base} {user} within
+// ends it, EndAsync, is a line "end {base} {user} within
 // {deadline}": a worker that ended, or that ends at the end of its input, has exited then; one whose session lingers
 // waits the deadline on the clock given, is terminated, a line "terminate {base} {user}", and has exited. Kill makes it
 // exit at once; a dispose alone does not. Kill completes a pending open or run, may run beside either from any thread,

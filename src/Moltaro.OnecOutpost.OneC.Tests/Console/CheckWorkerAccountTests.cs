@@ -9,7 +9,7 @@ using Moltaro.OnecOutpost.TestSupport.Check;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 
-// The lines of the worker account on the lab (the S10b brief, "Lab tests", and Acceptance, the owner, 23 November 2026),
+// The lines of the worker account on the lab,
 // each failure case broken on purpose where that needs no change of the machine: a changed password of the lab's worker
 // account and an account that does not exist fail the logon with 1326; the local Guest, disabled, with a blank password,
 // fails it with 1331, or with 1327 when Windows judges the blank password first; and the program folder of the test,
@@ -39,7 +39,7 @@ public sealed class CheckWorkerAccountTests
         AssertCannotLogOn(check, user, 1326);
     }
 
-    // Which of the two Windows gives is recorded by the lab run of S10c, and this test then states that one alone.
+    // The lab records whether Windows rejects the disabled account or the blank password first.
     [Fact]
     public async Task The_disabled_Guest_with_a_blank_password_fails_its_logon_as_disabled_or_by_a_restriction_of_the_account()
     {
@@ -56,10 +56,9 @@ public sealed class CheckWorkerAccountTests
     }
 
     // The test's own program folder, made as the console's install makes it, loses the entry that lets Users read and
-    // run the worker; nothing of the machine changes. The program's folder is the worker's working folder, which the
-    // Secondary Logon service may judge first, as 267, before the program, as 5: which of the two Windows gives is
-    // recorded by the lab run of S10c, and this test then states that one alone (the contract amended after the first
-    // code review).
+    // run the worker; nothing of the machine changes. The program's folder is the worker's working folder. The
+    // Secondary Logon service may reject that folder with error 267 or the executable with error 5. The lab records
+    // which error Windows returns.
     [Fact]
     public async Task A_program_folder_without_the_entry_of_Users_fails_the_probe_as_a_program_or_a_folder_that_the_account_may_not_read()
     {

@@ -4,7 +4,7 @@ using Moltaro.OnecOutpost.Console.Rights;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 
-// The rights of accounts through LSA (the S10 brief, "WindowsAccountRights"), with Requires=Windows and
+// The rights of accounts through LSA, with Requires=Windows and
 // Requires=Administrator, on the virtual account of a service of the test's own, which stands for the agent's and for a
 // worker account, so that no local user is made: Grant adds rights, a right held changing nothing; Revoke takes the
 // rights it names and no other, an account that LSA does not know being no error; Held reads them back, none once all

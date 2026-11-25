@@ -6,7 +6,7 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
-// Concept rule 3 and §5 on the lab (the S9b brief, "The lab tests"): the agent ends its COM workers with itself, and a
+// Concept rule 3 and §5 on the lab: the agent ends its COM workers with itself, and a
 // Write that was running then is Unknown. Once a poll shows the looping Write as received and not yet confirmed, and its
 // run began, the test stops the agent, which exits with Stopped; a second run of the agent on the data folder finds the
 // Write received without an outcome and sends Unknown agent-stopped.

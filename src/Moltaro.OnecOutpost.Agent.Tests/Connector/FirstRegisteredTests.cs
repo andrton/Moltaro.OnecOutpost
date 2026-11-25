@@ -2,8 +2,8 @@ using Moltaro.OnecOutpost.Agent.Connector;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Connector;
 
-// The first finding with a registered connector, chosen once for the agent's launcher and the console (the S10 brief,
-// "Internal of S10c", review 3's entry 3): in the finder's order, which gives 64 bits first, so a registration for 64
+// The first finding with a registered connector, chosen once for the agent's launcher and the console: in the
+// finder's order, which gives 64 bits first, so a registration for 64
 // bits wins over one for 32; a bitness with copies installed and none registered is passed over; and without any
 // registration there is none.
 public sealed class FirstRegisteredTests

@@ -8,7 +8,7 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 
-// The requests of the agent's connection (§1, §2, §4 and §11 of docs/protocol.md, the S6 brief, "AgentConnection"): a
+// The requests of the agent's connection (§1, §2, §4 and §11 of docs/protocol.md): a
 // POST over HTTP/1.1 to {prefix}/v1/{request} of the server's address, with the exact bytes it signed by the writer of
 // §2, Content-Type application/json, Outpost-Agent, Outpost-Signature over the body with the agent's key,
 // Accept-Encoding identity, no Content-Encoding and no credentials; on outcome, Expect: 100-continue. The connection

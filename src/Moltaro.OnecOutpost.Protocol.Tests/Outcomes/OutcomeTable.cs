@@ -3,8 +3,8 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 namespace Moltaro.OnecOutpost.Protocol.Tests.Outcomes;
 
 // The tables of §8 of docs/protocol.md, written out as the document gives them: the outcomes an agent may send, by
-// mode, and the outcomes a COM worker may hand the agent. The first has the codes of the connection to 1C, which S9
-// adds to it: Failed base-unreachable for a Read and a Write, Failed connection-lost for a Read and Unknown
+// mode, and the outcomes a COM worker may hand the agent. The first has the codes of the connection to 1C: Failed
+// base-unreachable for a Read and a Write, Failed connection-lost for a Read and Unknown
 // connection-lost for a Write. The tests of the outcome codes and of the reader of the outcome object both go through
 // every combination of a mode, a kind and a code, and expect what these tables say.
 internal static class OutcomeTable
@@ -75,7 +75,7 @@ internal static class OutcomeTable
 
     private static readonly string[] FailedOfTheExecutor = ["script-error", "result-type", "result-too-large"];
 
-    // The codes of a failure of the connection to 1C, which the COM worker reports (S9).
+    // The codes of a failure of the connection to 1C, which the COM worker reports.
     private static readonly string[] CodesOfTheConnectionTo1C = ["base-unreachable", "connection-lost"];
 
     // Every combination of a mode, a kind and a code.
@@ -83,8 +83,7 @@ internal static class OutcomeTable
 
     // The outcomes with a code of the connection to 1C that an agent may send: Failed base-unreachable for a Read and a
     // Write, Failed connection-lost for a Read and Unknown connection-lost for a Write. The tests read them apart from
-    // the other combinations, since the codec accepts them only from S9 on; every other combination with these codes
-    // is refused already.
+    // the other combinations. The codec refuses every other combination with these codes.
     public static TheoryData<string, string, string?> AgentOutcomesOfTheConnectionTo1C =>
         CombinationsWhere(IsAgentOutcomeOfTheConnectionTo1C);
 
@@ -116,8 +115,8 @@ internal static class OutcomeTable
         };
     }
 
-    // The paragraph "The executor", with the outcomes that S9's worker writes itself in the same form (the S9b brief,
-    // "The lines the pool accepts"): what the executor hands over, succeeded, failed with script-error, result-type or
+    // The executor outcomes in §8 of docs/protocol.md, together with the outcomes the COM worker writes in the same
+    // format: what the executor hands over, succeeded, failed with script-error, result-type or
     // result-too-large, and for a Write unknown with transaction-ended; and Failed base-unreachable in either mode,
     // Failed connection-lost for a Read, and Unknown connection-lost and Unknown result-type for a Write.
     public static bool ComWorkerMayHandOver(string mode, string kind, string? code)

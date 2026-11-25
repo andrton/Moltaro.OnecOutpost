@@ -6,7 +6,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Polls;
 
-// Poll numbers grow across a restart, with the fake clock (the acceptance of S6, §6.2 and §13 of docs/protocol.md):
+// Poll numbers grow across a restart, with the fake clock (§6.2 and §13 of docs/protocol.md):
 // each start of the agent is AgentStart.Open on the same data folder with a clock of its own, which may be set back,
 // and the first poll of every start records a reservation. A hop that kept a poll from a time the clock was ahead can
 // never replay it as the newest after a restart.
@@ -60,7 +60,7 @@ public sealed class RestartNumberTests
         }
     }
 
-    // The acceptance of S6: after the numbers ran out through the newest of an answer, every later start records started
+    // After the numbers ran out through the newest of an answer, every later start records started
     // with an error.
     [Fact]
     public void After_an_answer_whose_newest_is_the_greatest_number_every_later_start_records_started_with_an_error()

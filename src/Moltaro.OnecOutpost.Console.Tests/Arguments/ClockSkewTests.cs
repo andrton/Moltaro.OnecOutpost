@@ -5,7 +5,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Arguments;
 
-// --clock-skew of check (the S10b brief, "check", and CheckCommand.Settings): a time in the constant form [d.]hh:mm:ss
+// --clock-skew of check: a time in the constant form [d.]hh:mm:ss
 // of policy.json, from OutpostProtocol.MinClockSkew, 00:00:01, to MaxClockSkew, 01:00:00, which is how far check lets
 // the server's clock be from this machine's. Absent, it is the server's default ClockSkew, since the console cannot read
 // the server's own (principle 10). Anything else ends check with Usage before it runs, with the rule and without the

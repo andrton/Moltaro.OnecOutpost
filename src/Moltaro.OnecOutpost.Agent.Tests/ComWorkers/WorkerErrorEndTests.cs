@@ -8,7 +8,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// The creation of a worker with three ends (the S10b brief, "The launcher's steps" and "Tests with Requires=Windows"):
+// The creation of a worker with three ends:
 // WorkerCreation.CreateSuspended with AsUser and the account's own token gives the worker the ends given as its
 // standard input, output and error, the third one being the standard error of a worker that the console's check
 // starts, and nothing else of the caller's; JoinAndResume puts it into the job and resumes it. What the test program

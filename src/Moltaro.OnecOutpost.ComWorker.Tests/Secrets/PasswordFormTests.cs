@@ -4,8 +4,7 @@ namespace Moltaro.OnecOutpost.ComWorker.Tests.Secrets;
 
 // The connector writes the password into a 1C connection string, quoted with its quotes doubled, and 1C may quote that
 // string in a failure, so the worker withholds a failure text that holds the password in that form too. An empty
-// password withholds nothing, and the text of the failure still reaches the diagnostics (the brief of S9, "The lines";
-// principle 9).
+// password withholds nothing, and the text of the failure still reaches the diagnostics (principle 9).
 [Trait("Requires", "Windows")]
 public sealed class PasswordFormTests
 {

@@ -4,7 +4,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// The lines of S9 as ComWorkerProcess reads them (the S9b brief, "ComWorkerProcess"). The ready line is one line of at
+// How ComWorkerProcess reads the worker's lines. The ready line is one line of at
 // most 1 KiB, true only for an object whose one member is "ready":true. An outcome line is one line of at most
 // OutcomeLimit plus 64 bytes: an object with exactly size, an integer from 0, then outcome, any JSON value, which gives
 // size and the exact bytes of outcome, whatever their length. Any other line, and the end of the output before a whole

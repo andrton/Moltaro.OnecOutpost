@@ -4,12 +4,11 @@ using Moltaro.OnecOutpost.TestSupport.Programs;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Host;
 
-// The agent program on Windows (the S6 brief, "Program", "AgentService.Run" and "AgentExitCodes"), with
-// Requires=Windows: started with service by anything but the service controller, the dispatcher fails with error 1063
-// and the program exits with NotService before it touches its data folder, %ProgramData%\Moltaro.OnecOutpost, which
-// the test only reads; with any other arguments it exits with Usage and never waits on the service controller. The
-// program is the one built beside the tests, run with its standard streams redirected. A real service is the manual
-// acceptance of the brief.
+// The agent program on Windows, with Requires=Windows: started with service by anything but the service controller,
+// the dispatcher fails with error 1063 and the program exits with NotService before it touches its data folder,
+// %ProgramData%\Moltaro.OnecOutpost, which the test only reads; with any other arguments it exits with Usage and
+// never waits on the service controller. The program is the one built beside the tests, run with its standard streams
+// redirected. The service controller is checked manually with a real service.
 [Trait("Requires", "Windows")]
 [SupportedOSPlatform("windows")]
 public sealed class ProgramTests

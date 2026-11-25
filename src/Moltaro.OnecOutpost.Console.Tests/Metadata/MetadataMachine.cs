@@ -12,8 +12,8 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
-// A test's machine as install, pair and secret left it, on which metadata writes a report of each base (the S10 brief,
-// "Tests on every platform"): the data folder with the policy of TestMachine, agent.json and secrets.dat with the
+// A test's machine as install, pair and secret left it, on which metadata writes a report of each base: the data
+// folder with the policy of TestMachine, agent.json and secrets.dat with the
 // agent's key and every password the policy needs; the COM connector of one version registered for 64 bits; the worker
 // account of accounting, a local user that logs on for a batch job with an ordinary token; and for the read account of
 // each base a session whose configuration is FakeConfiguration.Standard, which answers the walk as its script would.

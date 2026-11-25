@@ -6,8 +6,8 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Loop;
 
-// Outcomes are sent until they are confirmed (concept rules 3 and 11, §6.3 and §9 of docs/protocol.md, the S6 brief,
-// "AgentLoop.RunAsync"): one at a time, the files of the outbox in turn, the start's first. A lost answer sends the
+// Outcomes are sent until they are confirmed (concept rules 3 and 11, §6.3 and §9 of docs/protocol.md): one at a
+// time, the files of the outbox in turn, the start's first. A lost answer sends the
 // same bytes again later: after it the next file waits a growing delay of its own. After a restart, the outcomes that
 // the start recorded are sent: Unknown agent-stopped for a Write and Failed lost for a Read that were received and never
 // ended, and a file without its ended as it is.

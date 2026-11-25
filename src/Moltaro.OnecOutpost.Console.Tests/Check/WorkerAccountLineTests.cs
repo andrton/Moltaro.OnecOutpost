@@ -4,7 +4,7 @@ using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line WorkerAccount of check (the S10b brief, "check", and the stage contract), for each base whose policy names a
+// The line WorkerAccount of check, for each base whose policy names a
 // worker account: its batch logon with the password of secrets.dat, and the rule of its token. A logon that fails is
 // named by WorkerAccountReasons.CannotLogOn, the sentence that the agent's start gives too, and so is a token whose
 // groups or privileges cannot be read; a token beyond an ordinary user's by NotOrdinary. The account is logged on once,

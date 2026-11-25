@@ -4,12 +4,11 @@ using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line ReadRights of check (the S10b brief, "check", and the stage contract), for each base: the rights to change
-// data that its read account holds, as the read account's third script gives them, the global rights over the
-// configuration and, for each category of objects and each right, how many objects and their full names. A read
-// account holds none, so each is named: the global rights, then the rights of each kind of objects together, with how
-// many objects hold any of them, the first three full names and how many more (the S10 brief, "After the lab run of
-// deeb370", 4: the line of each right with ten names ran to thousands of characters on a typical copy).
+// The line ReadRights of check, for each base: the rights to change data that its read account holds, as the read
+// account's third script gives them, the global rights over the configuration and, for each category of objects and
+// each right, how many objects and their full names. A read account holds none, so each is named: the global rights,
+// then the rights of each kind of objects together, with how many objects hold any of them, the first three full
+// names and how many more.
 public sealed class ReadRightsLineTests : IDisposable
 {
     private readonly CheckedMachine _checked = new();

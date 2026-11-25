@@ -3,7 +3,7 @@ using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Secrets;
 
 // The first input line carries the password, so the worker never writes it, also when it cannot read it and so cannot
-// know which part of it is the password (the brief of S9, "The lines").
+// know which part of it is the password.
 [Trait("Requires", "Windows")]
 public sealed class FirstLineTests
 {

@@ -4,7 +4,7 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 namespace Moltaro.OnecOutpost.Agent.Tests;
 
 // Lines of the audit log written by hand, as an earlier run of the agent left them, for a test to seed: each is one
-// entry of the table of "The audit log" in the plan, in the form of the writer of §2 of docs/protocol.md, with its LF.
+// audit entry, in the form of the writer of §2 of docs/protocol.md, with its LF.
 // A received names the base accounting, and a Write the caller key invoice-42.
 internal static class AuditLines
 {
@@ -86,8 +86,8 @@ internal static class AuditLines
             $"\"agent\":\"{agent}\",\"below\":{below.ToString(CultureInfo.InvariantCulture)}");
     }
 
-    // A stopped (the owner's Q16): the reason of a stop after started, its \ and " escaped as the writer of §2 escapes
-    // them.
+    // A stopped entry holds the reason for a fault after started. Its quotes and backslashes are escaped by the
+    // writer of §2 of docs/protocol.md.
     public static string Stopped(DateTimeOffset time, string error)
     {
         string escaped = error.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);

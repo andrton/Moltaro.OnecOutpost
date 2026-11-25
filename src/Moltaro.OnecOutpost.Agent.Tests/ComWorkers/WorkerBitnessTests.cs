@@ -8,11 +8,9 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// Concept §5 and O8, the S9b brief, "The bitness": a COM worker runs with the bitness of the connector it uses. The
-// launcher reads the registry at each start and starts the x64 program when the connector is registered for 64 bits,
-// otherwise the x86 program when it is for 32 bits, and otherwise no process, whose open gives false; a program that
-// does not start gives no process too, and Start throws nothing. Since S10a the launcher reads the registry through the
-// one finder of the connector, and a registration whose file is gone no longer picks its bitness (the S10 brief). The
+// As described in concept §5 and O8, a COM worker runs with the bitness of the connector it uses. At each start, the
+// shared connector finder selects a registration with an existing file, preferring x64 over x86. If neither exists or
+// the program cannot start, the launcher returns no process and the open returns false. The
 // test program is copied into x64\ and x86\ of the test's folder, path names the copy that runs, and the class of the
 // connector is the test's own, for the current user.
 [Trait("Requires", "Windows")]

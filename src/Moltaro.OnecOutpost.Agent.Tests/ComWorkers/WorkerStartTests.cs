@@ -8,7 +8,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// The start of a worker (the S9b brief, "The start"): the program with the base key and the mode as its command line,
+// The start of a worker: the program with the base key and the mode as its command line,
 // read or write, and nothing else; the connection, with its password, travels only in the first line of its input,
 // which the worker gets as ComWorkerProcess wrote it.
 [Trait("Requires", "Windows")]

@@ -6,7 +6,7 @@ using static Moltaro.OnecOutpost.TestSupport.TestTimes;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Checks;
 
-// The checks of the commands of a poll answer (§6.2 of docs/protocol.md, the S6b brief). Every command is checked by
+// The checks of the commands of a poll answer (§6.2 of docs/protocol.md). Every command is checked by
 // §7 before any is recorded (rule 2). The answer is lost when the commands that run are more than the free that the
 // poll declared for a base and mode, or when two commands with an identity share it, whatever their verdicts; a
 // command that fails §7 counts for nothing. Otherwise the checks come in the order of the answer. So a command never
@@ -21,7 +21,7 @@ public sealed class AnswerCheckTests : IDisposable
         _test.Dispose();
     }
 
-    // §6.2 and the acceptance of S6: a command for a base or mode that the policy does not serve is refused with
+    // Under §6.2 of docs/protocol.md, a command for a base or mode that the policy does not serve is refused with
     // not-served, a command that fails another check is refused too, a known one is not run again, and the others
     // run. Only those that run count against free: here each base and mode has one free worker.
     [Fact]
@@ -140,8 +140,7 @@ public sealed class AnswerCheckTests : IDisposable
         Assert.Empty(checks);
     }
 
-    // The S6b brief: the checks record nothing, neither the commands that run nor the refusals; the loop records what
-    // they give (rule 2).
+    // The loop records the accepted commands and refusals returned by the checks (concept rule 2).
     [Fact]
     public void The_checks_of_an_answer_record_nothing()
     {

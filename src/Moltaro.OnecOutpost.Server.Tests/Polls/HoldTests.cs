@@ -7,8 +7,8 @@ using static Moltaro.OnecOutpost.TestSupport.Loopback.PollRequests;
 namespace Moltaro.OnecOutpost.Server.Tests.Polls;
 
 // The hold of a poll over loopback HTTP, with the fake clock (§6.2 of docs/protocol.md): a poll that becomes the
-// newest is held for the smaller of the poll timeout it carries and the option, and ends without commands, since none
-// exist before S5. How its hold ends decides its answer. Each test waits until the node has armed the timer of the
+// newest is held for the smaller of the poll timeout it carries and the option, and ends without commands when none
+// are waiting. How its hold ends decides its answer. Each test waits until the node has armed the timer of the
 // hold, which it does once the poll is recorded, before it moves the clock; no other timer of the clock is due within
 // the hold.
 [Trait("Requires", "PostgreSQL")]

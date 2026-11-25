@@ -12,12 +12,12 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Pair;
 
-// pair <SERVER> <TOKEN> (the S10 brief, "pair", and §6.1 of docs/protocol.md), after the steps it shares with secret,
-// against the stub of the pair endpoint: agent.json that exists ends it with AlreadyPaired before anything is sent; then
+// pair <SERVER> <TOKEN> (§6.1 of docs/protocol.md), after the steps it shares with secret, against the stub of the
+// pair endpoint: agent.json that exists ends it with AlreadyPaired before anything is sent; then
 // AgentPairing.PairAsync with the console's version and the handler of the server through the policy's proxy; a
-// verified 200 writes secrets.dat with the new key alone, replacing one that a failed pairing left, and then agent.json,
-// each by Data.Replace and then owned by Administrators (Q14), so that agent.json exists only with its key. A file that
-// cannot be written then ends pair with Failure and the remedy, the server having paired the agent.
+// verified 200 writes secrets.dat with the new key alone, replacing one that a failed pairing left, and then
+// agent.json, each by Data.Replace and then owned by Administrators, so that agent.json exists only with its key. A
+// file that cannot be written then ends pair with Failure and the remedy, the server having paired the agent.
 public sealed class PairTests : IDisposable
 {
     private readonly TestMachine _machine = new();

@@ -8,7 +8,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.TypicalBases;
 // again by the tunnel with the safe mode that writeSafeMode gives, has the register movements it had before, which a
 // person's posting made (concept §12, O1). The document and its movements come from the base while the test runs; the
 // scripts name no object of a typical configuration and read the movements through the register records of the
-// document, whatever its registers are. The lab's test of the worker account (the S9c brief) posts again with the same
+// document, whatever its registers are. The lab's test of the worker account posts again with the same
 // scripts through the agent, and compares the movements as this test does. A message names the copy by its index and
 // the document type of lab.local.json, an outcome by its kind and code, and counts the registers that changed, so that
 // nothing of the copy's configuration or data is in it.

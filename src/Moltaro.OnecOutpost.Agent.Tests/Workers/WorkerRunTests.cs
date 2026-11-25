@@ -6,7 +6,7 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 
-// The runs of the workers (concept rules 3, 8 and 9, the S6b brief). A command holds a free worker of its base and mode
+// The runs of the workers (concept rules 3, 8 and 9). A command holds a free worker of its base and mode
 // from RunAsync to Release; with none free, it is Failed base-unreachable at once, in either mode, as its script never
 // started. A run races the run limit of its mode: when the limit wins, the worker is killed and the command ends with
 // run-limit, Failed for a Read and Unknown for a Write. A worker that ends without an outcome gives connection-lost the
@@ -110,7 +110,7 @@ public sealed class WorkerRunTests
         Assert.Equal(0, test.Pool.Free("accounting", mode));
     }
 
-    // The acceptance of S6 and §8: a worker that ends without an outcome, or breaks its line, gives connection-lost:
+    // A worker that ends without an outcome, or breaks its line, gives connection-lost:
     // Failed for a Read, and Unknown for a Write, whose script may have committed.
     [Theory]
     [InlineData("read", "failed")]
@@ -129,9 +129,9 @@ public sealed class WorkerRunTests
         Assert.Equal(TestOutcomes.Own(TestOutcomes.KindOf(kindWord), "connection-lost"), run.Outcome);
     }
 
-    // The S6b brief: a worker is dropped after it ended without an outcome, and after it gave base-unreachable or
-    // connection-lost itself, after which S9's worker ends. Its mode has one worker fewer until its slot starts it
-    // again (the S9b brief), after a delay that the clock does not pass here.
+    // A worker is dropped after it ended without an outcome, and after it gave base-unreachable or connection-lost
+    // itself, after which the COM worker exits. Its mode has one worker fewer until its slot starts it again, after a
+    // delay that the clock does not pass here.
     [Theory]
     [InlineData("ends without an outcome")]
     [InlineData("gives Failed base-unreachable itself")]
@@ -157,7 +157,7 @@ public sealed class WorkerRunTests
         Assert.Equal(1, test.Pool.Free("accounting", OutpostModeEnum.Read));
     }
 
-    // The S6b brief and rule 3: a cancelled run kills its worker, waits for its run and throws, recording nothing, so
+    // Under concept rule 3, a cancelled run kills its worker, waits for its run and throws, recording nothing, so
     // that the next start finds the command received without an outcome.
     [Fact]
     public async Task A_cancelled_run_kills_its_worker_and_throws()
@@ -176,7 +176,7 @@ public sealed class WorkerRunTests
         Assert.True(worker.IsKilled);
     }
 
-    // The lines of S9 (the S6b brief): the command line of a run holds the command's script, the text of its parameters
+    // A line that requests a run carries the command's script, the text of its parameters
     // as it came, its caller key, null for a Read without one, and its outcome limit.
     [Theory]
     [InlineData("read")]

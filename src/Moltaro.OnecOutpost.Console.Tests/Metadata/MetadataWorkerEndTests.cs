@@ -5,8 +5,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
-// metadata ends only once each worker it started has exited (the S10 brief, "After the lab run of deeb370", 2, after
-// the lab found the program folder held by workers still exiting): a session ends its worker by EndAsync within the
+// metadata ends only once each worker it started has exited: a session ends its worker by EndAsync within the
 // read mode's runLimit, which closes its input and waits for its exit, terminating it at the deadline; Ctrl+C
 // terminates at once and waits, without the run limit. So no worker of metadata runs once it has ended, and the program
 // folder can be updated at once.

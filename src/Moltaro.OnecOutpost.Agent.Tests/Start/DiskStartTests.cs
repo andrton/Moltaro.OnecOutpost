@@ -9,7 +9,7 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 
-// The acceptance of S6, with Requires=Windows: a data folder, or a file in it, whose access list admits anybody else
+// On Windows, a data folder, or a file in it, whose access list admits anybody else
 // makes the agent stop, recorded. The data folder is on the disk, in the test's temporary folder, with the access list
 // that the console's install gives it and the account that runs the tests in the place of the agent's; its secrets are
 // encrypted with DPAPI for the machine. The data folder's lists are those of Windows; the program folder lets nobody

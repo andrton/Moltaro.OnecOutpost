@@ -7,8 +7,8 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 
-// What turns the executor's object into the outcome sent (§8 of docs/protocol.md, the S6b brief, and S9's requirement
-// on the size). The agent checks the object by §2 and §8 for the mode of its command, then by what the executor may
+// What turns the executor's object into the outcome sent (§8 of docs/protocol.md). The agent checks the object by §2
+// and §8 for the mode of its command, then by what the executor may
 // hand it, and changes nothing: an object it cannot accept, or a size other than the length of its bytes, becomes
 // Failed result-type for a Read and Unknown result-type for a Write, written as the agent writes its own outcomes; any
 // other goes byte for byte, in the executor's own form.
@@ -42,7 +42,7 @@ public sealed class WorkerOutcomeTests
         Assert.Equal(0, run.DurationMs);
     }
 
-    // S9's requirement: the executor returns the size it measured beside its object, and a size other than the length
+    // The executor returns the size it measured beside its object, and a size other than the length
     // of the bytes the agent received is an outcome it cannot accept, a byte more as a byte less.
     [Theory]
     [InlineData("read", 1, "failed")]
@@ -74,8 +74,8 @@ public sealed class WorkerOutcomeTests
     }
 
     // §8, "The executor": it may hand over only succeeded, failed with script-error, result-type or result-too-large,
-    // and, for a Write, unknown with transaction-ended. S9b admits the codes that S9's worker writes itself as well
-    // (below). An outcome that an agent may send but neither of them hands over becomes result-type.
+    // and, for a Write, unknown with transaction-ended. The agent also accepts the codes the COM worker writes
+    // itself. An outcome that an agent may send but neither of them hands over becomes result-type.
     [Theory]
     [InlineData("read", "failed", "run-limit", "failed")]
     [InlineData("read", "refused", "not-served", "failed")]
@@ -91,8 +91,8 @@ public sealed class WorkerOutcomeTests
         Assert.Equal(TestOutcomes.Own(TestOutcomes.KindOf(kindWord), "result-type"), run.Outcome);
     }
 
-    // S9b, "The lines the pool accepts": the outcomes that S9's worker writes itself go byte for byte, as the executor's
-    // do: Failed base-unreachable in either mode, Failed connection-lost for a Read, and Unknown connection-lost and
+    // The pool forwards the COM worker's own outcomes byte for byte, as it does the executor's. It accepts Failed
+    // base-unreachable in either mode, Failed connection-lost for a Read, and Unknown connection-lost and
     // Unknown result-type for a Write. After base-unreachable and connection-lost the worker has ended, so it is dropped
     // and its mode has one worker fewer; after result-type, the worker's answer to a text of the executor with a line
     // break, its session is whole and it stays. The bytes have white space that the agent's writer does not write, so

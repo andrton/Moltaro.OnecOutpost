@@ -8,7 +8,7 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 
-// policy.json at a start, its last step (the S6a brief, "Settled"): an invalid policy stops the agent, recorded as
+// policy.json at a start, its last step: an invalid policy stops the agent, recorded as
 // started with an error and then policy with valid false, and nothing is served or recovered until a start with a valid
 // policy; the file is read as UTF-8, a byte order mark skipped and not counted in the columns of an error, and bytes
 // that are not UTF-8 make it invalid with an empty path; a mode that the policy serves without its password stops the
@@ -118,8 +118,8 @@ public sealed class StartPolicyTests
         Assert.Contains("write", error, StringComparison.Ordinal);
     }
 
-    // The owner's change of D12: started records which bases write without safe mode, in the order of the policy. Since
-    // S9c each of them names its worker account, whose password the secrets hold.
+    // The started entry records which bases write without safe mode, in policy order (D12). Each of them names its
+    // worker account, whose password the secrets hold.
     [Fact]
     public void Started_lists_the_bases_that_write_without_safe_mode_in_the_order_of_the_policy()
     {

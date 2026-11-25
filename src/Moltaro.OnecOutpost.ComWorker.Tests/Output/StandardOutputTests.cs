@@ -4,8 +4,8 @@ using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Output;
 
-// The standard output carries the lines of the table of the brief of S9 and nothing else: one JSON object per line in
-// UTF-8, ended with LF, without a BOM. Whatever the worker has to say besides goes to its diagnostics.
+// The standard output carries only the worker's JSON replies, one UTF-8 object per line, with LF and without a BOM.
+// Whatever the worker has to say besides goes to its diagnostics.
 [Trait("Requires", "Windows")]
 public sealed class StandardOutputTests
 {

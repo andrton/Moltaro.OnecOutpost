@@ -3,8 +3,8 @@ using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
 
 namespace Moltaro.OnecOutpost.ComWorker.Tests.OwnOutcomes;
 
-// The outcomes the worker writes itself, in the form of the executor's line (the brief of S9, "The outcomes the worker
-// writes itself"): the executor that does not open, the call of Run that throws, and a text of Run with a line break,
+// The outcomes the worker writes itself, in the form of the executor's line: the executor that does not open, the
+// call of Run that throws, and a text of Run with a line break,
 // which would shift every later outcome. Where a Read and a Write differ, a Read fails and a Write is unknown.
 [Trait("Requires", "Windows")]
 public sealed class OwnOutcomeTests
@@ -41,7 +41,7 @@ public sealed class OwnOutcomeTests
         Assert.Equal(1, session.OpenAttempts);
     }
 
-    // The worker ends after its base-unreachable line, so its diagnostics come before it (the S10b brief).
+    // The worker ends after its base-unreachable line, so its diagnostics come before it.
     [Fact]
     public void The_diagnostics_of_an_executor_that_does_not_open_come_before_its_base_unreachable_line()
     {

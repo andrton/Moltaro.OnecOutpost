@@ -7,7 +7,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 
-// The service controller of Windows as the console uses it (the S10 brief, "WindowsServiceControl"), with
+// The service controller of Windows as the console uses it, with
 // Requires=Windows and Requires=Administrator, on a service of the test's own: Install creates the service in its own
 // process, starting automatically, under NT SERVICE\{name} without a password, with a description, the failure actions
 // of the console, restart after a minute at most three times, then nothing, with the count reset after a day and not

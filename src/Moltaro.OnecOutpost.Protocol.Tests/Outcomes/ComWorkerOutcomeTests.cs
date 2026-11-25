@@ -2,9 +2,9 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Protocol.Tests.Outcomes;
 
-// What the pool accepts from a COM worker (§8 of docs/protocol.md, "The executor"; the S9b brief, "The lines the pool
-// accepts"): what the executor hands over, succeeded, failed with script-error, result-type or result-too-large, or, for
-// a Write, unknown with transaction-ended; and the outcomes that S9's worker writes itself, Failed base-unreachable in
+// What the pool accepts from a COM worker (§8 of docs/protocol.md): what the executor hands over, succeeded, failed
+// with script-error, result-type or result-too-large, or, for a Write, unknown with transaction-ended; and the
+// outcomes the COM worker writes itself, Failed base-unreachable in
 // either mode, Failed connection-lost for a Read, and Unknown connection-lost and Unknown result-type for a Write. The
 // agent turns anything else into result-type.
 public sealed class ComWorkerOutcomeTests

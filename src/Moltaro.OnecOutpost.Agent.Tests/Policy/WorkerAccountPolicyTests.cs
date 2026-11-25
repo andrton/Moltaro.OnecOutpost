@@ -5,12 +5,12 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Policy;
 
-// The worker account of a base whose Writes run without safe mode (D12, the S9c brief, "write.workerAccount"): the
-// local Windows account that runs every COM worker of the base, read into WorkerAccount of its write mode and null
-// everywhere else. It is required when safeMode is false, refused when safeMode is true or absent, and an unknown member
-// of read. It is 1 to 20 characters, none of " / \ [ ] : ; | = , + * ? < > @ or a control character, and not only
-// periods and spaces, so never a domain account or a UPN; and no two bases name one account, ignoring case, so that the
-// scripts of one base cannot reach the workers of another. Every error says where and what (Q1) and quotes no value.
+// The worker account of a base whose Writes run without safe mode (D12): the local Windows account that runs every
+// COM worker of the base, read into WorkerAccount of its write mode and null everywhere else. It is required when
+// safeMode is false, refused when safeMode is true or absent, and an unknown member of read. It is 1 to 20
+// characters, none of " / \ [ ] : ; | = , + * ? < > @ or a control character, and not only periods and spaces, so
+// never a domain account or a UPN; and no two bases name one account, ignoring case, so that the scripts of one base
+// cannot reach the workers of another. Every error says where and what and quotes no value.
 public sealed class WorkerAccountPolicyTests
 {
     [Fact]
@@ -135,7 +135,7 @@ public sealed class WorkerAccountPolicyTests
         AssertSaysWhereAndWhat(exception, "bases[0].write.workerAccount");
     }
 
-    // The error of the brief, word for word.
+    // The error says the worker account must be a local Windows user name.
     [Fact]
     public void A_write_without_safe_mode_and_without_a_worker_account_is_refused_at_its_write()
     {
@@ -152,7 +152,7 @@ public sealed class WorkerAccountPolicyTests
         Assert.Equal(Expected, exception.Message);
     }
 
-    // The error of the brief, word for word, whether safeMode is true or absent, and without the account.
+    // The error is the same when safeMode is true or absent, and omits the account name.
     [Theory]
     [InlineData("true")]
     [InlineData("absent")]
@@ -186,8 +186,8 @@ public sealed class WorkerAccountPolicyTests
         Assert.DoesNotContain("outpost-reader", exception.Message, StringComparison.Ordinal);
     }
 
-    // The error of the brief, word for word: the third base names the account of the first in another case, with a base
-    // of another account between them. It names the earlier base, never the account.
+    // The third base names the account of the first in another case, with a different account between them. The error
+    // names the earlier base without naming the account.
     [Fact]
     public void A_worker_account_that_an_earlier_base_names_ignoring_case_is_refused_naming_that_base_not_the_account()
     {

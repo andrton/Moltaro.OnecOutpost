@@ -36,7 +36,7 @@ public sealed class OutcomeCodeFitTests
         { "", false, false, false },
     };
 
-    // The codes of a failure of the connection to 1C, which the COM worker reports (S9): the same columns.
+    // The codes of a failure of the connection to 1C, which the COM worker reports: the same columns.
     public static TheoryData<string, bool, bool, bool> CodeTableOfTheConnectionTo1C => new()
     {
         { "base-unreachable", true, false, false },

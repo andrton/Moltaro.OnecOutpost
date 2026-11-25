@@ -7,7 +7,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Access;
 
-// The program folder as Windows keeps its access lists (the S9c brief, "The program folder"): an account that could
+// The program folder as Windows keeps its access lists: an account that could
 // replace the code that the agent's account runs would get the agent's secrets, so Writers gives, by full path and with
 // its accounts named as Others names them, each entry that an account other than Administrators, SYSTEM,
 // NT SERVICE\TrustedInstaller and the agent's own owns, or that an allow entry applying to the entry itself gives

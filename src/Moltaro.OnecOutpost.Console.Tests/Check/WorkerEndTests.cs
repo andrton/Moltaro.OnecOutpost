@@ -5,8 +5,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// check ends only once each worker it started has exited (the S10 brief, "After the lab run of deeb370", 2, after the
-// lab found the program folder held by workers still exiting): each session ends its worker by EndAsync within the
+// check ends only once each worker it started has exited: each session ends its worker by EndAsync within the
 // runLimit of its mode, which closes its input and waits for its exit, terminating it at the deadline. The probe
 // already waits so.
 public sealed class WorkerEndTests : IDisposable

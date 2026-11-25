@@ -6,7 +6,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Uninstall;
 
-// uninstall [--stop-timeout <TIME>] (the S10 brief, "uninstall"): after the elevation, the stop of the service, then the
+// uninstall [--stop-timeout <TIME>]: after the elevation, the stop of the service, then the
 // two privileges taken from its account, then the service deleted. Both folders stay, with the audit log, and the
 // worker accounts keep "Log on as a batch job". A service that does not exist, or does not stop in time, ends it before
 // anything changes; a step that Windows refuses ends it with Failure and nothing after.

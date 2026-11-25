@@ -6,7 +6,7 @@ namespace Moltaro.OnecOutpost.ComWorker.Tests.Secrets;
 // worker's own, such as the failure message of 1C or of .NET, reaches the diagnostics only when it holds the password
 // neither as it is nor with its quotes doubled; otherwise the worker writes a sentence of its own that the text was
 // withheld. Replacing the password inside a text would give a short one away, so nothing is replaced, in such a text
-// or in a sentence of the worker (the brief of S9, "The lines", after round 1 of the code review).
+// or in a sentence of the worker.
 [Trait("Requires", "Windows")]
 public sealed class PasswordTests
 {

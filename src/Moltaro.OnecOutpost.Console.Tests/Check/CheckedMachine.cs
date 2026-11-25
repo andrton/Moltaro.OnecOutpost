@@ -14,8 +14,8 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// A test's machine as install, pair and secret left it, on which every line of check passes (the S10b brief, "Tests on
-// every platform"): the data folder with the policy of TestMachine, agent.json pinning the key of the stub of the
+// A test's machine as install, pair and secret left it, on which every line of check passes: the data folder with the
+// policy of TestMachine, agent.json pinning the key of the stub of the
 // outcome endpoint, and secrets.dat with the agent's key and every password the policy needs; the COM connector of one
 // version registered for 64 bits; the agent's account holding its two privileges; the worker account of accounting, a
 // local user that logs on for a batch job, with an ordinary token and a probe that ends with 0; and a session for each

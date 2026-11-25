@@ -4,8 +4,8 @@ using Moltaro.OnecOutpost.Protocol;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The console's own account of an answer to outcome that it does not accept (the S10b brief, "The server and the
-// skew", and §9 and §12 of docs/protocol.md), the table that the server's line of check reads, as pair reads it for
+// The console's own account of an answer to outcome that it does not accept (§9 and §12 of docs/protocol.md), the
+// table that the server's line of check reads, as pair reads it for
 // pair: HTTP {status}: first when a status came, then the sentence of the cause, and for a verified refusal that of its
 // code. Nothing in it is taken from a body. The answers to pair are PairRefusalTests'.
 public sealed class ServerAnswerSentencesTests

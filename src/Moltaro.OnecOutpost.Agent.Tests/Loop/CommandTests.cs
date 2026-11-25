@@ -9,8 +9,8 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Loop;
 
-// What the loop does with the commands of an answer (concept rules 1, 2, 3 and 10, §7 and §9 of docs/protocol.md, the
-// S6 brief, "AgentLoop.RunAsync"): each command in order is refused with its code, or received and then run, or left
+// What the loop does with the commands of an answer (concept rules 1, 2, 3 and 10, §7 and §9 of docs/protocol.md):
+// each command in order is refused with its code, or received and then run, or left
 // alone when the log knows it; every one is recorded before the next poll opens, and nothing runs before its received
 // is on the disk. A run that ends gets its outcome file and its ended, then frees its worker; the outcome is sent, and
 // a verified 200 records confirmed before the file is removed.

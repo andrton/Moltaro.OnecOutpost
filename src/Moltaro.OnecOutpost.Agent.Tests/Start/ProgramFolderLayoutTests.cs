@@ -3,8 +3,8 @@ using Moltaro.OnecOutpost.Agent.Start;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 
-// The layout of the program folder, named once for the agent and the console (the S10 brief, "Internal of S10b", and
-// review 3's entry 3 for the agent's program): the agent's program and the executor in the folder itself, and the COM
+// The layout of the program folder, named once for the agent and the console: the agent's program and the executor in
+// the folder itself, and the COM
 // worker of each bitness in x64\ and x86\, as the archive lays them out and install registers the service.
 public sealed class ProgramFolderLayoutTests
 {

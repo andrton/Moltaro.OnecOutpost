@@ -5,7 +5,7 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 
-// The slots of the pool, which start their workers again (concept §5, the S9b brief, "Starting again"): Open gives each
+// The slots of the pool, which start their workers again (concept §5): Open gives each
 // mode as many slots as it has workers, each holding one worker at a time, and every slot's first start happens before
 // Open returns. A slot whose worker ended, its open gave false or a run dropped it, disposes the worker, waits a delay
 // on the pool's clock and starts another: a tenth of retryDelayMax after a worker whose open gave true, and otherwise
@@ -14,7 +14,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 // 12, 24, 30 and 30 seconds; the fake's opens that answer give their answer at once.
 public sealed class WorkerRestartTests
 {
-    // Rule 8 and the S9b brief: the slots start their first workers at once, in the order of the policy, its bases and in
+    // Under concept rule 8, the slots start their first workers at once, in the order of the policy, its bases and in
     // each its read workers before its write ones, even when no open answers.
     [Fact]
     public async Task Every_slot_starts_its_first_worker_before_Open_returns_in_the_order_of_the_policy()
@@ -69,7 +69,7 @@ public sealed class WorkerRestartTests
         Assert.True(test.Launcher.Process("accounting", OutpostModeEnum.Read, 7).IsDisposed);
     }
 
-    // The S9b brief, "Lifetimes": DisposeAsync cancels the pool's token first, so that a slot waiting to start its
+    // DisposeAsync cancels the pool's token first, so that a slot waiting to start its
     // worker again starts nothing, however far the clock moves then. Every worker started is killed and disposed.
     [Fact]
     public async Task After_DisposeAsync_a_slot_that_waited_to_start_its_worker_again_starts_nothing()
@@ -97,7 +97,7 @@ public sealed class WorkerRestartTests
             });
     }
 
-    // The S9b brief, "Lifetimes": a worker that a slot starts after DisposeAsync cancelled the pool is killed and
+    // A worker that a slot starts after DisposeAsync cancelled the pool is killed and
     // disposed at once, and never opened. The fake disposes the pool from the start of the slot's second worker, as
     // the host may dispose it while the task of a slot starts a worker.
     [Fact]

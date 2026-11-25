@@ -6,14 +6,14 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditEntries;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 
-// What S9c adds to a start (the S9c brief, "AgentStart.Open"), with S6b's fake launcher and the fake access lists:
+// Checks required before starting workers, with the fake launcher and the fake access lists:
 // - after the access lists of the data folder, those of the program folder it is given: the first entry through which
 //   somebody else could change the code that the agent's account runs stops the start, naming its path and its
 //   accounts, and lists that cannot be read stop it too;
 // - with the passwords of the policy, one for the worker account of each base that names one;
 // - last, the logon of the worker account of each such base, in the policy's order and for no other base, before
 //   started; a logon that fails stops the start with its reason, and no later base is logged on.
-// The reasons of the brief are asserted word for word.
+// The checks must return the specific remedies for each failure.
 public sealed class StartWorkerAccountTests
 {
     // PairedFolder's policy with the Writes of accounting out of safe mode under the account outpost-worker.
@@ -31,7 +31,7 @@ public sealed class StartWorkerAccountTests
         }
         """;
 
-    // The remedy of the reworded reason (the S10b brief, "One wording, with a remedy that exists").
+    // The remedy identifies the unsafe program path and how to correct its access list.
     private const string ExpectedNobodyElse =
         "; expected nobody but Administrators, SYSTEM, TrustedInstaller and the agent's account: remove their entries, and make Administrators the owner of what they own";
 
@@ -70,7 +70,7 @@ public sealed class StartWorkerAccountTests
     }
 
     // The console's secret writes the password of the worker account; a start without one would fail every worker of
-    // the base. The reason names the command (the S10b brief, "One wording, with a remedy that exists").
+    // the base. The reason names the command.
     [Fact]
     public void A_base_whose_worker_account_has_no_password_in_the_secrets_stops_the_start_naming_the_base()
     {

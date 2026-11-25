@@ -4,7 +4,7 @@ using Moltaro.OnecOutpost.Agent.Workers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// The test program that stands in for the COM worker (the S9b brief), which the reference to its project builds and
+// The test program that stands in for the COM worker, which the reference to its project builds and
 // copies beside the tests: its file, a copy of it with the files of its build into a folder of a test, and a start as
 // ComWorkerLauncher starts a worker, for the tests of ComWorkerProcess that hold the process themselves.
 [SupportedOSPlatform("windows")]

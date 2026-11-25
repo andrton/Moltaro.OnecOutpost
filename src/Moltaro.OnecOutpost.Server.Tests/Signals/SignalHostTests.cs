@@ -5,7 +5,7 @@ using static Moltaro.OnecOutpost.TestSupport.Loopback.PollRequests;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Signals;
 
-// The node and a Signals host that runs apart, over loopback HTTP and TCP (concept §4, S5 brief "The signals"): while
+// The node and a Signals host that runs apart, over loopback HTTP and TCP (concept §4): while
 // the host is down, a set of the node gives Unavailable, which the node ignores, and is lost. A waiting poll or call
 // reads the store again once its subscription rejoins a host that started on the same port, and every wait of a call
 // ends by PollTimeout after it starts, so a set that was lost costs a call at most that. The fake clock of the node

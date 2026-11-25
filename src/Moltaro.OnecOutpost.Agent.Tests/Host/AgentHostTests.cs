@@ -11,7 +11,7 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Host;
 
-// The in-process host (the S6 brief, "AgentHost.RunAsync" and "AgentExitCodes"): the start, the keys, the pool with
+// The in-process host: the start, the keys, the pool with
 // its opens started, the connection over the handler of AgentParts.Handlers, the checks and the loop. It gives Stopped
 // for its token, a cancellation while workers open included; Error for a stop of the agent's own, recorded when the log
 // can be written; and NotStarted when the log was not opened, a second copy included, with nothing recorded. It

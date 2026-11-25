@@ -5,7 +5,7 @@ using static Moltaro.OnecOutpost.TestSupport.Loopback.PollRequests;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Calls;
 
-// Concept rule 4 and Q15: a repeat that found its command before the purge, but passes it after the purge, makes one
+// Under concept rule 4, a repeat that found its command before the purge, but passes it after the purge, makes one
 // more attempt at admission. The order is fixed by the subscription gate, the purge timer and a verified agent poll.
 [Trait("Requires", "PostgreSQL")]
 public sealed class CallerKeyPurgeTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>

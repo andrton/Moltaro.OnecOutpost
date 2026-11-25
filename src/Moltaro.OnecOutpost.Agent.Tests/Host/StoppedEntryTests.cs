@@ -13,10 +13,10 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Host;
 
-// The entry stopped of the audit log (the owner's Q16; the S10 brief, "Internal of S10c", "The amendment for Q16"),
-// through the fakes of the disk: when the loop stops the agent for a fault after its started, AgentHost.RunAsync
-// records {"time","entry":"stopped","error"} with the reason, worded where it is thrown, which names a file by its path
-// and never a script, a parameter, a result or a secret, and then exits with Error, as before. The faults: an outbox
+// The entry stopped of the audit log, through the fakes of the disk: when the loop stops the agent for a fault after
+// its started, AgentHost.RunAsync records {"time","entry":"stopped","error"} with the reason, worded where it is
+// thrown, which names a file by its path and never a script, a parameter, a result or a secret, and then exits with
+// Error. The faults: an outbox
 // file that cannot be written, read or removed; a cleared log, which the server answers as older; and the poll numbers
 // used up. A fault of the outbox that the start's recovery meets after started records stopped the same way. A stop by
 // the token writes no stopped; after a failed write of the log nothing more is written, stopped neither; and the next

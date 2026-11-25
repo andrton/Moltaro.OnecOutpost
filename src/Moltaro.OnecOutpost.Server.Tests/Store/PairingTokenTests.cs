@@ -6,10 +6,10 @@ using Moltaro.OnecOutpost.TestSupport.Store;
 namespace Moltaro.OnecOutpost.Server.Tests.Store;
 
 // The pairing tokens of the store against a real PostgreSQL, with the fake clock. A token is the identity of its
-// pending agent; it is redeemed once, before its expiry, and its secret is gone with it (concept, "Pairing"; the brief
-// of S3). Each test works in a schema of its own. The fake clock starts at midnight of 1 January 2000, UTC, and moves by
-// whole microseconds, the precision of a timestamptz, so a time reads back as it was written; a time taken from the
-// clock of the database instead, years later, would show (PQ3).
+// pending agent; it is redeemed once, before its expiry, and its secret is gone with it (concept, "Pairing"). Each
+// test works in a schema of its own. The fake clock starts at midnight of 1 January 2000, UTC, and moves by whole
+// microseconds, the precision of a timestamptz, so a time reads back as it was written; a time taken from the clock
+// of the database instead, years later, would show.
 [Trait("Requires", "PostgreSQL")]
 public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixture<PostgreSqlFixture>
 {
@@ -250,9 +250,8 @@ public sealed class PairingTokenTests(PostgreSqlFixture postgres) : IClassFixtur
         Assert.Equal(OutpostAgentStateEnum.Paired, agent.State);
     }
 
-    // The one race of the sprint, driven to a known order: another connection holds the token's row locked until both
-    // redemptions are seen waiting for it, and then lets it go unchanged. Which of the two takes the row first is not
-    // the subject; that exactly one of them pairs the agent, with its own key, is.
+    // Another connection locks the token's row until both redemptions are waiting, then releases it unchanged. The
+    // test checks that exactly one redemption pairs the agent with its own key.
     [Fact]
     public async Task Of_two_redemptions_waiting_for_one_token_only_one_gives_true_and_the_agent_has_its_key()
     {

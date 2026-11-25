@@ -11,7 +11,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// The desktop of a worker (the S9c brief, "The desktop of a worker"): a logged-on base gets a desktop of the agent's
+// The desktop of a worker: a logged-on base gets a desktop of the agent's
 // own, OnecOutpost-{base key}-{logon} on the agent's own non-interactive window station, which admits the logon of the
 // base's token and nobody else but SYSTEM and Administrators, and every start of the base names it in lpDesktop; the
 // station gains one entry for that logon. A .NET program, the worker and the test program alike, connects to its
@@ -53,7 +53,7 @@ public sealed class WorkerDesktopTests : IDisposable
         Assert.DoesNotContain("WinSta0", desktop.Name, StringComparison.OrdinalIgnoreCase);
     }
 
-    // One desktop per logon (the coordinator, from the review of the desktop, round 1): {logon} is the identifier of the
+    // One desktop per logon: {logon} is the identifier of the
     // token's logon session in hexadecimal, so that no desktop of an earlier logon is ever given again.
     [Fact]
     public void The_desktop_of_a_base_is_named_after_the_base_and_the_logon_of_its_token()
@@ -64,8 +64,8 @@ public sealed class WorkerDesktopTests : IDisposable
         Assert.EndsWith($@"\OnecOutpost-{BaseKey}-{TestTokens.LogonOf(token):x}", desktop.Name, StringComparison.Ordinal);
     }
 
-    // The brief's list, protected and inherited by nothing: GA, which Windows maps when it stores an entry, reads back
-    // as the full mask of a desktop, 0xF01FF; the logon gets 0xC7, no hook, journal or switch right.
+    // The desktop's access list is protected and its entries do not propagate. Windows stores GA as the full desktop
+    // mask, 0xF01FF, and the logon gets 0xC7, which excludes hook, journal and switch rights.
     [Fact]
     public void The_desktop_admits_the_logon_of_its_token_SYSTEM_and_Administrators_and_nobody_else()
     {
@@ -82,7 +82,7 @@ public sealed class WorkerDesktopTests : IDisposable
     // station lives as long as the logon session of the tests, and keeps the entries of every Make of that session, so
     // an earlier Make may have added this one already; the list read before Make, without that entry, is the list
     // after it, without that entry. Limitation: once an earlier Make of the same logon session added the entry, a Make
-    // that does not add it goes unseen (the review of the desktop, round 2).
+    // that does not add it goes unseen.
     [Fact]
     public void The_station_gains_one_entry_of_0x123_for_the_logon_of_the_token_and_nothing_else()
     {

@@ -8,14 +8,14 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line Connection of check (the S10b brief, "The connections"), for each base, read then write account: a worker in
-// read mode that opens the base as the account and runs the script of its user, each within the mode's run limit, its
-// worker killed at it. It passes when the session's user is the account of the policy, ignoring case, and fails with
-// the reason of each end: a worker that Windows does not start, a session that 1C does not open with what the worker
-// wrote to its standard error, a script that does not end well, another user, and a base without users, in which every
-// connection has every right. The Subscriptions and ReadRights of a base run in the connection of its read account, so
-// they are not checked when it fails. Each row names its mode, Connection {base} read|write {account}, so that a base
-// whose two modes share one account has a row of each (the S10 brief, "After the lab run of deeb370", 3).
+// The line Connection of check, for each base, read then write account: a worker in read mode that opens the base as
+// the account and runs the script of its user, each within the mode's run limit, its worker killed at it. It passes
+// when the session's user is the account of the policy, ignoring case, and fails with the reason of each end: a
+// worker that Windows does not start, a session that 1C does not open with what the worker wrote to its standard
+// error, a script that does not end well, another user, and a base without users, in which every connection has every
+// right. The Subscriptions and ReadRights of a base run in the connection of its read account, so they are not
+// checked when it fails. Each row names its mode, Connection {base} read|write {account}, so that a base whose two
+// modes share one account has a row of each.
 public sealed class ConnectionLineTests : IDisposable
 {
     private static readonly TimeSpan RunLimit = TimeSpan.FromMinutes(10);

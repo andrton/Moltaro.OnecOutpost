@@ -15,10 +15,10 @@ using Moltaro.OnecOutpost.TestSupport.Workers;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
-// One run of a LabAgent, AgentHost.RunAsync as the service runs it (the S9b brief, "The lab tests"): on the agent's
-// data folder, with the machine's access lists and DPAPI, the real ComWorkerLauncher with the worker of the agent's
-// program folder as both programs, x64 on the lab, in the agent's job, that folder as the program folder that the start
-// judges (the S9c brief), the executor in it, the agent's fake clock and a LabServer of its own as the handler of its
+// One run of a LabAgent, AgentHost.RunAsync as the service runs it: on the agent's data folder, with the machine's
+// access lists and DPAPI, the real ComWorkerLauncher with the worker of the agent's program folder as both programs,
+// x64 on the lab, in the agent's job, that folder as the program folder that the start judges, the executor in it,
+// the agent's fake clock and a LabServer of its own as the handler of its
 // connection, which the connection owns. The launcher is wrapped in
 // TestSupport's ObservedLauncher, which only reports when an open ended and when a run began, so that a test moves the
 // clock only after it observed the script running. A test stops the run as the service controller stops the service,
@@ -92,8 +92,8 @@ internal sealed class LabRun : IAsyncDisposable
     // the reason of a logon that failed. What its launcher gave for each start of the mode: a process, whose open did
     // not give ready, or none, as for a connector that is not registered or a program that did not start. The agent
     // keeps no reason for a worker that does not start, and the launcher keeps no standard error of a worker, by
-    // design; so for a base with a worker account the message adds the probe of the console's check under that account
-    // (the S10b brief, "The probe"), with its exit code or its error of Windows. No part holds a password.
+    // design; so for a base with a worker account the message adds the probe of the console's check under that
+    // account, with its exit code or its error of Windows. No part holds a password.
     public async Task<string> WhyNotOpenedAsync(OutpostModeEnum mode, int number = 1)
     {
         Task<bool> opened = Workers.OpenedAsync(_key, mode, number);

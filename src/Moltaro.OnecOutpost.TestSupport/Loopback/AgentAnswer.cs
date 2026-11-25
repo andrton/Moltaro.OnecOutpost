@@ -43,7 +43,7 @@ internal sealed record AgentAnswer(
             requestSignature);
     }
 
-    // A status alone, without a body or an Outpost-Signature, as the brief of S4 defines a bare answer.
+    // A bare answer carries only the HTTP status (§9 of docs/protocol.md).
     public bool IsBare => Signature is null && Body.Length == 0;
 
     // The bytes of the Outpost-Signature. An answer without one, or with one that is not in the form of §2 of

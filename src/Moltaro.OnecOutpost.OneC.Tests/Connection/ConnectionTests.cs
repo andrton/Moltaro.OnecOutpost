@@ -5,7 +5,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Connection;
 
 // The connection of ComConnector to a real base: a session that does not open gives {"ready":false} and exit code 2,
 // and an executor that does not open gives Failed base-unreachable and exit code 2. The agent ends a worker by closing
-// its input; the worker then releases its session and ends with exit code 0 (the brief of S9, "The lines").
+// its input; the worker then releases its session and ends with exit code 0.
 public sealed class ConnectionTests
 {
     [Fact]

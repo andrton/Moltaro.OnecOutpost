@@ -5,7 +5,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Secret;
 
-// How secret ends without writing a password (the S10 brief, "secret"), each failure at its step and nothing after it:
+// How secret ends without writing a password, each failure at its step and nothing after it:
 // secrets.dat absent ends it with NotPaired, one that does not decrypt with Failure; a base, a mode or a worker account
 // that the policy does not name with NotInPolicy; a worker account that is not a local user with UnknownAccount, before
 // any right is granted; a console whose output is redirected and whose input is the console with NotInteractive,
@@ -20,8 +20,7 @@ public sealed class SecretRefusalTests
         _machine.Input = new FakeInput(_machine.Data, "new-password\n");
     }
 
-    // secret reads secrets.dat through the agent's StartChecks, with the start's reason and its own code (the S10b brief,
-    // "One wording, with a remedy that exists").
+    // secret reads secrets.dat through the agent's StartChecks, with the start's reason and its own code.
     [Fact]
     public async Task A_secrets_dat_that_is_absent_ends_secret_with_NotPaired()
     {
@@ -109,7 +108,7 @@ public sealed class SecretRefusalTests
         Assert.Equal(["others \"\""], _machine.Operations);
     }
 
-    // Windows refuses a blank password outside its console (the coordinator, 23 November 2026).
+    // Windows refuses a blank password outside its console.
     [Fact]
     public async Task An_empty_password_of_a_worker_account_ends_secret_with_Usage()
     {

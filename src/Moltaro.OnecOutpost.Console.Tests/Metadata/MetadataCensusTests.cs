@@ -8,12 +8,11 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
-// The census and the probe of metadata (the S10 brief, "metadata <BASE> <FILE>", step 6): the census, then a page of
-// one object with the storage, the first object of the first category that has one. A census or a probe Read that does
-// not succeed within the run limit ends metadata with ReportFailed, saying how it ended, and so does a configuration
-// without an object; no page runs after them and nothing is written. A probe object with an error of its own is a
-// failed object like any other, recorded and counted by its page, and the walk goes on (the coordinator, after the lab
-// run of deeb370: one unreadable property must not stop a report).
+// The census and the probe of metadata: the census, then a page of one object with the storage, the first object of
+// the first category that has one. A census or a probe Read that does not succeed within the run limit ends metadata
+// with ReportFailed, saying how it ended, and so does a configuration without an object; no page runs after them and
+// nothing is written. A probe object with an error of its own is a failed object like any other, recorded and counted
+// by its page, and the walk goes on.
 public sealed class MetadataCensusTests : IDisposable
 {
     private const string ErrorText = "The fake configuration refused the call";
@@ -169,7 +168,7 @@ public sealed class MetadataCensusTests : IDisposable
             (page.Read, page.Category, page.From, page.Count, page.Kind, page.Code, page.ErrorText));
     }
 
-    // The S10 brief, "After the lab run of deeb370", 1: a census property that 1C cannot read is {"error": text} in
+    // A census property that 1C cannot read is {"error": text} in
     // its place, the walk goes on, and the table's caption names it. The caption may wrap within the width of the
     // table, so its words are read across the lines.
     [Fact]

@@ -10,8 +10,8 @@ using Spectre.Console.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 
-// install then uninstall on this machine (the S10 brief, Acceptance, and "Tests with Requires=Windows and
-// Requires=Administrator"), through CommandAppTester with ConsoleApp.Configure and the parts that Program makes, the
+// install then uninstall on this machine, through CommandAppTester with ConsoleApp.Configure and the parts that
+// Program makes, the
 // Windows implementations, for a service of the test's own and its folders: install registers the service under its
 // virtual account with its program in the program folder, grants that account its two privileges, and creates the data
 // folder with its access list; uninstall removes the service and the two privileges and leaves both folders.

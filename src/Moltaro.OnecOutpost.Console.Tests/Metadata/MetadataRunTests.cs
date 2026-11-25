@@ -10,7 +10,7 @@ using Moltaro.OnecOutpost.TestSupport.Metadata;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
-// metadata on a machine where everything holds (the S10 brief, "metadata <BASE> <FILE>", "The report", and Acceptance):
+// metadata on a machine where everything holds:
 // after check's rule, one worker of the base's read account, in read mode and in safe mode, under the base's worker
 // account or under the console's own token, reads the census, the probe, each category in pages of 50 with the storage,
 // and the common storage, by the one script of the walk; the report is written whole, format 1, and the run shows the

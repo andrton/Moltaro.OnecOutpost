@@ -206,10 +206,8 @@ public sealed class BaseClaimTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.Null(await store.FindBaseAsync("warehouse", cancellationToken));
     }
 
-    // The race of two claims of one key, driven to a known order as the race of two redemptions of S3 is: another
-    // connection holds an uncommitted claim of the key, for an agent of its own, until both polls are seen waiting for
-    // it, and then rolls it back. Which poll takes the key is not the subject; that one holds it and the other finds it
-    // claimed, changing nothing of the claim, is.
+    // Another connection holds an uncommitted claim until both polls are waiting, then rolls it back. The test checks
+    // that exactly one poll claims the base key and the other leaves that claim in place.
     [Fact]
     public async Task Of_two_polls_that_claim_one_key_at_once_one_holds_it_and_the_other_finds_it_claimed()
     {

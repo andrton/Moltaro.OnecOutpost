@@ -3,7 +3,7 @@ using Moltaro.OnecOutpost.Agent.Audit;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 
-// A start that fails at a step after the opening of the log (the S6a brief, AgentStart.Open): it records started with
+// A start that fails at a step after the opening of the log: it records started with
 // the error and withoutSafeMode empty, disposes the log, which releases its lock, and throws AgentStopException with
 // the same reason.
 internal static class StoppedStart

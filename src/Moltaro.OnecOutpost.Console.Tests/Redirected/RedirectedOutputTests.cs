@@ -5,8 +5,8 @@ using Moltaro.OnecOutpost.TestSupport.Programs;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Redirected;
 
-// The console with its output redirected, as a script runs it (the S10 brief, "Tests with Requires=Windows", and
-// AGENTS.md, "Console programs"): the built console as a child process with redirected streams, as the agent's tests run
+// The console with its output redirected, as a script runs it (AGENTS.md, "Console programs"): the built console as a
+// child process with redirected streams, as the agent's tests run
 // the agent. Spectre's own detection then writes plain text, without colour or animation, so neither stream holds an
 // escape sequence. Each command is run with --help, which ends with Success, and with one argument that it refuses,
 // which ends with Usage; neither reaches a step, so the data folder of the machine, %ProgramData%\Moltaro.OnecOutpost,

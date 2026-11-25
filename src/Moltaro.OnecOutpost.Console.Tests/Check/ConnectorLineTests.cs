@@ -5,7 +5,7 @@ using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line Connector of check (the S10b brief, "check", and the stage contract): the first registered connector, 64 bits
+// The line Connector of check: the first registered connector, 64 bits
 // first, with which the workers start as the service starts them, every other copy named; and without one, every copy
 // that is installed and not registered, with the command that registers it. No worker starts without a registered
 // connector, so the probe and the connections are not checked then.

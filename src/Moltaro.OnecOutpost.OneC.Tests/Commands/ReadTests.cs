@@ -6,7 +6,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Commands;
 
 // A Read runs its script under the read account of the base, outside a transaction, and is read-only only through the
 // rights of that account (concept §3, "The two commands"). The executor rolls back a transaction that a Read script
-// left open, so that none is left to the next command of its worker (the brief of S9, "The executor").
+// left open, so that none is left to the next command of its worker.
 public sealed class ReadTests
 {
     private const string CreateTwoProducts = """

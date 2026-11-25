@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Moltaro.OnecOutpost.TestSupport.Check;
 
-// The table that the console's check writes (the S10b brief, "check"), read back from its output for the console's tests
+// The table that the console's check writes, read back from its output for the console's tests
 // and the lab's: the columns Check, Result and Reason, each row one line, its Check cell naming the line by its kind, as
 // CheckLineEnum names it, and its subject, such as a base and an account, its Result passed or failed. A table of the
 // console is drawn with borders, whose columns a | or a │ separates; a reason of several lines continues on the next

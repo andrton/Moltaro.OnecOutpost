@@ -8,8 +8,8 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// A worker that ends during a run, as S9's worker ends with exit code 3 when its session ended while the script ran
-// (the S9b brief, "ComWorkerProcess"; the S6b brief, "WorkerPool"): its output ends before a whole line, so the run
+// A worker that ends during a run, as the COM worker ends with exit code 3 when its session ended while the script
+// ran: its output ends before a whole line, so the run
 // gives null, and the pool gives connection-lost, Failed for a Read and Unknown for a Write, whose script may have
 // committed. The script exit 3 of the test program ends it so, without an outcome.
 [Trait("Requires", "Windows")]

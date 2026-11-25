@@ -6,7 +6,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Runs;
 
-// How a run of the console ends, whatever its command (the S10 brief, "The program" and "Output"): ConsoleApp parses
+// How a run of the console ends, whatever its command: ConsoleApp parses
 // strictly and ends Spectre's parse and validation errors with Usage, an OperationCanceledException whose token is
 // cancelled with Cancelled, and any other exception with Failure, each written as {Kind} ({code}): {reason}. --help ends
 // with Success. Ctrl+C cancels the token of the run, which each command checks before each of its steps.

@@ -6,17 +6,16 @@ using Moltaro.OnecOutpost.TestSupport.Check;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 
-// The acceptance of check on the lab (the S10b brief, "Lab tests", and Acceptance), run with S10c: check against the
-// test base and against each copy of a typical base of lab.local.json, through the console's own command on the
-// machine's parts, with the server's part against a stub of the agent's keys, and no poll. The test base in safe mode
-// passes every line but Subscriptions, which names the subscription NoteBeforeWrite of the test configuration, whose
-// module NoteChecks an external connection lacks, and not NoteFormGet, a subscription to FormGetProcessing, which no
-// external connection raises; the users of its sessions are the accounts of lab.local.json. Under the lab's worker
-// account, the account, the agent's rights, the probe and the connections pass. On each copy of a typical base, in
-// safe mode or not as its writeSafeMode says, the connections pass and every other line is judged, whatever it finds;
-// nothing of a copy is a literal here. The copy's Connection rows name their mode, so that a copy whose two modes share
-// one 1C account has a row of each, and each of its scripts gives a result of its form, the subscriptions' too (the S10
-// brief, "After the lab run of deeb370", 3 and 5); no message names its account or an object of its configuration.
+// The lab runs check against the test base and each copy of a typical base in lab.local.json, through the console's
+// own command on the machine's parts, with the server's part against a stub of the agent's keys, and no poll. The
+// test base in safe mode passes every line but Subscriptions, which names the subscription NoteBeforeWrite of the
+// test configuration, whose module NoteChecks an external connection lacks, and not NoteFormGet, a subscription to
+// FormGetProcessing, which no external connection raises; the users of its sessions are the accounts of
+// lab.local.json. Under the lab's worker account, the account, the agent's rights, the probe and the connections
+// pass. On each copy of a typical base, in safe mode or not as its writeSafeMode says, the connections pass and every
+// other line is judged, whatever it finds; nothing of a copy is a literal here. The copy's Connection rows name their
+// mode, so that a copy whose two modes share one 1C account has a row of each, and each of its scripts gives a result
+// of its form, the subscriptions' too; no message names its account or an object of its configuration.
 // With the write account as the read account, ReadRights names Catalog.Products.
 [SupportedOSPlatform("windows")]
 public sealed class CheckTests

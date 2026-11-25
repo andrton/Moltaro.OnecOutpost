@@ -12,7 +12,7 @@ internal sealed record FakeRun(byte[]? Outcome, long SizeOff, bool WaitsForKill)
     }
 
     // The executor's line with a size that is not the length of its bytes, here by `off`: an outcome the agent cannot
-    // accept (S9's requirement).
+    // accept.
     public static FakeRun GivesSizeOff(byte[] outcome, long off)
     {
         return new FakeRun(outcome, off, false);

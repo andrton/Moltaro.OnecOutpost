@@ -10,7 +10,7 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 
-// What a start finds in the data folder, after a restart included (the S6a brief, AgentStart.Open): the audit log,
+// What a start finds in the data folder, after a restart included: the audit log,
 // whose IOException passes and records nothing; a fault of the log; the access lists; agent.json and secrets.dat; the
 // outbox, the records of commands and the poll numbers; and policy.json, the first step that fails deciding. A start
 // that passes records started and a valid policy, recovers what the restart left, and returns the run. The access
@@ -66,8 +66,8 @@ public sealed class AgentStartTests
         run.Log.Dispose();
     }
 
-    // The acceptance of S6a: a second copy of the agent gets IOException from the lock and records nothing; that the
-    // program then exits with an error is S6c's. Disposing the log of the run releases the lock.
+    // A second copy of the agent gets IOException from the lock and records nothing. The program exits with an error.
+    // Disposing the log of the run releases the lock.
     [Fact]
     public void A_second_start_while_the_first_runs_fails_with_IOException_and_records_nothing()
     {
@@ -82,7 +82,7 @@ public sealed class AgentStartTests
         _folder.Start(_clock).Log.Dispose();
     }
 
-    // The acceptance of S6: any line that the log cannot read, and an audit file that it cannot open, stop the agent
+    // Any line that the log cannot read, and an audit file that it cannot open, stop the agent
     // with started and an error.
     [Theory]
     [InlineData("a line that cannot be read")]
@@ -105,7 +105,7 @@ public sealed class AgentStartTests
         Assert.Contains(FileOf(Before), StoppedStart.Error(entries), StringComparison.Ordinal);
     }
 
-    // The acceptance of S6: a last line without its LF, and a last line that is not JSON, are cut at a start, and the
+    // A last line without its LF, and a last line that is not JSON, are cut at a start, and the
     // agent then starts normally twice in a row. The torn line is in the file of the day that started goes to.
     [Theory]
     [InlineData("{\"time\":\"2026-11-22T09:00:00.000Z\",\"entry\":\"conn")]
@@ -172,7 +172,7 @@ public sealed class AgentStartTests
         }
     }
 
-    // The acceptance of S6: an outbox file that cannot be read, and an ended with neither its file nor its confirmed,
+    // An outbox file that cannot be read, and an ended with neither its file nor its confirmed,
     // stop the agent with started and an error; so do a file that no entry names, a name the outbox does not know, and
     // poll numbers used up.
     [Theory]

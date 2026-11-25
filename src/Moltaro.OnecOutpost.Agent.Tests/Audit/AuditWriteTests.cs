@@ -7,7 +7,7 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditEntries;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Audit;
 
-// Writing the audit log (rule 2, §13 of docs/protocol.md, "The audit log" of the plan, the S6a brief): each writer adds
+// Writing the audit log (rule 2, §13 of docs/protocol.md): each writer adds
 // one entry, one JSON object by the writer of §2 with the time of the clock, the kind of the entry and its members, and
 // LF last, with one append to the file of the UTC day of that time, on the disk before the writer returns. A write that
 // fails is cut back and stops the agent; with a fault, nothing but started is written.
@@ -156,7 +156,7 @@ public sealed class AuditWriteTests
         Assert.Equal(JsonValueKind.Null, entries[7].GetProperty("durationMs").ValueKind);
     }
 
-    // The acceptance of S6: no entry is written before the one before it is on the disk. In memory, an append that has
+    // No entry is written before the one before it is on the disk. In memory, an append that has
     // returned is on the disk.
     [Fact]
     public void Each_entry_is_appended_whole_before_its_writer_returns()
@@ -274,8 +274,8 @@ public sealed class AuditWriteTests
         Assert.Equal([$"cut audit\\2026-11-22.jsonl to {before.Length}"], _data.LinesSince(count));
     }
 
-    // §13 as S6 drafts it: after a failed write the next start finds the log as it was, or with that entry whole when
-    // cutting it back failed too.
+    // After a failed write (§13 of docs/protocol.md), the next start finds the log as it was, or with that entry
+    // whole when cutting it back failed too.
     [Fact]
     public void An_entry_whose_write_failed_after_it_was_whole_is_found_at_the_next_open_when_its_cut_back_failed()
     {
@@ -298,7 +298,7 @@ public sealed class AuditWriteTests
         Assert.Equal(OutpostAgentOutcomeKindEnum.Succeeded, reopened.Find(command)!.Kind);
     }
 
-    // The owner's Q16: stopped records the reason of a stop that is already under way, so a failed write of its own is
+    // The stopped entry records the reason of a stop that is already under way, so a failed write of its own is
     // cut back as any entry's and throws nothing.
     [Fact]
     public void A_failed_write_of_stopped_cuts_the_file_back_sets_the_fault_and_throws_nothing()
@@ -317,7 +317,7 @@ public sealed class AuditWriteTests
         Assert.NotNull(log.Fault);
     }
 
-    // The owner's Q16: after a failed write of the log, or with a log that cannot be read, stopped writes nothing and
+    // After a failed write of the log, or with a log that cannot be read, stopped writes nothing and
     // throws nothing.
     [Theory]
     [InlineData("failed write")]

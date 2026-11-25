@@ -8,8 +8,8 @@ using Moltaro.OnecOutpost.TestSupport.Check;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// check on a machine where everything holds (the S10b brief, "check", and Acceptance): every line passes with its
-// reason, and the table shows them in the order of the stage contract, CheckLineEnum's, then in the policy's order, and
+// check on a machine where everything holds: every line passes with its reason, and the table shows them in the order
+// of CheckLineEnum, then in the policy's order, and
 // check ends with Success. Its steps come in their order: Files, Connector, AccessLists, AgentRights; per base
 // WorkerAccount, WorkerStart, Connection read then write, Subscriptions and ReadRights; Server and ClockSkew. It only
 // reads: it changes no file of the data folder and nothing of the machine, never polls, logs each worker account on once,
@@ -67,7 +67,7 @@ public sealed class CheckRunTests : IDisposable
         }
     }
 
-    // The passed reasons of the brief's table, word for word where the brief gives them whole.
+    // Each passed line reports its reason.
     [Fact]
     public async Task Each_line_that_passes_gives_its_reason()
     {
@@ -169,7 +169,7 @@ public sealed class CheckRunTests : IDisposable
         Assert.Equal([outcome], Machine.Data.Outcomes.Names());
     }
 
-    // check runs Reads of its own scripts alone (the S10b brief, "The connections"), every worker in safe mode whatever
+    // check runs Reads of its own scripts alone, every worker in safe mode whatever
     // the policy says of the Writes of its base, such as accounting's without safe mode.
     [Fact]
     public async Task Every_worker_runs_its_scripts_in_read_mode_and_in_safe_mode_with_the_account_of_the_policy_and_its_password()

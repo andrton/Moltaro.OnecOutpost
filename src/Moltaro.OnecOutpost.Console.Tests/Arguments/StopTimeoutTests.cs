@@ -4,7 +4,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Arguments;
 
-// --stop-timeout of install and uninstall (the S10 brief, "install", and ServiceSettings): a time in the constant form
+// --stop-timeout of install and uninstall: a time in the constant form
 // [d.]hh:mm:ss of policy.json, from 00:00:01 to 01:00:00, 00:01:00 when absent, which is how long the command waits for
 // the service to stop (principle 10). Anything else ends the command with Usage before it runs, with the rule and
 // without the value given.

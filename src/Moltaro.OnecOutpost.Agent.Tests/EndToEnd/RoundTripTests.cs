@@ -8,8 +8,8 @@ using Moltaro.OnecOutpost.TestSupport.RunningAgent;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.EndToEnd;
 
-// The goal of the S6 brief, over loopback against the server of S5: a Read and a Write from ReadAsync and WriteAsync to
-// the fake worker and back, through the test proxy that policy.json names. The agent pairs with a token of the node,
+// A Read and a Write travel from ReadAsync and WriteAsync to the fake worker and back over loopback, through the test
+// proxy that policy.json names. The agent pairs with a token of the node,
 // polls with numbered polls, checks and records the command, runs it on the fake worker with the script, the
 // parameters and the caller key of the call, and sends its outcome until the node confirms it; the call returns that
 // outcome. Agent and node share the fake clock, which does not move: the call wakes the held poll.

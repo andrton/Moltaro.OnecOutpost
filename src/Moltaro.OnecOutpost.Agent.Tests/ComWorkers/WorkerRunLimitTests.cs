@@ -9,7 +9,7 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// Concept rule 9 and §5, through the pool on the real launcher with the test program (the S9b brief): a script that
+// Concept rule 9 and §5, through the pool on the real launcher with the test program: a script that
 // exceeds the run limit of its mode ends with its worker, whose process the pool kills; a Read fails with run-limit,
 // and a Write is Unknown. The slot of the worker then waits a tenth of retryDelayMax, since the worker had opened, and
 // starts a new process, which runs the next command. The test moves the fake clock only after it observed the run

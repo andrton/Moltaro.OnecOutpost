@@ -10,7 +10,7 @@ using Moltaro.OnecOutpost.TestSupport.RunningAgent;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.EndToEnd;
 
-// An outcome refused for its size, over loopback against the server of S5 (concept rule 11, §6.3 and §9 of
+// An outcome refused for its size, over loopback against the server (concept rule 11, §6.3 and §9 of
 // docs/protocol.md): by the server's code, for an outcome beyond the outcome limit of its command, 64 KiB here, and by
 // a bare HTTP 413 with an HTML body on the path, from a hop whose body limit is 1 KiB. The outbox file and a second
 // ended hold Unknown result-too-large for a Write and Failed result-too-large for a Read, and that is what is sent: the

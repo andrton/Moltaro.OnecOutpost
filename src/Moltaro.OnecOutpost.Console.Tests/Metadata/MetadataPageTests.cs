@@ -7,7 +7,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
-// The pages of metadata (the S10 brief, "metadata <BASE> <FILE>", steps 7 and 9, and "The report"): a page that gives
+// The pages of metadata: a page that gives
 // result-too-large, or no outcome within the run limit, is read again as two halves, the first ⌈count/2⌉, until one
 // object, which is then recorded as failed with that code; any other end records the page's objects as failed with its
 // kind, code and error text, unhalved. A page that ended its worker, by the run limit or as the judgment of its outcome
@@ -179,7 +179,7 @@ public sealed class MetadataPageTests : IDisposable
         Assert.Equal(new MetadataCategory("Enums", 1, 0, 1), run.Report.Category("Enums"));
     }
 
-    // The S10 brief, "After the lab run of deeb370", 1: the script reads each property of an object in a Try of its
+    // The script reads each property of an object in a Try of its
     // own, so one that 1C cannot give names it in the object's error, and the rest of the object is read.
     [Fact]
     public async Task Properties_of_an_object_that_1C_cannot_give_fail_the_object_naming_them_and_the_rest_of_it_is_read()

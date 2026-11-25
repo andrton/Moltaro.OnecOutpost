@@ -4,8 +4,7 @@ using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Input;
 
 // A line the worker cannot read — not JSON, a member missing, unknown or of a wrong type — ends it with exit code 1 and
-// a reason on the standard error. It is not skipped, and the worker writes nothing to the standard output for it (the
-// brief of S9, "The lines").
+// a reason on the standard error. It is not skipped, and the worker writes nothing to the standard output for it.
 [Trait("Requires", "Windows")]
 public sealed class UnreadableLineTests
 {

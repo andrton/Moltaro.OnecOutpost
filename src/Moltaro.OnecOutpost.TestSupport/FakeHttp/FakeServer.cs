@@ -10,9 +10,8 @@ using Xunit;
 
 namespace Moltaro.OnecOutpost.TestSupport.FakeHttp;
 
-// The server of the agent's tests in place of HTTP: the handler that the agent's connection, its pairing and its host
-// are given (AgentParts.Handlers, "a fake handler gives the rest" in the S6 brief), and the stub of the pair endpoint
-// that the console's pair is given (ConsoleParts.Handlers). It hands each request to the test as a ServerExchange,
+// The fake server supplies the agent's HTTP handler (AgentParts.Handlers) and the console's stub pairing endpoint
+// (ConsoleParts.Handlers). It hands each request to the test as a ServerExchange,
 // queued by kind in the order the requests came, and answers with what the test gives: answers and commands signed
 // with the server's key as the server signs them (§3 of docs/protocol.md), and anything else that a server or a hop on
 // the path could send. It never answers by itself: a request the test leaves alone waits until the

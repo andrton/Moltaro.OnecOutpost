@@ -8,8 +8,8 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Loop;
 
-// An outcome refused for its size (concept rule 11, the row of result-too-large in the table of §9 of
-// docs/protocol.md, the S6 brief, "TooLarge"): a verified result-too-large, or a bare 413 whatever its body, as a hop
+// An outcome refused for its size (concept rule 11, §9 of docs/protocol.md): a verified result-too-large, or a bare
+// 413 whatever its body, as a hop
 // on the path sends one, replaces an outcome of kind succeeded or failed once: its outbox file and a second ended hold
 // Unknown result-too-large for a Write and Failed result-too-large for a Read, with the duration of the first, and that
 // goes next. For the replacement any answer but a verified 200 is lost, and an outcome of kind refused or unknown, or

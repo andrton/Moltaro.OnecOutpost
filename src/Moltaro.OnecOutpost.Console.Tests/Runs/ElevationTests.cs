@@ -5,7 +5,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Runs;
 
-// The first step of every command (the S10 brief, "install", step 1, and "The steps pair and secret share"): a console
+// The first step of every command: a console
 // that is not run as administrator, UAC's filtered token included, ends the command with NotElevated before anything is
 // asked of the machine, on a machine where every step would change something.
 public sealed class ElevationTests

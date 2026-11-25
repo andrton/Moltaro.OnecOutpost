@@ -7,8 +7,8 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
-// One run of metadata on a test's machine, as its output and the folder of its report show it (the S10 brief, "metadata
-// <BASE> <FILE>"): how it ended, the rows of its table, and the report, which a run writes whole or not at all, never
+// One run of metadata on a test's machine, as its output and the folder of its report show it: how it ended, the rows
+// of its table, and the report, which a run writes whole or not at all, never
 // leaving its temporary file: Success with the line Wrote the metadata report …, the folder holding the report alone;
 // any other end with its line {Kind} ({code}): {reason} and no file.
 internal sealed class MetadataRun

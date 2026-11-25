@@ -107,7 +107,7 @@ public sealed class PolicyValuesTests
         Assert.Null(policy.Bases[0].Write);
     }
 
-    // The owner's change of D12 (21 November 2026): a Write runs in safe mode unless its base turns it off.
+    // A Write runs in safe mode unless the local policy turns it off for its base (D12).
     [Fact]
     public void A_write_without_safe_mode_given_runs_in_safe_mode()
     {
@@ -129,7 +129,7 @@ public sealed class PolicyValuesTests
         Assert.True(policy.Bases[0].Write!.SafeMode);
     }
 
-    // safeMode of write is kept as given, false or true, while a Read always runs in safe mode. Since S9c a write with
+    // safeMode of write is kept as given, false or true, while a Read always runs in safe mode. A write with
     // safeMode false names its worker account.
     [Fact]
     public void A_request_timeout_and_safe_mode_turned_off_or_on_are_kept()

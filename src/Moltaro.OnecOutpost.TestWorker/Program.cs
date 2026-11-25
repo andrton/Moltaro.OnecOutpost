@@ -8,7 +8,7 @@ using System.Text.Json;
 
 namespace Moltaro.OnecOutpost.TestWorker;
 
-// The test program that stands in for the COM worker in the agent's tests with Requires=Windows (the S9b brief).
+// The test program that stands in for the COM worker in the agent's tests with Requires=Windows.
 // It speaks the worker's lines, command line and exit codes over its raw standard streams, one JSON object per line in
 // UTF-8 ended with LF, and runs no 1C:
 // - the command line is <base key> <read|write>, and anything else ends it with exit code 1;

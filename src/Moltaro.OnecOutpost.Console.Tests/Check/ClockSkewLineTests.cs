@@ -8,7 +8,7 @@ using Moltaro.OnecOutpost.TestSupport.FakeHttp;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line ClockSkew of check (the S10b brief, "The server and the skew", and §2 of docs/protocol.md): the time of a
+// The line ClockSkew of check (§2 of docs/protocol.md): the time of a
 // verified answer, a confirmation or a refusal, against the middle of the round trip on this machine's clock,
 // skew = time − (t0 + (t1 − t0) / 2), known within uncertainty = (t1 − t0) / 2 + 1 ms, the millisecond of §2. It passes
 // when |skew| + uncertainty ≤ allowed, is beyond the allowed skew when |skew| − uncertainty > allowed, and cannot be

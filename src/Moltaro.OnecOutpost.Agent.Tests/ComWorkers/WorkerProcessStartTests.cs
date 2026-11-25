@@ -10,13 +10,12 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// The one start of a worker's process, for the launcher and the console (the S10 brief, "Internal of S10c", review 3's
-// entry 1, a fix as well): after CreateSuspended fails, one statement closes the caller's copies of the client ends of
-// the pipes, those of the worker's input and output as that of the error end given, so that none waits for the
-// finalizer; the error end, which the test can read, shows it, since a pipe reads to its end only once every copy of
-// its client end is closed. A program that is missing fails the start with its Win32Exception, 2, ERROR_FILE_NOT_FOUND;
-// its folder, the worker's working folder, exists, so that the error is not 267. When the job refuses a suspended
-// worker, the process has exited before the failure is reported (the lab amendment to S10c).
+// The one start of a worker's process, for the launcher and the console: after CreateSuspended fails, one statement
+// closes the caller's copies of the client ends of the pipes, those of the worker's input and output as that of the
+// error end given, so that none waits for the finalizer; the error end, which the test can read, shows it, since a
+// pipe reads to its end only once every copy of its client end is closed. A program that is missing fails the start
+// with its Win32Exception, 2, ERROR_FILE_NOT_FOUND; its folder, the worker's working folder, exists, so that the
+// error is not 267. When the job refuses a suspended worker, the process has exited before the failure is reported.
 [Trait("Requires", "Windows")]
 [SupportedOSPlatform("windows")]
 [Collection(WindowStationCollection.Name)]

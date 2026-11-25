@@ -6,10 +6,10 @@ using Spectre.Console.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Secret;
 
-// secret <BASE> <KIND> (the S10 brief, "secret"), after the steps it shares with pair: the password of the base's 1C
-// account in the mode, or of its worker account once "Log on as a batch job" is granted to that local user, is written
-// to secrets.dat, encrypted for the machine, with every other secret kept, by Data.Replace and then owned by
-// Administrators (Q14). The password comes from a prompt that does not echo it when the console is interactive,
+// secret <BASE> <KIND>, after the steps it shares with pair: the password of the base's 1C account in the mode, or of
+// its worker account once "Log on as a batch job" is granted to that local user, is written to secrets.dat, encrypted
+// for the machine, with every other secret kept, by Data.Replace and then owned by Administrators. The password comes
+// from a prompt that does not echo it when the console is interactive,
 // otherwise from one line of the redirected input; an empty line is the password of a 1C account. The password never
 // reaches the output.
 public sealed class SecretTests

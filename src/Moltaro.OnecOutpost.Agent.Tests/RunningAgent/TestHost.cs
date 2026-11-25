@@ -11,7 +11,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 
 // The agent of a PairedFolder running in the process, as AgentHost.RunAsync runs it, over the fakes: its data folder
 // in memory, the fake access lists and protection, the fake workers, the fake clock, and the FakeServer as the handler
-// of its connection, given by AgentParts.Handlers as the S6 brief says the tests give it. The fake server and the fake
+// of its connection, given by AgentParts.Handlers. The fake server and the fake
 // workers note their operations in the list of the data folder, so that a test asserts their order among the writes.
 // The tests of the loop drive it request by request; a restart is a second TestHost on the same folder, with a fake
 // server of its own and, after the clock was set back, a clock of its own.

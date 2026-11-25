@@ -2,7 +2,7 @@ using Moltaro.OnecOutpost.OneC.Tests.Workers;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Guides;
 
-// Guide G2, "Writing scripts" (the S9b brief, "Guide G2"): nothing in a guide is untried. Every script of
+// Guide G2, "Writing scripts": nothing in a guide is untried. Every script of
 // docs/guides/scripts.md runs on the test base in a worker as LabWorkers starts one, a Read under the read account and
 // a Write under the write account with a caller key of its own, and gives the kind and the code its block names,
 // whatever the base holds. A bsl block without a mode, and a guide without a script of each mode, fail.

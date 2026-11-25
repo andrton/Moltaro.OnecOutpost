@@ -2,7 +2,7 @@ using Moltaro.OnecOutpost.Agent.Workers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 
-// Whether a worker account is an ordinary local user (the S9c brief, "WorkerAccountRule.IsOrdinary"), judged by the
+// Whether a worker account is an ordinary local user, judged by the
 // groups of its token, whatever their attributes, and its privileges, enabled or not: true only when no group is
 // Administrators, S-1-5-32-544, and each privilege is one that Windows gives Users. Another spelling of a SID counts
 // as that SID, and another spelling of a privilege as a privilege beyond Users', so that a doubt never makes an

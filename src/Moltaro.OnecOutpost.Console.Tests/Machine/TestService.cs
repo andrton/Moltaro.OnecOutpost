@@ -9,8 +9,8 @@ using Moltaro.OnecOutpost.Agent.Access;
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 
 // A service of a test's own on this machine, MoltaroOnecOutpostTest-{guid:N}, whose virtual account stands for the
-// agent's and gets every right the console grants, the batch right too, so that no local user is ever made (the S10
-// brief, "Tests with Requires=Windows and Requires=Administrator"); and its own folders: the program folder under
+// agent's and gets every right the console grants, the batch right too, so that no local user is ever made; and its
+// own folders: the program folder under
 // %ProgramFiles%, whose parents admit nobody else, the data folder under %ProgramData%, and the folder of the unpacked
 // archive under the temporary folder. A test creates the service through the console's boundary and reads it back with
 // its own calls, QueryServiceConfigW and QueryServiceConfig2W. A test runs through Run or RunAsync, which remove in

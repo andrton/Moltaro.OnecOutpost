@@ -4,7 +4,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 
-// The layout of the data folder, named once (the S10b brief, "The start's checks" and "Names"), with Requires=Windows:
+// The layout of the data folder, named once, with Requires=Windows:
 // AgentFolders.OnDisk gives the folders on the disk of a data folder at its full path, the root, which holds
 // policy.json, agent.json and secrets.dat, and audit\ and outcomes\ inside it.
 [Trait("Requires", "Windows")]

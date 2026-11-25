@@ -3,7 +3,7 @@ using Moltaro.OnecOutpost.OneC.Tests.Workers;
 namespace Moltaro.OnecOutpost.OneC.Tests.CommandLine;
 
 // The command line of the worker program is <base key> <read|write>; anything else ends it with exit code 1, before it
-// reads its input and with nothing on its standard output (the brief of S9). Only a process shows it, and the program
+// reads its input and with nothing on its standard output. Only a process shows it, and the program
 // has no test entry point, so the test lives here although it needs no 1C.
 public sealed class CommandLineTests
 {

@@ -11,8 +11,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Commands;
 // size of the outcome before the commit, and a script that ends the transaction itself gets Unknown (concept rule 5).
 // A script that leaves a transaction of its own open fails, since the executor rolls everything back. So does a script
 // that begins and rolls back a transaction of its own: in the compatibility mode 8.2.13 that rolls the whole Write back
-// without a raise, so the executor asks the base before it commits, and judges by the raise (the brief of S9, "The
-// executor").
+// without a raise, so the executor asks the base before it commits, and judges by the raise.
 public sealed class WriteTests
 {
     // Writes a product, begins a transaction inside the Write, writes another product and leaves that transaction open.

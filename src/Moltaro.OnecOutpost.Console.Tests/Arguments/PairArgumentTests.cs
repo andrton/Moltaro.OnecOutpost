@@ -4,7 +4,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Arguments;
 
-// The arguments of pair <SERVER> <TOKEN> (the S10 brief, "pair"): SERVER an absolute address that §11 of
+// The arguments of pair <SERVER> <TOKEN>: SERVER an absolute address that §11 of
 // docs/protocol.md allows, https or http on loopback as ServerRoute judges it, and TOKEN a pairing token of §5. Anything
 // else ends pair with Usage before it runs, naming the rule and quoting neither argument, since the token holds a secret
 // and a mistyped server may hold one too.
