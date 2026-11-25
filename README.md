@@ -7,9 +7,9 @@ across nodes.
 
 ## Start here
 
-- [Install and run the Windows agent](docs/guides/agent.md).
-- [Try the shell and embed the server](docs/guides/server.md).
-- [Write 1C scripts for Read and Write](docs/guides/scripts.md).
+- [Install and run the Windows agent](https://github.com/andrton/Moltaro.OnecOutpost/blob/v0.1.0/docs/guides/agent.md).
+- [Try the shell and embed the server](https://github.com/andrton/Moltaro.OnecOutpost/blob/v0.1.0/docs/guides/server.md).
+- [Write 1C scripts for Read and Write](https://github.com/andrton/Moltaro.OnecOutpost/blob/v0.1.0/docs/guides/scripts.md).
 
 ## Status
 
@@ -291,14 +291,19 @@ Windows job runs those tests.
 
 ## Packages and downloads
 
-Planned: the server library on [nuget.org](https://www.nuget.org) as one package,
-`Moltaro.OnecOutpost.Server`, which carries the protocol assembly inside it, published by
-the [Publish](.github/workflows/publish.yml) workflow when a version tag is pushed, and
-the agent with its console as an archive on GitHub Releases, with its SHA-256 checksum. The
-programs of the archive are not signed, so an antivirus program may ask for an exception
-for the agent. Nothing is published yet.
-[Branches and releases](docs/work/branches.md) describes how work reaches `main` and how a
-version is released.
+The [Moltaro.OnecOutpost.Server 0.1.0 NuGet package](https://www.nuget.org/packages/Moltaro.OnecOutpost.Server/0.1.0)
+includes the protocol assembly. Add it to your ASP.NET Core project with this command.
+
+```bash
+dotnet add package Moltaro.OnecOutpost.Server --version 0.1.0
+```
+
+Download the [Windows agent and console ZIP](https://github.com/andrton/Moltaro.OnecOutpost/releases/download/v0.1.0/Moltaro.OnecOutpost-0.1.0-win.zip)
+and its [SHA-256 checksum](https://github.com/andrton/Moltaro.OnecOutpost/releases/download/v0.1.0/Moltaro.OnecOutpost-0.1.0-win.zip.sha256)
+from [GitHub Releases](https://github.com/andrton/Moltaro.OnecOutpost/releases/tag/v0.1.0).
+The archive contains unsigned programs, so an antivirus program may ask for an
+exception for the agent. Follow the
+[agent installation guide](https://github.com/andrton/Moltaro.OnecOutpost/blob/v0.1.0/docs/guides/agent.md).
 
 ## License
 
