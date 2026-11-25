@@ -279,26 +279,11 @@ script reads `Parameters` and sets `Result`. A caller key is required for a Writ
 optional for a Read. See [Writing scripts](scripts.md) for the 1C types and script
 rules.
 
-After the agent is connected and holds `test` for Write, the following uses the same
-script and parameters as the shell session. It assumes `server` is the injected
-`IOutpostServer` and `cancellationToken` belongs to the calling operation.
-
-```csharp
-OutpostWriteRequest write = new()
-{
-    BaseKey = "test",
-    CallerKey = "first-shell-product",
-    Script = """
-        Product = Catalogs.Products.CreateItem();
-        Product.Description = Parameters["description"];
-        Product.Write();
-        Result = New Structure("description", Product.Description);
-        """,
-    Parameters = new System.Text.Json.Nodes.JsonObject { ["description"] = "Test product" },
-};
-
-OutpostOutcome outcome = await server.WriteAsync(write, cancellationToken);
-```
+The [shell session](#a-first-session-with-the-shell) supplies a tested Write script and
+its JSON parameters. To submit a new operation from C#, set `BaseKey` to a base that
+serves Write, put the 1C code in `Script` and the JSON object in `Parameters`, and use
+a caller key for that operation. Call `WriteAsync` on the injected `IOutpostServer` with
+the request and the operation's cancellation token.
 
 A cancellation ends the wait. A command already submitted can still run. Treat
 exceptions from the returned task as failures of the call, with the command's effect
