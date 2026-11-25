@@ -4,7 +4,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
-// The arguments of metadata and the step of its file (the S10 brief, "metadata <BASE> <FILE>", steps 1 and 2): a BASE
+// The arguments of metadata and the step of its file: a BASE
 // that breaks the rule of a base key, with secret's sentence, and an empty FILE end it with Usage before any step;
 // then, after the elevation, the file made full: one that exists, a file or a folder, ends it with Usage, since
 // metadata never replaces a file, and so do a file whose folder does not exist and one whose folder, by its final path

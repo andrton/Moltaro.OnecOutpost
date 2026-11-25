@@ -17,23 +17,23 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
-// An agent of the lab's tests, installed and paired as the console will do it (the S9b brief, "The lab tests"): a data
-// folder of its own in the temporary folder of the lab disk, outside the repository, whose access list admits nobody
-// but Administrators, SYSTEM and the account that runs the tests, as AdmitNobodyElse sets it, with policy.json,
-// agent.json written through AgentPairingFile and secrets.dat through SecretsFile with MachineDpapi. The policy names
-// one base of lab.local.json, the test base as the base test unless a test names a copy of a typical base, read and
-// written, with one worker per mode, a run limit of a minute and a retryDelayMax of a second; the passwords of its two
-// accounts come from lab.local.json and never from a file in Git. Its Writes run in safe mode, or without it under the
-// worker account of lab.local.json, whose password secrets.dat holds as well (the S9c brief).
+// An agent of the lab's tests, installed and paired as the console does it: a data folder of its own in the temporary
+// folder of the lab disk, outside the repository, whose access list admits nobody but Administrators, SYSTEM and the
+// account that runs the tests, as AdmitNobodyElse sets it, with policy.json, agent.json written through
+// AgentPairingFile and secrets.dat through SecretsFile with MachineDpapi. The policy names one base of
+// lab.local.json, the test base as the base test unless a test names a copy of a typical base, read and written, with
+// one worker per mode, a run limit of a minute and a retryDelayMax of a second; the passwords of its two accounts
+// come from lab.local.json and never from a file in Git. Its Writes run in safe mode, or without it under the worker
+// account of lab.local.json, whose password secrets.dat holds as well.
 //
-// Its program folder (the S9c brief) is a folder of its own directly under the root of the system drive, as the
-// console's install will put the program under %ProgramFiles%: there the worker account may read and run the program,
-// which it may not inside the profile of the account that runs the tests, and the start's check of the program folder
-// and its parents passes, since the root lets others add a folder only. It is made with inheritance off and the list
-// that the install sets: full control for Administrators, SYSTEM and the account that runs the tests, which stands for
-// the agent's, and read and run for Users, the worker account among them. It holds a copy of the worker beside the
-// tests, with the files of its build, in x64\, and of the executor of the repository, as ProgramFolderLayout names them
-// for the archive (S10b): the console's check starts the worker of the registered connector's bitness from there, x64
+// Its program folder is a folder of its own directly under the root of the system drive, as the console's install
+// puts the program under %ProgramFiles%: there the worker account may read and run the program, which it may not
+// inside the profile of the account that runs the tests, and the start's check of the program folder and its parents
+// passes, since the root lets others add a folder only. It is made with inheritance off and the list that the install
+// sets: full control for Administrators, SYSTEM and the account that runs the tests, which stands for the agent's,
+// and read and run for Users, the worker account among them. It holds a copy of the worker beside the tests, with the
+// files of its build, in x64\, and of the executor of the repository, as ProgramFolderLayout names them for the
+// archive: the console's check starts the worker of the registered connector's bitness from there, x64
 // on the lab.
 //
 // Its clock is a fake one, which its runs and their servers share, and its workers are in one job of the test. A test

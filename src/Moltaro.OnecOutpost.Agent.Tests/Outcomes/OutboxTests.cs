@@ -5,15 +5,15 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Outcomes;
 
-// The outbox in outcomes\ ("The audit log" of the plan, the S6a brief): one file {id}.json per command whose outcome the
-// server has not confirmed, written under a temporary name and renamed. At its opening it removes every temporary file,
+// The outbox keeps an outcomes\{id}.json file for each unconfirmed command. It writes the file under a temporary name
+// and renames it. At its opening it removes every temporary file,
 // torn or left by a stop, and stops on any other name; any failure of a read, a write or a removal stops the agent, as
 // a failed write of the log does.
 public sealed class OutboxTests
 {
     private readonly MemoryDataFolder _data = new();
 
-    // The acceptance of S6a: a torn temporary file is removed at a start.
+    // A torn temporary file is removed at a start.
     [Fact]
     public void Opening_removes_every_temporary_file_and_lists_the_outcome_files()
     {

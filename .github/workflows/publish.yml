@@ -1,42 +1,156 @@
 name: Publish
 
-# Pushing a tag such as v0.1.0 builds, tests and publishes that version of the packages to
-# nuget.org. A release is cut from main only; see docs/work/branches.md. There is no stored
-# API key: nuget.org Trusted Publishing exchanges the GitHub OIDC token of this run for a
-# short-lived key, under the policy the owner created on nuget.org for this repository and
-# this workflow file.
+# Pushing a version tag from main starts the release. The Windows archive goes to GitHub
+# Releases, followed by the server package on nuget.org through Trusted Publishing.
 on:
   push:
     tags: ['v*']
 
 permissions:
   contents: read
-  # Lets GitHub issue the OIDC token that NuGet/login exchanges for the short-lived key.
-  id-token: write
 
-defaults:
-  run:
-    working-directory: src
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: src
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
           # The whole history, to tell whether the tagged commit is on main.
           fetch-depth: 0
+          persist-credentials: false
       - name: Refuse a tag that is not on main
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Take the version from the tag
+        id: version
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){2}$ ]]; then
+            echo '::error::A release tag must have the form vX.Y.Z.'
+            exit 1
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+          printf 'PACKAGE_VERSION=%s\n' "$version" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: src/global.json
-      - name: Take the version from the tag
-        run: echo "PACKAGE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-      - run: dotnet build --configuration Release -p:Version=$PACKAGE_VERSION
+      - run: dotnet build --configuration Release -p:Version="$PACKAGE_VERSION"
       # As the build job of CI: every test but those that need Windows.
       - run: dotnet test --configuration Release --no-build --filter-not-trait "Requires=Windows"
-      - run: dotnet pack --configuration Release --no-build -p:Version=$PACKAGE_VERSION --output ../artifacts
+      - name: Pack the server
+        run: dotnet pack --configuration Release --no-build -p:Version="$PACKAGE_VERSION" --output "$RUNNER_TEMP/packages"
+      - name: Verify package contents
+        run: |
+          shopt -s nullglob
+          packages=("$RUNNER_TEMP/packages/"*.nupkg "$RUNNER_TEMP/packages/"*.snupkg)
+          expected="$RUNNER_TEMP/packages/Moltaro.OnecOutpost.Server.$PACKAGE_VERSION.nupkg"
+          if [[ ${#packages[@]} -ne 1 || "${packages[0]}" != "$expected" ]]; then
+            echo '::error::Expected exactly the server package for this tag.'
+            exit 1
+          fi
+          files=$(unzip -Z1 "$expected")
+          assemblies=$(grep '\.dll$' <<< "$files" | sort)
+          if [[ "$assemblies" != $'lib/net10.0/Moltaro.OnecOutpost.Protocol.dll\nlib/net10.0/Moltaro.OnecOutpost.Server.dll' ]]; then
+            echo '::error::Expected the server and embedded protocol assemblies in the package.'
+            exit 1
+          fi
+          grep -Fx 'README.md' <<< "$files"
+          grep -Fx 'lib/net10.0/Moltaro.OnecOutpost.Server.xml' <<< "$files"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: server-package
+          path: ${{ runner.temp }}/packages/*.nupkg
+          if-no-files-found: error
+          overwrite: true
+
+  archive:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      PACKAGE_VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: src/global.json
+      - name: Build the Windows agent archive
+        shell: pwsh
+        run: ./src/Build-AgentArchive.ps1 -Version $env:PACKAGE_VERSION -OutputDirectory "$env:RUNNER_TEMP/agent"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: agent-archive
+          path: ${{ runner.temp }}/agent
+          compression-level: 0
+          if-no-files-found: error
+          overwrite: true
+
+  publish:
+    needs: [build, archive]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      PACKAGE_VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: server-package
+          path: ${{ runner.temp }}/packages
+      - uses: actions/download-artifact@v8
+        with:
+          name: agent-archive
+          path: ${{ runner.temp }}/agent
+      - name: Publish the Windows agent archive to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          archive="Moltaro.OnecOutpost-$PACKAGE_VERSION-win.zip"
+          cd "$RUNNER_TEMP/agent"
+          sha256sum --check "$archive.sha256"
+          checksum=$(cut -d ' ' -f 1 "$archive.sha256")
+
+          # Rerun the failed publishing job with the same verified archive artifact.
+          if published=$(gh release view "$GITHUB_REF_NAME" --json isDraft,isPrerelease --jq '(.isDraft or .isPrerelease) | not' 2>/dev/null); then
+            if [[ "$published" != true ]]; then
+              echo '::error::A draft or prerelease already exists for this tag.'
+              exit 1
+            fi
+            mkdir "$RUNNER_TEMP/published"
+            cd "$RUNNER_TEMP/published"
+            gh release download "$GITHUB_REF_NAME" --pattern "$archive" --pattern "$archive.sha256"
+            sha256sum --check "$archive.sha256"
+            existing=$(sha256sum "$archive" | cut -d ' ' -f 1)
+            if [[ "$existing" != "$checksum" ]]; then
+              echo '::error::The published archive differs from this run. Rerun the failed publishing job with its original archive artifact.'
+              exit 1
+            fi
+            exit 0
+          fi
+
+          guides="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/guides"
+          {
+            printf 'SHA-256 for `%s` is `%s`.\n\n' "$archive" "$checksum"
+            printf -- '- [Installing and running an agent](%s/agent.md)\n' "$guides"
+            printf -- '- [Writing scripts](%s/scripts.md)\n' "$guides"
+            printf -- '- [Embedding the server](%s/server.md)\n' "$guides"
+          } | gh release create "$GITHUB_REF_NAME" "$archive" "$archive.sha256" --verify-tag --notes-file -
       # Right before the push: the key it returns lives for a short time only.
       - name: Sign in to nuget.org
         id: login
@@ -44,7 +158,9 @@ jobs:
         with:
           user: andrton
       - name: Push to nuget.org
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: >
-          dotnet nuget push "../artifacts/*.nupkg"
+          dotnet nuget push "$RUNNER_TEMP/packages/Moltaro.OnecOutpost.Server.$PACKAGE_VERSION.nupkg"
           --source "https://api.nuget.org/v3/index.json"
-          --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
+          --api-key "$NUGET_API_KEY"

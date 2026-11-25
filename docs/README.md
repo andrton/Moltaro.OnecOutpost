@@ -5,9 +5,10 @@ Product documentation and active work are kept apart.
 | Document or folder | What it holds | How it changes |
 | --- | --- | --- |
 | [`concept.md`](concept.md) | **The concept**: where the library comes from, its semantics and rules, protocol principles, accepted decisions D1–D17, non-goals, quality bar and the open items checked on a lab machine. The authority for what the library guarantees | A guarantee or a decision changes only with the owner's approval, in the same change as the code that follows it |
-| [`protocol.md`](protocol.md) | **The wire protocol**: the exact messages, written with the sprint that introduces them | With every change of the protocol, together with its version |
-| `guides/` | **User guides**: how to do something with the library, step by step. [Writing scripts](guides/scripts.md) and [Installing and running an agent](guides/agent.md) exist; embedding the server is planned. Every command and script a guide shows is run by a test | With the behavior they show, in the same change |
-| `explanations/` | **Explanations** for a reader: the architecture and how the library works, each as Markdown and as a self-contained HTML page, animated in the main cases. [The path of a command](explanations/command-path.md) ([animated](explanations/command-path.html)) and [Why a command never runs twice](explanations/never-twice.md) ([animated](explanations/never-twice.html)) exist; How the library is built is planned. Not a specification: the concept and `protocol.md` own the rules | As `AGENTS.md`, "Documentation", says |
+| [`protocol.md`](protocol.md) | Wire messages, signatures and limits | With every change to the protocol and its version |
+| [`agent-files.md`](agent-files.md) | Agent data files, audit entries and COM worker messages | With the formats it describes |
+| `guides/` | [Writing scripts](guides/scripts.md), [Installing and running an agent](guides/agent.md) and [Embedding the server](guides/server.md) | With the behavior they show |
+| `explanations/` | [The path of a command](explanations/command-path.md) ([animated](explanations/command-path.html)), [Why a command never runs twice](explanations/never-twice.md) ([animated](explanations/never-twice.html)) and [How the library is built](explanations/library-architecture.md) ([standalone figure](explanations/library-architecture.html)) | With the behavior they explain |
 | [`work/`](work/README.md) | **Working documents**: what is being built now. Epics, their goals, requirements and open questions | Often, while the work is in progress. A working document describes intent, not delivered behavior |
 
 ## Rules

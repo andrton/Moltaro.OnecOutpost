@@ -10,11 +10,11 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Host;
 
-// A base whose write turns safe mode off is served for Write (the S9c brief, in place of S9b's "Writes without safe
-// mode"): its polls declare its write, and a Write runs without safe mode. Every COM worker of the base, Reads
-// included, runs under the worker account that its policy names, which the start logged on before any worker started;
-// the agent's own account runs only the bases without one (concept §3, D12, "The account of a worker"). A logon that
-// fails stops the agent before any worker starts. Through TestHost, with S6b's fake launcher, whose processes say the
+// A base whose write turns safe mode off is served for Write: its polls declare its write, and a Write runs without
+// safe mode. Every COM worker of the base, Reads included, runs under the worker account that its policy names, which
+// the start logged on before any worker started; the agent's own account runs only the bases without one (concept §3,
+// D12, "The account of a worker"). A logon that fails stops the agent before any worker starts. Through TestHost,
+// with the fake launcher, whose processes say the
 // account they run under.
 public sealed class WorkerAccountTests
 {

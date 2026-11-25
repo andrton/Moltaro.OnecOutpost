@@ -1,8 +1,7 @@
 namespace Moltaro.OnecOutpost.Console.Commands;
 
-// One category of the census of metadata (the S10 brief, "The report"): its name, how many objects the census found in
-// it, how many the walk read without an error, and how many failed, with an error of their own or in a page that
-// failed. The walk counts them, from one task at a time.
+// A category of the metadata census holds its name and counts of objects found, read without error, or failed. A
+// failure can belong to the object or to its page. The walk updates the counts from one task at a time.
 internal sealed class WalkCategory
 {
     public WalkCategory(string name, int found)

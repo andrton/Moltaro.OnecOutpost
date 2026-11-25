@@ -7,7 +7,7 @@ using static Moltaro.OnecOutpost.TestSupport.Loopback.PollRequests;
 namespace Moltaro.OnecOutpost.Server.Tests.Signals;
 
 // How the node wakes its waiting polls and calls through Moltaro.Signals, over loopback HTTP with an in-process
-// SignalHost (S5 brief, "The signals"): the keys are the prefix of the options and the identity of an agent or a
+// SignalHost: the keys are the prefix of the options and the identity of an agent or a
 // command, and a set wakes every waiter of its key. The clock does not move, so a poll or a call that returns was woken
 // by a set, never by the end of its wait.
 [Trait("Requires", "PostgreSQL")]
@@ -105,7 +105,7 @@ public sealed class WakeTests(PostgreSqlFixture postgres) : IClassFixture<Postgr
         Assert.Equal(OutpostOutcomeKindEnum.Succeeded, (await read).Kind);
     }
 
-    // A draft of the public contract (S5 brief): a held poll whose agent was revoked gets the bare 403 of §9 also when
+    // A held poll whose agent was revoked gets the bare 403 of §9 also when
     // it wakes. A revocation sets no agent's key, so the test sets it, as a node that created a command for the agent
     // just before the revocation would. The set finds the poll's member, its only one.
     [Fact]

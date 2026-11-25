@@ -3,7 +3,7 @@ using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Session;
 
 // The connection line opens the one session of the worker, which answers {"ready":true} once it is open, or
-// {"ready":false} and ends with exit code 2 when it does not open (the brief of S9, "The lines").
+// {"ready":false} and ends with exit code 2 when it does not open.
 [Trait("Requires", "Windows")]
 public sealed class SessionTests
 {
@@ -56,7 +56,7 @@ public sealed class SessionTests
         Assert.Equal(0, session.OpenAttempts);
     }
 
-    // The console's check reads the diagnostics of a worker whose open gave false (the S10b brief, "The connections"),
+    // The console's check reads the diagnostics of a worker whose open gave false,
     // so they are written before {"ready":false}.
     [Fact]
     public void The_diagnostics_of_a_session_that_does_not_open_come_before_ready_false()

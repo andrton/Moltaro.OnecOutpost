@@ -5,18 +5,18 @@ A Windows agent next to 1C dials out over HTTPS, runs signed scripts through the
 connector and returns JSON; an embeddable .NET server queues the commands and scales
 across nodes.
 
+## Start here
+
+- [Install and run the Windows agent](docs/guides/agent.md).
+- [Try the shell and embed the server](docs/guides/server.md).
+- [Write 1C scripts for Read and Write](docs/guides/scripts.md).
+
 ## Status
 
-Contract stage. The [concept](docs/concept.md) is agreed, and the first epic, up to the
-first release, is under way in [current work](docs/work/README.md). How to write the
-scripts that Read and Write run is in the guide [Writing scripts](docs/guides/scripts.md),
-and how to install, pair and check an agent in the guide
-[Installing and running an agent](docs/guides/agent.md).
-The public contract of
-its first stage exists in code: the types and members of the server library, with their
-documentation. The checks work: the options of the server, the arguments of every call,
-the outcome factories, and the rules of the agent's local policy file. The protocol
-assembly holds the codec of the
+The agent, its console and COM workers, the embeddable server and the interactive shell
+are built. The [concept](docs/concept.md) describes their guarantees. The server checks
+its options, call arguments and outcome values. The agent validates its local policy.
+The protocol assembly holds the codec of the
 [wire protocol](docs/protocol.md): its messages, the signatures of commands, requests and
 answers, and the pairing proof, with their tests. The COM worker runs scripts in 1C: it
 holds an external connection to one base and runs each command through the executor, an
@@ -55,12 +55,8 @@ command made meanwhile; the command of a lost poll answer is handed out again an
 poll and an exact replay take nothing; a lost confirmation sends the outcome again and it is
 counted once; a command delivered after a lost answer stays taken; with the signals host
 stopped, waits end at their deadlines and nothing is lost; and a poll replayed after the
-agent's clock was set back is older. On loopback without 1C, the time from a call to its
-command reaching a waiting poll, and from an outcome to the waiting caller, was at most
-31 ms at p95 with one node and with two (concept §11 asks 100 ms); the figures are in the
-[epic document](docs/work/epic-1-first-release.md#measured-results). Two explanations show the
-[path of a command](docs/explanations/command-path.md) and
-[why a command never runs twice](docs/explanations/never-twice.md).
+agent's clock was set back is older. The loopback measurement was within the 100 ms p95
+target in every case. See [Measured latency](#measured-latency).
 
 The agent keeps its files. At a start it checks that the access lists of its data folder
 admit nobody else, reads `policy.json`, `agent.json` with its identity and the pinned
@@ -215,6 +211,25 @@ endpoints, creates a pairing token, lists the agents, releases a base key, revok
 agent, and runs a Read in a base that no agent holds, which ends as Refused with
 `unknown-base`.
 
+## Measured latency
+
+The Release build was measured on 25 November 2026 over loopback without 1C. The test
+used PostgreSQL 17.12, .NET 10.0.15 and Windows build 26300 on an Intel Core i9-13900H
+with 20 logical processors. Each case took 500 samples after 50 warm-up rounds. Times
+are in milliseconds. The [concept](docs/concept.md#11-quality-bar) sets a 100 ms p95
+target.
+
+| Nodes | Poll timeout | Measured interval | p50 | p95 | Max |
+| ---: | --- | --- | ---: | ---: | ---: |
+| 1 | 25 s | Call to waiting poll | 14.06 | 23.34 | 266.12 |
+| 1 | 25 s | Outcome to waiting caller | 12.25 | 20.91 | 81.20 |
+| 2 | 25 s | Call to waiting poll | 13.36 | 23.47 | 69.39 |
+| 2 | 25 s | Outcome to waiting caller | 12.46 | 23.33 | 58.33 |
+| 1 | 5 min | Call to waiting poll | 12.92 | 23.23 | 84.08 |
+| 1 | 5 min | Outcome to waiting caller | 12.41 | 24.43 | 93.73 |
+| 2 | 5 min | Call to waiting poll | 13.55 | 22.29 | 107.66 |
+| 2 | 5 min | Outcome to waiting caller | 12.57 | 20.97 | 63.37 |
+
 ## What it is, and what it is not
 
 A 1C:Enterprise database usually lives deep inside a company's network. Nothing outside
@@ -249,6 +264,10 @@ Windows; the server runs wherever .NET runs.
   scripts of Read and Write.
 - [Installing and running an agent](docs/guides/agent.md): the guide for the administrator
   of the agent machine.
+- [Embedding the server](docs/guides/server.md): a first shell session and the ASP.NET Core
+  integration guide.
+- [How the library is built](docs/explanations/library-architecture.md): the projects and
+  their dependencies.
 - [Documentation index](docs/README.md) and [current work](docs/work/README.md).
 - [How the project is built](AGENTS.md): architectural principles, code style and working
   rules, for people and coding agents.

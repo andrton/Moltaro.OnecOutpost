@@ -9,10 +9,9 @@ using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests;
 
-// The data folder of an agent that the console has installed, paired and given its secrets, in memory: policy.json
-// and agent.json written by hand in the forms of "The files of the agent" and of the S6 brief, secrets.dat written by
-// SecretsFile, whose own tests state its form, an empty audit log and an empty outbox, access lists that admit nobody
-// else and the fake protection, and the fake launcher of the workers, which every start of the folder is given. A test
+// An in-memory data folder as the console leaves it after install, pair and secret. The fixture writes policy.json
+// and agent.json in their on-disk formats and uses SecretsFile to write secrets.dat. It starts with an empty audit
+// log and outbox, restricted access lists, and fake protection and worker launching. A test
 // changes what it needs, then starts the agent on it as often as a restart needs.
 internal sealed class PairedFolder
 {
@@ -96,7 +95,7 @@ internal sealed class PairedFolder
         return Policy.Replace("\"bases\":", members + ", \"bases\":", StringComparison.Ordinal);
     }
 
-    // The policy with the Writes of accounting out of safe mode under the worker account (the S9c brief).
+    // The policy with Writes to accounting outside safe mode under its worker account.
     public static string PolicyWithWorkerAccount(string account)
     {
         return Policy.Replace(
@@ -128,7 +127,7 @@ internal sealed class PairedFolder
         SeedSecrets(passwords, []);
     }
 
-    // The same, with the passwords of the worker accounts of these bases (the S9c brief).
+    // The same, with the passwords of the worker accounts of these bases.
     public void SeedSecrets(
         (string Base, OutpostModeEnum Mode, string Password)[] passwords,
         (string Base, string Password)[] workers)

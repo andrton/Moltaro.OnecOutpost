@@ -4,8 +4,8 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // language and within what the compatibility mode 8.2.13 allows, without a procedure, Find and Mid where a later mode
 // has StrFind and StrSplit. Its parameter read chooses what it reads: census, the configuration and the count of each of
 // its fifteen categories; page, the objects of a category from an index with their fields and, when asked, their
-// storage by GetDBStorageStructureInfo with the DBMS's names; common, the remaining storage tables. The S10 brief,
-// "Internal of S10c", gives its outline and the form of what it gives:
+// storage by GetDBStorageStructureInfo with the DBMS's names; common, the remaining storage tables. Each Read returns
+// its own JSON object:
 // - census: {"platform", "configuration": {"name", "version", "compatibilityMode"}, "categories": [{"category",
 //   "count"}]}, the fifteen categories in the report's order; an unreadable census value is {"error": "..."}.
 // - page, with category, from, count and storage: {"objects": [...], "storageError"}, each object with name, fullName,

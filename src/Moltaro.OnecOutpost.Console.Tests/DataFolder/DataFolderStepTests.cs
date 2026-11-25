@@ -9,12 +9,10 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.DataFolder;
 
-// The steps that pair and secret share, written once (the S10 brief, "The steps pair and secret share", and Q14): after
-// the elevation, a data folder that is absent ends the command with NotInstalled, check's (the S10b brief) and
-// metadata's too ("Internal of S10c"), and one that is a reparse point with
-// DataFolderAdmitsOthers; the access list of the folder, made for the agent's account, admitting anyone else ends it
-// with DataFolderAdmitsOthers too, since DPAPI for the machine lets every local process decrypt and only the folder's
-// list keeps the secrets; and policy.json that is absent or invalid ends it with PolicyInvalid and the agent's reason.
+// After elevation, pair, secret, check and metadata report NotInstalled when the data folder is absent. Pair and
+// secret report DataFolderAdmitsOthers when the folder is a reparse point. The same code reports an access list that
+// admits another account, since machine-wide DPAPI lets any local process decrypt the secrets it can read. An absent
+// or invalid policy.json ends the command with PolicyInvalid and the agent's reason.
 // Each ends before the command's own steps: pair sends nothing and secret reads no password.
 public sealed class DataFolderStepTests
 {
@@ -59,7 +57,7 @@ public sealed class DataFolderStepTests
     }
 
     // pair and secret run after install, so they give the start's sentence for the data folder, word for word, whose
-    // remedy removes no audit log (the coordinator's decision in S10c).
+    // remedy removes no audit log.
     [Theory]
     [InlineData("pair")]
     [InlineData("secret")]

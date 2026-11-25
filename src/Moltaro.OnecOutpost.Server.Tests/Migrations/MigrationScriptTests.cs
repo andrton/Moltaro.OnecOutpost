@@ -3,7 +3,7 @@ using Moltaro.OnecOutpost.Server.Store;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Migrations;
 
-// The scripts of the migrations come from the library alone (the brief of S3, "Contract"): no test here has a database,
+// The scripts of the migrations come from the library alone: no test here has a database,
 // and every lane runs them.
 public sealed class MigrationScriptTests
 {

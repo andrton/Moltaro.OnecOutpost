@@ -7,8 +7,8 @@ using Moltaro.OnecOutpost.TestSupport.FakeWindows;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 
-// The reasons of the steps of a start that the agent's start and the console's check share (the S10b brief, "One
-// wording, with a remedy that exists", and Q14), each with a remedy that exists, through StartChecks directly: an entry
+// The reasons of the steps of a start that the agent's start and the console's check share, each with a remedy that
+// exists, through StartChecks directly: an entry
 // of the data folder whose owner is somebody else, named first, with the icacls command that makes Administrators its
 // owner, and one that admits somebody else, with what to do for the folder, its two folders and a file, and for
 // secrets.dat what its readers could do; the writers of the program folder; agent.json and secrets.dat absent or not
@@ -42,7 +42,7 @@ public sealed class StartReasonTests
             StartChecks.AccessReason(path, others));
     }
 
-    // Q14: an owner can always change the access list, so Administrators, and nobody else, own every entry.
+    // An owner can always change the access list, so Administrators, and nobody else, own every entry.
     [Theory]
     [InlineData("", "the data folder")]
     [InlineData("agent.json", "agent.json")]
@@ -141,8 +141,8 @@ public sealed class StartReasonTests
             StartChecks.MissingPasswords(policy, secrets));
     }
 
-    // The one sentence of a policy.json that is not valid, which the start, pair, secret, check and metadata give (the
-    // S10 brief, "Internal of S10c", review 3's entry 3), with the reason of the reader.
+    // The start, pair, secret, check and metadata all report an invalid policy.json with the reason given by the
+    // policy reader.
     [Fact]
     public void A_policy_that_is_not_valid_is_named_with_the_reason_of_its_reader()
     {

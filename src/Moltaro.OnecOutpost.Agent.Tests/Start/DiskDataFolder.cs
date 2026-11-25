@@ -42,7 +42,7 @@ internal sealed class DiskDataFolder : IDisposable
     }
 
     // The same with this policy, which serves PairedFolder's bases and modes, and the passwords of the worker accounts
-    // of these bases (the S9c brief).
+    // of these bases.
     public void WriteFiles(string policy, params (string Base, string Password)[] workers)
     {
         using ECDsa server = ECDsa.Create(ECCurve.NamedCurves.nistP256);

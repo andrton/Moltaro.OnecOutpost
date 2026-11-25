@@ -1,7 +1,7 @@
 namespace Moltaro.OnecOutpost.TestSupport;
 
-// The one reason with which a test of a behavior that is not implemented yet is skipped. The sprint that implements the
-// behavior removes the skip and makes the test pass without changing what it asserts. A flaky test is never skipped
+// The one reason with which a test of a behavior that is not implemented yet is skipped. Implementing the behavior
+// removes the skip and makes the test pass with its existing assertions. A flaky test is never skipped
 // with it.
 public static class SkipReason
 {

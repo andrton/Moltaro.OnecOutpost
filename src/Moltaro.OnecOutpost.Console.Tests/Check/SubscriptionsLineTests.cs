@@ -4,7 +4,7 @@ using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line Subscriptions of check (the S10b brief, "check", and concept §1 and §12, O1), for each base with write: the
+// The line Subscriptions of check (concept §1 and §12, O1), for each base with write: the
 // event subscriptions that an external connection can raise, all but those to FormGetProcessing, whose handler's module
 // is no common module or one that an external connection lacks, as the read account's second script gives them, each
 // as subscription, event, module and whether a common module of that name was found. A Write that reaches one fails, so

@@ -5,7 +5,7 @@ using Moltaro.OnecOutpost.Agent.Connector;
 namespace Moltaro.OnecOutpost.Agent.Tests.Connector;
 
 // A class of the COM connector that a test registers for the current user, under HKEY_CURRENT_USER\Software\Classes,
-// in the registry views it needs (the S9b brief, "The bitness"), and the finder that reads those classes in both views
+// in the registry views it needs, and the finder that reads those classes in both views
 // as the agent's finder reads HKLM's. Its ProgID and its class identifier are its own, so that no registration of the
 // machine is touched. {ProgId}\CLSID gives the class identifier as its default value, a key that both views share. Each
 // view of the registration gets the key InprocServer32 of the class, with a path as its default value, under CLSID in

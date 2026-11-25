@@ -10,9 +10,8 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Console.Commands;
 
-// The Reads of metadata in a base (the S10 brief, "metadata <BASE> <FILE>", steps 5 to 9): every one of
-// MetadataScripts.Walk, in one worker session of the base's read account at a time, in read mode and in safe mode,
-// under its worker account or the console's own restricted token, each within the read mode's run limit. The census,
+// Every Read of metadata uses MetadataScripts.Walk in a single read session at a time, in safe mode under the base's
+// worker account or the console's own restricted token. Each Read uses the read mode's run limit. The census,
 // then the probe, a page of the first object of the first category that has one, with the storage, which a storage
 // error of its own makes unavailable to the rest of the walk; then each category from its first object in pages of 50,
 // a page that gives result-too-large or no outcome within the run limit read again as two halves, the first the larger,

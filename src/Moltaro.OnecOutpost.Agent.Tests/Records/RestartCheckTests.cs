@@ -9,8 +9,8 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Records;
 
-// What a restart left, as CommandRecords.Open checks it before anything is written (the S6a brief, "The audit log" of
-// the plan): an outbox file is read with ReadOutcome for the mode of its command, either mode when no entry names one,
+// What a restart left, as CommandRecords.Open checks it before anything is written: an outbox file is read with
+// ReadOutcome for the mode of its command, either mode when no entry names one,
 // and must belong to a command that an entry names and agree with what its entries say a refusal was; a command that
 // ended, not confirmed, must still have its file. Anything else stops the agent, and Open writes nothing in any case.
 public sealed class RestartCheckTests

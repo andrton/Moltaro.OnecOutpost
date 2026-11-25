@@ -6,15 +6,15 @@ using Moltaro.OnecOutpost.Protocol;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Policy;
 
-// The rules of policy.json. A file that breaks any of them is invalid as a whole, and the error says where and what
-// (Q1): the path of the member at fault, what is wrong with it, and what is expected there. Each test changes one
+// The rules of policy.json. A file that breaks any of them is invalid as a whole, and the error says where and what:
+// the path of the member at fault, what is wrong with it, and what is expected there. Each test changes one
 // member of a valid policy: the owner of the member is given by its path, with "" for the root.
 public sealed class PolicyRuleTests
 {
     // A string that WithEscapedString replaces, as a name or as a value.
     private const string Placeholder = "placeholder";
 
-    // The owner's example of an error that says where and what (Q1), word for word.
+    // The error names the invalid member's path and explains what was expected.
     [Fact]
     public void An_empty_server_is_refused_with_an_error_that_says_where_and_what()
     {
@@ -162,8 +162,8 @@ public sealed class PolicyRuleTests
         AssertSaysWhereAndWhat(exception, PathOf(owner, member));
     }
 
-    // Carried over from S2: requestTimeout is in the form of runLimit, from 10 seconds to 1 hour, and safeMode of write
-    // is true or false. Since S9c a write with safeMode false names its worker account, which WorkerAccountPolicyTests
+    // requestTimeout is in the form of runLimit, from 10 seconds to 1 hour, and safeMode of write is true or false. A
+    // write with safeMode false names its worker account, which WorkerAccountPolicyTests
     // states.
     [Theory]
     [InlineData("", "requestTimeout", "\"00:00:10\"")]
@@ -234,8 +234,7 @@ public sealed class PolicyRuleTests
         AssertSaysWhereAndWhat(exception, "bases");
     }
 
-    // Q7: the agent offers the proxy the computer's credentials and never any written in the file. A user or a
-    // password in the URL is refused, and neither is repeated, since either may be a secret (principle 9).
+    // A user or password in the proxy URL is refused without echoing it (principle 9).
     [Theory]
     [InlineData("http://svc@proxy.example.com:3128")]
     [InlineData("http://svc:S3cret@proxy.example.com:3128")]

@@ -2,8 +2,8 @@ using Moltaro.OnecOutpost.Agent.Access;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Access;
 
-// The account NT SERVICE\{name} that Windows gives a service (the S10 brief, "ServiceAccount.Sid", and the S10b brief,
-// "Names"): its name, spelled once, and its SID, S-1-5-80- and the SHA-1 of the upper-cased name in UTF-16 as five
+// The account NT SERVICE\{name} that Windows gives a service: its name, spelled once, and its SID, S-1-5-80- and the
+// SHA-1 of the upper-cased name in UTF-16 as five
 // sub-authorities, as Windows derives it, computed without Windows, so on every platform. That Windows translates the
 // account of a service it created to this SID is a test of the console's with Requires=Administrator.
 public sealed class ServiceAccountTests

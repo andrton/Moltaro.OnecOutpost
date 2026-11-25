@@ -1,6 +1,6 @@
 namespace Moltaro.OnecOutpost.Console.Commands;
 
-// The exit codes of the console, as the S10 brief's table gives them, each with the commands that give it.
+// The console's exit codes are part of its contract with the scripts that run it.
 internal static class ConsoleExitCodes
 {
     // Every command: done; --help too.

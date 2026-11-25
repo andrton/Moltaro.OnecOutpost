@@ -6,8 +6,8 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Connector;
 
-// The one finder of the COM connector, which the launcher and the console use (the S10 brief, "From the architect's
-// review 1" and "ConnectorFinder"), with Requires=Windows: over the classes of the current user in both views, which
+// The one finder of the COM connector, which the launcher and the console use, with Requires=Windows: over the
+// classes of the current user in both views, which
 // TestConnector registers, as the finder of the machine reads HKLM's, and a temporary folder of the platform. Find gives
 // a finding for 64 bits, then one for 32 bits. In each view {progId}\CLSID and CLSID\{class}\InprocServer32 give the
 // path, expanded, which is Registered, with the FileVersion of its file, only when its file exists. Unregistered holds
@@ -47,8 +47,7 @@ public sealed class ConnectorFinderTests : IDisposable
         _folder.Dispose();
     }
 
-    // The reading that the launcher had before S10a, which the finder keeps: a registration in a view picks that view's
-    // bitness, a path that the registry expands expanded.
+    // A registration picks the bitness of its registry view. The finder uses the expanded path.
     [Fact]
     public void Find_gives_a_finding_for_64_bits_then_one_for_32_bits_each_with_the_path_registered_in_its_view_expanded()
     {
@@ -74,8 +73,7 @@ public sealed class ConnectorFinderTests : IDisposable
         Assert.Equal(FileVersionOf(Program32), registered.Version);
     }
 
-    // The agent's behavior changes here (the S10 brief, a draft for the owner): a registration whose file is gone no
-    // longer picks that bitness.
+    // A registration whose file is gone is ignored when choosing a bitness.
     [Fact]
     public void A_registration_whose_file_is_gone_is_not_Registered()
     {

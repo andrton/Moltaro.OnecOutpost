@@ -7,7 +7,7 @@ For the administrator of a back office: how to install the Moltaro.OnecOutpost a
 and of the server on every platform, and in CI's elevated Windows job against the service controller, the local
 security policy and the access lists. The lab confirmed `check` and `metadata` on the test base and a copy of a
 typical base. The lab also verified installation from a provisional archive, pairing over HTTPS against the shell,
-and a Read and a Write on the test base. The release archive is built with the first release.
+and a Read and a Write on the test base. The release workflow builds the archive from the version tag.
 
 ## How it fits together
 
@@ -57,8 +57,8 @@ brackets, such as `<version>`.
 
 You need:
 
-- **A Windows machine** that runs the versions of Windows that .NET 10 supports. Nothing else needs installing: the
-  programs carry their own .NET runtime.
+- **A Windows machine** that can run x64 programs and uses a Windows version supported by .NET 10. The programs
+  carry their own .NET runtimes.
 - **The 1C:Enterprise platform of exactly the version of the 1C cluster**, installed on that machine with its COM
   connector, `comcntr.dll` in the platform's `bin` folder. A connector of another version does not connect. The oldest
   version supported is 8.3.17.1851. For a file base, the version that the base is opened with.
@@ -104,23 +104,26 @@ never travel to the server.
 
 ## Unpacking the archive
 
-The agent comes as one archive, `Moltaro.OnecOutpost-<version>-win.zip`, on the release page of the repository, with
-its SHA-256 checksum. It holds the agent `Moltaro.OnecOutpost.Agent.exe`, the console
+Download `Moltaro.OnecOutpost-<version>-win.zip` and its `.zip.sha256` checksum file from the same release page.
+The archive holds the agent `Moltaro.OnecOutpost.Agent.exe`, the console
 `Moltaro.OnecOutpost.Console.exe`, the COM worker for 64 bits in `x64\` and for 32 bits in `x86\`, the executor
-`OutpostExecutor.epf` that runs a script inside 1C, the licence and the notices. Its programs are not signed, so an
-antivirus program may ask you to allow the agent.
+`OutpostExecutor.epf` that runs a script inside 1C, the licence and notices, and the bundled components' licences in
+`licenses\`. Its programs are unsigned, so an antivirus program may ask you to allow the agent.
 
-Check the checksum, then unpack the archive into a folder of its own:
+Calculate the archive's SHA-256 checksum.
 
 ```powershell
 Get-FileHash .\Moltaro.OnecOutpost-<version>-win.zip -Algorithm SHA256
-Expand-Archive .\Moltaro.OnecOutpost-<version>-win.zip -DestinationPath <folder>
 ```
 
-The `Hash` that `Get-FileHash` shows has to be the checksum of the release page, letter for letter, ignoring case. If
-it is not, the file is not the one released: do not use it. The folder may lie anywhere except inside
-`C:\Program Files\Moltaro.OnecOutpost`, and it may not hold that folder, such as `C:\Program Files` itself, since
-`install` copies its whole content there.
+Compare the `Hash` printed by `Get-FileHash` with the first field of the checksum file, ignoring case.
+Unpack the archive only when they match. Pick a folder of its own, outside
+`C:\Program Files\Moltaro.OnecOutpost` and outside its parents. The `install` command copies the entire
+unpacked folder to `C:\Program Files\Moltaro.OnecOutpost`.
+
+```powershell
+Expand-Archive .\Moltaro.OnecOutpost-<version>-win.zip -DestinationPath <folder>
+```
 
 ## Installing
 
@@ -822,7 +825,7 @@ Every entry has `time`, in UTC with milliseconds, and `entry`, its kind. A start
 | `policy` | `valid`; `error` when not | The agent read its policy |
 | `connection` | `state`, `connected` or `lost`; `reason` when lost, such as `unreachable`, `status-407` from a proxy that asks for authentication, `status-` and another HTTP status, `protocol-version`, or the code of a refusal of the server | The agent's polls began or stopped reaching the server |
 | `bases` | `held`, the keys the server granted; `claimed`, those that another agent holds | That changed |
-| `received` | `command`, `base`, `mode`, `callerKey` (a Write's, or `null`), `script`, `parameters`, `issued`, `deadline` | A command passed every check, before it runs |
+| `received` | `command`, `base`, `mode`, `callerKey` (required for a Write, optional for a Read), `script`, `parameters`, `issued`, `deadline` | A command passed every check, before it runs |
 | `refused` | `command`, `base`, `mode`, each `null` when nothing in the command can be trusted; `code`, such as `signature`, `expired`, `clock-skew` or `not-served` | A command failed a check and did not run |
 | `ended` | `command`; `outcome`, `succeeded`, `failed` or `unknown`; `code`, such as `script-error` or `run-limit`; `durationMs` | A command ended; a later `ended` of the same command replaces an earlier one |
 | `confirmed` | `command` | The server keeps the outcome, so the agent no longer sends it |
@@ -836,11 +839,10 @@ The reasons of `stopped` that need you:
 - `the server has recorded polls of this agent that its audit log does not hold: the log was cleared; pair the agent
   anew`, and `the poll numbers are used up; pair the agent anew`: see [Pairing anew](#pairing-anew).
 
-**How long it is kept.** A file is removed once its last entry is older than `auditRetentionDays`, 90 by default, and
-one day more for the difference between clocks; never sooner than a day. A file stays as long as it holds an entry of
-a command whose outcome the server has not confirmed. The agent removes files only right after an answer of the server
-that it verified, and only when its clock is within a day of the server's, so an agent that never reached the server,
-or whose clock is far off, removes nothing.
+**How long it is kept.** After a verified poll answer, the agent can remove a file if its last entry is older than
+`auditRetentionDays` plus one day. The default is 90 days plus the extra day for clock differences. Retention runs
+only when the agent's clock is within a day of the answer's time. Files with unconfirmed commands stay. See
+[Audit log](../agent-files.md#audit-log) for the full entry and retention rules.
 
 ## Metadata reports
 

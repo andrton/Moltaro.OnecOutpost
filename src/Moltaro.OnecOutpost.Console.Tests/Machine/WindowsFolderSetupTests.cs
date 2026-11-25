@@ -6,7 +6,7 @@ using Moltaro.OnecOutpost.Console.Folders;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 
-// The folders as NTFS keeps them (the S10 brief, "WindowsFolderSetup", S9c's draft and Q14), with Requires=Windows and
+// The folders as NTFS keeps them, with Requires=Windows and
 // Requires=Administrator, on the folders of a service of the test's own: the program folder under %ProgramFiles% gets
 // O:BAD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICI;0x1200a9;;;BU), the content of the source, and every entry
 // Administrators as its owner with only inherited entries, so that the agent's rule finds nobody who may change it; the
@@ -108,7 +108,7 @@ public sealed class WindowsFolderSetupTests
         });
     }
 
-    // Q14: a file whose owner is somebody else stops the agent, since its owner can always change its list.
+    // A file whose owner is somebody else stops the agent, since its owner can always change its list.
     [Fact]
     public void A_file_the_console_writes_gets_Administrators_as_its_owner()
     {
@@ -144,8 +144,8 @@ public sealed class WindowsFolderSetupTests
         });
     }
 
-    // The data folder admits nobody else by the agent's rule, and has the entries of the brief: its own, protected, and
-    // those that audit\ and outcomes\ inherit with the agent's modify right of their own, each owned by Administrators.
+    // The data folder has a protected access list and passes inherited entries to audit and outcomes. The two
+    // subfolders add a modify entry for the agent. Administrators is the owner of all three folders.
     private static void AssertDataFolder(TestService service)
     {
         Assert.Equal(

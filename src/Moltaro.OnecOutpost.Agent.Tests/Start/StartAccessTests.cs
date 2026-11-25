@@ -83,7 +83,7 @@ public sealed class StartAccessTests
         Assert.Single(StoppedStart.Of(_folder, _clock));
     }
 
-    // The acceptance of S6: a torn last line, then a start that stops on an access list that admits someone else, then
+    // A torn last line, then a start that stops on an access list that admits someone else, then
     // a start with the access lists fixed: the last start runs normally.
     [Fact]
     public void After_a_torn_line_and_a_start_stopped_by_an_access_list_a_start_with_the_lists_fixed_runs_normally()

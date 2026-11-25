@@ -7,7 +7,7 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line Files of check (the S10b brief, "check"): policy.json, agent.json and secrets.dat, read as the agent's start
+// The line Files of check: policy.json, agent.json and secrets.dat, read as the agent's start
 // reads them, by StartChecks, each failing with the reason that the start gives, and secrets.dat with every password
 // that the policy needs and that it lacks. A line that needs a file that failed is not checked: no base is checked
 // without a policy, the server without agent.json, and nothing that needs a password without secrets.dat.
@@ -39,7 +39,7 @@ public sealed class FilesLineTests : IDisposable
         run.AssertNotChecked(CheckLineEnum.Server, AgentFolders.PolicyName);
     }
 
-    // The reworded reason of the start (the S10b brief, "One wording, with a remedy that exists").
+    // The file check gives the same remedy as the agent's start.
     [Fact]
     public async Task An_agent_json_that_is_absent_fails_its_line_and_the_server_is_not_checked()
     {

@@ -15,7 +15,7 @@ using Moltaro.OnecOutpost.TestSupport.RunningAgent;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Host;
 
-// The acceptance of S6, with Requires=Windows: a data folder, or a file in it, whose access list admits anybody else
+// On Windows, a data folder, or a file in it, whose access list admits anybody else
 // makes the agent stop, recorded. The host runs on the disk with the machine's access lists and DPAPI, as the service
 // does; it gives Error, records started with the error, and polls nothing.
 [Trait("Requires", "Windows")]

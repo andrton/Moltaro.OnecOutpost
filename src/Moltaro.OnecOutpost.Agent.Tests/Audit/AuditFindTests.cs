@@ -6,8 +6,8 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Audit;
 
-// What the audit log knows of its commands and reservations after a restart, the agent's journal of rules 3, 10 and 11
-// (the S6a brief): Find gives the facts of a command that a received, a refused with a command, an ended or a confirmed
+// What the audit log knows of its commands and reservations after a restart, the agent's journal of rules 3, 10 and
+// 11: Find gives the facts of a command that a received, a refused with a command, an ended or a confirmed
 // names; Unconfirmed gives the received list of a poll (§6.2); HighestReservation the greatest bound of an identity.
 // Only the last ended or refused depends on the order of the files, which the clock can upset; every other fact is a
 // set or a maximum, whatever the files it is in.

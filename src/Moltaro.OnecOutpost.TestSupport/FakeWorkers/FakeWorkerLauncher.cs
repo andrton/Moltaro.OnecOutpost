@@ -5,16 +5,16 @@ using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 
 namespace Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
-// The launcher of the fake COM workers, in place of the COM worker of S9 behind its boundary (principle 8, the fake of
-// the S6b brief). Each Start is a line "start {worker}" of the operation list of a data folder in memory, and so are
-// the opens, the runs and the kills of its processes, so that a test asserts the order of the workers' operations
-// among the writes of the audit log and the outbox. Opens decides what the open of each process gives, by its base,
-// its mode and its number among the starts of that base and mode, from 1; Runs, the outcome function, decides what
-// each run gives, by its command line. A test sets them before the pool asks. Started, when a test sets it, runs once a
-// process is started and listed, before Start returns it, so that a test acts at that moment. Start may run on several
-// tasks at once, since every slot of the pool starts its workers on a task of its own (the S9b brief).
+// The launcher supplies fake COM workers at the process boundary (principle 8). Each Start is a line "start {worker}"
+// of the operation list of a data folder in memory, and so are the opens, the runs and the kills of its processes, so
+// that a test asserts the order of the workers' operations among the writes of the audit log and the outbox. Opens
+// decides what the open of each process gives, by its base, its mode and its number among the starts of that base and
+// mode, from 1; Runs, the outcome function, decides what each run gives, by its command line. A test sets them before
+// the pool asks. Started, when a test sets it, runs once a process is started and listed, before Start returns it, so
+// that a test acts at that moment. Start may run on several tasks at once, since every slot of the pool starts its
+// workers on a task of its own.
 //
-// LogOn stands for the logon of a worker account (the S9c brief): it keeps the base, the account and the password it
+// LogOn stands for the logon of a worker account: it keeps the base, the account and the password it
 // was given, and is a line "logon {base} {account}", never with the password. It refuses the logon of a base that the
 // test named with RefuseLogOn, with an AgentStopException of the test's reason, as the real launcher refuses one; any
 // other base is logged on, and every process started for it afterwards runs under its account, Reads included, as the

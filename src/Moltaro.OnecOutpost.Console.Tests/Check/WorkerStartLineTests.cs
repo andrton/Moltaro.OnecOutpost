@@ -5,7 +5,7 @@ using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line WorkerStart of check (the S10b brief, "The probe"), for each worker account whose line passed: a start of the
+// The line WorkerStart of check, for each worker account whose line passed: a start of the
 // worker program of the connector's bitness under the account on its desktop, which opens no base, with the run limit of
 // the base's write mode as its deadline. Its exit code 0 passes; every other end and every error of Windows is named,
 // and the connections of the base are not checked then.
@@ -83,7 +83,7 @@ public sealed class WorkerStartLineTests : IDisposable
         AssertNoConnectionOfAccounting(run);
     }
 
-    // The errors of the call that the brief names, and one that it does not, with the message of Windows.
+    // The common launch errors have specific reasons. An unrecognized error carries the Windows message.
     [Theory]
     [InlineData(1314, "the console lacks \"Impersonate a client after authentication\"")]
     [InlineData(1058, "the Secondary Logon service is disabled; check does not start it")]

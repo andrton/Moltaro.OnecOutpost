@@ -11,7 +11,7 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditEntries;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Records;
 
-// The order of the records of a command across the audit log and the outbox (rules 2, 3 and 11, the S6a brief):
+// The order of the records of a command across the audit log and the outbox (rules 2, 3 and 11):
 // received, then the outbox file, then ended, then confirmed, and the file removed last; a refused before the file of
 // its Refused outcome; a replacement for size before its second ended. The outcome of the executor is kept as its bytes
 // came; an outcome that the agent writes itself is OutpostCodec.Write of one with no result, no error text and no
@@ -35,7 +35,7 @@ public sealed class CommandOrderTests : IDisposable
         _log.Dispose();
     }
 
-    // The acceptance of S6: received, then the outbox file, then ended, then confirmed.
+    // Command records are written in order: received, outbox file, ended, then confirmed.
     [Fact]
     public void A_command_is_recorded_received_then_its_outbox_file_then_ended_then_confirmed_and_its_file_goes_last()
     {
@@ -100,7 +100,7 @@ public sealed class CommandOrderTests : IDisposable
     }
 
     // A Refused outcome is wholly given by its code and identity, so the entry comes first and a start can finish the
-    // file (the coordinator's decision under PQ2).
+    // file.
     [Fact]
     public void Refuse_records_refused_then_the_file_of_its_Refused_outcome()
     {

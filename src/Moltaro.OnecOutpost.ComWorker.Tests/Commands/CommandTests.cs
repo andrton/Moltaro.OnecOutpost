@@ -4,8 +4,7 @@ using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Commands;
 
 // Each command line gets a fresh executor, whose Run receives the command as the worker read it, and whose text the
-// worker writes to its output unchanged, with its LF, in one write, before it takes the next line (the brief of S9,
-// "The lines", and concept §3: each command gets a fresh executor object).
+// worker writes to its output unchanged, with its LF, in one write, before it takes the next line (concept §3).
 [Trait("Requires", "Windows")]
 public sealed class CommandTests
 {

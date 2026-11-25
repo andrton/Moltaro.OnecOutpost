@@ -40,42 +40,9 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 
 ## Open
 
-### Q7. A user and a password in the URL of the proxy
+None.
 
-| | |
-| --- | --- |
-| **Found** | 20 November 2026, Epic 1 S1, review round 7 |
-| **Question** | `proxy` takes any absolute `http` URL, so a URL with a user and a password in it, such as `http://user:password@proxy.local:3128`, is accepted, and the policy then holds a secret in plain text. The table of `policy.json` says that a proxy which asks for authentication gets the Windows credentials of the agent's account. Is a URL with a user or a password refused? |
-| **Until answered** | `AgentPolicyReader` accepts it. No message of the reader repeats the value of `proxy`, but the internal `AgentPolicy` record would print it in full if anything wrote the record out; nothing does yet. To be answered before S6, which connects through the proxy |
-| **Decides** | The owner: `policy.json` is public contract |
-| **Proposed** | 20 November 2026, the planner, in S2's list of changes of the public contract that come with `docs/protocol.md`: a URL with a user or a password in `proxy` is refused. The owner's approval of that list answers this entry |
-
-### Q8. Which code a verified command gets for a fault the brief does not place
-
-| | |
-| --- | --- |
-| **Found** | 21 November 2026, Epic 1 S2, the tests and the implementation steps |
-| **Question** | §7 of `docs/protocol.md` gives `form` without an identity to verified bytes that yield no `protocol` and no `id`, and `malformed` with the identity to a verified command of this version that breaks §7. It does not place every fault. Which code does each of these get: an `id` in another form than the 36 lowercase characters; a `protocol` or an `id` given twice; bytes that are not JSON, or nest beyond the 72 levels of a message; a fault of §2 in a command whose `protocol` and `id` can be read, such as a duplicated member, U+0000 or parameters deeper than 64 levels; and `protocol` 0? |
-| **Taken** | 21 November 2026, the coordinator, as the recommended reading: an `id` in another form, a `protocol` or an `id` given twice, and bytes that are not JSON within 72 levels yield no identity, so they get `form` without one. A fault of §2 in a command whose `protocol` 1 and `id` were read gets `malformed` with its identity. `protocol` 0 is another version and gets `protocol-version`. The codec does so; its tests show an `id` in another form, bytes that are not JSON, the faults of §2 and `protocol` 0 |
-| **Decides** | The owner: the codes of a refusal are public contract. A cheap change of the codec if overturned; nothing is sent or stored yet |
-
-### Q9. Rules of §6 and §8 that the readers apply more strictly than the text says
-
-| | |
-| --- | --- |
-| **Found** | 21 November 2026, Epic 1 S2, the implementation step |
-| **Question** | Three rules are read strictly where the text of `docs/protocol.md` allows another reading. Does each hold? (a) For `failed` with `script-error`, `errorText` is a string and never `null` (§8 says "the text of the error 1C raised", and `null` otherwise). (b) The keys in `bases.held` and `bases.claimed` of a poll answer follow the rule of base keys (§6.2). (c) A signed refusal is checked only for its code against its status, not against the kind of the request (§9) |
-| **Taken** | 21 November 2026, the coordinator, as the recommended reading: (a) and (b) yes, so a reader refuses such a message with `form`; (c) as the brief's contract of `ReadRefusal` states it. The codec does so |
-| **Decides** | The planner, for (b) and (c), which follow from rules that stand; the owner for (a), a rule of the outcome object. To be answered before S6, whose agent writes and reads these messages |
-
-### Q10. The behaviors of the COM worker that its Acceptance does not list one by one
-
-| | |
-| --- | --- |
-| **Found** | 21 November 2026, Epic 1 S9, review round 1 of the internal contract |
-| **Question** | The automated Acceptance of S9 names some lines of the worker and not others: that the executor's text is written byte for byte, that `{"ready":true}` is written, that `safeMode` reaches the executor of a Write, that every command gets a fresh executor that is released, that `parameters`, `callerKey` and `outcomeLimit` pass through, and that the next line is read only after the outcome is written. Does each need a test of its own? |
-| **Taken** | 21 November 2026, the coordinator, as the planner recommends: the Acceptance's line on every line of the internal contract covers them, so the test author writes them as tests of those lines |
-| **Decides** | The planner |
+## Carried forward
 
 ### Q11. The cost of measuring UTF-8 in the executor
 
@@ -85,6 +52,50 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Question** | The compatibility mode 8.2.13 reportedly has no binary data functions, so the executor counts the UTF-8 bytes of its outcome character by character. For an outcome near its limit, 16 MiB by default and up to 64 MiB, that loop runs inside the transaction of a Write and holds its locks. Is the default of the outcome limit still right? |
 | **Taken** | 21 November 2026, the coordinator, as the planner recommends: a `CharCode` loop is accepted for S9. Its cost inside the transaction of a Write is measured on the lab machine before the default of the outcome limit is trusted, with a result near the limit and with many thousands of user messages, since the executor builds its texts by joining strings (S9 code review, round 1) |
 | **Decides** | The planner, with the figure of the lab; the owner if the default of the limit, a public option, has to change |
+| **Decision** | 25 November 2026, the owner: keep the 16 MiB default in 0.1.0. Carry the measurements of a near-limit Write outcome and a Write with 10,000 user messages into the next stage. The measurements are a follow-up to this release. |
+
+## Answered
+
+### Q7. A user and a password in the URL of the proxy
+
+| | |
+| --- | --- |
+| **Found** | 20 November 2026, Epic 1 S1, review round 7 |
+| **Question** | `proxy` takes any absolute `http` URL, so a URL with a user and a password in it, such as `http://user:password@proxy.local:3128`, is accepted, and the policy then holds a secret in plain text. The table of `policy.json` says that a proxy which asks for authentication gets the Windows credentials of the agent's account. Is a URL with a user or a password refused? |
+| **Until answered** | `AgentPolicyReader` accepts it. No message of the reader repeats the value of `proxy`, but the internal `AgentPolicy` record would print it in full if anything wrote the record out; nothing does yet. To be answered before S6, which connects through the proxy |
+| **Decides** | The owner: `policy.json` is public contract |
+| **Proposed** | 20 November 2026, the planner, in S2's list of changes of the public contract that come with `docs/protocol.md`: a URL with a user or a password in `proxy` is refused. The owner's approval of that list answers this entry |
+| **Answer** | S6 settled this in the local policy contract. A user or password in a proxy URL is refused. The agent sends no proxy credentials, as [protocol §11](../protocol.md#11-addresses-tls-and-the-proxy) states. |
+
+### Q8. Which code a verified command gets for a fault the brief does not place
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S2, the tests and the implementation steps |
+| **Question** | §7 of `docs/protocol.md` gives `form` without an identity to verified bytes that yield no `protocol` and no `id`, and `malformed` with the identity to a verified command of this version that breaks §7. It does not place every fault. Which code does each of these get: an `id` in another form than the 36 lowercase characters; a `protocol` or an `id` given twice; bytes that are not JSON, or nest beyond the 72 levels of a message; a fault of §2 in a command whose `protocol` and `id` can be read, such as a duplicated member, U+0000 or parameters deeper than 64 levels; and `protocol` 0? |
+| **Taken** | 21 November 2026, the coordinator, as the recommended reading: an `id` in another form, a `protocol` or an `id` given twice, and bytes that are not JSON within 72 levels yield no identity, so they get `form` without one. A fault of §2 in a command whose `protocol` 1 and `id` were read gets `malformed` with its identity. `protocol` 0 is another version and gets `protocol-version`. The codec does so; its tests show an `id` in another form, bytes that are not JSON, the faults of §2 and `protocol` 0 |
+| **Decides** | The owner: the codes of a refusal are public contract. A cheap change of the codec if overturned; nothing is sent or stored yet |
+| **Answer** | The S2 contract adopted the readings above. The identity and refusal rules live in [protocol §7](../protocol.md#7-the-command) and the codec tests. |
+
+### Q9. Rules of §6 and §8 that the readers apply more strictly than the text says
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S2, the implementation step |
+| **Question** | Three rules are read strictly where the text of `docs/protocol.md` allows another reading. Does each hold? (a) For `failed` with `script-error`, `errorText` is a string and never `null` (§8 says "the text of the error 1C raised", and `null` otherwise). (b) The keys in `bases.held` and `bases.claimed` of a poll answer follow the rule of base keys (§6.2). (c) A signed refusal is checked only for its code against its status, not against the kind of the request (§9) |
+| **Taken** | 21 November 2026, the coordinator, as the recommended reading: (a) and (b) yes, so a reader refuses such a message with `form`; (c) as the brief's contract of `ReadRefusal` states it. The codec does so |
+| **Decides** | The planner, for (b) and (c), which follow from rules that stand; the owner for (a), a rule of the outcome object. To be answered before S6, whose agent writes and reads these messages |
+| **Answer** | The S2 contract adopted the readings above. See [protocol §§6, 8 and 9](../protocol.md), which describe poll answers, outcome fields and signed refusals. |
+
+### Q10. The behaviors of the COM worker that its Acceptance does not list one by one
+
+| | |
+| --- | --- |
+| **Found** | 21 November 2026, Epic 1 S9, review round 1 of the internal contract |
+| **Question** | The automated Acceptance of S9 names some lines of the worker and not others: that the executor's text is written byte for byte, that `{"ready":true}` is written, that `safeMode` reaches the executor of a Write, that every command gets a fresh executor that is released, that `parameters`, `callerKey` and `outcomeLimit` pass through, and that the next line is read only after the outcome is written. Does each need a test of its own? |
+| **Taken** | 21 November 2026, the coordinator, as the planner recommends: the Acceptance's line on every line of the internal contract covers them, so the test author writes them as tests of those lines |
+| **Decides** | The planner |
+| **Answer** | The S9 internal contract adopted the reading above. The worker tests exercise the connection and command lines, their fields and the executor lifetime. |
 
 ### Q12. A commit that raises, and a transaction the script leaves open
 
@@ -94,6 +105,7 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Question** | Rule 5 names one way a Write's outcome cannot be known: the script ended the executor's transaction itself. Two more cases have no code. The executor's `CommitTransaction` may raise, so it cannot tell whether the Write was written. The script may also begin a nested transaction and leave it open; the executor then rolls everything back, and nothing was written. Which outcomes do they get? |
 | **Taken** | 21 November 2026, the coordinator, as the planner recommends, with no new code: a commit that raises is Unknown `transaction-ended`, whose meaning widens to "the script ended the transaction of its Write itself, or the commit raised"; a transaction left open is Failed `script-error`, with a fixed English sentence of the executor as its `errorText`, since 1C raised nothing. After round 1 of the code review the same holds for a Read: the executor rolls back every transaction a script left open, so none outlives its command in the session of the worker. The executor does so, and lab tests state it. On the lab, 21 November 2026, a nested rollback on 8.3.17 left the transaction active and its commit did not raise, so the one way of provoking a commit that raises that was tried does not work there: the planner decided that the executor keeps Unknown `transaction-ended` for it, which principle 5 requires, and that the case has no lab test. Round 3 of the code review then found, and the lab confirmed, that a Write whose script begins and rolls back a nested transaction was reported Succeeded although 1C had silently rolled back all it wrote. The owner decided to fix it: before the commit of a Write the executor runs the query `SELECT 1`, and when it raises, rolls back and gives Failed `script-error` with its own sentence. Two lab tests state it |
 | **Decides** | The owner: the meaning of a code and of `errorText` is public contract. Listed with the drafts of S9 |
+| **Answer** | The S9 contract adopted the recorded behavior, including the check before commit. [Protocol §8](../protocol.md#8-the-outcome-object) and the [concept](../concept.md) state the outcomes. |
 
 ### Q13. A schema whose name begins with `pg_`
 
@@ -103,8 +115,7 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Question** | The rule of schemas of S1 accepts a name that begins with `pg_`, which PostgreSQL reserves for its own schemas. Now that `MigrateAsync` works, such a schema passes the check of the call and then fails in its task with the error 42939 of PostgreSQL. Should the rule of schemas refuse the prefix, so that the call throws `ArgumentException` itself? |
 | **Until answered** | The rule stays as it is, and `MigrateAsync` reports the error of PostgreSQL through its task. `AddOutpostServer` accepts such a schema. It blocks no sprint: the planner carried it to the closing of the epic (21 November 2026), since either answer is a small change of one check |
 | **Decides** | The owner: the rule of names is public contract |
-
-## Answered
+| **Answer** | The 0.1.0 contract keeps validation of the name's shape. PostgreSQL reserves the prefix and the migration reports its error. Choose an unreserved schema name, as the [server guide](../guides/server.md) and package documentation say. |
 
 ### Q16. The reason of a stop after `started`
 

@@ -43,7 +43,7 @@ internal static class AccessListEdits
         new DirectoryInfo(folder).SetAccessControl(security);
     }
 
-    // Sets the access list of a folder as the console's install sets that of the program folder (the S9c brief): as
+    // Sets the access list of a folder as the console's install sets that of the program folder: as
     // AdmitNobodyElse, the account that runs the tests standing for the agent's, and read and run for Users, inherited
     // by everything created inside.
     public static void LetUsersReadAndRun(string folder)

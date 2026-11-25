@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How the library is built</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf7;
+    --fg: #1d1f23;
+    --muted: #5d646e;
+    --line: #8b929c;
+    --box: #ffffff;
+    --panel: #f1efe9;
+    --accent: #235dbc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15171b;
+      --fg: #e6e8eb;
+      --muted: #aeb6c2;
+      --line: #818c9b;
+      --box: #1e2127;
+      --panel: #1c1f24;
+      --accent: #8ab5ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.75rem; line-height: 1.2; margin: 0 0 12px; }
+  h2 { font-size: 1.2rem; margin: 32px 0 8px; }
+  p { max-width: 74ch; }
+  a { color: var(--accent); }
+  figure {
+    margin: 24px 0;
+    padding: 8px;
+    border-radius: 10px;
+    background: var(--panel);
+    overflow-x: auto;
+  }
+  figure:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  svg { display: block; min-width: 820px; width: 100%; height: auto; }
+  .box { fill: var(--box); stroke: var(--line); stroke-width: 1.4; }
+  .wire { fill: none; stroke: var(--line); stroke-width: 1.5; marker-end: url(#arrow); }
+  .network { stroke: var(--accent); marker-end: url(#network-arrow); }
+  .title { fill: var(--fg); font-size: 14.5px; font-weight: 600; text-anchor: middle; }
+  .label { fill: var(--muted); font-size: 12.5px; text-anchor: middle; }
+  .network-label { fill: var(--accent); }
+  table { border-collapse: collapse; }
+  th, td { padding: 6px 14px 6px 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+</style>
+</head>
+<body>
+<main>
+<h1>How the library is built</h1>
+
+<p>An ASP.NET Core application embeds the server and calls it to manage agents and send
+a Read or Write. The shell embeds the same library for a session by hand. In the back
+office, the console installs, pairs and checks the Windows agent.</p>
+
+<figure tabindex="0" aria-label="Library components and their connections">
+<svg viewBox="0 0 940 324" role="img" aria-labelledby="diagram-title diagram-description">
+  <title id="diagram-title">Library components and their connections</title>
+  <desc id="diagram-description">The ASP.NET Core application and shell embed the server
+  library. The server stores state in PostgreSQL and wakes waiters through Moltaro.Signals.
+  The Windows console installs and checks the Windows agent. The agent initiates pairing,
+  polls and sends outcomes to the server over HTTPS. The agent starts x64 or x86 COM
+  workers, which open and call the executor in 1C:Enterprise.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L8 4 L0 8 Z" fill="var(--line)"/>
+    </marker>
+    <marker id="network-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L8 4 L0 8 Z" fill="var(--accent)"/>
+    </marker>
+  </defs>
+
+  <g>
+    <path class="wire" d="M122 71 V116 H159 V137"/>
+    <path class="wire" d="M278 71 V116 H244 V137"/>
+    <path class="wire" d="M496 71 V137"/>
+    <path class="wire network" d="M421 162 H281"/>
+    <path class="wire" d="M571 162 H619"/>
+    <path class="wire" d="M739 162 H793"/>
+    <path class="wire" d="M159 187 V237 H118 V266"/>
+    <path class="wire" d="M244 187 V237 H282 V266"/>
+  </g>
+
+  <g>
+    <rect class="box" x="30" y="25" width="184" height="46" rx="8"/>
+    <text class="title" x="122" y="53">ASP.NET Core application</text>
+    <rect class="box" x="226" y="25" width="104" height="46" rx="8"/>
+    <text class="title" x="278" y="53">Shell</text>
+    <rect class="box" x="421" y="25" width="150" height="46" rx="8"/>
+    <text class="title" x="496" y="53">Windows console</text>
+    <rect class="box" x="118" y="137" width="163" height="50" rx="8"/>
+    <text class="title" x="200" y="167">Server library</text>
+    <rect class="box" x="421" y="137" width="150" height="50" rx="8"/>
+    <text class="title" x="496" y="167">Windows agent</text>
+    <rect class="box" x="619" y="137" width="120" height="50" rx="8"/>
+    <text class="title" x="679" y="159">COM worker</text>
+    <text class="label" x="679" y="175">x64 or x86</text>
+    <rect class="box" x="793" y="137" width="126" height="50" rx="8"/>
+    <text class="title" x="856" y="159">Executor</text>
+    <text class="label" x="856" y="175">in 1C:Enterprise</text>
+    <rect class="box" x="40" y="266" width="156" height="43" rx="8"/>
+    <text class="title" x="118" y="293">PostgreSQL</text>
+    <rect class="box" x="204" y="266" width="156" height="43" rx="8"/>
+    <text class="title" x="282" y="293">Moltaro.Signals</text>
+  </g>
+
+  <g>
+    <text class="label" x="157" y="108">embeds</text>
+    <text class="label" x="244" y="108">embeds</text>
+    <text class="label" x="559" y="108">installs and checks</text>
+    <text class="label network-label" x="351" y="140">outbound HTTPS</text>
+    <text class="label network-label" x="351" y="155">pair, poll, outcome</text>
+    <text class="label" x="595" y="151">starts</text>
+    <text class="label" x="766" y="148">opens</text>
+    <text class="label" x="766" y="180">and calls</text>
+    <text class="label" x="120" y="228">stores state</text>
+    <text class="label" x="282" y="228">wakes waiters</text>
+  </g>
+</svg>
+</figure>
+
+<p>The server keeps agents, commands and outcomes in PostgreSQL. Moltaro.Signals wakes
+waiting polls and calls so each node can read the store. The application supplies
+both services. The agent opens every network request to the server.</p>
+
+<p>Only the COM worker calls the 1C COM connector. A worker holds a session for one
+base and mode. It opens a fresh copy of the executor in that session for each
+command. The executor runs the script inside 1C and returns the outcome as JSON.</p>
+
+<h2>Project dependencies</h2>
+
+<table>
+  <thead><tr><th scope="col">Project</th><th scope="col">Depends on</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Server</th><td>Protocol, ASP.NET Core, EF Core with Npgsql, Moltaro.Signals</td></tr>
+    <tr><th scope="row">Agent</th><td>Protocol</td></tr>
+    <tr><th scope="row">Console</th><td>Agent, Protocol, Spectre.Console, Spectre.Console.Cli</td></tr>
+    <tr><th scope="row">Shell</th><td>Server, Spectre.Console, Spectre.Console.Cli</td></tr>
+    <tr><th scope="row">Protocol and COM worker</th><td>.NET</td></tr>
+  </tbody>
+</table>
+
+<p>The server is the single NuGet package and includes the matching protocol assembly.
+The Windows archive contains the agent, console, both builds of the COM worker
+and the executor. The shell runs from the repository.</p>
+
+<p>See <a href="command-path.html">The path of a command</a> for how a Read or Write
+travels through these parts. See the <a href="library-architecture.md">Markdown
+version</a> for the same explanation in the repository.</p>
+</main>
+</body>
+</html>

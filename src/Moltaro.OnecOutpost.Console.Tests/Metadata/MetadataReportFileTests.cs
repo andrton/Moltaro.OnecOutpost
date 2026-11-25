@@ -5,8 +5,8 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
-// The report written whole or not at all (the S10 brief, "metadata <BASE> <FILE>", step 10, and "What S10c changes in
-// the public contract"): under a temporary name of its own beside the file, created new, flushed and closed, then moved
+// The report written whole or not at all: under a temporary name of its own beside the file, created new, flushed and
+// closed, then moved
 // to the file without overwriting, so that it never replaces a file, not even one made during the walk, which then ends
 // it with Failure and leaves no temporary file. Ctrl+C between two Reads ends it with Cancelled before any file exists.
 public sealed class MetadataReportFileTests : IDisposable

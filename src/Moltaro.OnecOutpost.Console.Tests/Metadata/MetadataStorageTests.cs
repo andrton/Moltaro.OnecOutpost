@@ -6,8 +6,8 @@ using Moltaro.OnecOutpost.TestSupport.Metadata;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
-// The storage structure in the report of metadata (the S10 brief, "metadata <BASE> <FILE>", steps 6 to 8, and "The
-// report"): a storage structure that the read account may not read is recorded as unavailable with its reason, the
+// The storage structure in the report of metadata: a storage structure that the read account may not read is recorded
+// as unavailable with its reason, the
 // objects and their fields kept. The probe's storageError alone makes it unavailable: the pages then run without it,
 // common is not read, and no error of an object is set by it. A later page's storageError is written into the error of
 // each object of that page that has none, as storage: {storageError}, which makes them failed. A common storage that

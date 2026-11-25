@@ -12,9 +12,8 @@ namespace Moltaro.OnecOutpost.Protocol.Tests.Codec;
 // agent, and the agent checks the object of the executor with the same reader.
 public sealed class OutcomeObjectTests
 {
-    // Every combination of a mode, a kind and a code, and the same combinations for a command that the server does
-    // not know, whose mode is null; but the outcomes with a code of the connection to 1C that an agent may send, which
-    // the codec accepts only from S9 on.
+    // Test the 1C connection outcomes in §8 of docs/protocol.md for each mode, including null when the server does
+    // not know the command's mode.
     public static TheoryData<string?, string, string?> Combinations =>
         CombinationsWhere((mode, kind, code) => !OutcomeTable.IsAgentOutcomeOfTheConnectionTo1C(mode, kind, code));
 

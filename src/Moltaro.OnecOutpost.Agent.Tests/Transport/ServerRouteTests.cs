@@ -4,7 +4,7 @@ using Moltaro.OnecOutpost.Agent.Transport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 
-// The way to the server (§11 of docs/protocol.md, the proxy row of policy.json, the S6 brief, "S6b and S6c"): http://
+// The way to the server (§11 of docs/protocol.md): http://
 // only on a loopback address as .NET's Uri writes its host, judged without resolving a name, and never through the
 // proxy; every other address https://, validated as the system validates it, without a check of revocation. The
 // handler follows no redirect, decompresses nothing, drains nothing, keeps no cookies, waits the one second of .NET for

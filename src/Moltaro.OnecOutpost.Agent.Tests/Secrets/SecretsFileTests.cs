@@ -8,7 +8,7 @@ using Moltaro.OnecOutpost.TestSupport.FakeWindows;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Secrets;
 
-// The form of secrets.dat (the S6a brief, and the S9c brief for its workers): the protection over
+// The form of secrets.dat: the protection over
 // {"key":…,"passwords":[{"base":…,"mode":"read","password":…},…],"workers":[{"base":…,"password":…},…]}, written by the
 // writer of §2 of docs/protocol.md with the key in base64url. workers holds the password of the worker account of each
 // base whose write names one; it is required, and empty when no base names one. The secrets stay on their machine
@@ -203,7 +203,7 @@ public sealed class SecretsFileTests
         Assert.DoesNotContain("S3cret", exception.Message, StringComparison.Ordinal);
     }
 
-    // The S6 brief, "AgentHost": the agent signs with its key from the first poll on, so a key that is not an ECDSA key
+    // The agent signs with its key from the first poll on, so a key that is not an ECDSA key
     // on P-256 in PKCS#8 is refused when the file is read, not when the agent first signs: random bytes, a key on
     // P-384, and an RSA key.
     [Theory]

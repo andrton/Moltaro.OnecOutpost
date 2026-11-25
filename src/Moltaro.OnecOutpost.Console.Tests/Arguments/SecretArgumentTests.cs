@@ -4,7 +4,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Arguments;
 
-// The arguments of secret <BASE> <KIND> (the S10 brief, "secret"): BASE a base key by its rule, and KIND exactly read,
+// The arguments of secret <BASE> <KIND>: BASE a base key by its rule, and KIND exactly read,
 // write or worker. Anything else ends secret with Usage before it runs, naming the rule.
 public sealed class SecretArgumentTests
 {

@@ -5,7 +5,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.ConnectorRegister;
 
-// connector register (the S10 brief, "connector register", and the owner's answer after L1): after the elevation, one
+// connector register: after the elevation, one
 // line per finding of the finder, 64 bits first. A bitness with a connector registered is said to be; one without it
 // and with exactly one copy installed gets that copy registered by the regsvr32 of its bitness, and the finder is read
 // again; with several copies none is registered, since the connector has to match the version of the 1C cluster, and
@@ -82,7 +82,8 @@ public sealed class ConnectorRegisterTests
         }
     }
 
-    // The exit codes of regsvr32 /s, by their kinds, said as the brief says the end of a run with 0 that registers nothing.
+    // A nonzero exit from regsvr32 /s reports RegistrationFailed, as does a successful exit that leaves the connector
+    // unregistered.
     [Theory]
     [InlineData(1, "arguments")]
     [InlineData(2, "OleInitialize")]

@@ -5,7 +5,7 @@ namespace Moltaro.OnecOutpost.OneC.Tests.Messages;
 // The executor replaces each U+0000 and each lone surrogate in its messages and its error text with U+FFFD, then trims
 // them, never inside a surrogate pair, before it writes and measures its outcome object. The object crosses COM as
 // UTF-16 and the worker encodes it as UTF-8, so the size the executor measured is the length of the bytes the agent
-// receives (the brief of S9, "Contract", and §8 of docs/protocol.md). RunAsync holds every outcome to that size.
+// receives (§8 of docs/protocol.md). RunAsync holds every outcome to that size.
 public sealed class TextCleaningTests
 {
     private const string Pair = "\U0001F600";

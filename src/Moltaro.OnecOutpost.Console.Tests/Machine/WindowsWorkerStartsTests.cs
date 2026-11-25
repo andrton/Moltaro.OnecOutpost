@@ -6,7 +6,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 
-// The probe of check on Windows (the S10b brief, "The probe", and "Tests with Requires=Windows"), with
+// The probe of check on Windows, with
 // Requires=Administrator, since CreateProcessWithTokenW needs "Impersonate a client after authentication", which only an
 // elevated token holds: an account of the process's own token, which WindowsWorkerStarts.Account takes in the place of a
 // logon, so that no local user is made; the test program, which stands in for the COM worker, started on the account's

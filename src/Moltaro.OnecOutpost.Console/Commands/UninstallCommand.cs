@@ -7,8 +7,8 @@ using Spectre.Console.Cli;
 namespace Moltaro.OnecOutpost.Console.Commands;
 
 // uninstall [--stop-timeout <TIME>]: elevation, the stop, the two rights taken from the service's account, and the
-// service deleted; both folders and the batch right of the worker accounts stay, as the S10 brief says. The rights go
-// first: a run that fails after them is run again, while one without the service ends at once with NotInstalled.
+// service deleted. Both folders and the batch right of the worker accounts stay. The rights are removed before
+// deleting the service so an interrupted run can be repeated. A run without the service ends with NotInstalled.
 internal sealed class UninstallCommand : AsyncCommand<ServiceSettings>
 {
     private readonly IAnsiConsole _console;

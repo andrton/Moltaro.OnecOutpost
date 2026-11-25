@@ -11,8 +11,7 @@ using Npgsql;
 namespace Moltaro.OnecOutpost.Server.Store;
 
 // The operations of the store on PostgreSQL. Each runs in a context of its own as one transaction (InTransactionAsync)
-// and holds no lock while it waits for anything. Every time it writes or compares comes from its TimeProvider in UTC,
-// never from the clock of the database (PQ3).
+// and holds no lock while it waits for anything. The store uses its TimeProvider for the current time in UTC.
 //
 // Under ReadCommitted, a statement that waited for a row another transaction changed reads that row again as committed
 // and checks its conditions anew; the statements below rely on that to give the one change to one caller.

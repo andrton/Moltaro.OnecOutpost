@@ -11,7 +11,7 @@ using Moltaro.OnecOutpost.Protocol.Signing;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
-// The server of the lab's tests of the agent, in the process (the S9b brief, "The lab tests"): the HttpMessageHandler
+// The server of the lab's tests of the agent, in the process: the HttpMessageHandler
 // that the agent's connection is given, with the real codec and signatures under the server key that agent.json pins.
 // It verifies every request with the agent's key and reads it as the server does. It hands a command, signed, once a
 // poll declares a free worker of the command's base and mode; answers at once, without a command, a poll that came

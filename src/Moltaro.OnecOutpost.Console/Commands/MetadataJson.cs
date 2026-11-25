@@ -5,10 +5,10 @@ using Moltaro.OnecOutpost.Protocol;
 
 namespace Moltaro.OnecOutpost.Console.Commands;
 
-// The JSON of the report of metadata, format 1 (the S10 brief, "The report"): UTF-8 without a byte order mark,
-// indented, every character written as it is, since the report is a local file for people and not a page of HTML. Its
-// members in their order: format, base, written in the form of §2, platform, configuration, storage, categories in the
-// census's order, objects, each with the category of its page first and its error as the walk judged it, commonStorage
+// Format 1 of the local metadata report uses indented UTF-8 JSON without a byte order mark and keeps characters
+// readable. Its members appear in this order: format, base in the form of §2 of docs/protocol.md, platform,
+// configuration, storage, categories in census order, objects with the category of each page first and the error
+// assigned by the walk, commonStorage
 // and reads. Tables from the full storage read are returned to their owners or written as common storage. The report
 // holds metadata alone.
 internal static class MetadataJson

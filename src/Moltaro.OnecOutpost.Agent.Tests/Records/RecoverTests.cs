@@ -13,12 +13,12 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Records;
 
-// What a start writes after a restart (rule 3, "At a restart" in the plan, the S6a brief): Recover removes the file of
-// a confirmed command, gives a file that differs from the last ended or refused of its command, or has neither, an
-// ended that matches it, writes again the file of a refused that is not confirmed, and gives a received with neither
-// file nor ended the file of Unknown agent-stopped for a Write or Failed lost for a Read, then its ended. An ended that
-// a start writes carries the duration of the last ended, or null, since the start did not see the run. Afterwards every
-// outbox file belongs to a command that is not confirmed and matches its last entry; that S6c sends each is S6c's.
+// What a start writes after a restart (rule 3): Recover removes the file of a confirmed command, gives a file that
+// differs from the last ended or refused of its command, or has neither, an ended that matches it, writes again the
+// file of a refused that is not confirmed, and gives a received with neither file nor ended the file of Unknown
+// agent-stopped for a Write or Failed lost for a Read, then its ended. An ended that a start writes carries the
+// duration of the last ended, or null, since the start did not see the run. Afterwards every outbox file belongs to
+// an unconfirmed command and matches its last entry. The loop resends those files.
 public sealed class RecoverTests
 {
     private static readonly DateTimeOffset Before = TestTimes.Start.AddHours(-1);
@@ -57,7 +57,7 @@ public sealed class RecoverTests
         AssertEnded(AppendedSince(_data, count).Single(), command, "unknown", "result-too-large", 1234);
     }
 
-    // The acceptance of S6: an outbox file without its ended is recorded. A stop between the file and its ended.
+    // An outbox file without its ended is recorded. A stop between the file and its ended.
     [Fact]
     public void An_outbox_file_without_its_ended_gets_an_ended_that_matches_it_with_no_duration()
     {
@@ -85,7 +85,7 @@ public sealed class RecoverTests
             _data.Outcomes.Bytes($"{command}.json"));
     }
 
-    // Rule 3, the acceptance of S6: a received command without an outcome is Unknown agent-stopped for a Write and
+    // Under concept rule 3, a received command without an outcome is Unknown agent-stopped for a Write and
     // Failed lost for a Read; its file comes before its ended.
     [Theory]
     [InlineData("write", "unknown", "agent-stopped")]

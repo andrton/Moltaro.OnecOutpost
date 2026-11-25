@@ -5,7 +5,7 @@ using Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line AgentRights of check (the S10b brief, "check"): the rights that LSA shows the agent's account itself, by
+// The line AgentRights of check: the rights that LSA shows the agent's account itself, by
 // AgentSid, hold "Replace a process level token" and "Adjust memory quotas for a process", without which the service
 // starts no worker under a worker account; a right that it lacks is named with the remedy, and rights that cannot be
 // read with the error of Windows. The console starts its own workers without them, so no line needs this one.

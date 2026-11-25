@@ -7,7 +7,7 @@ using static Moltaro.OnecOutpost.TestSupport.TestTimes;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Checks;
 
-// The checks of one command (concept rule 1, §7 of docs/protocol.md, the S6b brief), in the order of §7: the signature
+// The checks of one command (concept rule 1, §7 of docs/protocol.md), in the order of §7: the signature
 // over the exact bytes with the pinned key; then `protocol` and `id`; then, for an identity the audit log knows,
 // nothing more; then the version and the rest of §7; then not-addressed, not-served, clock-skew and expired, judged by
 // the agent's clock and the skew the command carries. Bytes that do not verify, and verified bytes that yield no

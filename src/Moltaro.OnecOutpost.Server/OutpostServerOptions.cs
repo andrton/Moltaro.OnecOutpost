@@ -38,6 +38,8 @@ public sealed class OutpostServerOptions
     /// </summary>
     /// <remarks>
     /// 1 to 63 characters, each one of <c>a–z 0–9 _</c>, the first a letter.
+    /// PostgreSQL reserves the <c>pg_</c> prefix for system schemas. A name with that prefix passes option validation,
+    /// then <see cref="OutpostMigrations.MigrateAsync"/> reports the PostgreSQL error when it tries to create the schema.
     /// </remarks>
     public string Schema { get; set; } = "outpost";
 
@@ -174,12 +176,13 @@ public sealed class OutpostServerOptions
     public int OutcomeSizeLimit { get; set; } = 16 * 1024 * 1024;
 
     /// <summary>
-    /// How long an ended command is kept with its outcome, and with it its caller key: 1 hour to 365 days, 7 days by
-    /// default.
+    /// How long after a command ends its outcome becomes eligible for purging. The range is 1 hour to 365 days,
+    /// with a default of 7 days.
     /// </summary>
     /// <remarks>
-    /// Within it, a repeat with the caller key returns the outcome of the first command. After it the key is free,
-    /// and a repeat creates a new command.
+    /// A command ending as <see cref="OutpostOutcomeKindEnum.Expired"/> or <see cref="OutpostOutcomeKindEnum.Refused"/>
+    /// frees its caller key immediately. For other outcomes, an identical repeat can retrieve the outcome until the
+    /// purge removes the command and frees its key. See <see cref="PurgeInterval"/>.
     /// </remarks>
     public TimeSpan OutcomeRetention { get; set; } = TimeSpan.FromDays(7);
 
@@ -290,7 +293,7 @@ public sealed class OutpostServerOptions
 
     // True when the text is one PEM block with only white space around it, labelled PRIVATE KEY, which is PKCS#8 and
     // not encrypted, and its key is an ECDSA key on the named curve P-256. Nothing else may be in the text, so that the
-    // import of the key reads exactly what this check accepted (Q4).
+    // import of the key reads exactly what this check accepted.
     private static bool IsSigningKey(string pem)
     {
         if (!PemEncoding.TryFind(pem, out PemFields fields)

@@ -7,7 +7,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Install;
 
-// How install ends before its last step (the S10 brief, "install"), each failure at its step, with its code and its
+// How install ends before its last step, each failure at its step, with its code and its
 // line, and nothing after it. A step that fails for a reason of Windows or of the disk ends with Failure and
 // the step "{step}" failed: {message}, with (Windows error {code}) for an error of Windows; the others end with the
 // codes of their own: Usage for a console run from inside the program folder, StopTimedOut, ProgramFolderWriters and
@@ -28,7 +28,7 @@ public sealed class InstallRefusalTests
 
     // The remedy of a data folder that install refuses, one that existed before it and that a local user may have
     // made: install repairs it not, and one in which the agent ran holds its audit log, which goes with the folder
-    // unless it is copied first (the coordinator's decision in S10c of one remedy that removes no audit log).
+    // unless it is copied first.
     private const string Remedy =
         @"install does not repair it: inspect it, remove it and run install again; if the agent ever ran there, copy its audit\ folder elsewhere first";
 
@@ -109,7 +109,8 @@ public sealed class InstallRefusalTests
         Assert.Equal([Stop, ApplyProgramFolder], _machine.Operations);
     }
 
-    // The agent's own rule of S9c, judged before any service exists that would run the code of that folder.
+    // Install checks whether another account may change the program folder before registering a service that will run
+    // its code.
     [Fact]
     public async Task A_program_folder_that_someone_else_may_change_ends_install_with_ProgramFolderWriters_and_a_table_of_the_entries()
     {

@@ -12,7 +12,7 @@ namespace Moltaro.OnecOutpost.Agent.Tests.Nodes;
 
 // Two nodes of one server on one PostgreSQL, the Signals host embedded in the first and a client of it in the second,
 // the agent in the process with the fake workers, and the test proxy between them, whose Node says which node takes
-// each request (the S7 brief, "With two server nodes"). Nodes share nothing in memory (principle 6): a call on one node
+// each request. Nodes share nothing in memory (principle 6): a call on one node
 // reaches a poll held on the other through the store and the signals; a node that stops loses nothing; and while the
 // Signals host is down, every wait ends by a deadline of its own and reads the store (concept §4). Agent and nodes share
 // the fake clock, which moves only where a test says so.

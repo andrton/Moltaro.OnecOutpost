@@ -4,6 +4,6 @@ namespace Moltaro.OnecOutpost.Server.Tests.Endpoints;
 // its body, and whether the body of the request was sent, which happens only when the server asked for it.
 internal sealed record RawAnswer(int Status, string? Signature, byte[] Body, bool BodySent)
 {
-    // A status alone, without a body or an Outpost-Signature, as the brief of S4 defines a bare answer.
+    // A bare answer carries only the HTTP status (§9 of docs/protocol.md).
     public bool IsBare => Signature is null && Body.Length == 0;
 }

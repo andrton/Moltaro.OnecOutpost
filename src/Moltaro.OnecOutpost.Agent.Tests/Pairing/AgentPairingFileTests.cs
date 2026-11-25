@@ -5,10 +5,10 @@ using Moltaro.OnecOutpost.Agent.Pairing;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Pairing;
 
-// The form of agent.json (the S6a brief): {"server":…,"agent":…,"serverKey":…,"pollTimeoutMs":…,"leaseGraceMs":…} in the
-// forms of §2 of docs/protocol.md: an absolute http or https URL, an identity, the 91-byte server key in base64url, and
-// the two durations in the ranges of the options PollTimeout and LeaseGrace, from 1 second to 5 minutes. Read takes
-// exactly these members and refuses anything else with FormatException, quoting nothing of the file. From S6c on, it
+// The form of agent.json: {"server":…,"agent":…,"serverKey":…,"pollTimeoutMs":…,"leaseGraceMs":…} in the forms of §2
+// of docs/protocol.md: an absolute http or https URL, an identity, the 91-byte server key in base64url, and the two
+// durations in the ranges of the options PollTimeout and LeaseGrace, from 1 second to 5 minutes. Read takes exactly
+// these members and refuses anything else with FormatException, quoting nothing of the file. It
 // also refuses an address that the transport's rule of §11 refuses (ServerRoute.IsAllowed), so a start records it.
 public sealed class AgentPairingFileTests
 {
@@ -121,7 +121,7 @@ public sealed class AgentPairingFileTests
         Assert.DoesNotContain("S3cret", exception.Message, StringComparison.Ordinal);
     }
 
-    // §11, from S6c: http:// only on a loopback address, as Uri writes its host.
+    // Under §11 of docs/protocol.md, the URI's host must be a loopback address to use HTTP.
     [Theory]
     [InlineData("http://outpost.example.com/agents")]
     [InlineData("http://localhost./agents")]

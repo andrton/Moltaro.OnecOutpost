@@ -8,7 +8,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
-// The acceptance of S9c on the lab (the S9c brief, "The lab tests"): a base whose Writes run without safe mode is served
+// The lab verifies that a base whose Writes run without safe mode is served
 // through the real agent, and every COM worker of the base runs under the worker account of lab.local.json, inside the
 // job of the test, so that a script without safe mode can do only what that account can (D12, principle 9). The
 // account never signed in and the agent loads no profile, so its HKCU is the default hive and its TEMP the system's;

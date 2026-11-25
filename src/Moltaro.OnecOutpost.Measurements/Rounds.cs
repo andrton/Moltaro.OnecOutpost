@@ -9,7 +9,7 @@ using Xunit;
 namespace Moltaro.OnecOutpost.Measurements;
 
 // The rounds of one case. In each, a Read goes from a call on one node to a poll held on another, or on the same, and
-// its outcome goes back from the agent to the waiting caller. A round measures the two times of S7's brief:
+// its outcome goes back from the agent to the waiting caller. A round measures both legs of that path.
 //
 // - to the poll: from the moment the application makes the call, with the poll already held, to the moment the poll
 //   answer that carries the command has reached the agent, its body read and not yet verified;

@@ -14,7 +14,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line Server of check (the S10b brief, "The server and the skew", and §6.3, §9 and §12 of docs/protocol.md): one
+// The line Server of check (§6.3, §9 and §12 of docs/protocol.md): one
 // outcome of a made-up command, refused as not-addressed, signed with the agent's key of secrets.dat and sent to the
 // server of agent.json through the proxy of the policy, waiting the policy's requestTimeout, as the agent sends its
 // outcomes; never a poll, which would replace the poll that the running service holds. It passes for a verified 200

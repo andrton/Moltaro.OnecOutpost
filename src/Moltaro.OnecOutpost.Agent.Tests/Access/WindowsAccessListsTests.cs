@@ -5,7 +5,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Access;
 
-// The access lists of the data folder as Windows keeps them ("The files of the agent", the S6a brief): the accounts other
+// The access lists of the data folder as Windows keeps them: the accounts other
 // than Administrators, SYSTEM and the agent's own that own an entry, or that an allow entry applying to the entry itself
 // gives any right, named as Windows translates their SID or by the SID. Each test makes a data folder of its own in its
 // temporary folder, with the access list that the console's install gives the data folder; the account that runs the

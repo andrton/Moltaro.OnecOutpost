@@ -2,8 +2,8 @@ using Moltaro.OnecOutpost.OneC.Tests.Workers;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 
-// The whole storage structure of a base as the lab's own worker reads it, apart from the console (the S10 brief, "Lab
-// tests" of "Internal of S10c"): one GetDBStorageStructureInfo(Undefined, True), with the DBMS's names, its storage
+// The whole storage structure of a base as the lab's own worker reads it, apart from the console: one
+// GetDBStorageStructureInfo(Undefined, True), with the DBMS's names, its storage
 // names as a set, and whether the columns of its table have their English names, StorageTableName, or the Russian
 // ones, ИмяТаблицыХранения, which a configuration in Russian gives. The script uses only what the compatibility mode
 // 8.2.13 allows.

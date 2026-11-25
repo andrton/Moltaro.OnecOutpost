@@ -7,7 +7,7 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
-// Concept rule 9 and §5 on the lab, through the real agent and its COM workers (the S9b brief, "The lab tests"): a
+// Concept rule 9 and §5 on the lab, through the real agent and its COM workers: a
 // script that exceeds the run limit of its mode ends with its worker, a Read Failed run-limit and a Write Unknown
 // run-limit. Each slot then starts its worker again after a tenth of retryDelayMax, and 1C gives the new worker a
 // session, in which a command of the same mode succeeds. The scripts loop by the clock of 1C, and the test moves the

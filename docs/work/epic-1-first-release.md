@@ -1384,7 +1384,7 @@ The release
 | S10b | The console's check | Full | Done, 24 November 2026: `check` with every line of the stage contract, a table of passed and failed lines, `--clock-skew` and the exit code `CheckFailed`; the probe of each worker account on a desktop of the console's own, each base under each account through the COM worker and the executor in Read and safe mode, the server by an `outcome` that takes no poll's place; the architect's entries joined to it (the launcher's steps, the start's checks free of the audit log, the outcome answer as a record, the worker's connection line and judgment outside the pool, the privileges, the layout and one wording of reasons). The internal contract was reviewed in two rounds and approved under PQ2 (round 2's P2, the events judged, taken without a third round); the code review took three rounds: a P1 and two P2 of round 1 (no worker while the data folder admits others; a restricted token, then medium integrity and the user's default list, its limitation stated), one P2 back in round 2, settled by the coordinator, none open in round 3. 2861 tests passed here; the tests with `Requires=Administrator` first run on its pull request, and those of `Moltaro.OnecOutpost.OneC.Tests` on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
 | S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | Done, 24 November 2026, PR #23. At `523b8a5` both CI jobs and 2,977 local tests passed. Lab acceptance combines 84 unchanged cases from the full run at `6f216ab` with both corrected metadata cases at `523b8a5`. The typical copy matched all 2,286 storage table names, and the test base matched all 14. The independent review and lab fixes closed the findings. The manual run of the S10 commands and G1 is part of S11. |
 | S11 | The shell and Q15 | Full | Done, 25 November 2026, PR #24. Two review rounds closed the Unix signing-key publication finding. An independent follow-up reviewed the installed-service fix. Release builds and format checks passed, with 3,019 local tests passing and the Unix interrupt case verified separately in Linux. The ARM64 and Windows lab acceptance is recorded in the sprint below. |
-| S12 | Documents, packages and the archive | Light | Not started |
+| S12 | Documents, packages and the archive | Light | Done, 25 November 2026, PR #25. The NuGet package and Windows archive were built and checked as 0.1.0. Independent review found and closed one P2 in the release retry path. The first-release gates below apply before publication. |
 
 ### S1 · The public contract of stage 1, the projects and the test lane
 
@@ -6482,6 +6482,13 @@ GPT-6.2 Sol at `max`, and the independent reviewer uses GPT-6.2 Sol at `ultra`, 
   - The final figures of [Measured results](#measured-results) in `README.md`.
   - The documents step over the whole product documentation, as the process says for the
     last sprint of an epic.
+- **Verification** (25 November 2026). The Release build, formatting and local tests
+  passed. A fresh ASP.NET Core project with only the 0.1.0 server package ran the
+  sample against PostgreSQL. The Windows ZIP contained four self-contained executables
+  at 0.1.0, both COM worker architectures, the executor and the license notices. Its
+  SHA-256 matched. The release step was exercised with fresh and matching archives,
+  a different archive with its own valid checksum, and a prerelease. It accepted only
+  the first two cases. The highest measured p95 was 24.43 ms.
 - **From the architect's review 1** (the planner, 23 November 2026), for the documents
   step:
   - the comments of the product code that cite working documents removed after the
@@ -6496,7 +6503,7 @@ GPT-6.2 Sol at `max`, and the independent reviewer uses GPT-6.2 Sol at `ultra`, 
     cite a brief, about 130, as one mechanical commit of its own after the product code:
     each citation becomes the rule it stands for, or the section of the concept or of
     `docs/protocol.md` that holds it; no name of a test and no assertion changes.
-- **Out of scope.** The tag itself, which is the owner's.
+- **Out of scope.** Creating the tag is part of publishing the release, after the sprint closes.
 
 ## The contracts of stages 2 and 3
 
@@ -6602,9 +6609,9 @@ An independent reviewer reviews them, and the owner approves them. Until then th
 
 ## The first release
 
-The coordinator never creates a release tag; the release is the owner's
-([branches and releases](branches.md#releases)). Before the owner tags it, all of the
-following hold:
+The owner can delegate a particular release under [branches and releases](branches.md#releases).
+The owner asked the coordinator to complete `v0.1.0` on 25 November 2026. Before the tag
+is created, all of the following hold:
 
 1. S12 is closed and merged; `main` is green on both CI jobs.
 2. No entry point throws `NotSupportedException` and no test is skipped in the Release
@@ -6619,20 +6626,27 @@ following hold:
    exists; `THIRD-PARTY-NOTICES.md` lists everything a sprint adapted from another project.
 6. Every entry of the [open questions](open-questions.md) is answered, or carried into
    another epic by the owner's decision.
-7. The owner's steps:
+7. Publication:
    - the nuget.org Trusted Publishing policy for this repository exists, as
      [branches and releases](branches.md#setting-it-up-on-github) says;
-   - the owner merges the release change below, tags its merge commit on `main` as
-     `v0.1.0`, and pushes the tag;
+   - the release change below is merged. Its merge commit on `main` is tagged as
+     `v0.1.0` and the tag is pushed;
    - the Publish workflow builds, tests and packs, attaches the archive with its checksum
      to the release, and pushes the package.
+
+**0.1.0 acceptance record.** The owner confirmed that Trusted Publishing is configured
+and requested release by tag. The real-1C evidence is the combined full-suite acceptance
+of S10c, the two added G3 tests run with real 1C in S11, and the installed-service round
+trip recorded in S11. S12 changes the archive, documentation, and the text of a proxy
+validation error. The test comment pass keeps the compiled test tokens identical.
+The owner carried the Q11 measurements forward.
 
 **The release change.** `README.md` on `main` says what works today (`AGENTS.md`), and
 the README packed into a package cannot change after it is published. So the section
 "Packages and downloads" is turned to the published state by one small light-track change
 after S12 is merged: the package on nuget.org from 0.1.0, the command that installs it, the
 archive on the release page. The change touches nothing else and has its independent
-review. The owner merges it and tags its merge commit right away.
+review. The team tags its merge commit after confirming the release checks.
 
 After the release, a light-track change removes this document from `docs/work`, as the
 [work README](README.md) says of a finished epic.

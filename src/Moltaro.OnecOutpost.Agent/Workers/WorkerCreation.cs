@@ -247,10 +247,9 @@ internal static partial class WorkerCreation
     // alone, so it takes no list of handles and inherits nothing else of the caller; its STARTUPINFOW is the extended
     // form's without the list of attributes. The service is given a primary duplicate of the token with every access
     // that the caller may have to it, rather than the handle given, which may hold no more than the documented
-    // TOKEN_QUERY, TOKEN_DUPLICATE and TOKEN_ASSIGN_PRIMARY, as one from OpenProcessToken does: the service refused such
-    // a handle of the process's own token with ERROR_ACCESS_DENIED in CI's elevated run, and the duplicate, which CI's
-    // elevated run of S10b then passed with, is the remedy. A refusal names the call and the job of the caller, since the
-    // service may also refuse a caller whose job lets no process break away.
+    // TOKEN_QUERY, TOKEN_DUPLICATE and TOKEN_ASSIGN_PRIMARY, as one from OpenProcessToken does. The service can reject
+    // a handle with only those rights with ERROR_ACCESS_DENIED. A refusal names the call and the job of the caller,
+    // since the service may also refuse a caller whose job lets no process break away.
     private static unsafe (SafeProcessHandle Process, nint Thread) WithToken(
         SafeAccessTokenHandle given,
         string program,

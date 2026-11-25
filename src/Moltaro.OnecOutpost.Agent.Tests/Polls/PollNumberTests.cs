@@ -7,7 +7,7 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Polls;
 
-// The numbers of the polls of one identity (concept rule 10, §6.2 of docs/protocol.md, the S6a brief), with the fake
+// The numbers of the polls of one identity (concept rule 10, §6.2 of docs/protocol.md), with the fake
 // clock, which moves only when a test moves it. A run with no reservation of its identity in its log counts its polls
 // 1, 2, 3, … until an ordinary answer; otherwise a number is the greatest of the clock's UTC ticks, one above the last
 // number, one above the greatest newest of an answer to an older poll, and, for the first number of a run, the highest
@@ -51,7 +51,7 @@ public sealed class PollNumberTests
         Assert.Equal([1 + Span], ReservationsSince(0));
     }
 
-    // The acceptance of S6: a reservation of another identity, from an earlier pairing, does not count.
+    // A reservation of another identity, from an earlier pairing, does not count.
     [Fact]
     public void A_reservation_of_another_identity_does_not_count()
     {
@@ -155,7 +155,7 @@ public sealed class PollNumberTests
         Assert.Equal([Ticks + Span + 8 + Span], ReservationsSince(count));
     }
 
-    // The acceptance of S6: an answer to an older poll whose newest is 2^62 stops the agent after it records the
+    // An answer to an older poll whose newest is 2^62 stops the agent after it records the
     // reservation of the next number, and every later start stops too.
     [Fact]
     public void An_answer_whose_newest_is_the_greatest_number_stops_the_agent_after_the_reservation_of_the_next_number()
@@ -179,7 +179,7 @@ public sealed class PollNumberTests
         Assert.Throws<AgentStopException>(() => new PollNumbers(reopened, Agent, _clock));
     }
 
-    // From S6a's code review, round 1: a bound reserved within a day of ticks below 2^62 lies above 2^62, and still no
+    // A bound reserved within a day of ticks below 2^62 lies above 2^62, and still no
     // number above 2^62 is given (§6.2: a number is from 1 to 2^62). The one that would pass it records its reservation,
     // the record of this first stop, and stops the agent. Here the bound is found at a start.
     [Fact]

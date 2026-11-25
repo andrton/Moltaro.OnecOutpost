@@ -8,20 +8,19 @@ using Moltaro.OnecOutpost.TestSupport.Metadata;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 
-// The acceptance of metadata on the lab (the S10 brief, "Lab tests" of "Internal of S10c", and Acceptance): metadata
-// writes a report of the test base and of each copy of a typical base of lab.local.json, through the console's own
-// command on the machine's parts, into a temporary folder, with no poll. Each ends with Success, every object of every
-// category read and none failed, each error named otherwise. The test base in safe mode holds the objects of the test
-// configuration with their fields: Document.GoodsReceipt, whose Product is a Catalog.Products, whose Quantity has 15
-// digits and 3 of them fractional and whose Comment has a length of 200; AccumulationRegister.Stock, with the dimension
-// Product and the resource Quantity; and Catalog.Products, hierarchical. Each copy of a typical base, in safe mode or
-// not as its writeSafeMode says, holds the object of its documentType with its fields; nothing of a copy is a literal
-// here. With the storage available to the read account, an object holds its tables, and the storage names of the
-// report, of its objects and its common storage, are as a set those of one GetDBStorageStructureInfo(Undefined, True)
-// by the lab's own worker; without it, the report says why, which the lab run records, and this test then states the
-// one that the lab found. Each run records its coverage, its reads, its largest outcome, its halvings, its storage
-// and the language of the columns of the storage, for the brief, in the output that a passing test shows. A copy's
-// census reads values without an XML form too (the S10 brief, "After the lab run of deeb370", 1). The assertions
+// In the lab, metadata writes a report of the test base and of each copy of a typical base of lab.local.json, through
+// the console's own command on the machine's parts, into a temporary folder, with no poll. Each ends with Success,
+// every object of every category read and none failed, each error named otherwise. The test base in safe mode holds
+// the objects of the test configuration with their fields: Document.GoodsReceipt, whose Product is a
+// Catalog.Products, whose Quantity has 15 digits and 3 of them fractional and whose Comment has a length of 200;
+// AccumulationRegister.Stock, with the dimension Product and the resource Quantity; and Catalog.Products,
+// hierarchical. Each copy of a typical base, in safe mode or not as its writeSafeMode says, holds the object of its
+// documentType with its fields; nothing of a copy is a literal here. With the storage available to the read account,
+// an object holds its tables, and the storage names of the report, of its objects and its common storage, are as a
+// set those of one GetDBStorageStructureInfo(Undefined, True) by the lab's own worker. When storage is unavailable,
+// the report records the reason. Each run records its coverage, its reads, its largest outcome, its halvings, its
+// storage and the language of the storage columns in the test output, which is also shown on success. A copy's census
+// reads values without an XML form too. The assertions
 // locate the copy's document type by name. Messages identify the copy by its index and give counts and outcome codes.
 [SupportedOSPlatform("windows")]
 public sealed class MetadataTests

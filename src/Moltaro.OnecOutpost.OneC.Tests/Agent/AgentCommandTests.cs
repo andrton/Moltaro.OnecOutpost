@@ -7,7 +7,7 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Agent;
 
-// The acceptance of S9b on the lab: a Read and a Write travel through the real agent and its COM workers to the test
+// In the lab, a Read and a Write travel through the real agent and its COM workers to the test
 // base and back, with the server of the test. The Write creates a product with a name the test generated, and the Read
 // counts the products of that name.
 [SupportedOSPlatform("windows")]

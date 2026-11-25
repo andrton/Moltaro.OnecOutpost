@@ -4,7 +4,7 @@ using Moltaro.OnecOutpost.ComWorker.Tests.FakeConnection;
 namespace Moltaro.OnecOutpost.ComWorker.Tests.Input;
 
 // The end of the input ends the worker with exit code 0, once the command it runs has its outcome written, and also
-// before the first line. A last line without its LF is a line (the brief of S9, "The lines").
+// before the first line. A last line without its LF is a line.
 [Trait("Requires", "Windows")]
 public sealed class EndOfInputTests
 {

@@ -16,10 +16,10 @@ using Moltaro.OnecOutpost.TestSupport.RunningAgent;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// The logon of a worker account by the real launcher (the S9c brief, "ComWorkerLauncher.LogOn"): LogonUserW comes
-// first, so that an account that does not exist fails with 1326, ERROR_LOGON_FAILURE, whatever rights the agent holds,
-// and the failure is an AgentStopException that names the base, the account and the sentence of the code with its
-// remedy, WorkerAccountReasons.CannotLogOn (the S10b brief, "One wording, with a remedy that exists"), never the
+// The logon of a worker account by the real launcher: LogonUserW comes first, so that an account that does not exist
+// fails with 1326, ERROR_LOGON_FAILURE, whatever rights the agent holds, and the failure is an AgentStopException
+// that names the base, the account and the sentence of the code with its remedy, WorkerAccountReasons.CannotLogOn,
+// never the
 // password. The account is a random name that no machine has, never the account that runs the tests, so no account
 // is created, changed or locked out; its password is random too.
 [Trait("Requires", "Windows")]

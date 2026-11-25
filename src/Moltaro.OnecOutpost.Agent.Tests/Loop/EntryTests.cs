@@ -9,8 +9,8 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Loop;
 
-// The entries that the answers to polls make (§9 of docs/protocol.md, "The audit log" of the plan, the S6 brief,
-// "AgentLoop.RunAsync"): connection once per change of the state of the polls, which the agent does not know when it
+// The entries that the answers to polls make (§9 of docs/protocol.md): connection once per change of the state of the
+// polls, which the agent does not know when it
 // starts, with the reason of §9 when lost; bases when the server's answer changes what the agent holds; and retention,
 // run only right after a verified poll answer of the run whose time is within a day of the agent's clock.
 public sealed class EntryTests

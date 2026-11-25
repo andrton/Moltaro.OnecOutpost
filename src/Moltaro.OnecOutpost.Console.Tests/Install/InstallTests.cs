@@ -4,7 +4,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Install;
 
-// install [--stop-timeout <TIME>] (the S10 brief, "install", and S9c's drafts), each step idempotent and in this order:
+// install [--stop-timeout <TIME>], each step idempotent and in this order:
 // the stop of the service; the program folder, copied from where the console runs unless it runs from the program
 // folder itself, then judged by the agent's rule before any service exists; the service under NT SERVICE\{name}; the
 // two privileges of its account; the data folder, created when absent, else judged and given its access lists again.

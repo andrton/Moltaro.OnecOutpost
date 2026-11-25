@@ -15,9 +15,9 @@ internal sealed class LabFile
     public IReadOnlyList<LabTypicalBase> TypicalBases { get; init; } = [];
 
     // The local Windows account under which the agent of a test runs the COM workers of a base whose Writes run
-    // without safe mode (the S9c brief), with its password: a user outside Administrators with "Log on as a batch job"
-    // that never signed in, so that it has no profile, as the console's install prepares one. The owner adds it by
-    // hand; the tests that do not need it run without it.
+    // without safe mode, with its password: a user outside Administrators with "Log on as a batch job" that never
+    // signed in, so that it has no profile, as the console's install prepares one. The lab administrator configures
+    // it by hand; the tests that do not need it run without it.
     public LabAccount? WorkerAccount { get; init; }
 
     public static LabFile Read()

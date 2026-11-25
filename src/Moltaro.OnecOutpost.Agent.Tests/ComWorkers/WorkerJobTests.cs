@@ -9,7 +9,7 @@ using Moltaro.OnecOutpost.TestSupport;
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
 // Principle 8 and concept §5: the agent ends its COM workers with itself. Every process that the launcher starts joins
-// the job object, which ends every process in it when it closes (the S9b brief, "WorkerJob"); the agent program never
+// the job object, which ends every process in it when it closes; the agent program never
 // disposes its job, so Windows closes it when the agent ends, however it ends. A test disposes its own.
 [Trait("Requires", "Windows")]
 [SupportedOSPlatform("windows")]

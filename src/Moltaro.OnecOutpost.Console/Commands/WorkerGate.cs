@@ -15,8 +15,8 @@ using Moltaro.OnecOutpost.Console.Workers;
 
 namespace Moltaro.OnecOutpost.Console.Commands;
 
-// check's rule of when a worker may start, which check and metadata both run (review 3, entry 2): the console never
-// starts code that somebody else may have changed, or a base that somebody else may have named. Its steps, in their
+// Both check and metadata apply the same rule before starting a worker. The console rejects code somebody else may
+// have changed and bases somebody else may have named. Its steps, in their
 // order: Files, Connector, AccessLists, then WorkerAccount per base with a worker account; each gives its lines, which
 // check shows and metadata judges. A worker starts only when WorkerInputFailed gives null: with a registered connector,
 // a data folder that admits nobody else, in which nobody could have planted the policy whose base it opens or the

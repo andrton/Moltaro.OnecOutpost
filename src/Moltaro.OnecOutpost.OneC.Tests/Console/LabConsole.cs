@@ -9,7 +9,7 @@ using Spectre.Console.Testing;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 
-// The console's check and metadata on a LabAgent (the S10b brief, "Lab tests", and "Internal of S10c"), through
+// The console's check and metadata on a LabAgent, through
 // CommandAppTester with ConsoleApp.Configure, as Program runs it. The account that runs the tests stands for the
 // agent's account. The console and its in-process server share the machine's clock so the real workers' run and
 // shutdown limits can elapse. check's probe needs "Impersonate a client after authentication", so the tests run

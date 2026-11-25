@@ -12,8 +12,8 @@ using Spectre.Console.Testing;
 namespace Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 
 // The agent machine of a test, made of fakes of every boundary of ConsoleParts, and the console run on it through
-// CommandAppTester with ConsoleApp.Configure, as Program runs it on a real machine (the S10 brief, "Tests on every
-// platform"). The data folder is in memory; it and every fake of the machine write their calls into the one operation
+// CommandAppTester with ConsoleApp.Configure, as Program runs it on a real machine. The data folder is in memory; it
+// and every fake of the machine write their calls into the one operation
 // list of the data folder, so that a test states the steps of a command in their order and that nothing came after a
 // failed one. The paths are those of a real machine, rooted as the platform of the tests roots a path, so that the tests
 // read alike on every platform; nothing is at them. The console is elevated, and its input is the console, until the

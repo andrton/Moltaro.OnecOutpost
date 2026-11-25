@@ -78,8 +78,8 @@ internal static class AgentStart
             }
             catch (AgentStopException exception)
             {
-                // A fault of the outbox after started, recorded as the loop's are (the owner's Q16); the log writes
-                // nothing once a write of it failed.
+                // An outbox fault after started is recorded as stopped, as it would be in the loop. The log writes
+                // nothing once a write has failed.
                 log.Stopped(exception.Message);
                 throw;
             }

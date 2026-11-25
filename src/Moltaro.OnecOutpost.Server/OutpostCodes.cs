@@ -150,9 +150,9 @@ public static class OutpostCodes
     /// in the base, or could not open the executor, so the script did not start.
     /// </summary>
     /// <remarks>
-    /// Examples are a wrong password, a cluster that does not answer, no free licence, and a COM connector that is not
-    /// registered. <see cref="OutpostOutcome.ErrorText"/> is <see langword="null"/>: the text of 1C goes to the audit
-    /// log of the agent only, since it may name an account or a path.
+    /// Examples include a wrong password, an unreachable cluster, no free licence and an unregistered COM connector.
+    /// <see cref="OutpostOutcome.ErrorText"/> is <see langword="null"/>. The console's <c>check</c> command reports
+    /// diagnostics from its own connection attempt on the agent machine.
     /// </remarks>
     public const string BaseUnreachable = OutpostOutcomeCodes.BaseUnreachable;
 

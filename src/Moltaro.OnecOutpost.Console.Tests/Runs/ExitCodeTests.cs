@@ -2,8 +2,8 @@ using Moltaro.OnecOutpost.Console.Commands;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Runs;
 
-// The exit codes of the console are part of its contract (the S10 brief, "Output", and "What S10a changes in the public
-// contract"): a script that runs a command reads its end by them, so each keeps the number of the brief's table.
+// The exit codes of the console are part of its contract: a script that runs a command reads its end by them, so each
+// exit code keeps its assigned number.
 public sealed class ExitCodeTests
 {
     [Fact]

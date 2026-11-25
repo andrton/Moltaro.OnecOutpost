@@ -12,7 +12,7 @@ using Moltaro.OnecOutpost.TestSupport.FakeHttp;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Pairing;
 
-// Pairing (§6.1 and §9 of docs/protocol.md, concept "Pairing", the S6 brief, "AgentPairing"): the agent makes a P-256
+// Pairing (§6.1 and §9 of docs/protocol.md, concept "Pairing"): the agent makes a P-256
 // key, sends pair with the proof of that key under the token's secret, signed with that key, and reads the answer with
 // ReadPairAnswer, which checks the server key against the token's fingerprint before it verifies the signature with
 // it. A verified 200 gives the settings of agent.json and the key in PKCS#8; anything else ends the pairing with the
@@ -181,8 +181,9 @@ public sealed class AgentPairingTests : IDisposable
         Assert.Equal(0, body.BytesRead);
     }
 
-    // The brief, "AgentPairing.PairAsync": the status when one came, Unreachable without one, and Answer for anything
-    // else. A 200 whose body is beyond 64 KiB, or does not come within requestTimeout, is an answer whose status came.
+    // PairAsync preserves the HTTP status when it receives one. It reports Unreachable without a status and Answer
+    // for an otherwise unrecognized reply. A 200 whose body is beyond 64 KiB, or does not come within requestTimeout,
+    // is an answer whose status came.
     [Theory]
     [InlineData("beyond-64-KiB")]
     [InlineData("late")]

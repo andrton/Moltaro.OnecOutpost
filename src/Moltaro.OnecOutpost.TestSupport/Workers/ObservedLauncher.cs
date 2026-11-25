@@ -4,8 +4,8 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 namespace Moltaro.OnecOutpost.TestSupport.Workers;
 
 // A launcher of the tests that wraps another, such as the real ComWorkerLauncher, only to report what its workers did,
-// so that a test waits for an observed event before it moves a fake clock or hands a command to a free worker (AGENTS.md,
-// the COM worker's timeouts on a fake clock; the S9b brief). It reports when the open of the n-th worker started for a
+// so that a test waits for an observed event before it moves a fake clock or hands a command to a free worker, as
+// AGENTS.md requires. It reports when the open of the n-th worker started for a
 // base and mode, counted from 1, ended, with what it gave; and when the n-th run on the workers of a base and mode began,
 // counted from 1, with its command line. A run has begun once the wrapped worker's RunAsync returned its task, so that
 // its command line is written or on its way. It keeps the processes that the wrapped launcher gave, so that a test

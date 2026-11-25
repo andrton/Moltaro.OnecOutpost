@@ -8,12 +8,12 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 namespace Moltaro.OnecOutpost.Console.Tests.FakeMachine;
 
 // The metadata of a base on a test's machine as the script of metadata, MetadataScripts.Walk, reads it in a worker's
-// session, each Read answered by the member read of its parameters as the script would answer it (the S10 brief, "The
-// script" and "The report"). These answers are the form that the script gives and the console reads:
+// session, each Read answered by the member read of its parameters as the script would answer it. These answers are
+// the form that the script gives and the console reads:
 // - census: {"platform", "configuration": {"name", "version", "compatibilityMode"}, "categories": [{"category",
 //   "count"}]}, the fifteen categories in the report's order, each with the Count() of its collection; each of the
 //   four values a string, or {"error": "{1C's text}"} in its place for one that 1C cannot give, read in a Try of its
-//   own (the S10 brief, "After the lab run of deeb370", 1);
+//   own;
 // - page, with category, from, count and storage: {"objects": [...], "storageError"}, the objects of the category from
 //   the index from, count of them at most, each as the report holds it but for its category: name, fullName, synonym,
 //   comment, properties, fields, values, storage and error, storage its tables when storage is true and null otherwise;

@@ -9,15 +9,15 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Audit;
 
-// The retention of the audit log, with the fake clock ("Carried over from S2", the S6a brief): RemoveExpired holds the
-// whole rule. A file goes once its last entry is more than auditRetentionDays plus a day older than the agent's clock,
-// and a file that holds no entry goes too, in the order of their names; a file that holds an entry of a command whose
-// outcome is not confirmed, and the file that holds the highest reservation of the identity, stay. So that no command
-// is left with its received or ended and without its confirmed, a file stays while it holds the confirmed of a command
-// that has an entry in a file that stays: a confirmed goes after the other entries of its command, while a received or
-// an ended may go before its confirmed. Nothing goes when the clock is more than a day away from the time of the
-// verified answer, so a clock moved ahead wipes nothing out.
-// That nothing goes before the first verified answer of a run is the call site's, in S6c.
+// The retention of the audit log, with the fake clock (concept rule 2): RemoveExpired holds the whole rule. A file
+// goes once its last entry is more than auditRetentionDays plus a day older than the agent's clock, and a file that
+// holds no entry goes too, in the order of their names; a file that holds an entry of a command whose outcome is not
+// confirmed, and the file that holds the highest reservation of the identity, stay. So that no command is left with
+// its received or ended and without its confirmed, a file stays while it holds the confirmed of a command that has an
+// entry in a file that stays: a confirmed goes after the other entries of its command, while a received or an ended
+// may go before its confirmed. Nothing goes when the clock is more than a day away from the time of the verified
+// answer, so a clock moved ahead wipes nothing out. The caller waits for the run's first verified answer before
+// removing any file.
 public sealed class RetentionTests
 {
     private const int RetentionDays = 1;
@@ -160,8 +160,8 @@ public sealed class RetentionTests
         Assert.DoesNotContain(_data.LinesSince(count), line => line.StartsWith("append ", StringComparison.Ordinal));
     }
 
-    // A confirmed stays while its command has an entry in a file that stays (the brief, from S6a's code review, rounds
-    // 1 and 2). Command C was received and ended in a file that stays, and confirmed in a later file past the retention;
+    // A confirmed stays while its command has an entry in a file that stays. Command C was received and ended in a
+    // file that stays, and confirmed in a later file past the retention;
     // command D was received there and confirmed in a third. Had the later files gone, every poll would list C and D
     // again, and every later start would stop on an ended without its file.
     [Theory]
@@ -251,7 +251,7 @@ public sealed class RetentionTests
         }
     }
 
-    // The review of S6a, round 2: a busy agent with a correct clock and nothing unconfirmed. Each day holds a command
+    // The agent is busy, its clock is correct, and all outcomes are confirmed. Each day holds a command
     // received, ended and confirmed at noon, and one received and ended just before UTC midnight and confirmed just
     // after it, in the file of the next day. With one day of retention the files up to 2026-11-19 are past it and go, in
     // the order of their names; the received and the ended of the command that crosses into 2026-11-20 go while its

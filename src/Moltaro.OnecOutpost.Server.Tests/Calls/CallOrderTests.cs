@@ -53,7 +53,7 @@ public sealed class CallOrderTests(PostgreSqlFixture postgres) : IClassFixture<P
         Assert.Equal(before.Lines, (await server.Schema.TakeSnapshotAsync(cancellationToken)).Lines);
     }
 
-    // A draft of the public contract (S5 brief): the agent still holds the key, which its newest poll no longer
+    // The agent still holds the key, which its newest poll no longer
     // declares, so the key opens neither mode. The agent is connected.
     [Fact]
     public async Task A_call_to_a_key_that_the_newest_poll_of_its_holder_no_longer_declares_is_refused_with_mode_closed()

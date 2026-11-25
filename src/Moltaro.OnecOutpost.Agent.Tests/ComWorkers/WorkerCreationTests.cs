@@ -9,12 +9,12 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// How the launcher creates a worker (the S9c brief, "The start"): with the token of the base's worker account when the
-// base was logged on, and otherwise with the agent's own, which is the account that runs the tests here; suspended, so
-// that the worker is in the job before any of its code runs; and with a list of the handles it inherits that holds the
-// two ends of its pipes alone, so that it inherits nothing else of the agent. The test program says which processes
-// its immediate job held when its Main began, under which account it runs, and what a handle of a value names in it.
-// No test here logs on: S9b's launcher tests run on the agent's own token as well.
+// How the launcher creates a worker: with the token of the base's worker account when the base was logged on, and
+// otherwise with the agent's own, which is the account that runs the tests here; suspended, so that the worker is in
+// the job before any of its code runs; and with a list of the handles it inherits that holds the two ends of its
+// pipes alone, so that it inherits nothing else of the agent. The test program says which processes its immediate job
+// held when its Main began, under which account it runs, and what a handle of a value names in it. The launcher's
+// tests run on the agent's own token and never log on another account.
 [Trait("Requires", "Windows")]
 [SupportedOSPlatform("windows")]
 [Collection(WindowStationCollection.Name)]
@@ -46,7 +46,7 @@ public sealed class WorkerCreationTests : IDisposable
         Assert.Equal(agent.User!.Value, user.GetString());
     }
 
-    // The desktop of a worker (the S9c brief): only a logged-on base gets a desktop of the agent's own; a worker under
+    // The desktop of a worker: only a logged-on base gets a desktop of the agent's own; a worker under
     // the agent's own token keeps lpDesktop "", so it runs on the desktop of the agent's logon session, as the process of
     // the tests does. The test program names its own through the script desktop.
     [Fact]
@@ -60,7 +60,7 @@ public sealed class WorkerCreationTests : IDisposable
         Assert.Equal(TestDesktop.OfTheTests(), desktop.GetString(), ignoreCase: true);
     }
 
-    // S9b's limitation goes: a worker joins the job before it runs, so that no worker outlives an agent that ended
+    // A worker joins the job before it runs, so that no worker outlives an agent that ended
     // between its start and its join. The order, the job before the worker's first instruction, is held by the code:
     // created suspended, put into the job, then resumed. What the test shows is that the worker is in the launcher's
     // job when its Main begins: the immediate job of the worker holds the worker and not the test host, which runs in
@@ -81,8 +81,8 @@ public sealed class WorkerCreationTests : IDisposable
     }
 
     // A handle of the agent's own that may be inherited, such as one that another part of the agent opened so, reaches
-    // no worker. The control shows that the test program sees such a handle when it is inherited: a start as S9b's, by
-    // Process.Start with its standard streams redirected, lets the process inherit every handle that may be inherited.
+    // no worker. The control shows that the test program sees such a handle when it is inherited: a start by
+    // Process.Start with its standard streams redirected lets the process inherit every handle that may be inherited.
     [Fact]
     public async Task A_worker_inherits_no_handle_of_the_agent_besides_the_ends_of_its_two_pipes()
     {

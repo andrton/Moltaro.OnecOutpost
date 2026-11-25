@@ -3,7 +3,7 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 
-// How a worker of the program ends at the agent's word (the boundary of S6b, the S9b brief, "ComWorkerProcess"): Kill
+// How a worker of the program ends at the agent's word: Kill
 // is Process.Kill, an ended process ignored, and completes a pending run with null, as the pool's run limit relies on;
 // a cancelled run kills the process and throws OperationCanceledException. The script wait writes nothing until a kill,
 // so the run is pending until then.

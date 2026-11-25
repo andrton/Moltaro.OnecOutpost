@@ -12,12 +12,12 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 
-// A worker of check under the console's own token on Windows (the S10b brief, "The connections"), with Requires=Windows
-// alone, since CreateProcessAsUserW needs no privilege for the caller's own token: the test program, which stands in
-// for the COM worker, starts with the base key and read as its command line, in a job of its own, which holds it and
-// not the console, speaks the worker's lines, and what it writes to its standard error is the worker's Diagnostics,
-// read to its end once the worker was disposed. Its token is a restricted version of the console's own (the contract
-// amended after the first code review), so that the code of a base runs without the rights of an administrator: Administrators,
+// A worker of check under the console's own token on Windows, with Requires=Windows alone, since CreateProcessAsUserW
+// needs no privilege for the caller's own token: the test program, which stands in for the COM worker, starts with
+// the base key and read as its command line, in a job of its own, which holds it and not the console, speaks the
+// worker's lines, and what it writes to its standard error is the worker's Diagnostics, read to its end once the
+// worker was disposed. Its token is a restricted version of the console's own, so that the code of a base runs
+// without the rights of an administrator: Administrators,
 // when the console's token holds it, for deny only, no privilege but SeChangeNotifyPrivilege, and an integrity level no
 // higher than medium, so that the base's code cannot send input to the elevated programs of the desktop; and the user as
 // its default owner, with a default list that grants the user, so that the worker reopens what it creates.
@@ -81,8 +81,8 @@ public sealed partial class OwnTokenWorkerTests
         Assert.Equal(Text + "\n", await TestTimes.EndOf(worker.Diagnostics));
     }
 
-    // CreateRestrictedToken with DISABLE_MAX_PRIVILEGE and Administrators deny-only, then medium integrity (the
-    // coordinator's decision after the second code review): an elevated console holds Administrators, the privileges of
+    // CreateRestrictedToken with DISABLE_MAX_PRIVILEGE and Administrators deny-only, then medium integrity: an
+    // elevated console holds Administrators, the privileges of
     // an administrator and high integrity, a console that is not elevated holds Administrators for deny only already, or
     // not at all, privileges of its own beside SeChangeNotifyPrivilege, and medium integrity.
     [Fact]
@@ -111,8 +111,8 @@ public sealed partial class OwnTokenWorkerTests
         Assert.True(integrity <= MediumIntegrity, $"The worker runs at the integrity level 0x{integrity:X4}, above medium.");
     }
 
-    // The default owner and list of the restricted token are the user's, as a token that is not elevated has them (the
-    // coordinator's decision after the second code review): an elevated console's are Administrators and a list for
+    // The default owner and list of the restricted token are the user's, as a token that is not elevated has them: an
+    // elevated console's are Administrators and a list for
     // Administrators and SYSTEM, through which a worker that holds Administrators for deny only reopens nothing it creates.
     [Fact]
     public async Task A_worker_under_the_console_own_token_has_the_user_as_its_default_owner_and_a_default_list_that_grants_the_user_all_access()

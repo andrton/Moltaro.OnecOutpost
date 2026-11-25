@@ -5,8 +5,7 @@ using Moltaro.OnecOutpost.OneC.Tests.Lab;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Guides;
 
-// The scripts of guide G2, read from its Markdown (the S9b brief, "Guide G2"; the plan, "The user guides": the source of
-// a script is the code block of the guide, and no copy of it is kept elsewhere). A script is a fenced block whose info
+// The guide's Markdown code blocks are the only source of its scripts. A script is a fenced block whose info
 // string is bsl, then its mode, read or write, and, for a script that does not succeed, the kind and the code it gives,
 // such as "bsl read failed script-error". Its parameters are the next block whose info string is "json parameters"
 // before the next script, a JSON object; a script without one has none, {}. A block of "json result" is shown to the

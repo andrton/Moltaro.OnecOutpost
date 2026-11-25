@@ -5,8 +5,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The scripts of one session of check as one ordered list (the S10 brief, "Internal of S10c", review 3's entry 2: the
-// runner moved into WorkerSession and the scripts into SessionScript, check unchanged): the read account of accounting
+// The scripts of one session of check as one ordered list: the read account of accounting
 // runs Connection, Subscriptions and ReadRights in that order, in one worker. When the first line fails, the session
 // does not open, or a script ends the worker, every later script of the list is not checked and names that line, as
 // "not checked: {line} failed", and runs not; a later script that fails in 1C fails its own line alone, and the next
@@ -25,7 +24,7 @@ public sealed class SessionScriptsTests : IDisposable
     }
 
     // A session of another user fails the line Connection, whose user is the input of the rights and the subscriptions.
-    // The row names its mode (the S10 brief, "After the lab run of deeb370", 3).
+    // The row names its mode.
     [Fact]
     public async Task A_first_line_that_fails_leaves_every_later_script_of_its_session_not_checked_naming_that_line()
     {

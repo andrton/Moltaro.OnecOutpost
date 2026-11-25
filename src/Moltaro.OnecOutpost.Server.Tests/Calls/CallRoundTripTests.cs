@@ -9,7 +9,7 @@ using static Moltaro.OnecOutpost.TestSupport.Loopback.PollRequests;
 
 namespace Moltaro.OnecOutpost.Server.Tests.Calls;
 
-// Read and Write end to end over loopback HTTP, with a test agent (the goal of the S5 brief): a call creates a signed
+// Read and Write end to end over loopback HTTP, with a test agent: a call creates a signed
 // command and wakes the held poll of its agent, which hands the command out; the agent sends its outcome, the server
 // confirms it, and the call returns it. The clock does not move, so the poll answers because the call woke it. The
 // options are not the defaults, so that the command shows that it carries the values of the node that made it (§7 of

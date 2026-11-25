@@ -8,7 +8,7 @@ using Moltaro.OnecOutpost.TestSupport;
 namespace Moltaro.OnecOutpost.Console.Tests.Machine;
 
 // What the boundaries of Windows answer without changing anything, which needs no administrator, so with
-// Requires=Windows alone (the S10 brief, "WindowsAccountRights", "WindowsFolderSetup" and "WindowsServiceControl"):
+// Requires=Windows alone:
 // UserSid names only a local user, so a name that Windows does not know and a group give null; FinalPath names a folder
 // as Windows does, however it is spelled, and one that does not exist by its full path; Kind tells a folder from nothing
 // and counts a file as nothing, so that a folder is never assumed in its place; a stop of a service that does not exist

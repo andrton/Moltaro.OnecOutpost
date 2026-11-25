@@ -3,9 +3,9 @@ using Moltaro.OnecOutpost.Agent.Workers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Workers;
 
-// The reasons about a worker account and the agent's privileges that the agent's start and the console's check share
-// (the S10b brief, "One wording, with a remedy that exists"), each with a remedy that exists: the sentence of each code
-// of LogonUserW that the brief names, the remedy naming the base's secret command where one helps, and for any other
+// The reasons about a worker account and the agent's privileges that the agent's start and the console's check share,
+// each with a remedy that exists: the sentence of each code of LogonUserW covered by the table, the remedy naming the
+// base's secret command where one helps, and for any other
 // code the message of Windows with the code; the token beyond an ordinary user's; and the agent's account without its
 // two privileges. On every platform: the table is apart from the launcher.
 public sealed class WorkerAccountReasonsTests

@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Moltaro.OnecOutpost.TestSupport.Metadata;
 
-// The report that the console's metadata writes (the S10 brief, "The report"), read back for the console's tests and
+// The report that the console's metadata writes, read back for the console's tests and
 // the lab's: its bytes as they are on the disk, and its JSON, format 1, with its categories, its objects by their full
 // names, the fields of an object, its common storage and its reads in their order. A member that the report gives as
 // null and one that it leaves out read alike, as null.

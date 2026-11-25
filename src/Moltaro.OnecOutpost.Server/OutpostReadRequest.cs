@@ -63,8 +63,8 @@ public sealed class OutpostReadRequest
     public JsonObject? Parameters { get; init; }
 
     /// <summary>
-    /// The caller key, which makes the Read run once per base, or <see langword="null"/> for none. The script reads it
-    /// as <c>CallerKey</c>, which is <c>Undefined</c> without one.
+    /// The caller key, or <see langword="null"/> for none. It allows at most one run in the base while the command
+    /// holds the key. The script reads it as <c>CallerKey</c>, which is <c>Undefined</c> without one.
     /// </summary>
     /// <remarks>
     /// <para>

@@ -12,7 +12,7 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.EndToEnd;
 
-// Poll numbers across restarts, end to end against the server of S5 (concept rule 10, §6.2 and §13 of
+// Poll numbers across restarts, end to end against the server (concept rule 10, §6.2 and §13 of
 // docs/protocol.md): only the newest poll takes commands, and the reservations of the audit log keep every poll after a
 // restart above every poll before it, whatever the clock did. A server that answers a poll as older names its newest,
 // and the agent goes on above it after a tenth of retryDelayMax. A log that was cleared is found by the polls the agent

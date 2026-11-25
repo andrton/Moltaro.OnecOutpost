@@ -119,7 +119,7 @@ internal sealed class TestPool : IAsyncDisposable
 
     // Completes once the deadline of an open has ended: the timer that the pool armed on the clock to fire at dueAt,
     // the time the open began plus the run limit of its mode. A slot publishes a worker whose open gave true before it
-    // ends that timer (the S9b brief, "Threads"), so Free counts the worker from then on. It fails the test when the
+    // ends that timer, so Free counts the worker from then on. It fails the test when the
     // timer does not end within the deadline of the tests.
     public static Task WaitForOpenDeadlineEndedAsync(FakeClock clock, DateTimeOffset dueAt)
     {

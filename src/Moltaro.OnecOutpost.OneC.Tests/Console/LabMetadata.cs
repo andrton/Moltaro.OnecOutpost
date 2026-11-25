@@ -7,10 +7,9 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.OneC.Tests.Console;
 
-// One run of the console's metadata on the lab, as its output and its report show it: its exit code, the report that it
-// wrote, and what the lab run records of it for the brief of S10c, in the output of the test, which a passing test
-// shows too: the coverage of each category, the reads, the largest outcome, the halvings, and whether the storage
-// structure was available to the read account. For a copy of a typical base, Named is false, and the messages give
+// One run of the console's metadata in the lab, with its exit code and report. The test output records each
+// category's coverage, the Reads, the largest outcome, the page halvings and whether the read account could read the
+// storage structure. For a copy of a typical base, Named is false, and the messages give
 // counts and outcome codes. For the test base, whose configuration is the repository's, they name failed objects and
 // give the details of failed Reads and unavailable storage.
 internal sealed class LabMetadata

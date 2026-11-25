@@ -6,7 +6,7 @@ using Spectre.Console.Cli.Testing;
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
 // One run of check on a test's machine, as its output shows it: the rows of its table (CheckTable), by kind and
-// subject, and how it ended (the S10b brief, "check"): Every line passed. and Success when every line passed, else
+// subject, and how it ended: Every line passed. and Success when every line passed, else
 // CheckFailed (19): {n} of {m} lines failed, a line that was not checked counting as failed.
 internal sealed class CheckRun
 {

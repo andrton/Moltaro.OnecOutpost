@@ -11,8 +11,8 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Metadata;
 
-// check's rule before a worker starts, which metadata holds too (the S10 brief, "metadata <BASE> <FILE>", step 4, and
-// review 3, entry 2): the files; a base that the policy does not name; the passwords that the worker of the base needs,
+// check's rule before a worker starts, which metadata holds too: the files; a base that the policy does not name; the
+// passwords that the worker of the base needs,
 // its read password and, for a base with a worker account, the worker account's, each named alone; the connector; the
 // data folder, the program folder and the folder of the connector, which somebody else could have planted or changed;
 // and the one logon of the worker account. A line of that rule that failed ends metadata with CheckFailed, naming the

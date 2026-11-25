@@ -33,7 +33,7 @@ internal static class StartChecks
     }
 
     // The reason why the entry at the path admits somebody else, or null when others IsEmpty, each with a remedy that
-    // exists: an owner who is somebody else first, who can always change the access list (Q14), with the icacls command
+    // exists: an owner who is somebody else first, who can always change the access list, with the icacls command
     // that makes Administrators the owner, then the accounts of the entries, with what to do for the entry's kind.
     public static string? AccessReason(string path, OtherAccounts others)
     {

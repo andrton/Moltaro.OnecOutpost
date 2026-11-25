@@ -8,12 +8,11 @@ namespace Moltaro.OnecOutpost.Agent.Policy;
 
 // Reads the text of policy.json by the rules of its format and applies the defaults of absent members. Any fault
 // makes the whole file invalid: an unknown member, a member given twice, a wrong type, a value outside its rule, a
-// required member left out, or an escaped lone surrogate in a string or a name (Q6). JSON comments and trailing commas
+// required member left out, or an escaped lone surrogate in a string or a name. JSON comments and trailing commas
 // are refused. A member given the value null has a wrong type, not an absent one. Names of members are compared
 // exactly. The first fault in the order of the file is reported, with the path of its member and a reason that says
-// what is wrong there and what is expected, in the form "what is wrong; expected what" (Q1). A reason never repeats a
-// string value of the file, which may hold a secret such as a password in the URL of the proxy (principle 9): it names
-// what the value is, or which rule the string breaks.
+// what is wrong there and what is expected. A reason describes the rule the string breaks without repeating its
+// value, which may hold a secret such as a password in the URL of the proxy (principle 9).
 internal static class AgentPolicyReader
 {
     private const int DefaultAuditRetentionDays = 90;
@@ -546,9 +545,8 @@ internal static class AgentPolicyReader
         };
     }
 
-    // A string that is not an absolute http URL is named by that rule, never repeated. The agent offers the proxy the
-    // credentials of the computer, never any written in the file (Q7), so a URL with a user or a password is refused,
-    // and neither is repeated, since either may be a secret.
+    // The error describes the expected absolute HTTP URL without quoting the value. A URL with a user or password is
+    // refused since the agent offers the proxy no credentials (§11 of docs/protocol.md).
     private static Uri ReadProxy(JsonElement value, string path)
     {
         const string Expected =
@@ -565,7 +563,7 @@ internal static class AgentPolicyReader
         {
             throw new AgentPolicyException(
                 path,
-                $"the URL holds a user or a password; expected {Expected}, without credentials, since the agent offers the proxy those of the computer");
+                $"the URL holds a user or a password; expected {Expected}, without credentials");
         }
 
         return proxy;
@@ -618,8 +616,8 @@ internal static class AgentPolicyReader
         return new AgentPolicyException(path, $"the member is missing; expected {expected}");
     }
 
-    // No UTF-8 can carry a lone surrogate, so it breaks the rule of every string and name of the file (Q6). The reason
-    // names the escape by its range, never the string that holds it.
+    // UTF-8 cannot carry a lone surrogate, so it is invalid in every string and name of the file. The error names
+    // the escape by its range without quoting the string.
     private static AgentPolicyException LoneSurrogate(string path, string subject)
     {
         return new AgentPolicyException(

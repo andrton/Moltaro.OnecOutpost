@@ -10,7 +10,7 @@ using Spectre.Console.Cli;
 
 namespace Moltaro.OnecOutpost.Console.Commands;
 
-// metadata <BASE> <FILE> (the S10 brief, "Internal of S10c"): elevation; the file, a new one in a folder that exists and
+// metadata <BASE> <FILE>: elevation; the file, a new one in a folder that exists and
 // outside the data folder, judged now; the data folder, absent giving NotInstalled; the gate of check's rule
 // (WorkerGate), a line of it that failed giving CheckFailed and no worker started, and a base the policy does not name
 // NotInPolicy; then one worker session of the base's read account, in read mode and in safe mode, under its worker

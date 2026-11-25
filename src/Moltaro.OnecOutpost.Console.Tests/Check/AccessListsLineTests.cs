@@ -7,13 +7,13 @@ using Moltaro.OnecOutpost.TestSupport.Check;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Check;
 
-// The line AccessLists of check (the S10b brief, "check", and Q14): the data folder and every entry that the agent's
-// start judges, StartChecks.DataPaths of the files listed, each named with StartChecks.AccessReason when it admits
-// somebody else or somebody else owns it, a file gone before its list counting as gone; the program folder and the folder
-// of each registered connector, each entry through which somebody else may change them named with
-// StartChecks.WritersReason. check never starts code that somebody else may have changed: a data folder that admits
-// somebody else, who could have planted a policy.json or a secrets.dat there (the contract amended after the first code
-// review), a program folder or a folder of the connector with which the workers start that somebody else may change
+// The line AccessLists of check: the data folder and every entry that the agent's start judges, StartChecks.DataPaths
+// of the files listed, each named with StartChecks.AccessReason when it admits somebody else or somebody else owns
+// it, a file gone before its list counting as gone; the program folder and the folder of each registered connector,
+// each entry through which somebody else may change them named with StartChecks.WritersReason. check never starts
+// code that somebody else may have changed: a data folder that admits somebody else, who could have planted a
+// policy.json or a secrets.dat there, a program folder or a folder of the connector with which the workers start that
+// somebody else may change
 // leaves the probe and the connections not checked, and no worker starts. The folder of a connector of the other
 // bitness blocks nothing.
 public sealed class AccessListsLineTests : IDisposable
@@ -64,8 +64,8 @@ public sealed class AccessListsLineTests : IDisposable
         Assert.Equal("admits nobody else, nor do its 4 files", run.Passed(CheckLineEnum.AccessLists, TestMachine.DataFolder));
     }
 
-    // Each entry named with the reason of the start, Q14's owner included, with its remedy; whoever an entry admits could
-    // have planted the policy or the secrets with which a worker starts, so none starts.
+    // The check names an unsafe owner or access entry with the same reason and remedy as the agent. Either can let
+    // another account plant the worker's policy or secrets, so the check starts no worker.
     [Fact]
     public async Task Each_entry_of_the_data_folder_that_admits_somebody_else_or_that_somebody_else_owns_is_named_with_its_remedy_and_no_worker_starts()
     {

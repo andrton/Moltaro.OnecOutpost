@@ -12,8 +12,8 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Loop;
 
-// What a poll of the loop carries and when it opens (§6.2 of docs/protocol.md, concept rules 8 and 10, the S6 brief,
-// "AgentLoop.RunAsync"): Next, the agent's time and version, the poll timeout it last learnt, the policy's bases with
+// What a poll of the loop carries and when it opens (§6.2 of docs/protocol.md, concept rules 8 and 10): Next, the
+// agent's time and version, the poll timeout it last learnt, the policy's bases with
 // their free workers and run limits, and every command not confirmed as received; the sum of free never passes the
 // room left in received. After an answer to an older poll the agent waits a tenth of retryDelayMax and goes on above
 // its newest; a newest of 2⁶² leaves no number, and the agent stops for good.

@@ -5,8 +5,8 @@ using Moltaro.OnecOutpost.TestSupport;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Files;
 
-// A folder of the data folder on the disk, by file name and without subfolders (the S6a brief, IAgentFolder and
-// DiskFolder). Every failure is an IOException, UnauthorizedAccessException included, and nothing retries. Each test
+// A folder of the data folder on the disk, by file name and without subfolders. Every failure is an IOException,
+// UnauthorizedAccessException included, and nothing retries. Each test
 // works in a temporary folder of its own; no test can show a loss of power, so that a flush or a rename reached the
 // disk is not tested.
 [Trait("Requires", "Windows")]
@@ -175,8 +175,7 @@ public sealed class DiskFolderTests : IDisposable
         Assert.Equal("outcome", File.ReadAllText(path));
     }
 
-    // The limitation of the brief: a program that holds an audit file open without sharing writing fails the next
-    // write of the agent, and the agent stops.
+    // If another program opens an audit file without write sharing, the agent stops when its next write fails.
     [Fact]
     public void A_write_to_a_file_that_another_program_holds_without_sharing_writing_fails_with_IOException()
     {

@@ -10,7 +10,7 @@ using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Loop;
 
-// A lost answer to a poll (§6.2 and §9 of docs/protocol.md, the S6 brief, "AgentLoop.RunAsync"): one that CheckAnswer
+// A lost answer to a poll (§6.2 and §9 of docs/protocol.md): one that CheckAnswer
 // refuses, its reason status-200, included. The agent acts on nothing in it: it records connection lost when the state
 // is not, and nothing else, so no command is recorded or run, no bases, no retention, and the numbers are not
 // answered. Then it waits a growing delay: a tenth of retryDelayMax, doubled up to it, reset by an answer that is not

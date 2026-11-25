@@ -10,8 +10,7 @@ namespace Moltaro.OnecOutpost.ComWorker;
 [SupportedOSPlatform("windows")]
 internal static class Program
 {
-    // The thread is a single-threaded apartment, as that of the Windows PowerShell that reached the COM connector in
-    // the lab check L1: it creates the connector and makes every call to the objects of 1C.
+    // The same single-threaded apartment creates the connector and makes every call to the objects of 1C.
     [STAThread]
     private static int Main(string[] args)
     {

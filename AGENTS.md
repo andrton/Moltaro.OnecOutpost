@@ -22,32 +22,20 @@ the 1C language and its parameters. The library knows nothing of any 1C configur
 BAS and every other configuration on the 1C:Enterprise 8.3 platform are the same case. The
 oldest platform supported is 8.3.17.1851.
 
-What exists today is the [concept](docs/concept.md), these rules, the development process,
-the build settings, and the public contract of the first stage in code: the server
-library, the protocol assembly and the agent program. Only the checks that need no
-implementation work, the codec of the protocol with its signatures and pairing proof,
-the store, pairing, polls, commands and their outcomes on the server with the calls that
-manage agents and base keys, the agent end to end against the server with a fake in place
-of the COM worker (its files, numbered polls through its proxy, the checks, the audit log,
-the outbox with outcomes sent until confirmed, pairing, and the Windows service started
-with `service`; a proxy that asks for authentication is not supported yet), and the COM
-worker with the executor, which the agent now starts for its bases with the bitness of the
-registered connector, inside a job object, ended at the run limit and started again with a
-growing delay. A base whose Writes run without safe mode is served for Write too, all its
-COM workers under a local Windows account of its own that the agent logs on at its start,
-after it checked that nobody else may change its program folder. The tests of the agent
-against a real 1C passed on the lab, with a server of the test, those of the worker
-account included. The console installs, pairs and uninstalls an agent, writes its secrets
-and registers the COM connector (`install`, `uninstall`, `pair`, `secret` and `connector
-register`), checks the agent machine (`check`) and writes a metadata report of a base
-(`metadata`). See the README for the status of the lab tests that run `check` and
-`metadata` against a real 1C. When the agent stops for a fault after its start, its audit
-log records why (`stopped`). The server is the one
-package of the repository, `Moltaro.OnecOutpost.Server`, and it carries the protocol
-assembly inside it, so that the two can never be mixed at different versions. The concept
-is the authority for what the library guarantees: its semantics, its rules, its decisions
-D1–D17, its non-goals and its open items. `README.md` says what works today; a feature is
-delivered when the README says so.
+The agent, server, console and shell are built. The server pairs agents, manages base keys,
+holds polls, dispatches signed commands and retains their outcomes in PostgreSQL. The
+agent checks local policy, records commands in its audit log and keeps outcomes in an
+outbox until the server confirms them. It runs a COM worker with the bitness of the
+registered connector inside a job object and replaces it at the run limit. For a base
+that allows Write without safe mode, all its workers run under the configured ordinary
+Windows account. The console installs, pairs, checks and removes an agent, writes
+secrets, registers the COM connector and reports 1C metadata. The shell hosts a server
+for trying these operations from a terminal. The lab verified the installed agent with
+real 1C against the shell on ARM64 over HTTPS. `README.md` records what works today.
+
+The repository builds one NuGet package, `Moltaro.OnecOutpost.Server`, with the protocol
+assembly inside it. The [concept](docs/concept.md) defines the guarantees, decisions
+D1–D17, scope and open items.
 
 This repository is public. Nothing specific to a private product or a customer goes into
 it: no names of customers, of their databases or configurations, and none of their data,
@@ -61,8 +49,8 @@ in code, tests, samples or documents.
 | `src/OneC.TestConfiguration` | The XML sources of the repository's own 1C test configuration, with a script that builds a base from them on the 1C cluster of the lab machine, through the Designer's command line, and the git-ignored `lab.local.json` of the lab. No built configuration or base is committed |
 | `docs/concept.md` | Where the library comes from, its semantics and rules, protocol principles, decisions, quality bar and open items |
 | `docs/protocol.md` | The wire protocol, extended by the sprint that introduces a part of it |
-| `docs/explanations` | Explanations of the architecture and of how the library works, each as Markdown and as HTML: the path of a command and why a command never runs twice exist; how the library is built is planned |
-| `docs/guides` | The user guides: how to write scripts (`scripts.md`) and how to install and run an agent (`agent.md`), and a first shell session (`server.md`). The rest of the server guide is planned. Every command and script they show is run by a test |
+| `docs/explanations` | Explanations of the architecture and guarantees, each as Markdown and as HTML |
+| `docs/guides` | How to write scripts (`scripts.md`), install and run an agent (`agent.md`), and try the shell and embed the server (`server.md`) |
 | `docs/work` | Working documents: the epics in progress, the development process, branches and releases, exceptions to the rules, open questions |
 
 Each project is created by the sprint that first needs it, under the name the plan of the

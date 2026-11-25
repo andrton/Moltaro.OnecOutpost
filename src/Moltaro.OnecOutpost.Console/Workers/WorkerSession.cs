@@ -6,10 +6,9 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Console.Workers;
 
-// One worker of the console opened in a base, in read mode, for check and metadata (review 3, the runner joined to
-// S10c): its open and each of its Reads raced with the run limit on the clock, the worker killed at it, and each
-// outcome judged as the pool judges one. A Read after the worker ended is a mistake of the caller. The session owns its
-// worker and waits for its exit before closing the job. Its caller runs it from one task at a time.
+// The console opens one worker in read mode for check or metadata. It kills the worker when an open or Read reaches
+// the run limit and validates outcomes as the pool does. Calling Read after the worker ends is a caller error.
+// The session owns its worker and waits for its exit before closing the job. Its caller runs it from one task at a time.
 internal sealed class WorkerSession : IAsyncDisposable
 {
     private readonly ConsoleWorker _worker;

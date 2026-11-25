@@ -10,12 +10,12 @@ using static Moltaro.OnecOutpost.Agent.Tests.Transport.TestConnection;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 
-// What the agent makes of an answer to an outcome request (§6.3, §9 and §10 of docs/protocol.md, the S6 brief,
-// "AgentConnection"): Confirmed for a verified 200 that confirms the request's command; TooLarge for a verified
-// result-too-large and for a 413 without an Outpost-Signature that verifies, whatever its body, as anything on the path
-// sends one; Lost for every other answer, and for none. The agent waits requestTimeout over the answer and its body,
-// and reads no more than 64 KiB. The answer is judged once into an OutcomeAnswer (the S10b brief, "The answer to an
-// outcome"), which the console's check reads too: the time of a verified confirmation or refusal, the status when one
+// What the agent makes of an answer to an outcome request (§6.3, §9 and §10 of docs/protocol.md): Confirmed for a
+// verified 200 that confirms the request's command; TooLarge for a verified result-too-large and for a 413 without an
+// Outpost-Signature that verifies, whatever its body, as anything on the path sends one; Lost for every other answer,
+// and for none. The agent waits requestTimeout over the answer and its body, and reads no more than 64 KiB. The
+// answer is judged once into an OutcomeAnswer, which the console's check reads too: the time of a verified
+// confirmation or refusal, the status when one
 // came, and for any answer but a confirmation its cause in §9's order, with the code of a verified refusal.
 public sealed class OutcomeAnswerTests
 {

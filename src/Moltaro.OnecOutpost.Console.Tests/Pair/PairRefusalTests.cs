@@ -9,7 +9,7 @@ using Spectre.Console.Cli.Testing;
 
 namespace Moltaro.OnecOutpost.Console.Tests.Pair;
 
-// Anything but a verified 200 ends pair with PairingFailed and writes nothing (the S10 brief, "pair", step 2, and §6.1
+// Anything but a verified 200 ends pair with PairingFailed and writes nothing (§6.1
 // and §9 of docs/protocol.md), one case for each AgentPairingFailureEnum. The line gives "HTTP {status}: " when a status
 // came and then the console's own reason, in the words of §6.1 for a server key that does not match the token, a
 // signature that does not verify, the unsigned answer of a protocol version that the server does not speak, and a bare

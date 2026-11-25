@@ -10,7 +10,7 @@ using static Moltaro.OnecOutpost.Agent.Tests.Transport.TestConnection;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Transport;
 
-// What the agent makes of an answer to a poll (§6.2, §9 and §10 of docs/protocol.md, the S6 brief, "AgentConnection"):
+// What the agent makes of an answer to a poll (§6.2, §9 and §10 of docs/protocol.md):
 // an answer verified by §9 and ReadPollAnswer, with the sum of the poll's free, is the answer; any other is lost, with
 // the reason that connection lost records: the code of a verified refusal, protocol-version for the unsigned body of
 // §9, status- and the status of any other answer whose status came, a status that a proxy gave a CONNECT included, or
