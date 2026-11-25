@@ -126,10 +126,9 @@ internal sealed class AuditLog : IDisposable
         Append(writer, time);
     }
 
-    // Records stopped (the owner's Q16): the reason of a stop of the agent's own after its started, as the
-    // AgentStopException that stops the run words it, which names a file by its path and never a script, a parameter, a
-    // result or a secret. It throws nothing: with Fault set, a failed write of the log or a log that cannot be read,
-    // it writes nothing, and its own failed write is cut back as any entry's; the agent stops either way.
+    // A fault after started produces a stopped entry with the AgentStopException's reason. The reason may name a file
+    // by its path and excludes scripts, parameters, results and secrets. The entry is skipped if the log is already
+    // faulted. A failed append is cut back and its exception is suppressed because the agent is already stopping.
     public void Stopped(string error)
     {
         if (_fault is not null)

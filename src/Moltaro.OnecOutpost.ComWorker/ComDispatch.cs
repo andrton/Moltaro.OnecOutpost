@@ -7,9 +7,8 @@ using System.Runtime.Versioning;
 namespace Moltaro.OnecOutpost.ComWorker;
 
 // Late-bound calls to the objects of 1C through IDispatch, the only way the worker reaches them. The connection and the
-// objects it gives come without type information, so a member is reached by its name, as the lab check L1 reached
-// them. A call that 1C refuses throws the COMException that carries the text of 1C, not the reflection wrapper around
-// it.
+// objects it gives come without type information, so a member is reached by its name. A call that 1C refuses throws
+// the COMException that carries the text of 1C directly.
 [SupportedOSPlatform("windows")]
 internal static class ComDispatch
 {

@@ -17,8 +17,8 @@ internal sealed class ComSession : IOneCSession
         _connection = connection;
     }
 
-    // Opens the executor with ExternalDataProcessors.Create, as the lab check L1 opened it. The objects of 1C that the
-    // call needs are released before it returns; the executor belongs to the ComExecutor returned.
+    // Opens the executor with ExternalDataProcessors.Create. The call releases its intermediate 1C objects before
+    // returning. The executor belongs to the returned ComExecutor.
     public IOneCExecutor OpenExecutor(string path, bool safeMode)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

@@ -11,10 +11,10 @@ using Spectre.Console.Cli;
 
 namespace Moltaro.OnecOutpost.Console.Commands;
 
-// secret <BASE> <KIND>: the steps it shares with pair, then the password of the base's account in the mode, or of its
-// worker account after "Log on as a batch job" is granted to it, written to secrets.dat with every other secret kept,
-// as the S10 brief says. The password is asked with a prompt that does not echo it when the console is interactive,
-// read as one line of the redirected input otherwise, and never written to the output.
+// After the steps it shares with pair, secret <BASE> <KIND> writes the password for that mode or worker account to
+// secrets.dat and preserves every other secret. It grants a worker account "Log on as a batch job" before asking for
+// its password. The console uses a prompt without echo in a terminal or reads one line of redirected input. The
+// password never reaches the output.
 internal sealed partial class SecretCommand : AsyncCommand<SecretCommand.Settings>
 {
     private const string Worker = "worker";

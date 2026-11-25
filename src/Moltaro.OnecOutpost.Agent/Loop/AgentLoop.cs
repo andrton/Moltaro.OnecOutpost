@@ -421,7 +421,7 @@ internal sealed class AgentLoop
     }
 
     // An outcome of kind succeeded or failed is replaced once for its size; one of kind refused or unknown never is, and
-    // one with the code result-too-large counts as replaced already (the S6 brief, "TooLarge"). The bytes are those of
+    // one with the code result-too-large counts as replaced already (§9 of docs/protocol.md). The bytes are those of
     // the outbox file, which the start and the records keep valid for the command's mode.
     private bool IsReplaceable(Guid command, byte[] outcome)
     {

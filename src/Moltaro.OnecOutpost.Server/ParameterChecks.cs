@@ -84,7 +84,7 @@ internal static class ParameterChecks
     }
 
     // System.Text.Json writes a lone surrogate of a .NET string as U+FFFD without a word, so the text read back never
-    // holds one, and the names and strings of the caller's object are checked as the caller gave them (Q6). A string
+    // holds one, so the names and strings of the caller's object are checked as the caller gave them. A string
     // inside a value of another .NET type that the caller wrapped in a JsonValue, such as a char or an array, is
     // written by System.Text.Json alone and travels with U+FFFD in place of a lone surrogate. Called once the object
     // was written and its nesting checked, so it nests at most the levels of the protocol; an escaped lone surrogate

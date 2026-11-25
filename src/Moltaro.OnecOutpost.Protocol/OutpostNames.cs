@@ -88,7 +88,7 @@ internal static class OutpostNames
     }
 
     // True when the text holds a lone surrogate: a UTF-16 code unit from U+D800 to U+DFFF without its pair, which no
-    // UTF-8 can carry (Q6). The server checks the strings of the parameters of a command with it as well.
+    // UTF-8 can carry. The server checks the strings of the parameters of a command with it as well.
     public static bool HasLoneSurrogate(string value)
     {
         for (int index = 0; index < value.Length; index++)

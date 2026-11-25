@@ -10,7 +10,7 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 // finder, which reads HKLM as the service sees it, says whether it took; with several copies none is registered, since
 // the connector has to match the version of the 1C cluster, and each is named with the command that registers it. The
 // exit is RegistrationFailed when a run of regsvr32 failed, else ConnectorNotRegistered when no bitness ends with a
-// registered connector, else Success, as the S10 brief says.
+// registered connector, else Success.
 internal sealed class ConnectorRegisterCommand : AsyncCommand<EmptyCommandSettings>
 {
     private readonly IAnsiConsole _console;

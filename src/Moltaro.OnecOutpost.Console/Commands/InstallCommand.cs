@@ -11,8 +11,7 @@ namespace Moltaro.OnecOutpost.Console.Commands;
 
 // install [--stop-timeout <TIME>]: elevation and the source, the stop, the program folder judged by the agent's rule
 // before any service exists, the service, the two rights of its account, and the data folder, each step idempotent and
-// named in its failure, as the S10 brief says. It never starts the service, and it repairs neither folder: one that
-// admits somebody else ends it.
+// named in its failure. The service remains stopped. Either folder admitting somebody else ends the installation.
 internal sealed class InstallCommand : AsyncCommand<ServiceSettings>
 {
     // The agent's program in the program folder, which the service runs with its one argument.

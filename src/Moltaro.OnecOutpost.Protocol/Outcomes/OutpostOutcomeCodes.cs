@@ -126,7 +126,7 @@ internal static class OutpostOutcomeCodes
     }
 
     // True when a COM worker may hand the agent an outcome of this kind with this code for a command of this mode: what
-    // the executor hands over (the paragraph "The executor" of §8), and the outcomes that S9's worker writes itself —
+    // the executor hands over (§8 of docs/protocol.md) and the outcomes the COM worker writes itself:
     // Failed base-unreachable in either mode, Failed connection-lost for a Read, Unknown connection-lost and Unknown
     // result-type for a Write. False otherwise. The pool's check of what a worker hands over uses it.
     public static bool IsComWorkerOutcome(OutpostModeEnum mode, OutpostAgentOutcomeKindEnum kind, string? code)

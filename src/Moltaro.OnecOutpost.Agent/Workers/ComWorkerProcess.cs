@@ -21,7 +21,7 @@ namespace Moltaro.OnecOutpost.Agent.Workers;
 // the pipe of a process does not end on cancellation, so cancellation kills the process, which ends its output.
 // Limitation: Windows gives anonymous pipes no asynchronous I/O, so each open or run holds a pool thread while it waits.
 // It owns its streams, the handle of its process, and the job of its own when it is given one. Start is the one start
-// of a worker's process, for the launcher and the console (review 3, entry 1).
+// of a worker's process, for the launcher and the console.
 [SupportedOSPlatform("windows")]
 internal sealed partial class ComWorkerProcess : IWorkerProcess
 {

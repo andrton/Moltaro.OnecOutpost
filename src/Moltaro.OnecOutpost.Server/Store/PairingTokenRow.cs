@@ -8,6 +8,6 @@ internal sealed class PairingTokenRow
 
     public byte[] Secret { get; set; } = null!;
 
-    // Written in UTC from the store's TimeProvider, never from the clock of the database (PQ3).
+    // Written in UTC from the store's TimeProvider, which is also the clock used to judge expiry.
     public DateTimeOffset ExpiresAt { get; set; }
 }

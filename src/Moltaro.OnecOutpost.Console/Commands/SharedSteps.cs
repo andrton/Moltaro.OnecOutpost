@@ -9,8 +9,7 @@ using Spectre.Console;
 
 namespace Moltaro.OnecOutpost.Console.Commands;
 
-// The steps that more than one command takes, each written once (the S10 brief, "install", "uninstall" and "The steps
-// pair and secret share"). Each ends its command with a CommandEndException, as the brief says.
+// Shared command steps signal their failure with CommandEndException so each command stops at the failed step.
 internal static class SharedSteps
 {
     // The first step of every command: a console that is not elevated, UAC's filtered token included, changes nothing.
@@ -83,7 +82,7 @@ internal static class SharedSteps
         return ReadPolicy(parts.Data.Root);
     }
 
-    // Writes a file of the data folder by Replace, then makes Administrators its owner (Q14), since the agent counts
+    // Writes a file of the data folder by Replace, then makes Administrators its owner, since the agent counts
     // any other owner as somebody else. An IOException or an UnauthorizedAccessException passes.
     public static void WriteDataFile(ConsoleParts parts, string name, byte[] bytes)
     {

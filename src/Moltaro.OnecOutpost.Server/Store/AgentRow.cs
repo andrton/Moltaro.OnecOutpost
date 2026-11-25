@@ -11,7 +11,7 @@ internal sealed class AgentRow
 
     public OutpostAgentStateEnum State { get; set; }
 
-    // Written in UTC from the store's TimeProvider, never from the clock of the database (PQ3).
+    // Written in UTC from the store's TimeProvider.
     public DateTimeOffset CreatedAt { get; set; }
 
     // Null while the agent is Pending.
@@ -23,7 +23,7 @@ internal sealed class AgentRow
     // The number of the newest poll recorded; null until the agent's first poll, as are the three below.
     public long? NewestPoll { get; set; }
 
-    // The moment the node recorded the newest poll, from the store's TimeProvider (PQ3).
+    // The moment the node recorded the newest poll, from the store's TimeProvider.
     public DateTimeOffset? LastPollAt { get; set; }
 
     // The end of the lease of the newest poll, computed once when it was recorded (§6.2), so that the agent is connected

@@ -3,12 +3,10 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 
 namespace Moltaro.OnecOutpost.Console.Commands;
 
-// One Read of the walk of metadata, as the report records it in reads (the S10 brief, "The report"): census, page or
-// common; the category, the first index and the count of a page, null for the others; the bytes of its outcome; and its
-// kind, code and error text. Two forms are the console's own, which no outcome of the COM worker takes, since a failed
-// one always has a code and never run-limit (OutpostOutcomeCodes.IsComWorkerOutcome): a Read with no outcome within
-// the run limit, failed run-limit with no bytes; and a Read never run after a session did not reopen, failed without a
-// code and without bytes, the reason of that open as its error text.
+// The metadata report records each census, page or common Read with its outcome size, kind, code and error text.
+// The category, first index and count are set for pages. Failed worker outcomes carry one of the codes checked by
+// OutpostOutcomeCodes.IsComWorkerOutcome. The console adds two forms without outcome bytes: failed run-limit when
+// the deadline passes and failed without a code when the worker did not reopen. The latter carries the opening error.
 internal sealed record WalkRead(
     string Read,
     string? Category,

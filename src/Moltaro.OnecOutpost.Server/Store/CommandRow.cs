@@ -48,6 +48,6 @@ internal sealed class CommandRow
 
     public byte[]? Outcome { get; set; }
 
-    // The moment the outcome was set or replaced, from the store's TimeProvider (PQ3), from which its retention counts.
+    // Retention starts when the outcome is set or replaced, as timed by the store's TimeProvider.
     public DateTimeOffset? EndedAt { get; set; }
 }

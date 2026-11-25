@@ -3,8 +3,8 @@ using System.Text.Json.Nodes;
 namespace Moltaro.OnecOutpost.Server;
 
 /// <summary>
-/// A Write for <see cref="IOutpostServer.WriteAsync"/>: a script that runs in a base under its write account, inside
-/// one 1C transaction, at most once per caller key.
+/// A Write for <see cref="IOutpostServer.WriteAsync"/> runs a script in a base under its write account, inside one 1C
+/// transaction. The caller key allows at most one run in that base while the command holds the key.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -17,8 +17,9 @@ namespace Moltaro.OnecOutpost.Server;
 /// <see cref="OutpostCodes.TransactionEnded"/> when it finds no active transaction after it.
 /// </para>
 /// <para>
-/// The script runs as <see cref="OutpostReadRequest"/> describes: whole, in the 1C safe mode, with a fresh executor
-/// object, reading <c>Parameters</c> and <c>CallerKey</c> and setting <c>Result</c>.
+/// The script runs whole with a fresh executor object. It reads <c>Parameters</c> and <c>CallerKey</c> and sets
+/// <c>Result</c> as <see cref="OutpostReadRequest"/> describes. It runs in 1C safe mode by default. Only the
+/// administrator of the agent machine can turn safe mode off for Writes to the base through the local policy.
 /// </para>
 /// </remarks>
 public sealed class OutpostWriteRequest
@@ -32,9 +33,8 @@ public sealed class OutpostWriteRequest
     public required string BaseKey { get; init; }
 
     /// <summary>
-    /// The caller key, which makes the Write run at most once per base. Required: a Write without one cannot be
-    /// written, and <see langword="null"/> gives <see cref="ArgumentNullException"/>. The script reads it as
-    /// <c>CallerKey</c>.
+    /// The required caller key allows at most one run in the base while the command holds the key.
+    /// <see langword="null"/> gives <see cref="ArgumentNullException"/>. The script reads the key as <c>CallerKey</c>.
     /// </summary>
     /// <remarks>
     /// <para>

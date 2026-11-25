@@ -13,8 +13,8 @@ using Spectre.Console.Cli;
 namespace Moltaro.OnecOutpost.Console.Commands;
 
 // pair <SERVER> <TOKEN>: the steps it shares with secret, then the pairing of §6.1 of docs/protocol.md, writing
-// secrets.dat with the new key alone and then agent.json, as the S10 brief says. agent.json so exists only with its
-// key. A pairing that ends without a verified 200 writes nothing, and its line never holds text of an unverified body.
+// secrets.dat with the new key alone before writing agent.json, so agent.json exists only with its key. A pairing
+// that ends without a verified 200 writes nothing, and its line never holds text of an unverified body.
 internal sealed partial class PairCommand : AsyncCommand<PairCommand.Settings>
 {
     private readonly IAnsiConsole _console;
