@@ -72,10 +72,10 @@ and replay rules, see [protocol §13](protocol.md#13-what-stops-a-replay-and-wha
 
 The agent considers retention after a verified poll answer and when its clock is
 within one day of the answer's time. A nonempty file is eligible when its last entry
-is older than `auditRetentionDays` plus one day. The agent keeps the highest reservation
-for its current identity and entries for unconfirmed commands. A confirmation stays
-while any other entry for its command remains. A file that cannot be removed stays
-until a later retention pass.
+is older than `auditRetentionDays` plus one day. Empty files are also eligible. The
+agent keeps the highest reservation for its current identity and entries for
+unconfirmed commands. A confirmation stays while any other entry for its command
+remains. A file that cannot be removed stays until a later retention pass.
 
 ## Pending outcomes
 
@@ -92,10 +92,11 @@ A `received` with no outcome file or `ended` becomes Unknown `agent-stopped` for
 or Failed `lost` for a Read. An invalid outcome file, one that the journal cannot match
 to a command, or an unconfirmed `ended` with a missing outcome file stops startup.
 
-If the server or ingress refuses an outcome for its size, the agent can replace it
-once with Unknown `result-too-large` for a Write or Failed `result-too-large` for a
-Read. It records the replacement as a second `ended` and sends it. The result itself
-is stored in the outcome file and stays out of the audit log.
+If the server or ingress refuses a Succeeded or Failed outcome for its size, the agent
+can replace it once with Unknown `result-too-large` for a Write or Failed
+`result-too-large` for a Read. It records a second `ended` and sends the replacement.
+See [protocol §9](protocol.md#9-answers-refusals-and-lost-answers). The result itself is
+stored in the outcome file and stays out of the audit log.
 
 ## COM worker messages
 

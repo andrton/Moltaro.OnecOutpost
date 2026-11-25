@@ -140,21 +140,26 @@ jobs:
           archive="Moltaro.OnecOutpost-$PACKAGE_VERSION-win.zip"
           cd "$RUNNER_TEMP/agent"
           sha256sum --check "$archive.sha256"
+          checksum=$(cut -d ' ' -f 1 "$archive.sha256")
 
-          # A rerun after a NuGet failure can use the release that this run already published.
-          if draft=$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft' 2>/dev/null); then
-            if [[ "$draft" != false ]]; then
-              echo '::error::A draft release already exists for this tag.'
+          # Rerun the failed publishing job with the same verified archive artifact.
+          if published=$(gh release view "$GITHUB_REF_NAME" --json isDraft,isPrerelease --jq '(.isDraft or .isPrerelease) | not' 2>/dev/null); then
+            if [[ "$published" != true ]]; then
+              echo '::error::A draft or prerelease already exists for this tag.'
               exit 1
             fi
             mkdir "$RUNNER_TEMP/published"
             cd "$RUNNER_TEMP/published"
             gh release download "$GITHUB_REF_NAME" --pattern "$archive" --pattern "$archive.sha256"
             sha256sum --check "$archive.sha256"
+            existing=$(sha256sum "$archive" | cut -d ' ' -f 1)
+            if [[ "$existing" != "$checksum" ]]; then
+              echo '::error::The published archive differs from this run. Rerun the failed publishing job with its original archive artifact.'
+              exit 1
+            fi
             exit 0
           fi
 
-          checksum=$(cut -d ' ' -f 1 "$archive.sha256")
           guides="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/guides"
           {
             printf 'SHA-256 for `%s` is `%s`.\n\n' "$archive" "$checksum"

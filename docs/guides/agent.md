@@ -110,17 +110,20 @@ The archive holds the agent `Moltaro.OnecOutpost.Agent.exe`, the console
 `OutpostExecutor.epf` that runs a script inside 1C, the licence and notices, and the bundled components' licences in
 `licenses\`. Its programs are unsigned, so an antivirus program may ask you to allow the agent.
 
-Check the checksum, then unpack the archive into a folder of its own:
+Calculate the archive's SHA-256 checksum.
 
 ```powershell
 Get-FileHash .\Moltaro.OnecOutpost-<version>-win.zip -Algorithm SHA256
-Expand-Archive .\Moltaro.OnecOutpost-<version>-win.zip -DestinationPath <folder>
 ```
 
-Compare the `Hash` printed by `Get-FileHash` with the first field of the checksum file, ignoring case. If
-it is not, the file is not the one released: do not use it. The folder may lie anywhere except inside
-`C:\Program Files\Moltaro.OnecOutpost`, and it may not hold that folder, such as `C:\Program Files` itself, since
-`install` copies its whole content there.
+Compare the `Hash` printed by `Get-FileHash` with the first field of the checksum file, ignoring case.
+Unpack the archive only when they match. Pick a folder of its own, outside
+`C:\Program Files\Moltaro.OnecOutpost` and outside its parents. The `install` command copies the entire
+unpacked folder to `C:\Program Files\Moltaro.OnecOutpost`.
+
+```powershell
+Expand-Archive .\Moltaro.OnecOutpost-<version>-win.zip -DestinationPath <folder>
+```
 
 ## Installing
 

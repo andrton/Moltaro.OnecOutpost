@@ -6,7 +6,7 @@ commit or tag, and its license text. The
 [development process](docs/work/process.md#code-modelled-on-another-project) says when an
 entry is required.
 
-The repository contains no third-party material yet.
+The repository contains no code adapted from third-party projects.
 
 The Windows archive also includes upstream license and notice texts for its bundled
 .NET runtime and Spectre packages in the `licenses` folder.

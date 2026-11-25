@@ -79,21 +79,6 @@ Result = New Structure("description", Product.Description);
 End input to stop the shell. In a terminal, use Ctrl+D on Unix or Ctrl+Z followed by
 Enter on Windows. Ctrl+C cancels the shell's wait. A submitted command can still run.
 
-### When the session fails
-
-| What you see | What to check |
-| --- | --- |
-| Usage error | Check the startup options or the command header. End a Read or Write with a line containing only `.` and give `.parameters` a JSON object when you use it. |
-| Infrastructure failure | Check the PostgreSQL connection and migration permissions, the signing key directory and the listener settings. Keep any passwords in the environment. |
-| `Unavailable` | Start the agent and check that it is polling the printed URL. |
-| `Refused` | Check the outcome code, the base key and the modes the local policy opens. For `caller-key-conflict`, use the script and parameters of the first call to retrieve its outcome. |
-| `Expired` | The command did not reach the agent in time. Check the agent's connection and try again. |
-| `Failed` | Read the outcome code and any error text from 1C. A failed Write made no database changes. |
-| `Unknown` | Repeat the identical Write with the same caller key to read its retained outcome. Check what it did in the base before submitting a new Write. |
-
-See [Writing scripts](scripts.md) for the script contract, outcome codes and more
-examples on the test configuration.
-
 The shell supports `--help` at startup and inside the session. `--help read`, for
 example, shows help for the `read` command inside the session. To manage a registration
 in the shell, use `revoke <id>` or `release <base>`.
@@ -104,6 +89,21 @@ Status 1 means infrastructure failure, 2 means a usage error and 5 means cancell
 The statuses for a command outcome are 0 for `Succeeded`, 10 for `Failed`, 11 for
 `Refused`, 12 for `Unavailable`, 13 for `Expired` and 14 for `Unknown`. A completed
 administrative command returns 0.
+
+### When the session fails
+
+| What you see | What to check |
+| --- | --- |
+| Usage error | Check the startup options or the command header. End a Read or Write with a line containing only `.` and give `.parameters` a JSON object when you use it. |
+| Infrastructure failure | Check the PostgreSQL connection and migration permissions, the signing key directory and the listener settings. Keep any passwords in the environment. |
+| `Unavailable` | Start the agent and check that it is polling the printed URL. |
+| `Refused` | Check the outcome code, the base key and the modes the local policy opens. For `caller-key-conflict`, use the script and parameters of the first call to retrieve its outcome. |
+| `Expired` | The command did not reach the agent in time. Check the agent's connection and try again. |
+| `Failed` | Read the outcome code and any error text from 1C. A failed Write made no database changes. |
+| `Unknown` | An identical repeat retrieves the outcome while the original command still holds the caller key. Once retention has elapsed, reconcile the Write against the base before repeating it, since the same key can start a fresh Write. |
+
+See [Writing scripts](scripts.md) for the script contract, outcome codes and more
+examples on the test configuration.
 
 ## Add the server to an application
 
@@ -236,7 +236,7 @@ ranges include their endpoints.
 | Option | Default and range | Effect |
 | --- | --- | --- |
 | `ConnectionString` | Required | Points to the store's PostgreSQL database. Use the same database across the nodes of one server. |
-| `Schema` | `outpost`. 1–63 lowercase letters, digits and underscores, starting with a letter | Isolates the store's tables and migration history. Choose a name PostgreSQL allows. It reserves `pg_` prefixes and migrations report the PostgreSQL error. |
+| `Schema` | `outpost`. 1–63 lowercase letters, digits and underscores, starting with a letter | Isolates the store's tables and migration history. Choose a name PostgreSQL allows. PostgreSQL reserves the `pg_` prefix. Migrations report the PostgreSQL error. |
 | `SigningKeyPem` | Required | Signs commands and server answers the agent acts on. Keep it in the application's secret storage. |
 | `SignalKeyPrefix` | `outpost`. Up to 64 characters from `A–Z a–z 0–9 . _ : -`, with nonempty dot-separated segments | Gives this store its own signal names when several applications share a Signals host. |
 | `PollTimeout` | 25 seconds. 1 second–5 minutes | Caps how long a poll waits for commands and how long a waiting caller goes between store reads if a wake-up is lost. The poll waits for the smaller of this value and the timeout it carries. |
@@ -245,7 +245,7 @@ ranges include their endpoints.
 | `ClockSkew` | 2 minutes. 1 second–1 hour | Sets the allowed difference between clocks for judging a command's issue time and deadline. It also helps bound how far a delayed poll can extend a lease. |
 | `CommandSizeLimit` | 1 MiB. 4 KiB–16 MiB | Caps the escaped script and compact parameters together in UTF-8. A larger command raises `ArgumentException` before it is created. |
 | `OutcomeSizeLimit` | 16 MiB. 64 KiB–64 MiB | Caps the entire UTF-8 outcome object, including its result, messages and error text. The executor trims messages and error text first. It checks the size before committing a Write. |
-| `OutcomeRetention` | 7 days. 1 hour–365 days | Sets how long ended commands are kept before purge makes their outcomes and held caller keys unavailable. |
+| `OutcomeRetention` | 7 days. 1 hour–365 days | Sets how long ended commands stay in the store. Purge removes their outcomes and frees any caller keys they still hold. |
 | `PairingTokenLifetime` | 15 minutes. 1 minute–1 day | Sets how long a new pairing credential can be redeemed. |
 | `PurgeInterval` | 1 hour. 1 minute–1 day | Sets how often each node removes expired pairing tokens and ended commands past their retention. |
 | `TimeProvider` | `TimeProvider.System`. Required | Supplies the clock for leases, deadlines and retention. Tests can inject a fake clock. |
@@ -260,10 +260,12 @@ ranges include their endpoints.
    `GetAgentsAsync` to find it by ID. `Connected` reflects the lease of the newest
    poll. Each base entry shows `Held`, `ReadOpen` and `WriteOpen`. A declared key can
    remain held by another agent.
-3. To move a held base key, remove it from the old agent's local policy and wait for
-   that agent to poll with the new policy. Call `ReleaseBaseAsync` with the key.
+3. To move a held base key, remove it from the old agent's local policy and restart
+   that agent. Once it polls with the new policy, call `ReleaseBaseAsync` with the key.
    `StillDeclared` means the holder's newest poll still declares it. `Released` means
    the next agent to declare it can take it, and `NotHeld` means it was already free.
+   If this is the old agent's last base, revoke that agent to free the key. Its local
+   policy requires at least one base.
 4. To remove an agent's access, call `RevokeAgentAsync`. This also frees its held keys
    and invalidates an unused token, if any. A revoked agent stays in the list and
    requires a fresh pairing to work again. A Write already taken can end as
@@ -317,10 +319,11 @@ script's `CallerKey` to mark what it creates when recovery may need to find it l
 | `Refused` | A check refused the command, so it never ran. |
 | `Unavailable` | The agent's poll lease had expired. Start the agent or restore its connection and retry. |
 | `Expired` | The command never reached the agent in time. Check its connection or worker availability before retrying. |
-| `Unknown` | A Write may have committed. Reuse the same caller key to retrieve the outcome and check the base before attempting a new Write. |
+| `Unknown` | A Write may have committed. Reuse the same caller key to retrieve the outcome while the original command holds the key. Once retention has elapsed, reconcile the Write against the base before repeating it, since the same key can start a fresh Write. |
 
-Use `CommandId` to find a created command in the agent's audit log. For a success,
-`Result` is a `JsonElement`, with JSON `null` when the script sets no result.
+Use `CommandId` to correlate an outcome with the agent's audit log when the command
+reached the agent. For a success, `Result` is a `JsonElement`, with JSON `null` when
+the script sets no result.
 `Messages` contains 1C user messages for successes and failures. `ErrorText` is
 available for `script-error`. `MessagesTrimmed` tells whether the executor trimmed the
 messages or error text. `Code` gives details for `Failed`, `Refused` and `Unknown`.
