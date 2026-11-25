@@ -435,15 +435,16 @@ to it. The agent's account may only read it, except where it writes the audit lo
 outcomes, and the agent refuses to start when the folder or a file it reads admits anybody
 else.
 
-**The secrets** are the agent's private key and the passwords of the 1C accounts. They
-are encrypted with DPAPI for the machine and kept in the data folder. The console, run by
-an administrator, writes them. The server can neither read nor change the policy or the
-secrets.
+**The secrets** are the agent's private key, the 1C account passwords and the passwords
+of any Windows worker accounts. The console, run by an administrator, writes them in
+the data folder using DPAPI for the machine. The administrator controls the local policy
+and secrets on the agent machine.
 
 **The audit log** is a set of local files, one JSON line per entry, one file per day. It
 is kept for 90 days by default and never for less than a day. When the agent stops for a
 fault after its start, such as an outbox file it cannot write, it records the reason,
-unless the fault is a failed write of the log itself.
+unless the fault is a failed write of the log itself. See [Agent files and COM worker
+messages](agent-files.md) for the file layouts, entry types and recovery rules.
 
 **The executor** is built with the Designer of 1C:Enterprise 8.3.17.1851, the oldest
 supported platform. It is committed as the built `.epf` and its XML sources.
@@ -502,12 +503,12 @@ for the agents it talks to.
   - the script and the parameters;
   - when it was issued, its take deadline, the allowed skew and the size limit of its
     outcome.
-- [`protocol.md`](protocol.md) gives the exact messages. It is written with the sprint
-  that introduces them.
+- [The protocol reference](protocol.md) gives the exact wire messages.
 
 ## 7. .NET surface
 
-The plan of the first epic fixed the names, in the package `Moltaro.OnecOutpost.Server`:
+These types and methods are in the `Moltaro.OnecOutpost.Server` package. See
+[Embedding the server](guides/server.md) for application setup and examples.
 
 - `AddOutpostServer` registers the server with its `OutpostServerOptions`, and
   `MapOutpostAgents` maps the endpoints of the agents under a prefix;
@@ -524,8 +525,9 @@ The plan of the first epic fixed the names, in the package `Moltaro.OnecOutpost.
   were trimmed;
 - `OutpostMigrations` applies the migrations of the store, or gives them as SQL scripts.
 
-The agent, the COM worker, the console and the shell are programs, not libraries. Their
-contract is their command line, the local policy and the audit log.
+The agent, COM worker, console and shell run as separate programs. The [agent guide](guides/agent.md)
+describes installation, the local policy and the audit log. The [server guide](guides/server.md)
+shows the shell's commands.
 
 ## 8. Decisions
 

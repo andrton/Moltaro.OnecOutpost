@@ -3,19 +3,11 @@
 The wire protocol between an agent and a server. The [concept](concept.md) fixes its
 principles (§3 "Pairing", §4, §6, D1, D4, D5, D15); this document fixes the bytes.
 
-**Status.** Draft of Epic 1, sprint S2, written after the sprint's study, with the changes
-of sprint S4 to §6.2 and §9, of sprint S5 to §9 and of sprint S6 to §6.2, §9, §11 and
-§13. It is public contract, and holds as a draft until the owner approves it with the
-lists "What S2 changed in the public contract", "What S4 changes in the public contract",
-"What S5 changes in the public contract" and "What S6 changes in the public contract" of
-the [epic](work/epic-1-first-release.md). The codec of the protocol assembly reads and
-writes its messages, its signatures and the pairing proof. The server's endpoints serve
-all three requests: `pair`, `poll` with the commands it hands out, and `outcome`. The agent
-sends all three, keeps its audit log as §13 says, gives poll numbers with the reservation
-of §6.2, and runs its commands in the COM workers it starts, which hand over the
-executor's outcomes of §8; the tests of that path against a real 1C passed on the lab.
-The console's `pair` pairs an agent by §5 and §6.1, and its `check` checks the server by
-§12, tested against a stub of the `outcome` endpoint.
+The server, agent and console implement protocol v1. The lab verified pairing,
+polling and outcome delivery over HTTPS with the installed agent and a real
+1C:Enterprise base. The console checks the server as §12 describes. The
+[agent files reference](agent-files.md) describes the local file formats, audit
+entries and COM worker messages.
 
 ## 1. Overview
 
@@ -56,7 +48,7 @@ The console's `pair` pairs an agent by §5 and §6.1, and its `check` checks the
   - Integers have no fraction and no exponent.
   - The order of members carries no meaning.
 - **Nesting.** Every message is read with a maximum depth of 72. Parameters and results
-  are also checked on their own (Q5):
+  are also checked on their own:
   - at most 64 levels each, counted from their own outer value. An object or an array at
     the top is level 1, and a scalar is level 0;
   - the envelope that carries them does not count against them, so a command that
