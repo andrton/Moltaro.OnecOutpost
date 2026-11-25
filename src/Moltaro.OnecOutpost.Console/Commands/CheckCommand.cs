@@ -283,9 +283,9 @@ internal sealed partial class CheckCommand : AsyncCommand<CheckCommand.Settings>
         return scripts;
     }
 
-    // The lines of the mode's session: a worker in read mode and in safe mode, under the base's worker account or the
-    // console's own token, as the service runs every worker of the base, once the gate, the password, the worker account
-    // and its probe let it start.
+    // The lines of the mode's session: a worker runs in read mode and safe mode under the base's worker account or
+    // the restricted console token. The gate and password must pass, along with the worker account check and probe
+    // when the base names one.
     private async Task CheckSessionAsync(
         AgentBasePolicy served,
         OutpostModeEnum mode,

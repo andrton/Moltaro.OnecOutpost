@@ -4964,7 +4964,9 @@ implementer work on `xhigh`.
       such as no `WRITE_DAC` on the station: `the worker account {account} of the base
       {key} cannot get a desktop: {the Win32 message}`. Invariant: the worker account is
       never granted WinSta0 or its `Default` desktop. The launcher owns what `Use` gets
-      and closes it in `Dispose`, which every test that makes a launcher calls.
+      and closes it in `Dispose`, which every test that makes a launcher calls. S11's
+      Session 0 correction below supersedes this desktop selection for the installed
+      service. The in-process lab launcher and the console retain the explicit desktop.
     - **`WorkerAccountRule.IsOrdinary`**, apart so that it is tested on every platform:
       true only when no group SID is Administrators, `S-1-5-32-544`, and each privilege is
       one of Users': `SeChangeNotifyPrivilege`, `SeShutdownPrivilege`, `SeUndockPrivilege`,
@@ -4999,9 +5001,9 @@ implementer work on `xhigh`.
     - **The risk of the profile** (the coordinator, 23 November 2026). The agent cannot
       load the profile, so HKCU is the default hive and TEMP the system's; the first lab
       test shows whether 1C opens and posts so. If not, the coordinator decides then on
-      `CreateProcessWithLogonW` with `LOGON_WITH_PROFILE`, and records it here. Session 0,
-      and `WRITE_DAC` of the virtual account on its station, are proven only by S10's
-      manual acceptance under the real service.
+      `CreateProcessWithLogonW` with `LOGON_WITH_PROFILE`, and records it here. S10's
+      manual acceptance checks worker initialization and the 1C sessions under the
+      installed service in Session 0.
     - **The tests with `Requires=Windows`**, `Moltaro.OnecOutpost.Agent.Tests`:
       - S9b's launcher tests, unchanged, now with the test's own token, needing no right;
       - the test program reports the process ids of its immediate job as the first thing
@@ -5716,8 +5718,8 @@ S8.
       folder of {program}, or it does not exist`; `Desktop()`'s `{account} cannot get
       a desktop: {message}`; any other `{message} (Windows error {code})`. One logon per account per
       run, never retried: each failure counts toward a lockout. *Limitations:* the probe runs in
-      the administrator's session, so S9c's manual line stays the proof of session 0, on a station
-      of the console's own, which keeps an ACE for the probe's logon until the administrator signs out.
+      the administrator's session on the console's station, which keeps an ACE for the probe's logon
+      until the administrator signs out. S9c's manual line verifies the installed service in Session 0.
     - **The connections**, `Start` with the first `Registered` bitness's `WorkerOf` and
       `ExecutorOf`: for a base without a `workerAccount` `null`, `AsUser` with `lpDesktop` `""` and
       a restricted version of the console's own token, `CreateRestrictedToken` with
@@ -6242,9 +6244,10 @@ S8.
     the policy names the test base with `safeMode: false` and its `workerAccount`. The
     service records `started` without an error, and each worker of that base runs under
     the worker account and keeps its process past the policy's `runLimit`, set to a
-    minute, so its open gave true and 1C opened. This alone proves session 0 and that
-    the virtual account has `WRITE_DAC` on its station; without it, `LogOn` stops the
-    start with its reason. Without the privileges, and with an administrator as the worker
+    minute. Verify that the Read and Write worker processes both run in Session 0
+    under the configured ordinary account. Run commands in both modes so the start also
+    proves their sessions opened. Restart the service and check both workers start for
+    the fresh batch logon. Without the privileges, and with an administrator as the worker
     account, it records `started` with its reason and stops.
   - **Guide G1**, "Installing and running an agent", as
     [The user guides](#the-user-guides) lists it. Manual, on the lab machine: the owner
@@ -6401,6 +6404,19 @@ GPT-6.2 Sol at `max`, and the independent reviewer uses GPT-6.2 Sol at `ultra`, 
     command in a terminal and accepts how it looks, and runs the positive and negative
     cases of S9c's line as S10's Acceptance states them.
   - The documents step: `README.md` shows a session, and leads to G3.
+- **Session 0 correction** (25 November 2026). The Windows service could create and
+  resume both COM workers under the ordinary account, but the workers exited with
+  `0xC0000142` before answering on the explicitly named desktop. The console's probe
+  and the in-process lab run use a different Windows session. In the installed
+  service, the launcher passes a non-null empty `lpDesktop` to `CreateProcessAsUserW`.
+  Windows chooses the non-interactive desktop for the worker's batch logon. The
+  service does not grant access to its own station or create a desktop for the
+  worker. Its token checks, suspended launch, job and inherited pipes stay as in
+  S9c. On the provisional diagnostic build, both sessions opened. The ARM64 shell
+  completed a Read, posted a test document, found its stock movement, and returned
+  the same command ID and result for an identical Write with one product in the
+  base. The rebuilt service repeated that round trip over HTTPS. Windows showed both
+  COM workers under the configured ordinary account in Session 0.
 - **From the architect's review 1** (the planner, 23 November 2026): the harness of the
   real agent with the fake worker, `LoopbackAgent` and its fakes, moves from
   `Moltaro.OnecOutpost.Agent.Tests` to `Moltaro.OnecOutpost.TestSupport`, where the shell's

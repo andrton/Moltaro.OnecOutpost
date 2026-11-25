@@ -650,9 +650,13 @@ sees only a right granted to the account itself, not one granted through a group
 
 ### WorkerStart
 
-One line for each base with a `workerAccount`: the worker program started under the account on a desktop of its own,
-as the service starts it, and ended at once, without opening the base. Passed: `the worker started under
+One line for each base with a `workerAccount`: the worker program started under the account on a desktop in the
+console's Windows session and ended at once, without opening the base. Passed: `the worker started under
 outpost-worker on {desktop} and ended at the end of its input`.
+
+The installed service starts workers in Session 0. Windows chooses the non-interactive desktop for the worker
+account's batch logon. Send a Read and a Write after starting the service to verify both workers can open 1C in
+that session.
 
 | Reason | Cause | Remedy |
 | --- | --- | --- |
