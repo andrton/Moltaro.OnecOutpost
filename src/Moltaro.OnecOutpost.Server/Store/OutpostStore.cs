@@ -793,11 +793,11 @@ internal sealed class OutpostStore
     // Ends the command when time made its end due, then reads it, in one short transaction (rules 7, 11): Expired when
     // no poll took it by its deadline, by the node's clock; once taken, at or after the end of its agent's lease plus
     // its run limit, Unknown `disconnected` for a Write and Failed `lost` for a Read. Outcome is the command's outcome,
-    // and Due the moment time can next end it, as DueAt gives it.
+    // and Due the moment time can next end it, as DueAt gives it. A missing command gives null.
     //
     // A waiting call is the reader that makes the change time made due, so nothing sweeps. The change waits for a
     // take or an outcome that holds the row and then finds the command as they left it: the first to commit wins.
-    public async Task<CommandPass> PassCommandAsync(Guid commandId, CancellationToken cancellationToken)
+    public async Task<CommandPass?> PassCommandAsync(Guid commandId, CancellationToken cancellationToken)
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
 
@@ -854,9 +854,14 @@ internal sealed class OutpostStore
                         command.Outcome,
                         agent.LeaseEndsAt,
                     })
-                    .SingleAsync(cancellationToken);
+                    .SingleOrDefaultAsync(cancellationToken);
             },
             cancellationToken);
+
+        if (row is null)
+        {
+            return null;
+        }
 
         // As DueAt: a command that a poll took has a run limit, and its agent a lease.
         DateTimeOffset due = row.Phase == CommandPhaseEnum.Waiting

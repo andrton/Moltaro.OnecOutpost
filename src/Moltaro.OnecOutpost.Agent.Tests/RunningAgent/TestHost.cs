@@ -1,10 +1,11 @@
 using System.Security.Cryptography;
 using Moltaro.OnecOutpost.Agent.Host;
-using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 using Moltaro.OnecOutpost.TestSupport.FakeHttp;
+using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
+using Moltaro.OnecOutpost.TestSupport.RunningAgent;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 

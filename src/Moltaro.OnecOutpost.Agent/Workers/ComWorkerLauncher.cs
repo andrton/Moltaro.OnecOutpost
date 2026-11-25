@@ -41,21 +41,31 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
     private readonly WorkerJob _job;
 
+    private readonly bool _useWorkerLogonDesktop;
+
     // The agent's own primary token.
     private readonly SafeAccessTokenHandle _agentToken;
 
-    // The token and the desktop of each logged-on base, by base key. Written only by Use, before any Start reads it.
-    private readonly Dictionary<string, (SafeAccessTokenHandle Token, WorkerDesktop Desktop)> _workers =
+    // The token and any explicit desktop of each logged-on base. Written by Use before any Start reads it.
+    private readonly Dictionary<string, (SafeAccessTokenHandle Token, WorkerDesktop? Desktop)> _workers =
         new(StringComparer.Ordinal);
 
     // The two programs of the worker, the finder of the connector whose registration chooses between them, and the job
-    // that every started process joins. It opens the agent's own primary token; a failure is a Win32Exception.
-    public ComWorkerLauncher(string x64Program, string x86Program, IConnectorFinder connectors, WorkerJob job)
+    // that every started process joins. The service uses the worker's batch logon desktop in Session 0, where
+    // workers failed to initialize on the agent's explicit desktop. A Win32Exception reports failure to open
+    // the agent's primary token.
+    public ComWorkerLauncher(
+        string x64Program,
+        string x86Program,
+        IConnectorFinder connectors,
+        WorkerJob job,
+        bool useWorkerLogonDesktop = false)
     {
         _x64Program = x64Program;
         _x86Program = x86Program;
         _connectors = connectors;
         _job = job;
+        _useWorkerLogonDesktop = useWorkerLogonDesktop;
 
         if (!OpenProcessToken(GetCurrentProcess(), AgentTokenAccess, out _agentToken))
         {
@@ -77,8 +87,8 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
     // 3. the agent's token holds AccountRightNames.AgentPrivileges, enabled or not, since CreateProcessAsUserW enables
     //    them: the agent's account {WorkerAccountReasons.AgentLacksPrivileges}. When the agent's privileges cannot be
     //    read: the privileges of the agent's account cannot be read: {the Win32 message};
-    // 4. WorkerDesktop.Make for the token, then Use with both (the S9c brief, "The desktop of a worker"): the worker
-    //    account {account} of the base {key} cannot get a desktop: {the Win32 message}.
+    // 4. outside the service, WorkerDesktop.Make for the token: the worker account {account} of the base {key} cannot
+    //    get a desktop: {the Win32 message}. Use stores the token and any explicit desktop.
     // The logon comes first, so that a missing account gives 1326 whatever the agent holds. The token and the desktop
     // live as long as the launcher; one logon per start of the agent, so no retries lock the account out.
     public void LogOn(string baseKey, string account, string password)
@@ -122,11 +132,11 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
                 throw new AgentStopException($"the agent's account {WorkerAccountReasons.AgentLacksPrivileges}");
             }
 
-            WorkerDesktop desktop;
+            WorkerDesktop? desktop;
 
             try
             {
-                desktop = WorkerDesktop.Make(baseKey, token);
+                desktop = _useWorkerLogonDesktop ? null : WorkerDesktop.Make(baseKey, token);
             }
             catch (Win32Exception exception)
             {
@@ -140,7 +150,7 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
             }
             catch
             {
-                desktop.Dispose();
+                desktop?.Dispose();
                 throw;
             }
         }
@@ -151,23 +161,21 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
         }
     }
 
-    // Makes every later Start of the base start its workers under the token, on the desktop that lpDesktop names as
-    // desktop.Name. The launcher owns both from then on and closes them when disposed. LogOn calls it after its checks,
-    // with the desktop that WorkerDesktop.Make gives for the token; a test calls it with its own token and a desktop of
-    // its own. Like LogOn, it runs before any Start.
-    // A base given twice is an ArgumentException, and then the caller keeps both.
-    public void Use(string baseKey, SafeAccessTokenHandle token, WorkerDesktop desktop)
+    // Selects the token and any explicit desktop for every later Start of the base. A null desktop lets Windows
+    // select the desktop of the token's logon session. The launcher owns the handles after this call. A base given
+    // twice is an ArgumentException and the caller keeps its handles. Like LogOn, this runs before any Start.
+    public void Use(string baseKey, SafeAccessTokenHandle token, WorkerDesktop? desktop)
     {
         _workers.Add(baseKey, (token, desktop));
     }
 
-    // Closes the tokens of the logged-on bases, their desktops and the agent's own token.
+    // Closes the logged-on bases' tokens and explicit desktops, and the agent's own token.
     public void Dispose()
     {
-        foreach ((SafeAccessTokenHandle token, WorkerDesktop desktop) in _workers.Values)
+        foreach ((SafeAccessTokenHandle token, WorkerDesktop? desktop) in _workers.Values)
         {
             token.Dispose();
-            desktop.Dispose();
+            desktop?.Dispose();
         }
 
         _agentToken.Dispose();
@@ -175,9 +183,9 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
 
     // Asks the connector's finder at each start (concept §5, O8): the x64 program when the connector is registered for 64 bits,
     // otherwise the x86 program when it is for 32 bits, otherwise a NoProcess. Then ComWorkerProcess.Start, AsUser with
-    // the token that Use gave for the base, else the agent's own, lpDesktop the Name of the base's desktop, or "" under
-    // the agent's own token, which connects the worker to the window station of the agent's logon session, no standard
-    // error, and the launcher's job, which the worker does not own; the job lets nothing break away from it. So the
+    // the token that Use gave for the base, else the agent's own, and lpDesktop the explicit desktop's name if given.
+    // Otherwise lpDesktop is "" so Windows selects the desktop for the logon session of the token. The worker gets no
+    // standard error and joins the launcher's job, which it does not own and which lets nothing break away. The
     // worker inherits the ends of its two pipes alone, joins the job before any of its code runs, and gets its
     // connection, with its password, only in the first input line. A Win32Exception or an IOException, a created process
     // terminated first, gives a NoProcess: Start throws nothing but the ObjectDisposedException of a job that was
@@ -196,10 +204,10 @@ internal sealed partial class ComWorkerLauncher : IWorkerLauncher, IDisposable
         SafeAccessTokenHandle token = _agentToken;
         string desktop = "";
 
-        if (_workers.TryGetValue(baseKey, out (SafeAccessTokenHandle Token, WorkerDesktop Desktop) worker))
+        if (_workers.TryGetValue(baseKey, out (SafeAccessTokenHandle Token, WorkerDesktop? Desktop) worker))
         {
             token = worker.Token;
-            desktop = worker.Desktop.Name;
+            desktop = worker.Desktop?.Name ?? "";
         }
 
         try

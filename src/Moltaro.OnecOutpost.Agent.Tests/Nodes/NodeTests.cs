@@ -4,6 +4,7 @@ using Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 using Moltaro.OnecOutpost.Server;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Loopback;
+using Moltaro.OnecOutpost.TestSupport.RunningAgent;
 using Moltaro.Signals;
 using static Moltaro.OnecOutpost.Agent.Tests.Nodes.NodeTraffic;
 

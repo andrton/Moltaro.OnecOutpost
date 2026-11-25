@@ -5,6 +5,7 @@ using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.ComWorkers;
 

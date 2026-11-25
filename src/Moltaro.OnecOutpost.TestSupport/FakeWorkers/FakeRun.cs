@@ -1,4 +1,4 @@
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
+namespace Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 // What one run of a fake worker gives, as the launcher's Runs decides for each command line: the executor's line with
 // the bytes of its outcome and their size, which is their length plus SizeOff; the end of the process before any

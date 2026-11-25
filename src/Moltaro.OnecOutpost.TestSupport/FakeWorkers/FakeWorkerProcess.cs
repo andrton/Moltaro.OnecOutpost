@@ -1,7 +1,7 @@
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
+namespace Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 // One fake COM worker process, started by FakeWorkerLauncher for a base and a mode. Its name is the base, the mode and
 // its number among the starts of that base and mode, such as "accounting write 1"; every OpenAsync and RunAsync, and

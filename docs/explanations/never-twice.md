@@ -45,6 +45,8 @@ always growing.
 
 The key is free for a new command only when the first ended as Expired or Refused, so that
 nothing ran, or when its outcome was removed after its retention, 7 days by default.
+If a repeat finds its command just as the purge removes it, the server applies the same
+rules again against the current base and connection state.
 
 ## 2. A lost poll answer
 

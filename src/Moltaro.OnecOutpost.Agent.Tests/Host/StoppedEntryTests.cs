@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Host;
-using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.Agent.Tests.RunningAgent;
 using Moltaro.OnecOutpost.Protocol;
 using Moltaro.OnecOutpost.Protocol.Messages;
@@ -9,6 +8,7 @@ using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 using Moltaro.OnecOutpost.TestSupport.FakeHttp;
+using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Host;

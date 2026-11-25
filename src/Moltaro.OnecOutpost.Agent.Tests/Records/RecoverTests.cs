@@ -7,6 +7,7 @@ using Moltaro.OnecOutpost.Protocol.Messages;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.FakeFiles;
+using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditEntries;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 

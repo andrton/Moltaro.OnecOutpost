@@ -6,8 +6,8 @@ namespace Moltaro.OnecOutpost.Console.Workers;
 
 // A worker account of check on Windows: the token of its logon, or of the process's own in a test, and the desktop that
 // WorkerDesktop.Make gives the base for it on the console's own non-interactive window station, made at the first call
-// of Desktop and kept, so that the probe and the workers of the base share it, as the workers of the service share
-// theirs. It owns both and closes them when disposed. check calls it from one task at a time.
+// of Desktop and kept for the console's probe and workers of the base. It owns both handles and closes them when
+// disposed. check calls it from one task at a time.
 [SupportedOSPlatform("windows")]
 internal sealed class WindowsWorkerAccount : IWorkerAccount
 {

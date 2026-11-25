@@ -72,14 +72,15 @@ public sealed class OutpostReadRequest
     /// </para>
     /// <para>
     /// The server accepts one command per base and caller key. A repeat with the same mode, script and parameters waits
-    /// for the outcome of the first command and returns it; the script is compared exactly, the parameters as JSON
-    /// values, so the order of members and the notation of numbers do not matter. A repeat with anything else is
-    /// <see cref="OutpostOutcomeKindEnum.Refused"/> with <see cref="OutpostCodes.CallerKeyConflict"/>. When the first
-    /// command ended as <see cref="OutpostOutcomeKindEnum.Expired"/> or <see cref="OutpostOutcomeKindEnum.Refused"/>,
-    /// the key is free again, and a repeat creates a new command. An outcome, and with it its key, is kept for
-    /// <see cref="OutpostServerOptions.OutcomeRetention"/>. The store compares the parameters as PostgreSQL's
-    /// <c>jsonb</c>, so a number in them that its <c>numeric</c> cannot hold, such as <c>1e-20000</c>, makes a call
-    /// with a caller key fail with the exception of the store.
+    /// for the outcome of the first command and returns it while the store retains it. The script is compared exactly
+    /// and the parameters as JSON values, so the order of members and the notation of numbers do not matter.
+    /// A repeat with anything else is <see cref="OutpostOutcomeKindEnum.Refused"/> with
+    /// <see cref="OutpostCodes.CallerKeyConflict"/>. When the first command ended as
+    /// <see cref="OutpostOutcomeKindEnum.Expired"/> or <see cref="OutpostOutcomeKindEnum.Refused"/>, the key is free
+    /// again, and a repeat creates a new command. The store keeps outcomes for
+    /// <see cref="OutpostServerOptions.OutcomeRetention"/>. The purge frees any key still held by the command.
+    /// The store compares the parameters as PostgreSQL's <c>jsonb</c>, so a number in them that its <c>numeric</c>
+    /// cannot hold, such as <c>1e-20000</c>, makes a call with a caller key fail with the exception of the store.
     /// </para>
     /// </remarks>
     public string? CallerKey { get; init; }

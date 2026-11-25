@@ -1383,7 +1383,7 @@ The release
 | S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 and entry 1 of review 2 | Refactoring | Done, 23 November 2026: one transaction frame in the store, measured again with every p95 within S7b's; one growing delay of a retry; the forms of §2 in the protocol alone; four small cleanups; the console's install test running the program's own parts. One commit per entry, every test green after each, no public member, assertion or test changed; the review took one round (five P4, two fixed in this plan) |
 | S10b | The console's check | Full | Done, 24 November 2026: `check` with every line of the stage contract, a table of passed and failed lines, `--clock-skew` and the exit code `CheckFailed`; the probe of each worker account on a desktop of the console's own, each base under each account through the COM worker and the executor in Read and safe mode, the server by an `outcome` that takes no poll's place; the architect's entries joined to it (the launcher's steps, the start's checks free of the audit log, the outcome answer as a record, the worker's connection line and judgment outside the pool, the privileges, the layout and one wording of reasons). The internal contract was reviewed in two rounds and approved under PQ2 (round 2's P2, the events judged, taken without a third round); the code review took three rounds: a P1 and two P2 of round 1 (no worker while the data folder admits others; a restricted token, then medium integrity and the user's default list, its limitation stated), one P2 back in round 2, settled by the coordinator, none open in round 3. 2861 tests passed here; the tests with `Requires=Administrator` first run on its pull request, and those of `Moltaro.OnecOutpost.OneC.Tests` on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
 | S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | Done, 24 November 2026, PR #23. At `523b8a5` both CI jobs and 2,977 local tests passed. Lab acceptance combines 84 unchanged cases from the full run at `6f216ab` with both corrected metadata cases at `523b8a5`. The typical copy matched all 2,286 storage table names, and the test base matched all 14. The independent review and lab fixes closed the findings. The manual run of the S10 commands and G1 is part of S11. |
-| S11 | The shell | Full | Not started |
+| S11 | The shell and Q15 | Full | Done, 25 November 2026, PR #24. Two review rounds closed the Unix signing-key publication finding. An independent follow-up reviewed the installed-service fix. Release builds and format checks passed, with 3,019 local tests passing and the Unix interrupt case verified separately in Linux. The ARM64 and Windows lab acceptance is recorded in the sprint below. |
 | S12 | Documents, packages and the archive | Light | Not started |
 
 ### S1 · The public contract of stage 1, the projects and the test lane
@@ -4964,7 +4964,9 @@ implementer work on `xhigh`.
       such as no `WRITE_DAC` on the station: `the worker account {account} of the base
       {key} cannot get a desktop: {the Win32 message}`. Invariant: the worker account is
       never granted WinSta0 or its `Default` desktop. The launcher owns what `Use` gets
-      and closes it in `Dispose`, which every test that makes a launcher calls.
+      and closes it in `Dispose`, which every test that makes a launcher calls. S11's
+      Session 0 correction below supersedes this desktop selection for the installed
+      service. The in-process lab launcher and the console retain the explicit desktop.
     - **`WorkerAccountRule.IsOrdinary`**, apart so that it is tested on every platform:
       true only when no group SID is Administrators, `S-1-5-32-544`, and each privilege is
       one of Users': `SeChangeNotifyPrivilege`, `SeShutdownPrivilege`, `SeUndockPrivilege`,
@@ -4999,9 +5001,9 @@ implementer work on `xhigh`.
     - **The risk of the profile** (the coordinator, 23 November 2026). The agent cannot
       load the profile, so HKCU is the default hive and TEMP the system's; the first lab
       test shows whether 1C opens and posts so. If not, the coordinator decides then on
-      `CreateProcessWithLogonW` with `LOGON_WITH_PROFILE`, and records it here. Session 0,
-      and `WRITE_DAC` of the virtual account on its station, are proven only by S10's
-      manual acceptance under the real service.
+      `CreateProcessWithLogonW` with `LOGON_WITH_PROFILE`, and records it here. S10's
+      manual acceptance checks worker initialization and the 1C sessions under the
+      installed service in Session 0.
     - **The tests with `Requires=Windows`**, `Moltaro.OnecOutpost.Agent.Tests`:
       - S9b's launcher tests, unchanged, now with the test's own token, needing no right;
       - the test program reports the process ids of its immediate job as the first thing
@@ -5716,8 +5718,8 @@ S8.
       folder of {program}, or it does not exist`; `Desktop()`'s `{account} cannot get
       a desktop: {message}`; any other `{message} (Windows error {code})`. One logon per account per
       run, never retried: each failure counts toward a lockout. *Limitations:* the probe runs in
-      the administrator's session, so S9c's manual line stays the proof of session 0, on a station
-      of the console's own, which keeps an ACE for the probe's logon until the administrator signs out.
+      the administrator's session on the console's station, which keeps an ACE for the probe's logon
+      until the administrator signs out. S9c's manual line verifies the installed service in Session 0.
     - **The connections**, `Start` with the first `Registered` bitness's `WorkerOf` and
       `ExecutorOf`: for a base without a `workerAccount` `null`, `AsUser` with `lpDesktop` `""` and
       a restricted version of the console's own token, `CreateRestrictedToken` with
@@ -6242,9 +6244,10 @@ S8.
     the policy names the test base with `safeMode: false` and its `workerAccount`. The
     service records `started` without an error, and each worker of that base runs under
     the worker account and keeps its process past the policy's `runLimit`, set to a
-    minute, so its open gave true and 1C opened. This alone proves session 0 and that
-    the virtual account has `WRITE_DAC` on its station; without it, `LogOn` stops the
-    start with its reason. Without the privileges, and with an administrator as the worker
+    minute. Verify that the Read and Write worker processes both run in Session 0
+    under the configured ordinary account. Run commands in both modes so the start also
+    proves their sessions opened. Restart the service and check both workers start for
+    the fresh batch logon. Without the privileges, and with an administrator as the worker
     account, it records `started` with its reason and stops.
   - **Guide G1**, "Installing and running an agent", as
     [The user guides](#the-user-guides) lists it. Manual, on the lab machine: the owner
@@ -6298,51 +6301,154 @@ merged.
 
 **Track:** full · **Branch:** `epic-1/sprint-11-shell` · **Needs:** S10.
 
+The owner approved the contract on 24 November 2026. The test author and implementer use
+GPT-6.2 Sol at `max`, and the independent reviewer uses GPT-6.2 Sol at `ultra`, as the
+[Codex role assignments](process.md#codex) say.
+
 - **Goal.** A person tries the tunnel by hand. The shell:
   - runs a server of its own, with Kestrel, an in-process `SignalHost`, a PostgreSQL
     connection and a signing key in a local file;
   - creates pairing tokens;
   - lists agents and bases;
   - sends Read and Write, and shows their outcomes.
-- **Contract.** As [Stages 2 and 3](#the-contracts-of-stages-2-and-3) says.
-- **To read.** The [concept](../concept.md), §2 and §5 (20 November 2026); this plan, "The
-  public contract" and the contract of stage 2.
+- **Public contract.** `Moltaro.OnecOutpost.Shell` is a non-packable executable. Run it
+  from `src`.
+
+  ```text
+  dotnet run --project Moltaro.OnecOutpost.Shell -- --key-folder <existing-private-dir> [--listen <origin>] [--certificate <PFX>]
+  ```
+
+  - Set `OUTPOST_SHELL_POSTGRES` to the PostgreSQL connection string. Set
+    `OUTPOST_SHELL_CERTIFICATE_PASSWORD` when the PFX has a password. Both credentials
+    stay out of command-line arguments and error output. Startup `--help` needs none
+    of these settings or resources.
+  - The default origin is `http://127.0.0.1:5000`. HTTP binds only to `localhost` or a
+    loopback IP address. Port zero is allowed only for HTTP with a numeric loopback
+    address. HTTPS requires a PFX, a concrete DNS name or IP address, and a nonzero
+    port. An origin excludes wildcard and unspecified hosts, user information, a query
+    and a fragment. Its path may be empty or `/`. To reach the shell from the Windows
+    agent machine, use HTTPS on port 443 with a certificate that machine trusts for
+    the configured host.
+  - The operator protects the existing key directory. The shell reuses
+    `signing-key.pem`, a PKCS#8 P-256 private key. It creates the file atomically if
+    absent, with owner-only permissions on Unix from creation. An invalid or unreadable
+    existing file fails startup. The shell migrates the PostgreSQL schema `outpost`
+    before listening. It runs one Kestrel host with one in-process `SignalHost` and maps
+    agents at `/outpost`. It prints the usable agent URL with the scheme, configured
+    host, actual bound port and `/outpost` path.
+  - A session reads strict UTF-8 with an optional initial BOM. Lines may end in LF or
+    CRLF, and the last line can end at EOF. Blank command lines are ignored. An encoding
+    error ends the session with status 2 even if an earlier command gave another status.
+  - Commands and their operands are `token <name>`, `agents`, `revoke <id>`,
+    `release <base>`, `read <base>` and `write <base> <caller-key>`. `token` takes its
+    name from the rest of the line. Operands are literal. `--help [command]` is help at
+    the start of a line, and `--help` is a valid positional caller key.
+  - A Read or Write header is followed by script lines. An exact `.` line ends the
+    frame. An optional exact `.parameters` line switches from script to a JSON object
+    that can span several lines. Script and parameter lines are joined with LF.
+    In the script, a line starting with `..` loses its first dot. A malformed header,
+    frame or JSON object gives a usage error without dispatching. The shell consumes a
+    recognized Read or Write frame through its terminator even on error. An incomplete
+    frame at EOF contributes status 2.
+  - `token` displays the agent ID, the credential and the expiry. `agents` lists each
+    agent's ID, name, state and connection status, and each of its bases with its key
+    and `readOpen`, `writeOpen` and `held` values. `revoke` reports `Revoked` or
+    `NotRevoked`. `release` reports `Released`, `StillDeclared` or `NotHeld`. Each
+    completed administrative command gives status 0.
+  - A Read or Write shows its outcome kind and reason, its code and command ID when
+    present, and any result as indented JSON, including a JSON `null`. It shows messages
+    in order, indicates truncation when marked and shows any error text. It displays
+    untrusted text literally. Redirected output is plain UTF-8.
+  - Exit status is 0 for success, 1 for infrastructure failure, 2 for usage errors and
+    5 for Ctrl+C. The statuses for `Failed`, `Refused`, `Unavailable`, `Expired` and
+    `Unknown` are 10, 11, 12, 13 and 14, respectively. An error in a command leaves the
+    session available for the next command. At EOF the shell returns the first nonzero
+    status, or 0 if there was none. Ctrl+C cancels the shell's wait. An already submitted
+    command can still run.
+- **Internal contract for Q15.** The [decision](open-questions.md#q15-the-outcome-of-a-command-the-purge-removed)
+  applies to Write and to Read with an optional caller key, as concept §3, rule 4 says.
+  `OutpostStore.PassCommandAsync(Guid commandId, CancellationToken cancellationToken)`
+  returns `Task<CommandPass?>`. An absent row gives null. A pass for a row without an
+  outcome has a null outcome and a due time. When an identical preexisting match disappears
+  during the wait, the call admits the original request once more by the ordinary
+  key-first path. It uses current availability and lease, with a fresh ID and deadline
+  if a command is created. If a row created by this call disappears, or the pass after
+  the second admission finds no row, the call throws `InvalidOperationException`.
+  Database errors and cancellation propagate.
+- **To read.** The [concept](../concept.md), §2, §3 rule 4 and §5. Read the public contract
+  of this plan and the contract of stage 2.
 - **Acceptance.**
-  - Automated: a session of shell commands read from its input against an agent with the
-    fake worker, ending when the input ends, so that the shell runs to the end with
-    `dotnet run`; with the output redirected, every command writes plain text, tested.
-  - Manual: the shell runs on a machine with PostgreSQL, the agent on the lab machine
-    reaches it over HTTPS, and a Read and a Write of S9's scenarios are typed in the shell
-    against the test base. This is also S9b's manual line, moved here by the planner, 22
-    November 2026: S10's console pairs the agent, and the shell runs the real server. The
-    owner runs every command in a terminal and accepts how it looks. The shell has no test that needs 1C: it would need PostgreSQL and 1C on one
-    machine, and the automated session with the fake worker and S9's tests cover the
-    rest.
-  - **Guide G3**, its first part: a first session with the shell, as
-    [The user guides](#the-user-guides) lists it.
-  - S10's manual lines, moved here (the coordinator, 24 November 2026), since they need the
-    shell's server: on the lab machine, the owner installs, pairs and checks an agent from the
-    archive by guide G1 alone, against the shell; runs every command of the console in a
-    terminal and accepts how it looks; and runs S9c's line as S10's Acceptance states it.
+  - The automated session runs shell commands from standard input against an agent with
+    the fake worker and ends at EOF, so that the shell runs to the end with `dotnet run`.
+    The tests exercise startup, framing, output, administrative results, command
+    outcomes and session statuses with redirected plain text.
+  - A deterministic PostgreSQL test gates the repeat after it finds the caller key,
+    advances the fake clock and purges the command. A fresh held poll lets the repeat
+    create a new command. The offline case returns `Unavailable` and creates nothing.
+  - **Guide G3**, its first part, shows a first session with the shell, as
+    [The user guides](#the-user-guides) lists it. The test author writes the examples.
+    `Moltaro.OnecOutpost.Shell.Tests` runs the commands from the Markdown with live
+    PostgreSQL and the fake worker. `Moltaro.OnecOutpost.OneC.Tests` runs G3's scripts
+    against the repository's test base without PostgreSQL.
+  - Run the shell with PostgreSQL on the ARM64 VM candidate and use a provisional
+    agent ZIP with its checksum for the Windows lab machine. The agent reaches the
+    shell over trusted HTTPS and runs a Read and a Write of S9's scenarios against the
+    repository's test base. Repeat the Write with the same caller key and check its
+    retained outcome, then Read through a second configured base key on a test base or
+    a copy. This also covers S9b's manual line, moved here by the planner on 22
+    November 2026. The owner runs every shell command in a terminal and accepts how it
+    looks.
+  - S10's manual lines moved here on 24 November 2026 because they need the shell's
+    server. On the lab machine, the owner installs, pairs and checks an agent from the
+    archive by guide G1 alone, against the shell. The owner also runs every console
+    command in a terminal and accepts how it looks, and runs the positive and negative
+    cases of S9c's line as S10's Acceptance states them.
   - The documents step: `README.md` shows a session, and leads to G3.
+- **Session 0 correction** (25 November 2026). The Windows service could create and
+  resume both COM workers under the ordinary account, but the workers exited with
+  `0xC0000142` before answering on the explicitly named desktop. The console's probe
+  and the in-process lab run use a different Windows session. In the installed
+  service, the launcher passes a non-null empty `lpDesktop` to `CreateProcessAsUserW`.
+  Windows chooses the non-interactive desktop for the worker's batch logon. The
+  service does not grant access to its own station or create a desktop for the
+  worker. Its token checks, suspended launch, job and inherited pipes stay as in
+  S9c. On the provisional diagnostic build, both sessions opened. The ARM64 shell
+  completed a Read, posted a test document, found its stock movement, and returned
+  the same command ID and result for an identical Write with one product in the
+  base. The rebuilt service repeated that round trip over HTTPS. Windows showed both
+  COM workers under the configured ordinary account in Session 0.
+- **Lab acceptance** (25 November 2026). The owner began the Windows lab setup and
+  delegated the remaining terminal checks to the coordinator. The Windows console
+  installed and paired the checksum-verified provisional archive against the shell on
+  ARM64 over trusted HTTPS. The setup used G1 with the lab's paths, credentials, and
+  certificate and network setup instructions.
+  The connector and agent checks ran, and the metadata command reported all four
+  objects of the test configuration. Both real 1C tests for G3 passed. The ARM64 shell
+  read through a second, read-only key pointing to the same test base and returned the
+  expected result. Its `agents` table showed both connected keys and their modes. It
+  reported `StillDeclared` for a declared key and issued and revoked a disposable
+  pairing registration on the ARM64 host.
+  The installed service kept its ordinary-account workers beyond the one-minute run
+  limit and started fresh workers after a restart. When SCM filtered the two required
+  privileges from the service token and, in a separate trial, when the worker account
+  was a temporary local administrator, the service recorded the expected startup reason
+  and stopped with SCM error 1066 and service-specific error 1. The temporary account
+  and its batch logon right were removed. Uninstall and reinstall preserved the policy,
+  pairing and encrypted secrets, and the service restarted successfully after the
+  original settings were restored.
 - **From the architect's review 1** (the planner, 23 November 2026): the harness of the
   real agent with the fake worker, `LoopbackAgent` and its fakes, moves from
   `Moltaro.OnecOutpost.Agent.Tests` to `Moltaro.OnecOutpost.TestSupport`, where the shell's
   tests reach it.
-- **Q15** (the owner, 24 November 2026; the coordinator puts it here, since the shell
-  drives the server's calls): a repeat of a call that finds its command just as the purge
-  removes it is served as if it had come a moment later. `PassCommandAsync` no longer
-  throws `InvalidOperationException` then: the call makes one more create-or-find with its
-  caller key, which creates a new command as a repeat after the retention does. Not a
-  retry loop: S11's internal contract fixes what a second vanishing gives, the simplest
-  that never reports an approximate success; no new code of the public contract. A test
-  drives the race to a known order against PostgreSQL.
 - **From the architect's review 2** (the planner, 23 November 2026): the shell writes a
   redirected output as the console does, its `Program` and `RedirectedOutputTests` the
   model: a UTF-8 writer, Spectre's default enrichers off, so that CI's variables force no
   colour, no wrapping of a line, and the end line. The twenty lines are written twice; the
   two programs share no project (principle 12).
-- **Out of scope.** The release.
+- **Test correction.** The test author moved the UTF-8 BOM to the start of the shell
+  input, before the token command. The original placement exercised an unexpected BOM
+  in the middle of the session. The Write frame and its assertions are unchanged.
+- **Out of scope.** S12 owns release publishing. S13 is separate.
 
 ### S12 · Documents, packages and the archive
 
@@ -6474,20 +6580,8 @@ An independent reviewer reviews them, and the owner approves them. Until then th
     account, and writes them to a new local file. It starts no worker while a line of
     `check`'s rule fails.
 - **The shell**, a program that references the server, Spectre.Console and
-  Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says:
-  - its options:
-    - the PostgreSQL connection;
-    - the address it listens on, `http` on loopback by default;
-    - a certificate for an `https` address that an agent on another machine can reach;
-    - the folder of its signing key;
-  - its commands, one per line:
-    - `token <agent name>`;
-    - `agents`;
-    - `read <base key>` and `write <base key> <caller key>`, each followed by the script
-      and, optionally, parameters as JSON;
-    - `revoke <agent id>` and `release <base key>`;
-  - each outcome shown as its kind, its code, its result as indented JSON, and its
-    messages.
+  Spectre.Console.Cli (principle 12), built as `AGENTS.md`, "Console programs", says.
+  Its full contract is in [S11's brief](#s11--the-shell).
 - **The archive** of a release:
   - its name is `Moltaro.OnecOutpost-<version>-win.zip`;
   - it holds the agent, the COM worker for x64 and for x86, the console, the executor

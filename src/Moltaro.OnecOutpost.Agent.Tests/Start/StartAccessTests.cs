@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
+using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditEntries;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 

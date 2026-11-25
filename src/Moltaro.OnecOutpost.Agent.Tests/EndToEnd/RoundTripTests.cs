@@ -4,6 +4,7 @@ using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Server;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.Loopback;
+using Moltaro.OnecOutpost.TestSupport.RunningAgent;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.EndToEnd;
 

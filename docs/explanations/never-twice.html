@@ -168,7 +168,9 @@ always growing.</p>
   <li>The server finds the command of that key before anything else, creates nothing, waits for its outcome and returns it. A repeat with another script or other parameters is Refused with <code>caller-key-conflict</code>.</li>
 </ol>
 <p>The key is free for a new command only when the first ended as Expired or Refused, so that
-nothing ran, or when its outcome was removed after its retention, 7 days by default.</p>
+nothing ran, or when its outcome was removed after its retention, 7 days by default.
+If a repeat finds its command just as the purge removes it, the server applies the same
+rules again against the current base and connection state.</p>
 
 <h2 id="case-2">2. A lost poll answer</h2>
 <ol class="case-steps">

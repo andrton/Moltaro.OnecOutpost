@@ -6,8 +6,8 @@ For the administrator of a back office: how to install the Moltaro.OnecOutpost a
 **Status:** every command of the console that this guide shows is built and tested: against fakes of Windows, of 1C
 and of the server on every platform, and in CI's elevated Windows job against the service controller, the local
 security policy and the access lists. The lab confirmed `check` and `metadata` on the test base and a copy of a
-typical base. The manual run of the full installation with this guide is planned with the shell. The archive is
-built with the first release.
+typical base. The lab also verified installation from a provisional archive, pairing over HTTPS against the shell,
+and a Read and a Write on the test base. The release archive is built with the first release.
 
 ## How it fits together
 
@@ -403,6 +403,9 @@ Password of outpost-read for the read mode of the base test:
 Wrote the password of outpost-read for the read mode of the base test; the service uses it from its next start.
 ```
 
+In this example, `outpost-read` is the 1C user named by `read.account` for the base `test`. Enter that user's
+password for that base.
+
 Write each password the policy needs: `read` for every base, `write` for a base with `write`, and `worker` for a base
 with a `workerAccount`, as [Writes without safe mode](#writes-without-safe-mode) shows. An empty password is accepted
 for a 1C account, which 1C allows; not for a worker account.
@@ -650,9 +653,13 @@ sees only a right granted to the account itself, not one granted through a group
 
 ### WorkerStart
 
-One line for each base with a `workerAccount`: the worker program started under the account on a desktop of its own,
-as the service starts it, and ended at once, without opening the base. Passed: `the worker started under
+One line for each base with a `workerAccount`: the worker program started under the account on a desktop in the
+console's Windows session and ended at once, without opening the base. Passed: `the worker started under
 outpost-worker on {desktop} and ended at the end of its input`.
+
+The installed service starts workers in Session 0. Windows chooses the non-interactive desktop for the worker
+account's batch logon. Send a Read and a Write after starting the service to verify both workers can open 1C in
+that session.
 
 | Reason | Cause | Remedy |
 | --- | --- | --- |
@@ -669,9 +676,9 @@ outpost-worker on {desktop} and ended at the end of its input`.
 
 One line for the data folder with its files, one for the program folder, and one for the folder of each registered
 connector, judged by the rule of the program folder, since the workers run the connector's code. Passed: `admits
-nobody else, nor do its {n} files`, or `nobody else may change it`. While a line of the data folder, the program
-folder or the connector's folder fails, `check` starts no worker at all, so that it never runs code or opens a base
-that somebody else may have changed. Each reason gives its remedy, for example:
+nobody else, nor do its {n} files`, or `nobody else may change it`. A failure in the data folder or program folder
+prevents every worker start. A worker also needs the folder of its selected connector to pass. Each registered
+connector folder contributes to the overall result of `check`. The reason in each failed line gives the remedy.
 
 | Reason | Remedy |
 | --- | --- |
@@ -774,7 +781,7 @@ stopped with a service-specific error, 1066, and the code, which `sc.exe query M
 | --- | --- | --- |
 | 0 | Stopped by Windows or by you | |
 | 1 | It stopped on its own; the reason is in the audit log, as `started` with an `error` or as `stopped`. When the log ends without either, the log itself could not be written, as on a full disk, and nothing more was recorded: the exit code is the reason | Read the last entries, act on the reason, start it again; when there is none, free the disk, then start it again |
-| 2 | It could not open its audit log, so it recorded nothing: another copy of the agent runs, or `audit\` is missing or refuses the agent's account | Look for another copy; run `install` again, which restores the folders' access lists |
+| 2 | It could not open its audit log, so it recorded nothing: another copy of the agent runs, or `audit\` is missing or refuses the agent's account | Look for another copy. If the audit folder is missing, run `install`. If the folder exists, inspect and correct its access list as [AccessLists](#accesslists) describes. Preserve the existing audit log and pending outcomes. |
 | 3 | Its program was started by hand, outside the service controller; nothing in the data folder changed | Start the service instead |
 | 4 | Its program was started with other arguments than `service` | Run `install` again, which sets the service's command line |
 | 5 | Not on Windows | |

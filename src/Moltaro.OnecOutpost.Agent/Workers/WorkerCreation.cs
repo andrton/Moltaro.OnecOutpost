@@ -49,12 +49,12 @@ internal static partial class WorkerCreation
 
     // Creates the process of the program under the token, suspended and without a window, with the command line
     // "{program}" {base key} {read|write} as given, the environment of the token's account, CreateEnvironmentBlock(token,
-    // false), the program's folder as its working folder, lpDesktop as given, "" connecting it to the window station of
-    // the caller's logon session, and the client ends given as its standard input, output and error, a null error when
-    // none is given. AsUser is CreateProcessAsUserW with a PROC_THREAD_ATTRIBUTE_HANDLE_LIST of exactly those ends, so
-    // that the process inherits nothing else; WithToken is CreateProcessWithTokenW through the Secondary Logon service,
-    // which gives the process duplicates of its standard handles alone. A failed call is a Win32Exception with its code,
-    // and then no process exists. The caller owns the handles it is given and those it gets.
+    // false), the program's folder as its working folder, lpDesktop as given, and the client ends given as its standard
+    // input, output and error, a null error when none is given. AsUser is CreateProcessAsUserW with a
+    // PROC_THREAD_ATTRIBUTE_HANDLE_LIST of exactly those ends. With AsUser, an empty lpDesktop lets Windows select
+    // the desktop for the new process's logon session. WithToken is CreateProcessWithTokenW through the Secondary Logon
+    // service, which gives the process duplicates of its standard handles alone. A failed call is a Win32Exception with
+    // its code, and then no process exists. The caller owns the handles it is given and those it gets.
     public static (SafeProcessHandle Process, nint Thread) CreateSuspended(
         WorkerCallEnum call,
         SafeAccessTokenHandle token,

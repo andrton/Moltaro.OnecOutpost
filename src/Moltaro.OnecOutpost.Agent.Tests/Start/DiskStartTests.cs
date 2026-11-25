@@ -3,9 +3,9 @@ using System.Text.Json;
 using Moltaro.OnecOutpost.Agent.Secrets;
 using Moltaro.OnecOutpost.Agent.Start;
 using Moltaro.OnecOutpost.Agent.Tests.FakeWindows;
-using Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.FakeFiles;
+using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Start;
 

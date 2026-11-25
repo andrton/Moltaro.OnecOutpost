@@ -1,8 +1,9 @@
+using Moltaro.OnecOutpost.Agent;
 using Moltaro.OnecOutpost.Agent.Workers;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport.FakeFiles;
 
-namespace Moltaro.OnecOutpost.Agent.Tests.FakeWorkers;
+namespace Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 
 // The launcher of the fake COM workers, in place of the COM worker of S9 behind its boundary (principle 8, the fake of
 // the S6b brief). Each Start is a line "start {worker}" of the operation list of a data folder in memory, and so are

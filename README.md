@@ -40,9 +40,10 @@ Commands work on the server, against an agent that speaks the protocol. `ReadAsy
 `WriteAsync` check the caller key, the base and the agent, create a signed command and
 wake the agent's poll through Moltaro.Signals; the poll hands the command out, the
 `outcome` request takes the agent's outcome, and the call is woken and returns it. The
-server keeps one command per base and caller key, and a repeat returns its outcome; that a
-Write runs once also needs the agent's audit log. A command that no poll took in time ends
-as Expired, and revoking an agent ends its commands. All of this is tested over loopback
+server keeps one command per base and caller key. An identical repeat returns its outcome
+while the command holds that key. The agent's audit log also prevents a Write from
+running twice. A command that no poll took in time ends as Expired, and revoking an agent
+ends its commands. All of this is tested over loopback
 HTTP with a test agent, and with the agent below.
 
 Several nodes keep these rules when messages are lost or held. Over loopback, with two
@@ -97,8 +98,10 @@ delay, which grows while its session does not open, up to `retryDelayMax`. This 
 on Windows with a test program in place of the worker. The tests that run a Read and a
 Write through the agent and the worker against the repository's test base, and every
 script of [Writing scripts](docs/guides/scripts.md), passed on the lab machine with
-1C:Enterprise 8.3.17.1851 on 23 November 2026, the server being the test's own; a Read and
-a Write from a real server on another machine come with the shell.
+1C:Enterprise 8.3.17.1851 on 23 November 2026 with the test's server. On 25 November,
+the shell on an ARM64 host completed Reads and a Write through the installed Windows
+agent over HTTPS. Repeating the Write with the same caller key returned its original
+outcome.
 
 A base whose policy turns safe mode off for its Writes is served for Write too. All its
 COM workers, those of its Reads included, run under a local Windows account of its own,
@@ -189,6 +192,21 @@ the 1C password it holds; so run `check` only on a machine whose bases you trust
 policy does. The licence of its worker and the administrator's account for a base without
 a worker account hold for `metadata` too, for its whole walk; and a configuration changed
 during the walk gives a report of both.
+
+The shell runs the server with PostgreSQL and accepts commands from a terminal or
+standard input. From `src`, run `dotnet run --project Moltaro.OnecOutpost.Shell -- --help`
+for its startup options. Once a paired agent serves a base, run `agents` to find the
+base's key. For a base with the key `test`, enter these three lines at the shell prompt.
+
+```text
+read test
+Result = 2 + 3;
+.
+```
+
+The shell reports `Succeeded` and shows the JSON result `5`. The guide shows how to
+start the shell, pair an agent, run Read and Write, and see their outcomes.
+[The first shell session](docs/guides/server.md#a-first-session-with-the-shell)
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from

@@ -4,6 +4,7 @@ using Moltaro.OnecOutpost.Agent.Records;
 using Moltaro.OnecOutpost.Protocol.Outcomes;
 using Moltaro.OnecOutpost.TestSupport;
 using Moltaro.OnecOutpost.TestSupport.FakeFiles;
+using Moltaro.OnecOutpost.TestSupport.FakeWorkers;
 using static Moltaro.OnecOutpost.Agent.Tests.AuditLines;
 
 namespace Moltaro.OnecOutpost.Agent.Tests.Records;

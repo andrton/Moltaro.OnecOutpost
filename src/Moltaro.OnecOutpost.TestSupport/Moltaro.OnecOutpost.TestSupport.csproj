@@ -36,6 +36,7 @@
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Server.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Agent.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Console.Tests" />
+    <InternalsVisibleTo Include="Moltaro.OnecOutpost.Shell.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.OneC.Tests" />
     <InternalsVisibleTo Include="Moltaro.OnecOutpost.Measurements" />
   </ItemGroup>
