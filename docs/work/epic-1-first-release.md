@@ -6634,6 +6634,13 @@ is created, all of the following hold:
    - the Publish workflow builds, tests and packs, attaches the archive with its checksum
      to the release, and pushes the package.
 
+**0.1.0 acceptance record.** The owner confirmed that Trusted Publishing is configured
+and requested release by tag. The real-1C evidence is the combined full-suite acceptance
+of S10c, the two added G3 tests run with real 1C in S11, and the installed-service round
+trip recorded in S11. S12 changes the archive, documentation, and the text of a proxy
+validation error. The test comment pass keeps the compiled test tokens identical.
+The owner carried the Q11 measurements forward.
+
 **The release change.** `README.md` on `main` says what works today (`AGENTS.md`), and
 the README packed into a package cannot change after it is published. So the section
 "Packages and downloads" is turned to the published state by one small light-track change

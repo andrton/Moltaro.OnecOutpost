@@ -40,6 +40,10 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 
 ## Open
 
+None.
+
+## Carried forward
+
 ### Q11. The cost of measuring UTF-8 in the executor
 
 | | |
@@ -48,6 +52,7 @@ An entry is numbered `Q1`, `Q2`, … and keeps its number for good:
 | **Question** | The compatibility mode 8.2.13 reportedly has no binary data functions, so the executor counts the UTF-8 bytes of its outcome character by character. For an outcome near its limit, 16 MiB by default and up to 64 MiB, that loop runs inside the transaction of a Write and holds its locks. Is the default of the outcome limit still right? |
 | **Taken** | 21 November 2026, the coordinator, as the planner recommends: a `CharCode` loop is accepted for S9. Its cost inside the transaction of a Write is measured on the lab machine before the default of the outcome limit is trusted, with a result near the limit and with many thousands of user messages, since the executor builds its texts by joining strings (S9 code review, round 1) |
 | **Decides** | The planner, with the figure of the lab; the owner if the default of the limit, a public option, has to change |
+| **Decision** | 25 November 2026, the owner: keep the 16 MiB default in 0.1.0. Carry the measurements of a near-limit Write outcome and a Write with 10,000 user messages into the next stage. The measurements are a follow-up to this release. |
 
 ## Answered
 
