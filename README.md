@@ -98,9 +98,10 @@ delay, which grows while its session does not open, up to `retryDelayMax`. This 
 on Windows with a test program in place of the worker. The tests that run a Read and a
 Write through the agent and the worker against the repository's test base, and every
 script of [Writing scripts](docs/guides/scripts.md), passed on the lab machine with
-1C:Enterprise 8.3.17.1851 on 23 November 2026 with the test's server. The shell runs the
-real server for a Read and a Write from another machine. The lab run of that path is
-pending.
+1C:Enterprise 8.3.17.1851 on 23 November 2026 with the test's server. On 25 November,
+the shell on an ARM64 host completed Reads and a Write through the installed Windows
+agent over HTTPS. Repeating the Write with the same caller key returned its original
+outcome.
 
 A base whose policy turns safe mode off for its Writes is served for Write too. All its
 COM workers, those of its Reads included, run under a local Windows account of its own,
@@ -194,8 +195,18 @@ during the walk gives a report of both.
 
 The shell runs the server with PostgreSQL and accepts commands from a terminal or
 standard input. From `src`, run `dotnet run --project Moltaro.OnecOutpost.Shell -- --help`
-for its startup options. The guide shows how to pair an agent, run Read and Write, and
-see their outcomes. [The first shell session](docs/guides/server.md#a-first-session-with-the-shell)
+for its startup options. Once a paired agent serves a base, run `agents` to find the
+base's key. For a base with the key `test`, enter these three lines at the shell prompt.
+
+```text
+read test
+Result = 2 + 3;
+.
+```
+
+The shell reports `Succeeded` and shows the JSON result `5`. The guide shows how to
+start the shell, pair an agent, run Read and Write, and see their outcomes.
+[The first shell session](docs/guides/server.md#a-first-session-with-the-shell)
 
 The sample in `src/Moltaro.OnecOutpost.Samples` shows how an ASP.NET Core application
 embeds the server. It runs with `dotnet run`, takes a PostgreSQL connection string from

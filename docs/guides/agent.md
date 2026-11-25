@@ -6,8 +6,8 @@ For the administrator of a back office: how to install the Moltaro.OnecOutpost a
 **Status:** every command of the console that this guide shows is built and tested: against fakes of Windows, of 1C
 and of the server on every platform, and in CI's elevated Windows job against the service controller, the local
 security policy and the access lists. The lab confirmed `check` and `metadata` on the test base and a copy of a
-typical base. The manual run of the full installation with this guide is planned with the shell. The archive is
-built with the first release.
+typical base. The lab also verified installation from a provisional archive, pairing over HTTPS against the shell,
+and a Read and a Write on the test base. The release archive is built with the first release.
 
 ## How it fits together
 
@@ -402,6 +402,9 @@ It asks for the password without showing it:
 Password of outpost-read for the read mode of the base test:
 Wrote the password of outpost-read for the read mode of the base test; the service uses it from its next start.
 ```
+
+In this example, `outpost-read` is the 1C user named by `read.account` for the base `test`. Enter that user's
+password for that base.
 
 Write each password the policy needs: `read` for every base, `write` for a base with `write`, and `worker` for a base
 with a `workerAccount`, as [Writes without safe mode](#writes-without-safe-mode) shows. An empty password is accepted

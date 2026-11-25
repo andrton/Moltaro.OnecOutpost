@@ -12,8 +12,9 @@ COM worker. The agent with its COM workers ran Reads and Writes in a real
 1C:Enterprise 8.3.17.1851 on the lab machine, with the test's own server, a Write without
 safe mode under the Windows account of its base included. The console installs, pairs and
 checks an agent on its machine and writes a metadata report of a base. The lab confirmed
-the check and the report on the test base and a copy of a typical base. The shell runs the
-server for manual Reads and Writes. The lab run of that path is pending.
+the check and the report on the test base and a copy of a typical base. The shell ran
+the server on ARM64 and completed Reads and a Write over HTTPS through the installed
+Windows agent on the test base. Repeating the Write returned its original outcome.
 
 ## The parts
 

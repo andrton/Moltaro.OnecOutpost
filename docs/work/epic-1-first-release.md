@@ -1383,7 +1383,7 @@ The release
 | S10aR | Refactoring after S10a: the entries 8 to 11 of the architect's review 1 and entry 1 of review 2 | Refactoring | Done, 23 November 2026: one transaction frame in the store, measured again with every p95 within S7b's; one growing delay of a retry; the forms of §2 in the protocol alone; four small cleanups; the console's install test running the program's own parts. One commit per entry, every test green after each, no public member, assertion or test changed; the review took one round (five P4, two fixed in this plan) |
 | S10b | The console's check | Full | Done, 24 November 2026: `check` with every line of the stage contract, a table of passed and failed lines, `--clock-skew` and the exit code `CheckFailed`; the probe of each worker account on a desktop of the console's own, each base under each account through the COM worker and the executor in Read and safe mode, the server by an `outcome` that takes no poll's place; the architect's entries joined to it (the launcher's steps, the start's checks free of the audit log, the outcome answer as a record, the worker's connection line and judgment outside the pool, the privileges, the layout and one wording of reasons). The internal contract was reviewed in two rounds and approved under PQ2 (round 2's P2, the events judged, taken without a third round); the code review took three rounds: a P1 and two P2 of round 1 (no worker while the data folder admits others; a restricted token, then medium integrity and the user's default list, its limitation stated), one P2 back in round 2, settled by the coordinator, none open in round 3. 2861 tests passed here; the tests with `Requires=Administrator` first run on its pull request, and those of `Moltaro.OnecOutpost.OneC.Tests` on the lab with S10c. What it changes in the public contract is listed in the S10 brief for the owner |
 | S10c | The console's metadata report, guide G1 and the lab run of S10 | Full | Done, 24 November 2026, PR #23. At `523b8a5` both CI jobs and 2,977 local tests passed. Lab acceptance combines 84 unchanged cases from the full run at `6f216ab` with both corrected metadata cases at `523b8a5`. The typical copy matched all 2,286 storage table names, and the test base matched all 14. The independent review and lab fixes closed the findings. The manual run of the S10 commands and G1 is part of S11. |
-| S11 | The shell and Q15 | Full | In progress. The shell and Q15 are implemented. Two review rounds closed the Unix signing-key publication finding. Release builds and format checks passed, with 3,019 local tests passing. The Unix interrupt case was checked in Linux. The cross-machine lab acceptance is pending. |
+| S11 | The shell and Q15 | Full | Done, 25 November 2026, PR #24. Two review rounds closed the Unix signing-key publication finding. An independent follow-up reviewed the installed-service fix. Release builds and format checks passed, with 3,019 local tests passing and the Unix interrupt case verified separately in Linux. The ARM64 and Windows lab acceptance is recorded in the sprint below. |
 | S12 | Documents, packages and the archive | Light | Not started |
 
 ### S1 · The public contract of stage 1, the projects and the test lane
@@ -6417,6 +6417,25 @@ GPT-6.2 Sol at `max`, and the independent reviewer uses GPT-6.2 Sol at `ultra`, 
   the same command ID and result for an identical Write with one product in the
   base. The rebuilt service repeated that round trip over HTTPS. Windows showed both
   COM workers under the configured ordinary account in Session 0.
+- **Lab acceptance** (25 November 2026). The owner began the Windows lab setup and
+  delegated the remaining terminal checks to the coordinator. The Windows console
+  installed and paired the checksum-verified provisional archive against the shell on
+  ARM64 over trusted HTTPS. The setup used G1 with the lab's paths, credentials, and
+  certificate and network setup instructions.
+  The connector and agent checks ran, and the metadata command reported all four
+  objects of the test configuration. Both real 1C tests for G3 passed. The ARM64 shell
+  read through a second, read-only key pointing to the same test base and returned the
+  expected result. Its `agents` table showed both connected keys and their modes. It
+  reported `StillDeclared` for a declared key and issued and revoked a disposable
+  pairing registration on the ARM64 host.
+  The installed service kept its ordinary-account workers beyond the one-minute run
+  limit and started fresh workers after a restart. When SCM filtered the two required
+  privileges from the service token and, in a separate trial, when the worker account
+  was a temporary local administrator, the service recorded the expected startup reason
+  and stopped with SCM error 1066 and service-specific error 1. The temporary account
+  and its batch logon right were removed. Uninstall and reinstall preserved the policy,
+  pairing and encrypted secrets, and the service restarted successfully after the
+  original settings were restored.
 - **From the architect's review 1** (the planner, 23 November 2026): the harness of the
   real agent with the fake worker, `LoopbackAgent` and its fakes, moves from
   `Moltaro.OnecOutpost.Agent.Tests` to `Moltaro.OnecOutpost.TestSupport`, where the shell's
