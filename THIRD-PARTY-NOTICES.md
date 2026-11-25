@@ -7,3 +7,6 @@ commit or tag, and its license text. The
 entry is required.
 
 The repository contains no third-party material yet.
+
+The Windows archive also includes upstream license and notice texts for its bundled
+.NET runtime and Spectre packages in the `licenses` folder.
